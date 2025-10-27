@@ -143,8 +143,8 @@ oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
 print_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
 print_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
-Mhyd = ustrip.(getproperty.(hydrates, :molar_mass))
-Mox = ustrip.(getproperty.(oxides, :molar_mass))
+Mhyd = ustrip.(getproperty.(hydrates, :M))
+Mox = ustrip.(getproperty.(oxides, :M))
 B = Mox .* A .* inv.(Mhyd)'
 # or directly
 B, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; mass=true) ;
