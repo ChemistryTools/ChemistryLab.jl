@@ -15,8 +15,8 @@ end
 ```
 
 !!! info "Advanced description"
-    - `aggregate_state` denotes the state of the species (solid, liquid, gas) for which the possible keywords are AS_AQUEOUS, AS_CRYSTAL, AS_GAS and AS_UNDEF
-    - `class` defines the role played by the species in the solution. The possible keywords are SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GAS_FLUID and SC_UNDEF
+    - `aggregate_state` denotes the state of the species (solid, liquid, gas) for which the possible keywords are `AS_AQUEOUS`, `AS_CRYSTAL`, `AS_GAS` and `AS_UNDEF`
+    - `class` defines the role played by the species in the solution. The possible keywords are `SC_AQSOLVENT`, `SC_AQSOLUTE`, `SC_COMPONENT`, `SC_GAS_FLUID` and `SC_UNDEF`
     - `properties` refers to the set of properties intrinsic to the species. These properties are detailed below ([Species properties](@ref)). 
 
 ## Species construction
