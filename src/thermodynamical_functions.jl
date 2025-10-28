@@ -1,63 +1,118 @@
 abstract type Callable end  # Base type for all callable thermodynamic functions
 
-# Base thermodynamic functions with optimized implementations for common cases
-lib_func(::Val{α}) where {α} = T -> T^α  # General power function
-lib_func(::Val{-1}) = T -> inv(T)        # Optimized for T^-1
-lib_func(::Val{-2}) = T -> inv(T^2)      # Optimized for T^-2
-lib_func(::Val{-3}) = T -> inv(T^3)      # Optimized for T^-3
-lib_func(::Val{0}) = T -> 1.0            # Constant function
-lib_func(::Val{0.5}) = T -> sqrt(T)      # Optimized square root
-lib_func(::Val{-0.5}) = T -> inv(sqrt(T)) # Optimized inverse square root
-lib_func(::Val{:log}) = T -> log(ustrip(T))          # Logarithm function
-lib_func(::Val{:logdivT}) = T -> log(ustrip(T))/T    # Logarithm divided by T
+struct BasisFunction{D,I} <: Callable end
 
-# Derivative functions
-lib_func_derivative(::Val{α}) where {α} = T -> α * T^(α - 1)  # General derivative
-lib_func_derivative(::Val{0}) = T -> 0.0                 # Derivative of constant
-lib_func_derivative(::Val{-1}) = T -> -inv(T^2)          # Derivative of T^-1
-lib_func_derivative(::Val{-2}) = T -> -2inv(T^3)         # Derivative of T^-2
-lib_func_derivative(::Val{-3}) = T -> -3inv(T^4)         # Derivative of T^-3
-lib_func_derivative(::Val{:log}) = T -> 1 / T            # Derivative of log(T)
-lib_func_derivative(::Val{:logdivT}) = T -> (1 - log(ustrip(T))) / T^2  # Derivative of log(T)/T
+const ExtendedDegree = Union{Int,Symbol}
+degree(::BasisFunction{D,I}) where {D,I} = D
+integlevel(::BasisFunction{D,I}) where {D,I} = I
 
-# Primitive (integral) functions
-lib_func_primitive(::Val{α}) where {α} = T -> T^(α + 1) / (α + 1)  # General integral
-lib_func_primitive(::Val{-1}) = T -> log(ustrip(T))               # Integral of T^-1
-lib_func_primitive(::Val{-2}) = T -> -inv(T)                      # Integral of T^-2
-lib_func_primitive(::Val{-3}) = T -> -inv(T^2)/2                  # Integral of T^-3
-lib_func_primitive(::Val{:log}) = T -> T * (log(ustrip(T)) - 1)    # Integral of log(T)
-lib_func_primitive(::Val{:logdivT}) = T -> (log(ustrip(T)))^2 / 2  # Integral of log(T)/T
+unitdegree(::BasisFunction{D,I}) where {D,I} = D+I
+unitdegree(::BasisFunction{:log,I}) where {I} = I
+unitdegree(::BasisFunction{:logdivT,I}) where {I} = D-1
 
-# Double primitive (second integral) functions
-lib_func_double_primitive(::Val{α}) where {α} = T -> T^(α + 2) / ((α+1)*(α+2))  # General second integral
-lib_func_double_primitive(::Val{-1}) = T -> T * (log(ustrip(T)) - 1)            # Second integral of T^-1
-lib_func_double_primitive(::Val{-2}) = T -> -log(ustrip(T))                      # Second integral of T^-2
-lib_func_double_primitive(::Val{-3}) = T -> inv(T)/2                             # Second integral of T^-3
-lib_func_double_primitive(::Val{:log}) = T -> T^2*log(ustrip(T))/2-3T^2/4        # Second integral of log(T)
-lib_func_double_primitive(::Val{:logdivT}) = T -> T*(log(ustrip(T)))^2/2-T*log(ustrip(T))+T  # Second integral of log(T)/T
+(bf::BasisFunction{0,0})(T) = one(T)
+strexp(α) = α == 1 ? "" : normal_to_super("$α")
+strcoef(α) = α == 1 ? "" : "$α"
+show_expr(::BasisFunction{0,0}) = ""
+for α in 1:5
+    @eval begin
+        (bf::BasisFunction{$α,0})(T) = T^$α
+        (bf::BasisFunction{-$α,0})(T) = inv(T^$α)
+        show_expr(::BasisFunction{$α,0}) = "T$(strexp($α))"
+        show_expr(::BasisFunction{-$α,0}) = "/T$(strexp($α))"
+    end
+end
+(bf::BasisFunction{0.5,0})(T) = sqrt(T)
+show_expr(::BasisFunction{0.5,0}) = "√T"
+(bf::BasisFunction{-0.5,0})(T) = inv(sqrt(T))
+show_expr(::BasisFunction{-0.5,0}) = "/√T"
+(bf::BasisFunction{:log,0})(T) = log(ustrip(T))
+show_expr(::BasisFunction{:log,0}) = "ln(T)"
+(bf::BasisFunction{:logdivT,0})(T) = log(ustrip(T))/T
+show_expr(::BasisFunction{:logdivT,0}) = "ln(T)/T"
 
-# Pre-compile common function sets for better performance
-const Cp_func = (lib_func∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log])
-const H_func = (lib_func_primitive∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log])
-const S_func = (lib_func_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])
-const G_func = (lib_func_double_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])
-const logKr_func = (lib_func∘Val).([0, 1, -1, :log, -2, 2, 0.5])
+(bf::BasisFunction{0,-1})(T) = zero(T)
+for α in (1:5..., 0.5, 1.5)
+    @eval begin
+        (bf::BasisFunction{$α,-1})(T) = $α * T^($α - 1)
+        show_expr(::BasisFunction{$α,-1}) = "$(strcoef($α))T$(strexp($α-1))"
+        (bf::BasisFunction{-$α,-1})(T) = -$α * inv(T^($α + 1))
+        show_expr(::BasisFunction{-$α,-1}) = "(-$(strcoef($α))/T$(strexp($α+1)))"
+    end
+end
+(bf::BasisFunction{:log,-1})(T) = inv(T)
+show_expr(::BasisFunction{:log,-1}) = "/T"
+(bf::BasisFunction{:logdivT,-1})(T) = (1 - log(ustrip(T)))/T^2
+show_expr(::BasisFunction{:logdivT,-1}) = "(1-ln(T))/T²"
 
-# Dictionary mapping thermodynamic properties to their function sets, parameter names, and units
-const dict_functions = Dict(
-    :Cp => (Cp_func, :a, J/(mol*K)),  # Heat capacity functions
-    :H => (vcat([lib_func(Val(0))], H_func), :aH, J/mol),  # Enthalpy functions (integrals of Cp)
-    :S => (vcat([lib_func(Val(0))], S_func), :aS, J/(mol*K)),  # Entropy functions
-    :G => (vcat((lib_func∘Val).([0, 1]), G_func), :aG, J/mol),
-    :logKr => (logKr_func, :aK, unit(1))  # Gibbs energy functions (double integrals)
-)
+for α in (0:5..., 0.5, 1.5)
+    @eval begin
+        (bf::BasisFunction{$α,1})(T) = T^($α + 1) / ($α + 1)
+        if $α != 0 show_expr(::BasisFunction{$α,1}) = "T$(strexp($α+1))/$($α+1)" end
+    end
+    if α ∉ (0, 1)
+        @eval begin
+            (bf::BasisFunction{-$α,1})(T) = inv(T^($α - 1)) / (1 - $α)
+            if $α != 2 show_expr(::BasisFunction{-$α,1}) = "(-1/($(strcoef($α-1))T$(strexp($α-1))))" end
+        end
+    end
+end
+show_expr(::BasisFunction{-2,1}) = "(-1/T)"
+show_expr(::BasisFunction{0,1}) = "T"
+(bf::BasisFunction{-1,1})(T) = log(ustrip(T))
+show_expr(::BasisFunction{-1,1}) = "ln(T)"
+(bf::BasisFunction{:log,1})(T) = T * (log(ustrip(T)) - 1)
+show_expr(::BasisFunction{:log,1}) = "T(ln(T)-1)"
+(bf::BasisFunction{:logdivT,1})(T) = (log(ustrip(T)))^2 / 2
+show_expr(::BasisFunction{:logdivT,1}) = "ln(T)²/2"
+
+for α in (0:5..., 0.5, 1.5)
+    @eval begin
+        (bf::BasisFunction{$α,2})(T) = T^($α + 2) / (($α + 1)*($α + 2))
+        show_expr(::BasisFunction{$α,2}) = "T$(strexp($α+2))/$(($α+1)*($α+2))"
+    end 
+    if α ∉ (0, 1, 2)
+        @eval begin
+            (bf::BasisFunction{-$α,2})(T) = inv(T^($α - 2)) / ((1 - $α)*(2 - $α))
+            show_expr(::BasisFunction{-$α,2}) = "(1/($(($α-1)*($α-2))T$(strexp($α-1))))"
+        end 
+    end
+end
+(bf::BasisFunction{-1,2})(T) = T*(log(ustrip(T)) - 1)
+show_expr(::BasisFunction{-1,2}) = "T(ln(T)-1)"
+(bf::BasisFunction{-2,2})(T) = -log(ustrip(T))
+show_expr(::BasisFunction{-2,2}) = "(-ln(T))"
+(bf::BasisFunction{:log,2})(T) = T^2*log(ustrip(T))/2 - 3*T^2/4
+show_expr(::BasisFunction{:log,2}) = "(T²ln(T)/2 - 3/4T²)"
+(bf::BasisFunction{:logdivT,2})(T) = T*(log(ustrip(T)))^2/2 - T*log(ustrip(T)) + T
+show_expr(::BasisFunction{:logdivT,2}) = "(Tln(T)²/2 - Tln(T) + T)"
+
+BasisFunction{1,-1}() = BasisFunction{0,0}()
+
+∂(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I-1}()
+∫(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I+1}()
+∬(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I+2}()
+divT(::BasisFunction{D,I}) where {D,I} = BasisFunction{D-1,I}()
+divT(::BasisFunction{:log,I}) where {I} = BasisFunction{:logdivT,I}()
+
+isconstant(::BasisFunction) = false
+isconstant(::BasisFunction{0,0}) = true
+iszerofunc(::BasisFunction) = false
+iszerofunc(::BasisFunction{0,-1}) = true
+
+show_expr(bf::BasisFunction) = "unknown"
+
+function Base.show(io::IO, bf::BasisFunction)
+    print(io, show_expr(bf))
+end
 
 struct ThermoFunction{F<:NamedTuple,C<:NamedTuple,T<:Number,Z<:Number} <: Callable
-    name::Symbol
     bases::F
     coeffs::C
     Tref::T
     zeroinit::Z
+    cstidx::Union{Symbol,Nothing}
+    param::Symbol
 end
 
 function (lf::ThermoFunction)(T)
@@ -74,28 +129,123 @@ end
 
 coefficients(lf::ThermoFunction) = lf.coeffs
 
-function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0)
+function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0, param=:a)
+
+    if length(coeffs) == 0
+        cstidx = Symbol(param, "₀")
+        return ThermoFunction((cstidx => BasisFunction{0, 0}()), (cstidx => 0), Tref, 0, cstidx, param)
+    end
 
     with_units = promote_type(typeof.(coeffs)...) <: Quantity
     if with_units && !(Tref isa Quantity)
         Tref *= K
     end
 
-    funcs, param, varunit = dict_functions[name]
+    funcs = [BasisFunction{d, 0}() for d in degrees]
 
     nonzero = findall(!iszero, coeffs)
-    kept_names = Symbol.(string.(param), string.(nonzero .+ (startindex - 1)))
+    if length(nonzero) == 0
+        nonzero = [1]
+    end
     kept_funcs = funcs[nonzero]
     kept_coefs = coeffs[nonzero]
+
+    varunit = unit(1)
+    if with_units
+        varunitvec = unit.(kept_coefs) .* (K .^ unitdegree.(kept_funcs))
+        if !allequal(varunitvec) error("Degrees $degrees and coefficients $coeffs are not dimensionally compatible.") end
+        varunit = length(varunitvec)>0 ? varunitvec[1] : unit(1)
+    end
+
+    kept_names = [Symbol(param, normal_to_sub(string(i + startindex - 1))) for i in nonzero]
+    idxcst = findfirst(==(0), degrees)
+    cstidx = isnothing(idxcst) ? nothing : Symbol(param, normal_to_sub(string(idxcst + startindex - 1)))
 
     base_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_funcs))
     coef_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_coefs))
 
-    return ThermoFunction(name, base_nt, coef_nt, Tref, with_units ? 0*varunit : 0)
+    return ThermoFunction(base_nt, coef_nt, Tref, with_units ? 0*varunit : 0, cstidx, param)
+end
+
+function +(tf::ThermoFunction, x::Number)
+    if isnothing(tf.cstidx)
+        cstidx = Symbol(tf.param, "₀")
+        idx = 0
+        while hasfield(typeof(tf.coeffs), cstidx)
+            idx -= 1
+            cstidx = Symbol(tf.param, normal_to_sub(string(idx)))
+        end
+        return ThermoFunction(merge(NamedTuple{(cstidx,)}((BasisFunction{0,0}(),)), tf.bases),
+                              merge(NamedTuple{(cstidx,)}(x), tf.coeffs),
+                              tf.Tref, tf.zeroinit, cstidx, tf.param)
+    else
+        return ThermoFunction(tf.bases, merge(tf.coeffs, NamedTuple{(tf.cstidx,)}((getfield(tf.coeffs, tf.cstidx)+x,))), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
+    end
+end
+
++(x::Number, tf::ThermoFunction) = +(tf, x)
+
+function -(tf::ThermoFunction, x::Number)
+    if isnothing(tf.cstidx)
+        cstidx = Symbol(tf.param, "₀")
+        idx = 0
+        while hasfield(typeof(tf.coeffs), cstidx)
+            idx -= 1
+            cstidx = Symbol(tf.param, normal_to_sub(string(idx)))
+        end
+        return ThermoFunction(merge(NamedTuple{(cstidx,)}((BasisFunction{0,0}(),)), tf.bases),
+                              merge(NamedTuple{(cstidx,)}(-x), tf.coeffs),
+                              tf.Tref, tf.zeroinit, cstidx, tf.param)
+    else
+        return ThermoFunction(tf.bases, merge(tf.coeffs, NamedTuple{(tf.cstidx,)}((getfield(tf.coeffs, tf.cstidx)-x,))), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
+    end
+end
+
+function *(tf::ThermoFunction, x::Number)
+    ThermoFunction(tf.bases, (; (k => v*x for (k,v) in pairs(tf.coeffs))...), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
+end
+
+*(x::Number, tf::ThermoFunction) = *(tf, x)
+
+-(tf::ThermoFunction) = *(tf, -1)
+
+-(x::Number, tf::ThermoFunction) = +(-tf, x)
+
+function /(tf::ThermoFunction, x::Number)
+    ThermoFunction(tf.bases, (; (k => v/x for (k,v) in pairs(tf.coeffs))...), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
+end
+
+function ∫(tf::ThermoFunction)
+    newbases = (; (k => ∫(v) for (k,v) in pairs(tf.bases))...)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*K : tf.zeroinit, nothing, tf.param)
+end
+
+function ∬(tf::ThermoFunction)
+    newbases = (; (k => ∬(v) for (k,v) in pairs(tf.bases))...)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*K^2 : tf.zeroinit, nothing, tf.param)
+end
+
+function ∂(tf::ThermoFunction)
+    newbases = (; (k => ∂(v) for (k,v) in pairs(tf.bases))...)
+    newcoeffs = tf.coeffs
+    zeroidx = findfirst(bf->iszerofunc(bf), newbases)
+    if !isnothing(zeroidx)
+        newbases = (; (k => v for (k,v) in pairs(newbases) if k != zeroidx)...)
+        newcoeffs = (; (k => v for (k,v) in pairs(newcoeffs) if k != zeroidx)...)
+    end
+    cstidx = findfirst(bf->isconstant(bf), newbases)
+    ThermoFunction(newbases, newcoeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/K : tf.zeroinit, cstidx, tf.param)
+end
+
+function divT(tf::ThermoFunction)
+    newbases = (; (k => divT(v) for (k,v) in pairs(tf.bases))...)
+    cstidx = findfirst(bf->isconstant(bf), newbases)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/K : tf.zeroinit, cstidx, tf.param)
 end
 
 function Base.show(io::IO, lf::ThermoFunction)
-    print(io, lf.name, "(T) with {")
+    print(io, join(["$k$v" for (k,v) in pairs(lf.bases)]," + "))
+    print(io, " with {")
     print(io, replace(string(lf.coeffs), "("=>"", ")"=>"", " = "=>"="))
     print(io, " ; Tref=", lf.Tref,"}")
 end

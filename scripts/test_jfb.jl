@@ -49,7 +49,7 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=false, with_units=true, all_properties=true) # debug only for conception phase (not to be put in the doc)
+df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=true, with_units=true, all_properties=true) # debug only for conception phase (not to be put in the doc)
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 # filter(p->!haskey(p.second, :Cp), dict_species)
 # filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
@@ -186,17 +186,15 @@ lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
-cemJennite.Cp = ThermoFunction(:Cp, [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K])
+degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
+coeffs = [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K]
+cemJennite.Cp = ThermoFunction(degrees, coeffs; Tref=298.15)
 @show cemJennite.Cp ;
-@show fieldnames(typeof(cemJennite.Cp)) ;
-@show fieldnames(typeof(cemJennite.Cp)) ;
 @show cemJennite.Cp(298.15K) ;
 @show cemJennite.Cp() ; # application by default on Tref
  # same without units
-cemJennite.Cp = ThermoFunction(:Cp, [210.0, 0.120, -3.07e6, 0.0])
+cemJennite.Cp = ThermoFunction(degrees, ustrip.(coeffs); Tref=298.15)
 @show cemJennite.Cp ;
-@show fieldnames(typeof(cemJennite.Cp)) ;
-@show fieldnames(typeof(cemJennite.Cp)) ;
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
 
@@ -217,3 +215,7 @@ end
 
 # Check consistency of logKr at Tref and logKr0 of the database
 for r in df_reactions.reaction println(r.logKr(), " == ", r.logKr0) end
+
+degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
+coeffs = [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K]
+Cp = ThermoFunction(degrees, coeffs)

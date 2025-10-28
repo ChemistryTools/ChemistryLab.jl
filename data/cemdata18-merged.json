@@ -32724,10 +32724,10 @@
     },
     {
       "symbol": "Qtz",
-      "equation": "SiO2@ = SiO2@",
+      "equation": "SiO2 = SiO2@",
       "reactants": [
         {
-          "symbol": "SiO2@",
+          "symbol": "SiO2",
           "coefficient": -1.0
         },
         {
@@ -36842,10 +36842,10 @@
     },
     {
       "symbol": "Amor-Sl",
-      "equation": "SiO2@ = SiO2@",
+      "equation": "SiO2 = SiO2@",
       "reactants": [
         {
-          "symbol": "SiO2@",
+          "symbol": "SiO2",
           "coefficient": -1.0
         },
         {

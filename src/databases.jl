@@ -25,21 +25,19 @@ function get_aqueous_species(json_data)
 end
 
 """
-    parse_reaction_stoich_cemdata(reaction_line::AbstractString, aqueous_species, gaseous=false)
+    parse_reaction_stoich_cemdata(reaction_line::AbstractString)
 
 Parse a Cemdata/Phreeqc reaction line, adding "@" for aqueous species as needed.
 
 # Arguments
 - `reaction_line::AbstractString`: The reaction line from a Cemdata .dat file.
-- `aqueous_species`: Set of aqueous species symbols.
-- `gaseous`: Boolean indicating if the phase is gaseous.
 
 # Returns
 - `reactants`: Array of Dicts with "symbol" and "coefficient" for each reactant/product.
 - `modified_equation`: The formatted equation string.
 - `comment`: Any comment found on the line.
 """
-function parse_reaction_stoich_cemdata(reaction_line::AbstractString, aqueous_species, gaseous=false)
+function parse_reaction_stoich_cemdata(reaction_line::AbstractString)
     # Split the equation and the comment
     equation_parts = split(reaction_line, '#')
     equation = strip(equation_parts[1])
@@ -71,7 +69,7 @@ function parse_reaction_stoich_cemdata(reaction_line::AbstractString, aqueous_sp
                 coeff = coeff_str === nothing || isempty(coeff_str) ? 1.0 : parse(Float64, coeff_str)
 
                 # Add "@" to aqueous species without charge
-                if base_symbol in aqueous_species && isempty(charge) && !(gaseous && side_index == 1 && token_index == 1)
+                if isempty(charge) && !(side_index == 1 && token_index == 1)
                     sp *= "@"
                     token = coeff_str === nothing ? sp : coeff_str * sp
                 end
@@ -151,7 +149,7 @@ function parse_phases(dat_content, aqueous_species)
                     phases[phase_name] = current_phase
                 end
             elseif occursin("=", line) && current_phase !== nothing
-                reactants, equation, comment = parse_reaction_stoich_cemdata(line, aqueous_species, occursin("(g)", get(current_phase, "symbol", "")))
+                reactants, equation, comment = parse_reaction_stoich_cemdata(line)
                 current_phase["equation"] = equation
                 current_phase["reactants"] = reactants
                 if !isempty(comment)
@@ -699,27 +697,22 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         end
 
         if all_properties
-            coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green"))
-            s.Cp = ThermoFunction(:Cp, coeffa; Tref=Tref)
+            coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
+
+            degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
+            s.Cp = ThermoFunction(degrees, coeffa; Tref=Tref)
 
             ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
-            coeffaH = [float(zero(ΔfH0)); coeffa]
-            fH = ThermoFunction(:H, coeffaH; Tref=Tref)
-            coeffaH[1] = ΔfH0-Base.invokelatest(fH, Tref)
-            s.ΔfH = ThermoFunction(:H, coeffaH; Tref=Tref)
+            ∫Cp = ∫(s.Cp)
+            s.ΔfH = ΔfH0 + (∫Cp - ∫Cp(Tref))
 
             S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
-            coeffaS = [float(zero(S0)); coeffa]
-            fS = ThermoFunction(:S, coeffaS; Tref=Tref)
-            coeffaS[1] = S0-Base.invokelatest(fS, Tref)
-            s.S = ThermoFunction(:S, coeffaS; Tref=Tref)
+            ∫CpoverT = ∫(divT(s.Cp))
+            s.S = S0 + (∫CpoverT - ∫CpoverT(Tref))
 
             ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=J/mol)
-            coeffaG = [float(zero(ΔfG0)); float(zero(S0)); -coeffa]
-            fG = ThermoFunction(:G, coeffaG; Tref=Tref)
-            coeffaG[1] = ΔfG0+coeffaS[1]*Tref-Base.invokelatest(fG, Tref)
-            coeffaG[2] = -coeffaS[1]
-            s.ΔfG = ThermoFunction(:G, coeffaG; Tref=Tref)
+            ∫S = ∫(s.S)
+            s.ΔfG = ΔfG0 - (∫S - ∫S(Tref))
 
             Vm = uconvert(cm^3 , get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=J/bar))
             s.Vm = with_units ? Vm/mol : ustrip(Vm)
@@ -773,14 +766,15 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
         r.Tref = Tref
 
         if all_properties
-            coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green"))
-            r.logKr = ThermoFunction(:logKr, coefflogKr; Tref=Tref)
+            coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
+            degrees = [0, 1, -1, :log, -2, 2, 0.5]
+            r.logKr = ThermoFunction(degrees, coefflogKr; Tref=Tref)
 
             r.ΔrCp0 = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
             r.ΔrH0 = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
             r.ΔrG0 = get_value(row, :ΔrG; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
             r.ΔrS0 = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
-            ΔVm = uconvert(cm^3 , get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/bar))
+            ΔVm = uconvert(cm^3 , get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=true, default_unit=J/bar))
             r.ΔrV = with_units ? ΔVm/mol : ustrip(ΔVm)
             r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=unit(1))
 
