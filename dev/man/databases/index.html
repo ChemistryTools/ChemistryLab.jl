@@ -4,16 +4,16 @@ show(df_elements, allcols=true, allrows=true)</code></pre><pre class="documenter
 <span class="sgr34">│  Species property completion  │</span>
 <span class="sgr34">└───────────────────────────────┘</span>
 0.0%┣                                              ┫ 0/228 [00:00&lt;00:00, -0s/it]
-100.0%┣██████████████████████████████████████┫ 228/228 [00:00&lt;00:00, 908.8kit/s]
-100.0%┣██████████████████████████████████████┫ 228/228 [00:00&lt;00:00, 756.9kit/s]
+100.0%┣██████████████████████████████████████┫ 228/228 [00:00&lt;00:00, 980.0kit/s]
+100.0%┣██████████████████████████████████████┫ 228/228 [00:00&lt;00:00, 732.9kit/s]
 <span class="sgr31">┌────────────────────────────────┐</span>
 <span class="sgr31">│  Reaction property completion  │</span>
 <span class="sgr31">└────────────────────────────────┘</span>
 0.0%┣                                              ┫ 0/148 [00:00&lt;00:00, -0s/it]
-100.0%┣███████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 10.4kit/s]
-100.0%┣███████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 10.3kit/s]
-100.0%┣███████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 10.3kit/s]
-100.0%┣███████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 10.1kit/s]
+100.0%┣███████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 11.5kit/s]
+100.0%┣████████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 3.5kit/s]
+100.0%┣████████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 3.5kit/s]
+100.0%┣████████████████████████████████████████┫ 148/148 [00:00&lt;00:00, 3.5kit/s]
 <span class="sgr1">15×5 DataFrame</span>
 <span class="sgr1"> Row </span>│<span class="sgr1"> symbol  class    S                                  atomic_mass                        datasources         </span>
 <span class="sgr1">     </span>│<span class="sgr90"> String  String   NamedTup…                          NamedTuple…                        Array…              </span>
@@ -142,10 +142,10 @@ aggregate_state: AS_CRYSTAL
           class: SC_COMPONENT
      properties: M = 74.09200000000001 g mol^-1
                  Tref = 298.15 K
-                 Cp = Cp(T) with {a0=186.69999694824 J K^-1 mol^-1, a1=-0.02191000059247 J K^-2 mol^-1, a3=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
-                 ΔfH = H(T) with {aH0=-984111.3107374382 J mol^-1, aH1=186.69999694824 J K^-1 mol^-1, aH2=-0.02191000059247 J K^-2 mol^-1, aH4=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
-                 S = S(T) with {aS0=-1159.133223125924 J K^-1 mol^-1, aS1=186.69999694824 J K^-1 mol^-1, aS2=-0.02191000059247 J K^-2 mol^-1, aS4=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
-                 ΔfG = G(T) with {aG0=-871583.6048319052 J mol^-1, aG1=1159.133223125924 J K^-1 mol^-1, aG2=-186.69999694824 J K^-1 mol^-1, aG3=0.02191000059247 J K^-2 mol^-1, aG5=1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
+                 Cp = a₀ + a₁T + a₃/√T with {a₀=186.69999694824 J K^-1 mol^-1, a₁=-0.02191000059247 J K^-2 mol^-1, a₃=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
+                 ΔfH = a₋₁ + a₀T + a₁T²/2 + a₃(-1/(-0.5T⁻⁰.⁵)) with {a₋₁=-984111.3107374382 J mol^-1, a₀=186.69999694824 J K^-1 mol^-1, a₁=-0.02191000059247 J K^-2 mol^-1, a₃=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
+                 S = a₋₁ + a₀ln(T) + a₁T + a₃(-1/(0.5T⁰.⁵)) with {a₋₁=-1159.133223125924 J K^-1 mol^-1, a₀=186.69999694824 J K^-1 mol^-1, a₁=-0.02191000059247 J K^-2 mol^-1, a₃=-1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
+                 ΔfG = a₋₂ + a₋₁T + a₀T(ln(T)-1) + a₁T²/2 + a₃(1/(-0.25T⁰.⁵)) with {a₋₂=-871583.6048319053 J mol^-1, a₋₁=1159.133223125924 J K^-1 mol^-1, a₀=-186.69999694824 J K^-1 mol^-1, a₁=0.02191000059247 J K^-2 mol^-1, a₃=1600.0 J K^-1/2 mol^-1 ; Tref=298.15 K}
                  Vm = 33.059999942779996 cm^3 mol^-1</code></pre><h2 id="Primary-species-extraction"><a class="docs-heading-anchor" href="#Primary-species-extraction">Primary species extraction</a><a id="Primary-species-extraction-1"></a><a class="docs-heading-anchor-permalink" href="#Primary-species-extraction" title="Permalink"></a></h2><p>It is also possible to retrieve primary species from the Cemdata18 database, primary species being the designation of a subset of species for which any species can be represented as the linear combination of primary species.</p><pre><code class="language-julia hljs">df_primaries = extract_primary_species(&quot;../../../data/CEMDATA18-31-03-2022-phaseVol.dat&quot;)
 show(df_primaries, allcols=true, allrows=true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr1">15×7 DataFrame</span>
 <span class="sgr1"> Row </span>│<span class="sgr1"> species    symbol  gamma          formula  aggregate_state  atoms                       charge </span>
@@ -165,4 +165,4 @@ show(df_primaries, allcols=true, allrows=true)</code></pre><pre class="documente
   12 │ SiO2       SiO2@   [0.0, 0.0]     SiO2@    AS_AQUEOUS       OrderedDict(:Si=&gt;1, :O=&gt;2)       0
   13 │ SO4-2      SO4-2   [5.31, -0.07]  SO4-2    AS_AQUEOUS       OrderedDict(:S=&gt;1, :O=&gt;4)       -2
   14 │ Sr+2       Sr+2    [5.48, 0.11]   Sr+2     AS_AQUEOUS       OrderedDict(:Sr=&gt;1)              2
-  15 │ Zz         Zz      [9.0, 0.064]   Zz       AS_AQUEOUS       OrderedDict(:Zz=&gt;1)              1</code></pre><p><a href="../../reference/#ChemistryLab.extract_primary_species-Tuple{Any}"><code>ChemistryLab.extract_primary_species</code></a></p><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../stoichio_matrix/">Stoichiometric Matrix »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Tuesday 28 October 2025 13:45">Tuesday 28 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  15 │ Zz         Zz      [9.0, 0.064]   Zz       AS_AQUEOUS       OrderedDict(:Zz=&gt;1)              1</code></pre><p><a href="../../reference/#ChemistryLab.extract_primary_species-Tuple{Any}"><code>ChemistryLab.extract_primary_species</code></a></p><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../stoichio_matrix/">Stoichiometric Matrix »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Tuesday 28 October 2025 23:59">Tuesday 28 October 2025</span>. Using Julia version 1.12.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
