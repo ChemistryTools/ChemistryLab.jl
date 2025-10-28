@@ -167,6 +167,16 @@ function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number
     return ThermoFunction(base_nt, coef_nt, Tref, with_units ? 0*varunit : 0, cstidx, param)
 end
 
+function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0, param=:a)
+    if name == :Cp
+        return ThermoFunction([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log], coeffs; Tref=Tref, startindex=startindex, param=param)
+    elseif name == :logKr
+        return ThermoFunction([0, 1, -1, :log, -2, 2, 0.5], coeffs; Tref=Tref, startindex=startindex, param=param)
+    else
+        error("$name not registered for ThermoFunction construction")
+    end
+end
+
 function +(tf::ThermoFunction, x::Number)
     if isnothing(tf.cstidx)
         cstidx = Symbol(tf.param, "₀")

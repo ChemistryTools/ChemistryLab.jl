@@ -15,7 +15,7 @@ fNa⁺ = :Na+:Zz
 fH₂O = 2*:H + :O
 H₂O = Species(fH₂O; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
-CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
+CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
 A, atomlist = canonical_stoich_matrix(species; label=:name) ; # label only for display
 A, atomlist = canonical_stoich_matrix(species; label=:symbol) ;
@@ -23,7 +23,7 @@ A, atomlist = canonical_stoich_matrix(species; label=:formula) ;
 
 water_without_name_symbol = Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 water_without_name_symbol == H₂O # true since atoms, aggregate_state and class are equal despite instances are different
-vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
+vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 vapour == H₂O # false since aggregate_state or class are different despite atoms are identical
 
 # CemSpecies

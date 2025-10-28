@@ -16,7 +16,7 @@ end
 
 !!! info "Advanced description"
     - `aggregate_state` denotes the state of the species (solid, liquid, gas) for which the possible keywords are `AS_AQUEOUS`, `AS_CRYSTAL`, `AS_GAS` and `AS_UNDEF`
-    - `class` defines the role played by the species in the solution. The possible keywords are `SC_AQSOLVENT`, `SC_AQSOLUTE`, `SC_COMPONENT`, `SC_GAS_FLUID` and `SC_UNDEF`
+    - `class` defines the role played by the species in the solution. The possible keywords are `SC_AQSOLVENT`, `SC_AQSOLUTE`, `SC_COMPONENT`, `SC_GASFLUID` and `SC_UNDEF`
     - `properties` refers to the set of properties intrinsic to the species. These properties are detailed below ([Species properties](@ref)). 
 
 ## Species construction
@@ -61,13 +61,13 @@ H₂O = Species(fH₂O; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEOU
 And `symbol` accept unicode characters.
 ```@example
 using ChemistryLab #hide
-CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
+CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 ```
 
 !!! note "Comparison between species"
     Comparison between species (or cemspecies) are done by comparing atoms, aggregate_state and class. In the example below, vapour is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
     ```julia
-    vapour = Species(2*:H + :O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
+    vapour = Species(2*:H + :O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
     vapour == H₂O
     ```
 

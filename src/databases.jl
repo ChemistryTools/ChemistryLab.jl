@@ -699,8 +699,7 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         if all_properties
             coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
 
-            degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
-            s.Cp = ThermoFunction(degrees, coeffa; Tref=Tref)
+            s.Cp = ThermoFunction(:Cp, coeffa; Tref=Tref)
 
             ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
             ∫Cp = ∫(s.Cp)
@@ -767,8 +766,7 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
 
         if all_properties
             coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
-            degrees = [0, 1, -1, :log, -2, 2, 0.5]
-            r.logKr = ThermoFunction(degrees, coefflogKr; Tref=Tref)
+            r.logKr = ThermoFunction(:logKr, coefflogKr; Tref=Tref)
 
             r.ΔrCp0 = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
             r.ΔrH0 = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
