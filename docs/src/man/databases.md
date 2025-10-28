@@ -1,16 +1,6 @@
 # Database Interoperability
 
-So far, we have looked at the possibility of creating and manipulating any species, whether they exist or not. Creating an H₂O⁺⁴ molecule, for example, is not a problem.
-
-```@setup database_interoperability
-    using ChemistryLab
-```
-
-```@example database_interoperability
-HSO4 = Species("H₂O⁴⁺")
-```
-
-However, you will admit that it is a little strange...
+So far, we have looked at the possibility of creating and manipulating any species, whether they exist or not. If we wanted to create a H₂O⁺⁴ molecule, it would not be a problem. However, you will admit that it is a little strange...
 
 ## Cemdata18 and PSI-Nagra-12-07 Databases
 
@@ -21,6 +11,7 @@ With ChemistryLab, you can parse a ThermoFun-like json file and return DataFrame
 - elements:
 
 ```@example database_interoperability
+using ChemistryLab #hide
 df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 show(df_elements, allcols=true, allrows=true)
 ```
@@ -35,6 +26,24 @@ show(df_substances, allcols=true, allrows=false)
 - reactions contained in the database
 ```@example database_interoperability
 show(df_reactions, allcols=true, allrows=false)
+```
+
+!!! note "Units"
+    By default, when reading the database, the units of the various physical quantities are read. To remove this option, simply write `with_units=false` in the arguments of the `read_thermofun` function.
+
+## Species properties construction during database parsing
+Species properties can be constructed while reading the database with `all_properties=true` as an argument. These properties are values ​​or functions that generally depend on temperature.
+
+Currently, species properties are: molar mass (`molar_mass`), a reference temperature (`Tref`), heat capacity (`Cp`), enthalpy change of formation (`ΔfH`), entropy of formation (`S`), Gibbs energy of formation (`ΔfG`), and molar volume (`Vm`). Values and functions are described in [Cemdata18 paper](https://www.empa.ch/web/s308/thermodynamic-data).
+
+```@example database_interoperability
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json"; with_units=true, all_properties=true) #hide
+```
+
+For each species, properties can then be obtained as follows:
+```@example database_interoperability
+dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+dict_species["Portlandite"]
 ```
 
 ## Primary species extraction

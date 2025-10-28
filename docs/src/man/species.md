@@ -65,7 +65,7 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 ```
 
 !!! note "Comparison between species"
-    Comparison between species are done by comparing atoms, aggregate_state and class. In the example below, vapour is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
+    Comparison between species (or cemspecies) are done by comparing atoms, aggregate_state and class. In the example below, vapour is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
     ```julia
     vapour = Species(2*:H + :O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
     vapour == H₂O
@@ -86,10 +86,10 @@ The manipulation of chemical formulas can also be done in cement notation. Here 
 ```
 
 ```@example example_cemspecies
-C3S = CemSpecies("C3S")
-C2S = CemSpecies("C2S")
-C3A = CemSpecies("C3A")
-C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
+C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C2S = CemSpecies("C₂S"; name="Belite", symbol="C₂S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C3A = CemSpecies("C3A"; name="Aluminate", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄AF")
 ```
 
 !!! warning "Warning"
@@ -103,7 +103,7 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 
 ## Numeric and Symbolic CemSpecies
 
-The previous species were constructed from integer values ​​of the number of chemical elements. However, other numerical value types ​​are possible (see [species](./databases.md#formulas)), such as fraction or Real values.
+The previous species were constructed from integer values ​​of the number of chemical elements. However, other numerical value types ​​are possible (as for [species](./databases.md#formulas)), such as fraction or Real values.
 
 ```@example
 using ChemistryLab
@@ -135,13 +135,18 @@ jennite = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.666667, ĝ => 2
 
 ---
 
-## Conversion to Cement Notation
+## Conversion of Species to CemSpecies and vice versa
 
 Convert species to cement notation and Unicode. Conversion can be done on simple species:
 
 ```@example example_cemspecies
 H2O = Species("H₂O")
 cemH2O = CemSpecies(H2O)
+```
+
+```@example example_cemspecies
+C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+spC3S = Species(C3S)
 ```
 
 Or more complex one:
