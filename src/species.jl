@@ -90,7 +90,7 @@ mainformula(s::Species) = s.formula
 
 function Species(formula::Formula; name=expr(formula), symbol=expr(formula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
     atoms = composition(formula)
-    if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
+    if !haskey(properties, :M) properties[:M] = calculate_molar_mass(atoms) end
     return mendeleev_filter(Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)))
 end
 
@@ -182,7 +182,7 @@ components(s::CemSpecies) = oxides_charge(s)
 function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemformula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
-    if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
+    if !haskey(properties, :M) properties[:M] = calculate_molar_mass(atoms) end
     return mendeleev_filter(CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, aggregate_state, class, properties))
 end
 

@@ -97,8 +97,8 @@ function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=tru
 
     if mass
         S = promote_type(root_type.(typeof.(species))...)
-        Msp = ustrip.(getproperty.(species, :molar_mass))
-        Mat = ustrip.(getproperty.(S.(string.(involved_atoms)), :molar_mass))
+        Msp = ustrip.(getproperty.(species, :M))
+        Mat = ustrip.(getproperty.(S.(string.(involved_atoms)), :M))
         A = Mat .* A .* inv.(Msp)'
     end
 
@@ -176,8 +176,8 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
 
     if mass
         S = promote_type(root_type.(typeof.(species))...)
-        Mdep = ustrip.(getproperty.(dep_comp, :molar_mass))
-        Mindep = ustrip.(getproperty.(indep_comp, :molar_mass))
+        Mdep = ustrip.(getproperty.(dep_comp, :M))
+        Mindep = ustrip.(getproperty.(indep_comp, :M))
         A = Mindep .* A .* inv.(Mdep)'
     end
 

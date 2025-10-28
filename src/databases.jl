@@ -695,7 +695,7 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         Tref = with_units ? row.Tst*K : row.Tst
         s.Tref = Tref
         if !with_units
-            s.molar_mass = ustrip(s.molar_mass)
+            s.M = ustrip(s.M)
         end
 
         if all_properties

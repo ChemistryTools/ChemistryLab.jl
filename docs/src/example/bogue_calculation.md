@@ -16,9 +16,9 @@ Bogue's formulas are thus found by converting species into mass and inverting th
 
 ```@example Bogue
 # Molar mass of anhdrous phases
-Mw = map(x -> x.molar_mass, cemspecies)
+Mw = map(x -> x.M, cemspecies)
 # Molar mass of each oxide
-Mwo = map(x -> x.molar_mass, oxides)
+Mwo = map(x -> x.M, oxides)
 Aoa = Mwo .* A .* inv.(Mw)'
 
 print_stoich_matrix(inv(Aoa), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
