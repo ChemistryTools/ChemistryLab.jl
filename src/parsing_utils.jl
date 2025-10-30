@@ -452,7 +452,7 @@ function parse_equation(equation::AbstractString)
         for term in terms
             t = strip(term)
 
-            m = match(r"^\(?(?<coeff>[-+]?\d+//\d+|[-+]?\d*\.?\d+)?\)?\s*(?<formula>.+)$", t)
+            m = match(r"^(?<coeff>[-+]?\d+//\d+|[-+]?\d*\.?\d+)?\s*(?<formula>.+)$", t)
 
             if m !== nothing
                 coeff_str = m[:coeff]

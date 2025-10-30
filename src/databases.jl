@@ -60,13 +60,17 @@ function parse_reaction_stoich_cemdata(reaction_line::AbstractString)
                 push!(modified_tokens, token)
                 continue
             end
-            m = match(r"^([+-]?\d*\.?\d+)?([A-Za-z][A-Za-z0-9\(\)]*)([\+\-]?\d*)$", token)
+            m = match(r"^([+-]?\d*\.?\d+)?(.+?)([\+\-]\d*\.?\d*)?$", token)
+            @show m
             if m !== nothing
                 coeff_str = m.captures[1]
                 base_symbol = m.captures[2]
                 charge = m.captures[3]
+                if isnothing(charge)
+                    charge = ""
+                end
                 sp = base_symbol * charge
-                coeff = coeff_str === nothing || isempty(coeff_str) ? 1.0 : parse(Float64, coeff_str)
+                coeff = isnothing(coeff_str) || isempty(coeff_str) ? 1.0 : parse(Float64, coeff_str)
 
                 # Add "@" to aqueous species without charge
                 if isempty(charge) && !(side_index == 1 && token_index == 1)
@@ -119,18 +123,17 @@ function parse_float_array(line)
 end
 
 """
-    parse_phases(dat_content, aqueous_species)
+    parse_phases(dat_content)
 
 Parse the PHASES section of a Cemdata .dat file, extracting phase info and reactions.
 
 # Arguments
 - `dat_content`: The content of the Cemdata .dat file as a string.
-- `aqueous_species`: Set of aqueous species symbols.
 
 # Returns
 - `Dict{String, Any}`: Dictionary of phase names to their data.
 """
-function parse_phases(dat_content, aqueous_species)
+function parse_phases(dat_content)
     phases = Dict{String, Any}()
     in_phases = false
     current_phase = nothing
@@ -440,7 +443,7 @@ function merge_json(json_path, dat_path, output_path)
     # Preserve the initial structure
     aqueous_species = get_aqueous_species(json_data)
     dat_content = read(dat_path, String)
-    new_reactions = parse_phases(dat_content, aqueous_species)
+    new_reactions = parse_phases(dat_content)
 
     # Add new reactions
     merged_data = merge_reactions(json_data, new_reactions)
@@ -755,11 +758,7 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
 
     iters = debug ? eachrow(df_reactions) : ProgressBar(eachrow(df_reactions))
 
-    reactions = [Reaction(Dict(find_species(k) => v for (k,v) in r.reactants if k != "e-")) for r in iters]
-    insertcols!(df_reactions, :reaction => reactions)
-
-    for row in iters
-        r = row.reaction
+    function populate_reaction(r, row)
         if debug println(r) end
         Tref = with_units ? row.Tst*K : row.Tst
         r.Tref = Tref
@@ -777,7 +776,12 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
             r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=unit(1))
 
         end
+        return r
     end
+
+    reactions = [populate_reaction(Reaction(Dict(find_species(k) => v for (k,v) in row.reactants if k != "e-")),row) for row in iters]
+    insertcols!(df_reactions, :reaction => reactions)
+
 
     return df_reactions
 end

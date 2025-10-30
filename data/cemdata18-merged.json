@@ -27001,6 +27001,10 @@
       "equation": "((CaO)1.25(SiO2)1(H2O)2.75)0.6667 + 1.66675H+ = 0.833375Ca+2 + 2.6668H2O@ + 0.6667SiO2@",
       "reactants": [
         {
+          "symbol": "((CaO)1.25(SiO2)1(H2O)2.75)0.6667",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -1.66675
         },
@@ -27286,6 +27290,10 @@
       "equation": "(CaO)3Al2O3 + 4H+ = 3Ca+2 + 2AlO2- + 2H2O@",
       "reactants": [
         {
+          "symbol": "(CaO)3Al2O3",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -27380,6 +27388,10 @@
       "symbol": "C2AH7.5",
       "equation": "Ca2Al2(OH)10(H2O)2.5 + 2H+ = 2Ca+2 + 2AlO2- + 8.5H2O@",
       "reactants": [
+        {
+          "symbol": "Ca2Al2(OH)10(H2O)2.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -27682,6 +27694,10 @@
       "equation": "Ca4Al2SO10(H2O)10.5 + 4H+ = 4Ca+2 + SO4-2 + 2AlO2- + 12.5H2O@",
       "reactants": [
         {
+          "symbol": "Ca4Al2SO10(H2O)10.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -27780,6 +27796,10 @@
       "symbol": "T2C-CNASHss",
       "equation": "(CaO)1.5(SiO2)1(H2O)2.5 + 3H+ = 1.5Ca+2 + 4H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1.5(SiO2)1(H2O)2.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -3.0
@@ -28157,6 +28177,10 @@
       "equation": "Ca2AlC0.5O4.5(H2O)5.5 + 2H+ = 0.5CO3-2 + 2Ca+2 + AlO2- + 6.5H2O@",
       "reactants": [
         {
+          "symbol": "Ca2AlC0.5O4.5(H2O)5.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -28355,6 +28379,10 @@
       "equation": "Mg3Al(OH)8(CO3)0.5(H2O)2.5 + 4H+ = 0.5CO3-2 + 3Mg+2 + AlO2- + 8.5H2O@",
       "reactants": [
         {
+          "symbol": "Mg3Al(OH)8(CO3)0.5(H2O)2.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -28453,6 +28481,10 @@
       "symbol": "Fe-monosulph05",
       "equation": "Ca2FeS0.5O5(H2O)6 + 2H+ = FeO2- + 2Ca+2 + 0.5SO4-2 + 7H2O@",
       "reactants": [
+        {
+          "symbol": "Ca2FeS0.5O5(H2O)6",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -28937,6 +28969,10 @@
       "equation": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)11.5 + 5H+ = 0.5CO3-2 + 4Ca+2 + 2AlO2- + 14.5H2O@",
       "reactants": [
         {
+          "symbol": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)11.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -5.0
         },
@@ -29222,6 +29258,10 @@
       "equation": "((KOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.7H2O@ + 0.2SiO2@ + 0.5K+",
       "reactants": [
         {
+          "symbol": "((KOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -0.5
         },
@@ -29316,6 +29356,10 @@
       "symbol": "T5C-CNASHss",
       "equation": "(CaO)1.25(SiO2)1.25(H2O)2.5 + 2.5H+ = 1.25Ca+2 + 3.75H2O@ + 1.25SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1.25(SiO2)1.25(H2O)2.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.5
@@ -29511,6 +29555,10 @@
       "equation": "((Sr(OH)2)1SiO2H2O)1 + 2H+ = Sr+2 + 3H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "((Sr(OH)2)1SiO2H2O)1",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -29605,6 +29653,10 @@
       "symbol": "CSHQ-JenD",
       "equation": "(CaO)1.5(SiO2)0.6667(H2O)2.5 + 3H+ = 1.5Ca+2 + 4H2O@ + 0.6667SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1.5(SiO2)0.6667(H2O)2.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -3.0
@@ -29804,6 +29856,10 @@
       "equation": "(SiO2)2.4(CaO)2(H2O)3.2 + 4H+ = 2Ca+2 + 5.2H2O@ + 2.4SiO2@",
       "reactants": [
         {
+          "symbol": "(SiO2)2.4(CaO)2(H2O)3.2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -29898,6 +29954,10 @@
       "symbol": "ECSH2-KSH",
       "equation": "((KOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.7H2O@ + 0.2SiO2@ + 0.5K+",
       "reactants": [
+        {
+          "symbol": "((KOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -0.5
@@ -30179,6 +30239,10 @@
       "symbol": "NaSiOH",
       "equation": "((NaOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.5Na+ + 0.7H2O@ + 0.2SiO2@",
       "reactants": [
+        {
+          "symbol": "((NaOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -0.5
@@ -30473,6 +30537,10 @@
       "equation": "Mg3Fe(OH)8(CO3)0.5(H2O)2.5 + 4H+ = FeO2- + 0.5CO3-2 + 3Mg+2 + 8.5H2O@",
       "reactants": [
         {
+          "symbol": "Mg3Fe(OH)8(CO3)0.5(H2O)2.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -30571,6 +30639,10 @@
       "symbol": "INFCA",
       "equation": "(CaO)1(SiO2)1.1875(Al2O3)0.15625(H2O)1.65625 + 1.6875H+ = Ca+2 + 0.3125AlO2- + 2.5H2O@ + 1.1875SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1(SiO2)1.1875(Al2O3)0.15625(H2O)1.65625",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -1.6875
@@ -30766,6 +30838,10 @@
       "equation": "((KOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.7H2O@ + 0.2SiO2@ + 0.5K+",
       "reactants": [
         {
+          "symbol": "((KOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -0.5
         },
@@ -30860,6 +30936,10 @@
       "symbol": "INFCN",
       "equation": "(CaO)1(SiO2)1.5(Na2O)0.3125(H2O)1.1875 + 2.625H+ = Ca+2 + 0.625Na+ + 2.5H2O@ + 1.5SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1(SiO2)1.5(Na2O)0.3125(H2O)1.1875",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.625
@@ -30959,6 +31039,10 @@
       "symbol": "straetlingite5_5",
       "equation": "Ca2Al2SiO7(H2O)5.5 + 2H+ = 2Ca+2 + 2AlO2- + 6.5H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "Ca2Al2SiO7(H2O)5.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -31162,6 +31246,10 @@
       "equation": "(CaO)3SiO2 + 6H+ = 3Ca+2 + 3H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "(CaO)3SiO2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -6.0
         },
@@ -31256,6 +31344,10 @@
       "symbol": "hemicarbonat10.5",
       "equation": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)10 + 5H+ = 0.5CO3-2 + 4Ca+2 + 2AlO2- + 13H2O@",
       "reactants": [
+        {
+          "symbol": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)10",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -5.0
@@ -31356,6 +31448,10 @@
       "equation": "Mg2Al(OH)6(CO3)0.5(H2O)2 + 2H+ = 0.5CO3-2 + 2Mg+2 + AlO2- + 6H2O@",
       "reactants": [
         {
+          "symbol": "Mg2Al(OH)6(CO3)0.5(H2O)2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -31455,6 +31551,10 @@
       "equation": "Ca3Fe2O6(SiO2)1.34(H2O)3.32 + 4H+ = 2FeO2- + 3Ca+2 + 5.32H2O@ + 1.34SiO2@",
       "reactants": [
         {
+          "symbol": "Ca3Fe2O6(SiO2)1.34(H2O)3.32",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -31553,6 +31653,10 @@
       "symbol": "C2S",
       "equation": "(CaO)2SiO2 + 4H+ = 2Ca+2 + 2H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)2SiO2",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -31751,6 +31855,10 @@
       "symbol": "ECSH2-NaSH",
       "equation": "((NaOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.5Na+ + 0.7H2O@ + 0.2SiO2@",
       "reactants": [
+        {
+          "symbol": "((NaOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -0.5
@@ -32247,6 +32355,10 @@
       "equation": "(SiO2H2O)1 = H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "(SiO2H2O)1",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H2O@",
           "coefficient": 1.0
         },
@@ -32333,6 +32445,10 @@
       "symbol": "hemihydrate",
       "equation": "CaSO4(H2O)0.5 = Ca+2 + SO4-2 + 0.5H2O@",
       "reactants": [
+        {
+          "symbol": "CaSO4(H2O)0.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "Ca+2",
           "coefficient": 1.0
@@ -32424,6 +32540,10 @@
       "symbol": "CSH3T-T5C",
       "equation": "((CaO)1(SiO2)1(H2O)2)1.25 + 2.5H+ = 1.25Ca+2 + 3.75H2O@ + 1.25SiO2@",
       "reactants": [
+        {
+          "symbol": "((CaO)1(SiO2)1(H2O)2)1.25",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.5
@@ -32520,6 +32640,10 @@
       "equation": "(SO4)Ca2Al0.6666667(OH)4(H2O)8.6666667 + 1.3333332H+ = 2Ca+2 + SO4-2 + 0.6666667AlO2- + 11.3333333H2O@ + 0.0000001e-",
       "comment": "added + 0.0000001e- to charge balance the reaction",
       "reactants": [
+        {
+          "symbol": "(SO4)Ca2Al0.6666667(OH)4(H2O)8.6666667",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -1.3333332
@@ -32813,6 +32937,10 @@
       "symbol": "Tob-II",
       "equation": "(SiO2)1(CaO)0.833333(H2O)1.333333 + 1.666666H+ = 0.833333Ca+2 + 2.166666H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(SiO2)1(CaO)0.833333(H2O)1.333333",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -1.666666
@@ -33108,6 +33236,10 @@
       "comment": "added + 0.0000001e- to charge balance the reaction",
       "reactants": [
         {
+          "symbol": "(CO3)Ca2Al0.6666667(OH)4(H2O)8.6666667",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -1.3333332
         },
@@ -33301,6 +33433,10 @@
       "symbol": "CSHQ-TobH",
       "equation": "(CaO)0.6667(SiO2)1(H2O)1.5 + 1.3334H+ = 0.6667Ca+2 + 2.1667H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)0.6667(SiO2)1(H2O)1.5",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -1.3334
@@ -33797,6 +33933,10 @@
       "equation": "Ca2AlS0.5O5(H2O)6 + 2H+ = 2Ca+2 + 0.5SO4-2 + AlO2- + 7H2O@",
       "reactants": [
         {
+          "symbol": "Ca2AlS0.5O5(H2O)6",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -33995,6 +34135,10 @@
       "equation": "(FeFeO3)(Ca3O3(SiO2)0.84(H2O)4.32) + 4H+ = 2FeO2- + 3Ca+2 + 6.32H2O@ + 0.84SiO2@",
       "reactants": [
         {
+          "symbol": "(FeFeO3)(Ca3O3(SiO2)0.84(H2O)4.32)",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -34093,6 +34237,10 @@
       "symbol": "ECSH2-JenCa",
       "equation": "((Ca(OH)2)1.6667SiO2H2O)0.6 + 2.00004H+ = 1.00002Ca+2 + 2.60004H2O@ + 0.6SiO2@",
       "reactants": [
+        {
+          "symbol": "((Ca(OH)2)1.6667SiO2H2O)0.6",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.00004
@@ -34589,6 +34737,10 @@
       "equation": "Mg2Fe(OH)6(CO3)0.5(H2O)2 + 2H+ = FeO2- + 0.5CO3-2 + 2Mg+2 + 6H2O@",
       "reactants": [
         {
+          "symbol": "Mg2Fe(OH)6(CO3)0.5(H2O)2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -34783,6 +34935,10 @@
       "equation": "(CaO)4(Al2O3)(Fe2O3) + 4H+ = 2FeO2- + 4Ca+2 + 2AlO2- + 2H2O@",
       "reactants": [
         {
+          "symbol": "(CaO)4(Al2O3)(Fe2O3)",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -4.0
         },
@@ -34881,6 +35037,10 @@
       "symbol": "C4AsClH12",
       "equation": "Ca4Al2Cl(SO4)0.5(OH)12(H2O)6 + 4H+ = Cl- + 4Ca+2 + 0.5SO4-2 + 2AlO2- + 14H2O@",
       "reactants": [
+        {
+          "symbol": "Ca4Al2Cl(SO4)0.5(OH)12(H2O)6",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -34985,6 +35145,10 @@
       "equation": "(CaO)1(SiO2)1.1875(Al2O3)0.15625(Na2O)0.34375(H2O)1.3125 + 2.375H+ = 0.3125AlO2- + Ca+2 + 0.6875Na+ + 2.5H2O@ + 1.1875SiO2@",
       "comment": "(CaO)1.25(SiO2)1(Al2O3)0.125(Na2O)0.25(H2O)1.375 + 2.75H+ = 1.25Ca+2 + 0.5Na+ + 0.25AlO2- + 2.75H2O + SiO2",
       "reactants": [
+        {
+          "symbol": "(CaO)1(SiO2)1.1875(Al2O3)0.15625(Na2O)0.34375(H2O)1.3125",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.375
@@ -35574,6 +35738,10 @@
       "equation": "(CaO)1.25(SiO2)1(Al2O3)0.125(H2O)1.625 + 2.25H+ = 1.25Ca+2 + 0.25AlO2- + 2.75H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "(CaO)1.25(SiO2)1(Al2O3)0.125(H2O)1.625",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.25
         },
@@ -35767,6 +35935,10 @@
       "symbol": "Fe-ettringite05",
       "equation": "Ca3Fe(SO4)1.5(OH)6(H2O)13 + 2H+ = FeO2- + 3Ca+2 + 1.5SO4-2 + 17H2O@",
       "reactants": [
+        {
+          "symbol": "Ca3Fe(SO4)1.5(OH)6(H2O)13",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -36160,6 +36332,10 @@
       "equation": "(CaO)1(SiO2)1.5(H2O)2.5 + 2H+ = Ca+2 + 3.5H2O@ + 1.5SiO2@",
       "reactants": [
         {
+          "symbol": "(CaO)1(SiO2)1.5(H2O)2.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -36255,6 +36431,10 @@
       "equation": "(CaO)1(SiO2)1.5(H2O)2.5 + 2H+ = Ca+2 + 3.5H2O@ + 1.5SiO2@",
       "reactants": [
         {
+          "symbol": "(CaO)1(SiO2)1.5(H2O)2.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -36349,6 +36529,10 @@
       "symbol": "C12A7",
       "equation": "(CaO)12(Al2O3)7 + 10H+ = 12Ca+2 + 14AlO2- + 5H2O@",
       "reactants": [
+        {
+          "symbol": "(CaO)12(Al2O3)7",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -10.0
@@ -36647,6 +36831,10 @@
       "equation": "(CaO)1.25(SiO2)1(Al2O3)0.125(Na2O)0.25(H2O)1.375 + 2.75H+ = 1.25Ca+2 + 0.5Na+ + 0.25AlO2- + 2.75H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "(CaO)1.25(SiO2)1(Al2O3)0.125(Na2O)0.25(H2O)1.375",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.75
         },
@@ -36749,6 +36937,10 @@
       "symbol": "ECSH1-NaSH",
       "equation": "((NaOH)2.5SiO2H2O)0.2 + 0.5H+ = 0.5Na+ + 0.7H2O@ + 0.2SiO2@",
       "reactants": [
+        {
+          "symbol": "((NaOH)2.5SiO2H2O)0.2",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -0.5
@@ -37221,6 +37413,10 @@
       "equation": "Ca3Al(SO4)1.5(OH)6(H2O)13 + 2H+ = 3Ca+2 + 1.5SO4-2 + AlO2- + 17H2O@",
       "reactants": [
         {
+          "symbol": "Ca3Al(SO4)1.5(OH)6(H2O)13",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -2.0
         },
@@ -37414,6 +37610,10 @@
       "symbol": "ECSH1-TobCa",
       "equation": "((Ca(OH)2)0.8333SiO2H2O)1 + 1.6666H+ = 0.8333Ca+2 + 2.6666H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "((Ca(OH)2)0.8333SiO2H2O)1",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -1.6666
@@ -37609,6 +37809,10 @@
       "equation": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)8.5 + 5H+ = 0.5CO3-2 + 4Ca+2 + 2AlO2- + 11.5H2O@",
       "reactants": [
         {
+          "symbol": "(CaO)3Al2O3(CaCO3)0.5(CaO2H2)0.5(H2O)8.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -5.0
         },
@@ -37707,6 +37911,10 @@
       "symbol": "C3AS0.84H4.32",
       "equation": "AlCa3AlO6(SiO2)0.84(H2O)4.32 + 4H+ = 3Ca+2 + 2AlO2- + 6.32H2O@ + 0.84SiO2@",
       "reactants": [
+        {
+          "symbol": "AlCa3AlO6(SiO2)0.84(H2O)4.32",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -38009,6 +38217,10 @@
       "equation": "(SiO2)1(CaO)1.666667(H2O)2.1 + 3.333334H+ = 1.666667Ca+2 + 3.766667H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "(SiO2)1(CaO)1.666667(H2O)2.1",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -3.333334
         },
@@ -38207,6 +38419,10 @@
       "equation": "((Ca(OH)2)0.8333SiO2H2O)1 + 1.6666H+ = 0.8333Ca+2 + 2.6666H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "((Ca(OH)2)0.8333SiO2H2O)1",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -1.6666
         },
@@ -38401,6 +38617,10 @@
       "equation": "((CaO)0.75(SiO2)0.5(H2O)1.25)2 + 3H+ = 1.5Ca+2 + 4H2O@ + SiO2@",
       "reactants": [
         {
+          "symbol": "((CaO)0.75(SiO2)0.5(H2O)1.25)2",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -3.0
         },
@@ -38495,6 +38715,10 @@
       "symbol": "ECSH1-SrSH",
       "equation": "((Sr(OH)2)1SiO2H2O)1 + 2H+ = Sr+2 + 3H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "((Sr(OH)2)1SiO2H2O)1",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -38693,6 +38917,10 @@
       "symbol": "C3AS0.41H5.18",
       "equation": "Ca3Al2O6(SiO2)0.41(H2O)5.18 + 4H+ = 3Ca+2 + 2AlO2- + 7.18H2O@ + 0.41SiO2@",
       "reactants": [
+        {
+          "symbol": "Ca3Al2O6(SiO2)0.41(H2O)5.18",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -39395,6 +39623,10 @@
       "equation": "Ca3O3Fe2O3(CaCO3)0.5(CaO2H2)0.5(H2O)9.5 + 5H+ = 2FeO2- + 0.5CO3-2 + 4Ca+2 + 12.5H2O@",
       "reactants": [
         {
+          "symbol": "Ca3O3Fe2O3(CaCO3)0.5(CaO2H2)0.5(H2O)9.5",
+          "coefficient": -1.0
+        },
+        {
           "symbol": "H+",
           "coefficient": -5.0
         },
@@ -39493,6 +39725,10 @@
       "symbol": "thaumasite",
       "equation": "(CaSiO3)(CaSO4)(CaCO3)(H2O)15 + 2H+ = CO3-2 + 3Ca+2 + SO4-2 + 16H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaSiO3)(CaSO4)(CaCO3)(H2O)15",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.0
@@ -39596,6 +39832,10 @@
       "symbol": "ettringite",
       "equation": "((H2O)2)Ca6Al2(SO4)3(OH)12(H2O)24 + 4H+ = 6Ca+2 + 3SO4-2 + 2AlO2- + 34H2O@",
       "reactants": [
+        {
+          "symbol": "((H2O)2)Ca6Al2(SO4)3(OH)12(H2O)24",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -39790,6 +40030,10 @@
       "symbol": "C3AFS0.84H4.32",
       "equation": "(AlFeO3)(Ca3O3(SiO2)0.84(H2O)4.32) + 4H+ = FeO2- + 3Ca+2 + AlO2- + 6.32H2O@ + 0.84SiO2@",
       "reactants": [
+        {
+          "symbol": "(AlFeO3)(Ca3O3(SiO2)0.84(H2O)4.32)",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -4.0
@@ -40281,6 +40525,10 @@
       "symbol": "CSHQ-JenH",
       "equation": "(CaO)1.3333(SiO2)1(H2O)2.1667 + 2.6666H+ = 1.3333Ca+2 + 3.5H2O@ + SiO2@",
       "reactants": [
+        {
+          "symbol": "(CaO)1.3333(SiO2)1(H2O)2.1667",
+          "coefficient": -1.0
+        },
         {
           "symbol": "H+",
           "coefficient": -2.6666
