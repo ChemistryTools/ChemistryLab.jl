@@ -1,7 +1,9 @@
 using Revise, ChemistryLab, Unicode
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
+using DynamicQuantities
 using SymPy
 import Symbolics: @variables, substitute, value
+
+const g, cm, K, J, mol, bar = us"g", us"cm", us"K", us"J", us"mol", us"bar"
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -126,9 +128,9 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
  ## application of a function to stoichimetric coefficients (here simplify)
-r = apply(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
+r = apply(SymPy.simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
-simplify.(A)
+SymPy.simplify.(A)
 
 # Chen & Brouwers
 CSH = CemSpecies(Dict(:C => â, :S => one(â), :A => b̂, :H => ĝ))
@@ -200,7 +202,7 @@ cemJennite.Cp = ThermoFunction(degrees, ustrip.(coeffs); Tref=298.15)
 
 using Plots
 lT = ((0:1:100) .+ 273.15).*K
-@time plot(lT, dict_species["Jennite"].Cp.(lT))
+@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH.(lT)))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for row in eachrow(df_reactions)

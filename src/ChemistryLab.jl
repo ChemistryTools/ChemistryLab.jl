@@ -4,6 +4,7 @@ import Base: ==, +, -, *, /, //
 using Crayons
 using CSV
 using DataFrames
+using DynamicQuantities
 using JSON
 using JSON3
 using LinearAlgebra
@@ -11,10 +12,12 @@ using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using ProgressBars
+import Symbolics
 using Unicode
-import Unitful: u, g, cm, K, J, mol, bar, Quantity, uconvert, ustrip, unit, uparse, upreferred, preferunits, @u_str
 
-preferunits(u"g, cm, K, mol, s"...)
+const g, cm, K, J, mol, bar = us"g", us"cm", us"K", us"J", us"mol", us"bar"
+DynamicQuantities.uconvert(u, ::Missing) = missing
+*(x::Symbolics.Num, y::AbstractQuantity) = Quantity(x*y.value, y.dimensions)
 
 const COL_CHARGE = crayon"cyan bold"
 const COL_PAR = crayon"magenta bold"

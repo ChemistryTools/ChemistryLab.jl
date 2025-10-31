@@ -4,6 +4,8 @@
 
 abstract type AbstractSpecies end
 
+const PropertyType = Union{Number,AbstractVector{<:Number},Function,Callable,AbstractString,Missing}
+
 Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(formula(s1), formula(s2)) && isequal(aggregate_state(s1), aggregate_state(s2)) && isequal(class(s1), class(s2))
 ==(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(s1, s2)
 Base.hash(s::AbstractSpecies, h::UInt) = hash(symbol(s), hash(formula(s), hash(aggregate_state(s), hash(class(s), h))))
@@ -63,8 +65,6 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     end
     return s
 end
-
-const PropertyType = Union{Number,AbstractVector{<:Number},Function,Callable,AbstractString,Missing}
 
 function ordered_dict_with_default(gen, key_type, val_type)
     d = OrderedDict(gen)
@@ -294,7 +294,7 @@ Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
 
 function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}
     tryfunc(v) = v isa Quantity ? (
-        try func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...); catch; try func(ustrip(v), args...; kwargs...) * unit(v); catch; v; end; end
+        try func(ustrip(v), args...; kwargs...) * func(dimension(v), args...; kwargs...); catch; try func(ustrip(v), args...; kwargs...) * dimension(v); catch; v; end; end
         ) : (
         try func(v, args...; kwargs...); catch; v; end
         )

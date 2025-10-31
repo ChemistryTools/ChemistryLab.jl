@@ -322,7 +322,7 @@ end
 
 function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
     tryfunc(v) = v isa Quantity ? (
-        try func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...); catch; try func(ustrip(v), args...; kwargs...) * unit(v); catch; v; end; end
+        try func(ustrip(v), args...; kwargs...) * func(dimension(v), args...; kwargs...); catch; try func(ustrip(v), args...; kwargs...) * dimension(v); catch; v; end; end
         ) : (
         try func(v, args...; kwargs...); catch; v; end
         )

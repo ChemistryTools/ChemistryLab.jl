@@ -150,11 +150,11 @@ function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number
     kept_funcs = funcs[nonzero]
     kept_coefs = coeffs[nonzero]
 
-    varunit = unit(1)
+    varunit = dimension(1)
     if with_units
-        varunitvec = unit.(kept_coefs) .* (K .^ unitdegree.(kept_funcs))
+        varunitvec = dimension.(kept_coefs .* (K .^ unitdegree.(kept_funcs)))
         if !allequal(varunitvec) error("Degrees $degrees and coefficients $coeffs are not dimensionally compatible.") end
-        varunit = length(varunitvec)>0 ? varunitvec[1] : unit(1)
+        varunit = length(varunitvec)>0 ? varunitvec[1] : dimension(1)
     end
 
     kept_names = [Symbol(param, normal_to_sub(string(i + startindex - 1))) for i in nonzero]
@@ -164,7 +164,7 @@ function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number
     base_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_funcs))
     coef_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_coefs))
 
-    return ThermoFunction(base_nt, coef_nt, Tref, with_units ? 0*varunit : 0, cstidx, param)
+    return ThermoFunction(base_nt, coef_nt, Tref, with_units ? Quantity(0, varunit) : 0, cstidx, param)
 end
 
 function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0, param=:a)

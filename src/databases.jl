@@ -644,7 +644,7 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
     return df_elements, df_substances, df_reactions
 end
 
-function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=true, default_unit=unit(1))            
+function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=true, default_unit=1)            
     val = row[field].values
     vunit = row[field].units
     if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
@@ -652,7 +652,7 @@ function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=
         print(crayon"reset")
     end
     if with_units
-        val = val*(try uparse(vunit) catch; default_unit end)
+        val = val*(try sym_uparse(vunit) catch; default_unit end)
     end
     return val
 end
@@ -667,7 +667,7 @@ function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)
         if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
         if with_units
             units = tuple_coefs.units
-            values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
+            values = [values[i]*sym_uparse(units[i]) for i=1:min(length(values), length(units))]
         end
         return values
     else
@@ -737,7 +737,7 @@ function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)
         values = tuple_coefs.values
         if debug>1 && !iszero(max(abs.(values[8:end])...)) println(crayon("$(row.symbol) => logKr=$values")) end
         if with_units
-            units = [unit(1), 1/K, K, unit(1), K^2, 1/K^2, 1/√K]
+            units = dimension.([1, 1/K, K, 1, K^2, 1/K^2, 1/√K])
             values = [values[i]*units[i] for i=1:min(length(values), length(units))]
         end
         return values
@@ -773,7 +773,7 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
             r.ΔrS0 = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
             ΔVm = uconvert(cm^3 , get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=true, default_unit=J/bar))
             r.ΔrV = with_units ? ΔVm/mol : ustrip(ΔVm)
-            r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=unit(1))
+            r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=1)
 
         end
         return r
@@ -781,7 +781,6 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
 
     reactions = [populate_reaction(Reaction(Dict(find_species(k) => v for (k,v) in row.reactants if k != "e-")),row) for row in iters]
     insertcols!(df_reactions, :reaction => reactions)
-
 
     return df_reactions
 end

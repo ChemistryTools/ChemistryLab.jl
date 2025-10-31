@@ -386,9 +386,12 @@ function extract_charge(formula::AbstractString)
     end
 end
 
-calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} =
-    sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * g/mol
-    # uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
+function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
+    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * g/mol
+    # return uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
+    molar_masses = [cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element)]
+    return length(molar_masses)>0 ? uconvert(us"g/mol", sum(molar_masses) * Constants.N_A) : 0us"g/mol"
+end
 
 function replace_graphemes(s::AbstractString, old_new::Pair...)
     gs = collect(graphemes(s))
