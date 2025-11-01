@@ -688,9 +688,7 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
 
     print_title("Species property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="")
 
-    iters = debug ? eachrow(df_substances) : ProgressBar(eachrow(df_substances))
-
-    for row in iters
+    @showprogress for row in eachrow(df_substances)
         s = row.species
         if debug println(s) end
         Tref = with_units ? row.Tst*K : row.Tst
@@ -756,8 +754,6 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
 
     print_title("Reaction property completion"; crayon=Crayon(foreground=:red), style=:box, indent="")
 
-    iters = debug ? eachrow(df_reactions) : ProgressBar(eachrow(df_reactions))
-
     function populate_reaction(r, row)
         if debug println(r) end
         Tref = with_units ? row.Tst*K : row.Tst
@@ -779,7 +775,7 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
         return r
     end
 
-    reactions = [populate_reaction(Reaction(Dict(find_species(k) => v for (k,v) in row.reactants if k != "e-")),row) for row in iters]
+    reactions = @showprogress [populate_reaction(Reaction(Dict(find_species(k) => v for (k,v) in row.reactants if k != "e-")),row) for row in eachrow(df_reactions)]
     insertcols!(df_reactions, :reaction => reactions)
 
     return df_reactions

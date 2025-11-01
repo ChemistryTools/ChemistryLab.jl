@@ -34,7 +34,6 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 ## Prerequisites
 
 - Julia 1.6 or higher
-- Dependencies: JSON3, CSV, DataFrames, Unicode, Unitful, PeriodicTable, PrettyTables
 - No API account or special access required 
 
 ## Installation

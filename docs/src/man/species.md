@@ -166,8 +166,8 @@ Species properties are open and left to the discretion of users. Only the molar 
 Imagine, for example, that we wanted to construct the jennite ($C_{1.67}SH_{2.1}$) molecule with some of its thermodynamic properties. The Gibbs energy of formation of this species is equal to -2480.81 KJ/mol. This property, intrinsic to the species, can be added simply as follows:
 
 ```@example CSH
-import Unitful: @u_str, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
-jennite.ΔfG⁰ = -2480.81*u"kJ/mol"
+using DynamicQuantities
+jennite.ΔfG⁰ = -2480.81us"kJ/mol"
 ```
 
 ```@example CSH
@@ -175,8 +175,8 @@ function Cₚ(T, a)
     y= a[1] + a[2] * T + a[3] * T^(-2) + a[4] * T^(−0.5)
     return y
 end
-jennite.Cₚ = T -> Cₚ(T, [210.0*u"J/K/mol", 0.120*u"J/mol/K^2", -3.07e6*u"J*K/mol", 0.0*u"J/mol/K^(0.5)"]) #Todo unitful
-jennite.Cₚ(273*u"K")
+jennite.Cₚ = T -> Cₚ(T, [210.0us"J/K/mol", 0.120us"J/mol/K^2", -3.07e6us"J*K/mol", 0.0us"J/mol/K^(0.5)"]) #Todo unitful
+jennite.Cₚ(273us"K")
 ```
 
 

@@ -11,7 +11,7 @@ using LinearAlgebra
 using OrderedCollections
 using PeriodicTable
 using PrettyTables
-using ProgressBars
+using ProgressMeter
 import Symbolics
 using Unicode
 
