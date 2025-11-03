@@ -21,6 +21,12 @@
     # Test species equality
     water2 = Species("H2O", name="Water2", aggregate_state=AS_AQUEOUS)
     @test water == water2  # Should be equal because formula and state are the same
+
+    # Test species difference
+    fH₂O = 2*:H + :O
+    vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
+    vapour != water # false since aggregate_state or class are different despite atoms are identical
+
     
     # Test ionic species
     nacl = Species("Na+")
