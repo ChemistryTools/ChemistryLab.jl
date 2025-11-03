@@ -409,16 +409,6 @@ function replace_graphemes(s::AbstractString, old_new::Pair...)
     return join(gs)
 end
 
-function merge_sum_dicts(dicts::Vector{Dict{Symbol, <:Number}})
-    result = OrderedDict{Symbol, Number}()
-    for d in dicts
-        for (k, v) in d
-            result[k] = get(result, k, 0) + v
-        end
-    end
-    return OrderedDict(k => stoich_coef_round(v) for (k, v) in result)
-end
-
 function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
     result = OrderedDict{Symbol, Number}()
     for (ox, coef) in oxides
