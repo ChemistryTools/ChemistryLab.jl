@@ -1,5 +1,8 @@
 using Symbolics
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
+using DynamicQuantities
+
+const g, cm, K, J, mol, bar = us"g", us"cm", us"K", us"J", us"mol", us"bar"
+DynamicQuantities.uconvert(u, ::Missing) = missing
 
 struct ThermoFunction{N,F}
     symbolic::N

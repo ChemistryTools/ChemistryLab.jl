@@ -61,7 +61,6 @@ function parse_reaction_stoich_cemdata(reaction_line::AbstractString)
                 continue
             end
             m = match(r"^([+-]?\d*\.?\d+)?(.+?)([\+\-]\d*\.?\d*)?$", token)
-            @show m
             if m !== nothing
                 coeff_str = m.captures[1]
                 base_symbol = m.captures[2]
@@ -115,7 +114,7 @@ function parse_float_array(line)
             try
                 push!(float_parts, parse(Float64, part))
             catch e
-                @warn "Could not parse '$part' as Float64, skipping."
+                # @warn "Could not parse '$part' as Float64, skipping."
             end
         end
     end
