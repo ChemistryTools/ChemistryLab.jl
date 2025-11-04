@@ -154,7 +154,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     if size(M_subset, 1) >= size(M_subset, 2)
         independent_cols_indices = cols_candidates
     else
-        F = qr(M_subset, Val(reorder_primaries))
+        F = qr(M_subset, reorder_primaries ? Val(true) : NoPivot())
         r = Int(safe_rank(M_subset))
         pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
         independent_cols_indices = sort(cols_candidates[pivot_idx])
