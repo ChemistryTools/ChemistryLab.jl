@@ -1,4 +1,4 @@
-@testset "Formulas" begin
+@testsection "Formulas" begin
     # Basic parsing and composition
     f = Formula("H2O")
     @test composition(f) == OrderedDict(:H => 2, :O => 1)

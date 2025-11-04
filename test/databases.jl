@@ -3,7 +3,7 @@ using Test
 using OrderedCollections
 using JSON3
 
-@testset "Databases" begin
+@testsection "Databases" begin
     # Test parse_reaction_stoich_cemdata
     @testset "parse_reaction_stoich_cemdata" begin
         # Test basic reaction parsing

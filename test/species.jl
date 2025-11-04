@@ -1,4 +1,4 @@
-@testset "Species" begin
+@testsection "Species" begin
     # Test basic Species construction
     @test_nowarn Species("H2O")
     water = Species("H2O", name="Water", symbol="H2O", aggregate_state=AS_AQUEOUS)

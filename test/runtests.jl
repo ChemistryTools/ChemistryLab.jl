@@ -3,27 +3,33 @@ using OrderedCollections
 # import Unitful: u, g, cm, K, J, mol, bar, Quantity, uconvert, ustrip, unit, uparse, upreferred, preferunits, @u_str
 using DynamicQuantities
 using Test
+using TimerOutputs
 
-@testset "Construction tests" begin
-
-    @testset "Species tests" begin
-        include("species.jl")
+macro testsection(str, block)
+    return quote
+        @timeit "$($(esc(str)))" begin
+            @testset "$($(esc(str)))" begin
+                $(esc(block))
+            end
+        end
     end
+end
 
-    @testset "Formula tests" begin
-        include("formulas.jl")
-    end
+reset_timer!()
 
-    @testset "Database tests" begin
-        include("databases.jl")
-    end
+@testsection "Construction tests" begin
 
-    @testset "Parsing tests" begin
-        include("parsing_utils.jl")
-    end
-
-    # @testset "Reaction tests" begin
-    #     include("reactions.jl")
-    # end
+    include("species.jl")
+    include("formulas.jl")
+    include("stoich_matrix.jl")
+    include("databases.jl")
+    include("parsing_utils.jl")
+    include("reactions.jl")
 
 end
+
+print_timer()
+println()
+
+
+
