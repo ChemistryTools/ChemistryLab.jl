@@ -1,8 +1,6 @@
 using Symbolics
 using DynamicQuantities
 
-const g, cm, K, J, mol, bar = u"g", u"cm", u"K", u"J", u"mol", u"bar"
-
 function subscriptnumber(i::Integer)
     if i < 0
         c = [Char(0x208B)]

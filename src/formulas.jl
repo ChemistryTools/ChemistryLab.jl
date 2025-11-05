@@ -4,6 +4,8 @@ Base.convert(::Type{AtomGroup}, sym::Symbol) = AtomGroup(1, sym)
 
 AtomGroup(sym::Symbol) = AtomGroup(1, sym)
 
+AtomGroup(sym::Symbol, coef::T) where {T<:Number} = AtomGroup(coef, sym)
+
 struct Formula{T<:Number}
     expr::String
     phreeqc::String
@@ -138,12 +140,6 @@ end
 
 function //(f::Formula, x::T) where {T<:Number}
     composition = OrderedDict(k => v//x for (k,v) in f.composition)
-    return Formula(composition, f.charge)
-end
-
-function +(f::Formula, atom::Symbol)
-    composition = copy(f.composition)
-    composition[atom] = get(f.composition, atom, 0) + 1
     return Formula(composition, f.charge)
 end
 

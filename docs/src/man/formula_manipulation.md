@@ -19,23 +19,29 @@ end
 - by parsing a string containing eventually fractional or decimal coefficients
 ```@example 1
 using ChemistryLab #hide
-fgen = Formula("C3AFS5//8H4.32")
+f = Formula("C3AFS5//8H4.32")
 ```
 
-- from symbols representing atoms 
+- from a dictionary
+```@example 1
+using ChemistryLab #hide
+fCaCO3 = Formula(Dict(:Ca => 1, :C => 1, :O => 3))
+```
+
+- from atom groups
 ```@example
 using ChemistryLab #hide
-fCO2 = :C + 2 * :O
+fCO2 = AtomGroup(:C) + AtomGroup(2,:O)
 ```
 
 Charges can also be included during the creation in two different ways:
 ```@example 1
-fHSO₄⁻ = :H+:S+4*:O+:e
+fHSO₄⁻ = AtomGroup(:H)+AtomGroup(:S)+AtomGroup(4,:O)+AtomGroup(:e)
 ```
 
 Or:
 ```@example 1
-fNa⁺ = :Na+:Zz
+fNa⁺ = AtomGroup(:Na)+AtomGroup(:Zz)
 ```
 
 ## Type of Formula

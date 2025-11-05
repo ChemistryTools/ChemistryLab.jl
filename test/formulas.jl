@@ -26,13 +26,13 @@
     @test composition(f_half) == Dict(:H => 1, :O => 0.5)
 
     # Addition with AtomGroup and Symbol
-    f_plus_na = f + :Na
+    f_plus_na = f + AtomGroup(:Na)
     @test composition(f_plus_na)[:Na] == 1
     f_plus_ag = f + AtomGroup(2, :Cl)
     @test composition(f_plus_ag)[:Cl] == 2
 
     # AtomGroup addition
-    agsum = AtomGroup(1, :H) + AtomGroup(2, :H)
+    agsum = AtomGroup(:H) + AtomGroup(2, :H)
     @test isa(agsum, Formula)
     @test composition(agsum)[:H] == 3
 
