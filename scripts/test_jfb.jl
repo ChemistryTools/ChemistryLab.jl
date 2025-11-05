@@ -3,19 +3,15 @@ using DynamicQuantities
 using SymPy
 import Symbolics: @variables, substitute, value
 
-const g, cm, K, J, mol, bar = us"g", us"cm", us"K", us"J", us"mol", us"bar"
+# const g, cm, K, J, mol, bar = u"g", u"cm", u"K", u"J", u"mol", u"bar"
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
 convert(Float64, fgen)
 ATOMIC_ORDER # provides the order of atoms in formulas
-fCO2 = :C+2*:O # works only with a part of real atoms registered in ATOMIC_ORDER
-fHSO₄⁻ = :H+:S+4*:O+:e
-fNa⁺ = :Na+:Zz
 
 # Species
-fH₂O = 2*:H + :O
-H₂O = Species(fH₂O; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+H₂O = Species("H₂O"; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
@@ -25,7 +21,7 @@ A, atomlist = canonical_stoich_matrix(species; label=:formula) ;
 
 water_without_name_symbol = Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 water_without_name_symbol == H₂O # true since atoms, aggregate_state and class are equal despite instances are different
-vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
+vapour = Species("H₂O"; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 vapour == H₂O # false since aggregate_state or class are different despite atoms are identical
 
 # CemSpecies
@@ -189,10 +185,10 @@ lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
 degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
-coeffs = [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K]
+coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
 cemJennite.Cp = ThermoFunction(degrees, coeffs; Tref=298.15)
 @show cemJennite.Cp ;
-@show cemJennite.Cp(298.15K) ;
+@show cemJennite.Cp(298.15u"K") ;
 @show cemJennite.Cp() ; # application by default on Tref
  # same without units
 cemJennite.Cp = ThermoFunction(degrees, ustrip.(coeffs); Tref=298.15)
@@ -201,7 +197,7 @@ cemJennite.Cp = ThermoFunction(degrees, ustrip.(coeffs); Tref=298.15)
 @show cemJennite.Cp() ; # application by default on Tref
 
 using Plots
-lT = ((0:1:100) .+ 273.15).*K
+lT = ((0:1:100) .+ 273.15).*u"K"
 @time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH.(lT)))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
@@ -219,5 +215,5 @@ end
 for r in df_reactions.reaction println(r.logKr(), " == ", r.logKr0) end
 
 degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
-coeffs = [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K]
+coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
 Cp = ThermoFunction(degrees, coeffs)

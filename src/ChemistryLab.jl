@@ -15,8 +15,6 @@ using ProgressMeter
 import Symbolics
 using Unicode
 
-const g, cm, K, J, mol, bar = us"g", us"cm", us"K", us"J", us"mol", us"bar"
-DynamicQuantities.uconvert(u, ::Missing) = missing
 *(x::Symbolics.Num, y::AbstractQuantity) = Quantity(x*y.value, y.dimensions)
 
 const COL_CHARGE = crayon"cyan bold"
@@ -51,7 +49,7 @@ include("reactions.jl")
 
 export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, colored_formula, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev, parse_equation, format_equation, colored_equation
 export Callable, ThermoFunction, ∂, ∫, ∬, divT
-export Formula, expr, phreeqc, unicode, colored, composition, charge, apply, check_mendeleev
+export AtomGroup, Formula, expr, phreeqc, unicode, colored, composition, charge, apply, check_mendeleev
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GASFLUID
 export AbstractSpecies, Species, CemSpecies

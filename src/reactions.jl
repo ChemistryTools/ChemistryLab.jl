@@ -71,7 +71,7 @@ function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species
                     ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in reactants if !iszero(v)), S, Number),
                     ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in products if !iszero(v)), S, Number),
                     equal_sign,
-                    OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)
+                    OrderedDict{Symbol,PropertyType}(properties)
                     )
     if side == :none
         return r
@@ -156,16 +156,16 @@ function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP
 
     return Reaction(equation,
                     colored,
-                    reactants,
-                    products,
+                    OrderedDict{SR, TR}(reactants),
+                    OrderedDict{SP, TP}(products),
                     equal_sign,
-                    OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)
+                    OrderedDict{Symbol,PropertyType}(properties)
                     )
 end
 
 function Reaction(species_stoich::AbstractDict{S, T}; equal_sign::Char='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
     reactants, products = split_species_by_stoich(species_stoich; side=side)
-    return Reaction(reactants, products; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+    return Reaction(reactants, products; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(properties))
 end
 
 Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
@@ -173,7 +173,7 @@ Base.convert(::Type{Reaction{U,T}}, s::S) where {U<:AbstractSpecies, T<:Number, 
 Reaction(s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 
-Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=OrderedDict{Symbol,PropertyType}(properties))
 
 function simplify_reaction(r::Reaction)
     reac = remove_zeros(deepcopy(reactants(r)))
@@ -217,7 +217,7 @@ end
 
 function Reaction(species::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:sign)
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
-    return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=side)
+    return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(properties), side=side)
 end
 
 function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:none)
@@ -225,12 +225,12 @@ function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
     S, T = keytype(species_stoich), valtype(species_stoich)
     if side != :none
-        return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=side)
+        return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(properties), side=side)
     else
         return Reaction(ordered_dict_with_default((k=>-v for (k,v) in species_stoich if k in reac), S, T), 
                         ordered_dict_with_default((k=>v for (k,v) in species_stoich if k in prod), S, T)
                         ; 
-                        equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=:none)
+                        equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(properties), side=:none)
     end
 end
 

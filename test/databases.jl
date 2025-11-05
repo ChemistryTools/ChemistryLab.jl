@@ -1,6 +1,5 @@
 using ChemistryLab
 using Test
-using OrderedCollections
 using JSON3
 
 @testsection "Databases" begin

@@ -7,11 +7,11 @@
     @test aggregate_state(water) == AS_AQUEOUS
     
     # Test atoms and composition
-    @test atoms(water) == OrderedDict(:H => 2, :O => 1)
+    @test atoms(water) == Dict(:H => 2, :O => 1)
     @test charge(water) == 0
     
     # Test properties
-    @test ustrip(water.M) ≈ 18.015 atol=0.001  # Molar mass of water
+    @test water.M ≈ 18.015u"g/mol"  # Molar mass of water
     
     # Test property manipulation
     water[:custom_prop] = 42
@@ -23,19 +23,18 @@
     @test water == water2  # Should be equal because formula and state are the same
 
     # Test species difference
-    fH₂O = 2*:H + :O
-    vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
+    vapour = Species("H₂O"; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
     vapour != water # false since aggregate_state or class are different despite atoms are identical
 
     
     # Test ionic species
     nacl = Species("Na+")
     @test charge(nacl) == 1
-    @test atoms(nacl) == OrderedDict(:Na => 1)
+    @test atoms(nacl) == Dict(:Na => 1)
     
     # Test complex formula
     calcium_carbonate = Species("CaCO3", aggregate_state=AS_CRYSTAL)
-    @test atoms(calcium_carbonate) == OrderedDict(:Ca => 1, :C => 1, :O => 3)
+    @test atoms(calcium_carbonate) == Dict(:Ca => 1, :C => 1, :O => 3)
     @test aggregate_state(calcium_carbonate) == AS_CRYSTAL
 end
 #IUPAC TODO

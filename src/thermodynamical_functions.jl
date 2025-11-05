@@ -138,7 +138,7 @@ function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number
 
     with_units = promote_type(typeof.(coeffs)...) <: Quantity
     if with_units && !(Tref isa Quantity)
-        Tref *= K
+        Tref *= u"K"
     end
 
     funcs = [BasisFunction{d, 0}() for d in degrees]
@@ -152,7 +152,7 @@ function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number
 
     varunit = dimension(1)
     if with_units
-        varunitvec = dimension.(kept_coefs .* (K .^ unitdegree.(kept_funcs)))
+        varunitvec = dimension.(kept_coefs .* (u"K" .^ unitdegree.(kept_funcs)))
         if !allequal(varunitvec) error("Degrees $degrees and coefficients $coeffs are not dimensionally compatible.") end
         varunit = length(varunitvec)>0 ? varunitvec[1] : dimension(1)
     end
@@ -227,12 +227,12 @@ end
 
 function ∫(tf::ThermoFunction)
     newbases = (; (k => ∫(v) for (k,v) in pairs(tf.bases))...)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*K : tf.zeroinit, nothing, tf.param)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*u"K" : tf.zeroinit, nothing, tf.param)
 end
 
 function ∬(tf::ThermoFunction)
     newbases = (; (k => ∬(v) for (k,v) in pairs(tf.bases))...)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*K^2 : tf.zeroinit, nothing, tf.param)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*u"K^2" : tf.zeroinit, nothing, tf.param)
 end
 
 function ∂(tf::ThermoFunction)
@@ -244,13 +244,13 @@ function ∂(tf::ThermoFunction)
         newcoeffs = (; (k => v for (k,v) in pairs(newcoeffs) if k != zeroidx)...)
     end
     cstidx = findfirst(bf->isconstant(bf), newbases)
-    ThermoFunction(newbases, newcoeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/K : tf.zeroinit, cstidx, tf.param)
+    ThermoFunction(newbases, newcoeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/u"K" : tf.zeroinit, cstidx, tf.param)
 end
 
 function divT(tf::ThermoFunction)
     newbases = (; (k => divT(v) for (k,v) in pairs(tf.bases))...)
     cstidx = findfirst(bf->isconstant(bf), newbases)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/K : tf.zeroinit, cstidx, tf.param)
+    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/u"K" : tf.zeroinit, cstidx, tf.param)
 end
 
 function Base.show(io::IO, lf::ThermoFunction)

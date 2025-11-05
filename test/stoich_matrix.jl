@@ -1,6 +1,5 @@
 using ChemistryLab
 using Test
-using OrderedCollections
 using LinearAlgebra
 
 @testsection "Stoichiometric Matrix" begin
@@ -71,8 +70,8 @@ using LinearAlgebra
 
     @testsection "Utility functions" begin
         # Test union_atoms
-        d1 = OrderedDict(:Ca => 1, :O => 1)
-        d2 = OrderedDict(:Si => 1, :O => 2)
+        d1 = Dict(:Ca => 1, :O => 1)
+        d2 = Dict(:Si => 1, :O => 2)
         atoms = union_atoms([d1, d2])
         @test :Ca in atoms
         @test :Si in atoms

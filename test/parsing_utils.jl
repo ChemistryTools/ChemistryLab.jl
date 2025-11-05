@@ -1,6 +1,5 @@
 using ChemistryLab
 using Test
-using OrderedCollections
 
 @testset "Parsing Utils" begin
     @testset "Character conversion" begin
@@ -19,15 +18,15 @@ using OrderedCollections
 
     @testset "Formula parsing" begin
         # Test basic formula parsing
-        @test parse_formula("H2O") == OrderedDict(:H => 2, :O => 1)
-        @test parse_formula("Ca(OH)2") == OrderedDict(:Ca => 1, :H => 2, :O => 2)
+        @test parse_formula("H2O") == Dict(:H => 2, :O => 1)
+        @test parse_formula("Ca(OH)2") == Dict(:Ca => 1, :H => 2, :O => 2)
         
         # Test fractional coefficients
-        @test parse_formula("H1//2O") == OrderedDict(:H => 1//2, :O => 1)
-        @test parse_formula("Fe2//3O") == OrderedDict(:Fe => 2//3, :O => 1)
+        @test parse_formula("H1//2O") == Dict(:H => 1//2, :O => 1)
+        @test parse_formula("Fe2//3O") == Dict(:Fe => 2//3, :O => 1)
         
         # Test parentheses handling
-        @test parse_formula("(NH4)2SO4") == OrderedDict(:N => 2, :H => 8, :S => 1, :O => 4)
+        @test parse_formula("(NH4)2SO4") == Dict(:N => 2, :H => 8, :S => 1, :O => 4)
         
         # Test charge extraction
         @test extract_charge("Ca+2") == 2
@@ -38,14 +37,14 @@ using OrderedCollections
     @testset "Equation parsing" begin
         # Test basic equation parsing
         reactants, products, equal_sign = parse_equation("H2O = H+ + OH-")
-        @test reactants == OrderedDict("H2O" => 1)
-        @test products == OrderedDict("H+" => 1, "OH-" => 1)
+        @test reactants == Dict("H2O" => 1)
+        @test products == Dict("H+" => 1, "OH-" => 1)
         @test equal_sign == '='
         
         # Test with coefficients
         reactants, products, equal_sign = parse_equation("2H2O = 2H2 + O2")
-        @test reactants == OrderedDict("H2O" => 2)
-        @test products == OrderedDict("H2" => 2, "O2" => 1)
+        @test reactants == Dict("H2O" => 2)
+        @test products == Dict("H2" => 2, "O2" => 1)
         
         # Test with different reaction arrows
         reactants, products, equal_sign = parse_equation("H2O → H+ + OH-")
@@ -63,12 +62,12 @@ using OrderedCollections
         # @test occursin("Ca²⁺", colored_formula("Ca+2"))
         
         # Test equation formatting
-        coeffs = OrderedDict("H2O" => -2, "H2" => 2, "O2" => 1)
+        coeffs = Dict("H2O" => -2, "H2" => 2, "O2" => 1)
         eq = format_equation(coeffs)
-        @test occursin("2H2O = 2H2 + O2", eq)
+        @test "2H2O = 2H2 + O2" == eq || "2H2O = O2 + 2H2" == eq
         
         # Test with charge balancing
-        coeffs = OrderedDict("Fe+2" => 2, "Fe+3" => 3)
+        coeffs = Dict("Fe+2" => 2, "Fe+3" => 3)
         eq = format_equation(coeffs)
         @test occursin("e⁻", eq)  # Should add electron to balance charge
     end
@@ -94,8 +93,8 @@ using OrderedCollections
         @test stoich_coef_round(0.3333333) ≈ 1//3
         
         # Test calculate_molar_mass
-        atoms = OrderedDict(:H => 2, :O => 1)
-        @test round(ustrip(calculate_molar_mass(atoms)); digits=1) ≈ 18.0
+        atoms = Dict(:H => 2, :O => 1)
+        @test calculate_molar_mass(atoms) ≈ 18.015u"g/mol"
         
         # # Test merge_sum_dicts
         # d1 = Dict(:H => 2, :O => 1)
@@ -107,14 +106,14 @@ using OrderedCollections
 
     @testset "Cement to Mendeleev conversion" begin
         # Test oxide conversion
-        oxides = OrderedDict(:C => 1, :S => 1)  # CaO and SiO2
+        oxides = Dict(:C => 1, :S => 1)  # CaO and SiO2
         mendeleev = to_mendeleev(oxides)
         @test mendeleev[:Ca] == 1
         @test mendeleev[:O] == 3
         @test mendeleev[:Si] == 1
         
         # Test multiple oxides
-        oxides = OrderedDict(:C => 2, :M => 1)  # 2CaO + MgO
+        oxides = Dict(:C => 2, :M => 1)  # 2CaO + MgO
         mendeleev = to_mendeleev(oxides)
         @test mendeleev[:Ca] == 2
         @test mendeleev[:Mg] == 1

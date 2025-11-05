@@ -1,6 +1,5 @@
 using ChemistryLab
 using Test
-using OrderedCollections
 
 @testsection "Reactions" begin
     @testsection "Constructor from equation" begin
@@ -19,8 +18,8 @@ using OrderedCollections
     end
 
     @testsection "Simplify reaction" begin
-        reac = OrderedDict(Species("OH⁻") => -1, Species("H2O") => -1)
-        prod = OrderedDict(Species("H2O") => 1, Species("H⁺") => 1)
+        reac = Dict(Species("OH⁻") => -1, Species("H2O") => -1)
+        prod = Dict(Species("H2O") => 1, Species("H⁺") => 1)
         r = Reaction(reac, prod)
         rs = simplify_reaction(r)
         @test length(reactants(rs)) == 1
@@ -39,7 +38,7 @@ using OrderedCollections
     end
 
     @testsection "split/merge species by stoich" begin
-        s = OrderedDict(Species("CaCl2") => -1, Species("Ca+2") => 1, Species("Cl-") => 2)
+        s = Dict(Species("CaCl2") => -1, Species("Ca+2") => 1, Species("Cl-") => 2)
         reac, prod = ChemistryLab.split_species_by_stoich(s)
         @test haskey(reac, Species("CaCl2"))
         @test haskey(prod, Species("Ca+2"))
@@ -48,7 +47,7 @@ using OrderedCollections
     end
 
     @testsection "scale_stoich!" begin
-        s = OrderedDict(Species("O")=>2, Species("H")=>4)
+        s = Dict(Species("O")=>2, Species("H")=>4)
         ChemistryLab.scale_stoich!(s)
         @test s[Species("O")] == 4 && s[Species("H")] == 8
     end

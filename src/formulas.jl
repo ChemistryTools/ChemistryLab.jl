@@ -1,10 +1,5 @@
 struct AtomGroup{T<:Number} coef::T ; sym::Symbol end
 
-*(n::Number, sym::Symbol) = AtomGroup(stoich_coef_round(n), sym)
-*(sym::Symbol, n::Number) = AtomGroup(stoich_coef_round(n), sym)
-/(sym::Symbol, n::Number) = AtomGroup(stoich_coef_round(inv(n)), sym)
-//(sym::Symbol, n::Number) = AtomGroup(stoich_coef_round(1//n), sym)
-
 Base.convert(::Type{AtomGroup}, sym::Symbol) = AtomGroup(1, sym)
 
 AtomGroup(sym::Symbol) = AtomGroup(1, sym)
@@ -164,10 +159,6 @@ function +(a::AtomGroup{T}, b::AtomGroup{S}) where {T,S}
 end
 
 +(a::AtomGroup, b::Symbol) = a + AtomGroup(b)
-
-+(a::Symbol, b::AtomGroup) = AtomGroup(a) + b
-
-+(a::Symbol, b::Symbol) = AtomGroup(a) + AtomGroup(b)
 
 function Base.convert(T::Type{<:Number}, f::Formula)
     newcomposition = OrderedDict(k => convert(T, v) for (k,v) ∈ composition(f))
