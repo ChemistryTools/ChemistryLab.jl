@@ -14,8 +14,7 @@ Any species can be described as a linear combination of chemical elements. A spe
 
 ```@example
 using ChemistryLab #hide
-fH2O = 2 * :H + :O
-H2O = Species(fH2O)
+H2O = Species("H₂O")
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]
@@ -48,8 +47,7 @@ The decomposition of a set of species can also be done according to a base of pr
 
 ```@example stoich
 using ChemistryLab #hide
-fH2O = 2 * :H + :O
-H2O = Species(fH2O)
+H2O = Species("H₂O")
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]

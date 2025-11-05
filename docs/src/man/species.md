@@ -26,7 +26,7 @@ end
 
 ```@example
 using ChemistryLab #hide
-fH2O = 2 * :H + :O
+fH2O = Formula("H2O")
 H2O = Species(fH2O)
 ```
 
@@ -47,14 +47,14 @@ CO2 = Species(Dict(:C => 1, :O => 2))
 
 ```@example
 using ChemistryLab #hide
-CO2 = Species(Dict(:Si => 1, :O => 3),-2)
+CO2 = Species(Dict(:Si => 1, :O => 3), -2)
 ```
 
 Keyword arguments such as `name`, `symbol`, `aggregate_state`, `class` can be added during construction.
 
 ```@example H2O
 using ChemistryLab #hide
-fH₂O = 2*:H + :O
+fH₂O = Formula("H2O")
 H₂O = Species(fH₂O; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 ```
 
@@ -67,7 +67,7 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 !!! note "Comparison between species"
     Comparison between species (or cemspecies) are done by comparing atoms, aggregate_state and class. In the example below, vapour is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
     ```julia
-    vapour = Species(2*:H + :O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
+    vapour = Species("H2O"; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
     vapour == H₂O
     ```
 
