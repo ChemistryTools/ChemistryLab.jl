@@ -8,14 +8,15 @@ using DynamicQuantities
 using JSON
 using JSON3
 using LinearAlgebra
+using ModelingToolkit
 using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using ProgressMeter
-import Symbolics
 using Unicode
 
-*(x::Symbolics.Num, y::AbstractQuantity) = Quantity(x*y.value, y.dimensions)
+*(x::Num, y::AbstractQuantity) = Quantity(x*y.value, y.dimensions)
+*(x::AbstractQuantity, y::Num) = *(y, x)
 
 const COL_CHARGE = crayon"cyan bold"
 const COL_PAR = crayon"magenta bold"

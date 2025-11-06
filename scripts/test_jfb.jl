@@ -1,9 +1,7 @@
 using Revise, ChemistryLab, Unicode
 using DynamicQuantities
 using SymPy
-import Symbolics: @variables, substitute, value
-
-# const g, cm, K, J, mol, bar = u"g", u"cm", u"K", u"J", u"mol", u"bar"
+using ModelingToolkit
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -75,7 +73,7 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
-ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
+ox = Dict(:C => â, :S => one(SymPy.Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 numCSH = apply(N, apply(subs, CSH, â=>1.8, b̂=>1, ĝ=>5))
 floatCSH = apply(x->convert(Float64, x), numCSH) # only coefficients of oxides are converted to Float64 here not those of atoms
@@ -172,7 +170,7 @@ H₂O = Species("H₂O")
 CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 for vn in 1:9 println("n=$vn ⇒ ", apply(substitute, r, n=>vn)) end
-for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘value∘substitute, r, n=>vn)) end
+for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn)) end
 
 # Example from https://github.com/thermohub/chemicalfun
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
