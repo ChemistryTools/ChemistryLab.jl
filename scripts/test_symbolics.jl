@@ -1,5 +1,5 @@
-using Symbolics
 using DynamicQuantities
+using ModelingToolkit
 
 function subscriptnumber(i::Integer)
     if i < 0
@@ -176,59 +176,95 @@ Cp = :(a₀ + a₁*T + a₂/T^2 + a₃/√T + a₄*T^2 + a₅*T^3 + a₆*T^4 + a
 
 v = sort(extract_vars(Cp); by = x->Int(parse_symbol_num(string(x)).index))
 deleteat!(v, findall(x -> x == :T, v))
+@variables T
 
 dict_vars = Dict{Symbol, Num}()
 for x in v @eval dict_vars[Symbol($x)] = (@variables $x)[1] end
 
 degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
-coeffs = [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K]
+coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
 
 params = NamedTuple{Tuple(v[CartesianIndices(coeffs)])}(Tuple(coeffs))
 params_nounit = NamedTuple{keys(params)}(ustrip.(values(params)))
-subs = Dict(p for p in pairs(params_nounit))
+subs = Dict(pairs(params_nounit))
 for (k,v) in dict_vars
     if !haskey(subs, k) && k != :T
         subs[k] = 0
     end
 end
+subs = [eval(k)=>v for (k,v) in subs]
 # numCp2(T) = eval(substitute_expr(Cp, subs))
 
 numCp = eval(substitute_expr(Cp, dict_vars))
 
 Cpr = substitute(eval(Cp), Dict(eval(Symbol(:a,subscriptnumber(i)))=>0 for i in 4:10))
 
-Cpf = eval(build_function(substitute(Cpr, Dict(eval(k)=>v for (k,v) in subs)), T))
+Cpf = eval(build_function(substitute(Cpr, subs), T))
 
 
-# struct ThermoFunction{N,V,P,U,F,FU}
-#     symbolic::N
-#     variables::V
-#     parameters::P
-#     unit::U
-#     func::F
-#     func_unit::FU
-# end
+struct ThermoFunction{P,U,F,TT,TP}
+    expr::Num
+    parameters::P
+    T::Num
+    unit::U
+    func::F
+    Tref::TT
+    Pref::TP
+end
 
-# function ThermoFunction(expr)
+function ThermoFunction(symexpr::Num, params_unit::NamedTuple, T=@variables(T)[1]; Tref=298.15u"K", Pref=1u"bar")
+    params_nounit = NamedTuple{keys(params_unit)}(ustrip.(values(params_unit)))
+    func = eval(build_function(substitute(symexpr, [eval(k)=>v for (k,v) in pairs(params_nounit)]), T))
+    unit = promote_type(typeof.(params)...) <: Quantity ? 
+                   Quantity(1, dimension(substitute(symexpr, [[eval(k)=>v for (k,v) in pairs(params_unit)] ; log(T)=>1 ; exp(T)=>1 ; T=>298.15u"K"]))) : 1
+    return ThermoFunction(symexpr, params_unit, T, unit, func, Tref, Pref)
+end
 
-#     @variables T, a₀, a₁, a₂
-#     symbolic = a₀ + a₁ * T + a₂ / T^2
-#     func = eval(build_function(symbolic, T, a₀, a₁, a₂; expression=Val(true)))
-#     return ThermoFunction(symbolic, func)
-# end
+function ThermoFunction(expr::Expr, params::AbstractVector{<:Number}, T=@variables(T)[1]; Tref=298.15u"K", Pref=1u"bar")
+    symexpr = eval(expr)
+    v = extract_vars(expr)
+    deleteat!(v, findfirst(x -> x == :T, v))
+    sort!(v; by = x->Int(parse_symbol_num(string(x)).index))
+    dict_vars = Dict{Symbol, Num}()
+    for x in v @eval dict_vars[Symbol($x)] = (@parameters $x)[1] end
+    subszeros = Dict(eval(k)=>0 for (i,k) in enumerate(v) if i>length(params) || iszero(params[i]))
+    symexpr = substitute(symexpr, subszeros)
+    nonzeros = (!iszero).(params)
+    params_unit = NamedTuple{Tuple(v[CartesianIndices(params)][nonzeros])}(Tuple(params[nonzeros]))
+    return ThermoFunction(symexpr, params_unit, T; Tref=Tref, Pref=Pref)
+end
 
-# function deriv(expr, var)
-#     return Symbolics.derivative(expr, (@eval @variables var)[1])
-# end
+function (tf::ThermoFunction)(T)
+    return tf.func(T)
+end
 
-# function derivT(expr)
-#     @variables T
-#     return Symbolics.derivative(expr, T)
-# end
+function (tf::ThermoFunction)(T::Quantity)
+    return tf.func(ustrip(T))*tf.unit
+end
 
-# function (tf::ThermoFunction)(args...)
-#     return tf.func(args...)
-# end
+import Base: +
+
+function +(tf::ThermoFunction, x::Number)
+    indexcst = findfirst(a->iszero(expand_derivatives(Differential(tf.T)(Differential(eval(a))(tf.expr)))), keys(tf.parameters))
+    if isnothing(indexcst)
+        cst = :cst
+        if length(tf.parameters) > 0
+            ps = parse_symbol_num(string(keys(tf.parameters)[1]))
+            cst = Symbol(ps.base, ps.convert_func(ps.index-1))
+        end
+        @eval @parameters $(cst)
+        expr = eval(cst) + tf.expr
+        return ThermoFunction(expand(expr), merge((NamedTuple{(cst,)}(x)), tf.parameters), tf.T; Tref=tf.Tref, Pref=tf.Pref)
+    else
+        cst = keys(tf.parameters)[indexcst]
+        return ThermoFunction(tf.expr, merge(tf.parameters, NamedTuple{(cst,)}((getfield(tf.parameters, cst)+x,))), tf.T; Tref=tf.Tref, Pref=tf.Pref)
+    end
+end
+
++(x::Number, tf::ThermoFunction) = +(tf, x)
 
 
+expr = :(a₀ + a₁*T + a₂/T^2 + a₃/√T + a₄*T^2 + a₅*T^3 + a₆*T^4 + a₇/T^3 + a₈/T + a₉*√T + a₁₀*log(T))
+params = [210.0u"J/K/mol", 0.0u"J/mol/K^2", -3.07e6u"J*K/mol", 0.10u"J/mol/√K"]
 
+tf = ThermoFunction(expr, params)
