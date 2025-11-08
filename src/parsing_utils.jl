@@ -143,6 +143,142 @@ sub_to_normal(s::AbstractString) = replace(s, dict_sub_to_normal...)
 normal_to_sub(s::AbstractString) = replace(s, dict_normal_to_sub...)
 all_normal_to_sub(s::AbstractString) = replace(s, dict_all_normal_to_sub...)
 
+function subscriptnumber(i::Integer)
+    if i < 0
+        c = [Char(0x208B)]
+    else
+        c = []
+    end
+    for d in reverse(digits(abs(i)))
+        push!(c, Char(0x2080+d))
+    end
+    return join(c)
+end
+
+function superscriptnumber(i::Integer)
+    if i < 0
+        c = [Char(0x207B)]
+    else
+        c = []
+    end
+    for d in reverse(digits(abs(i)))
+        if d == 0 push!(c, Char(0x2070)) end
+        if d == 1 push!(c, Char(0x00B9)) end
+        if d == 2 push!(c, Char(0x00B2)) end
+        if d == 3 push!(c, Char(0x00B3)) end
+        if d > 3 push!(c, Char(0x2070+d)) end
+    end
+    return join(c)
+end
+
+function from_subscriptnumber(s::String)
+    chars = collect(s)
+    negative = !isempty(chars) && chars[1] == Char(0x208B)
+    if negative
+        chars = chars[2:end]
+    end
+    value = 0
+    for c in chars
+        digit = Int(c) - 0x2080
+        value = value * 10 + digit
+    end
+    return negative ? -value : value
+end
+
+function from_superscriptnumber(s::String)
+    chars = collect(s)
+    negative = !isempty(chars) && chars[1] == Char(0x207B)
+    if negative
+        chars = chars[2:end]
+    end
+    value = 0
+    for c in chars
+        if c == Char(0x2070)
+            digit = 0
+        elseif c == Char(0x00B9)
+            digit = 1
+        elseif c == Char(0x00B2)
+            digit = 2
+        elseif c == Char(0x00B3)
+            digit = 3
+        else
+            digit = Int(c) - 0x2070
+        end
+        value = value * 10 + digit
+    end
+    return negative ? -value : value
+end
+
+function parse_symbol_num(s::AbstractString)
+    chars = collect(s)
+    n = length(chars)
+    pos = n + 1
+    for i in 1:n
+        c = chars[i]
+        if '0' <= c <= '9'
+            pos = i
+            break
+        end
+        if 0x2080 <= Int(c) <= 0x2089
+            pos = i
+            break
+        end
+        if c == Char(0x208B)  # signe moins subscript
+            pos = i
+            break
+        end
+        if c in (Char(0x2070), Char(0x00B9), Char(0x00B2), Char(0x00B3)) || (0x2074 <= Int(c) <= 0x2079)
+            pos = i
+            break
+        end
+    end
+    if pos == n + 1
+        return (base = s, index = -100, convert_func = identity)
+    end
+    radical = join(chars[1:pos-1])
+    number_chars = chars[pos:end]
+    firstnum = number_chars[1]
+    number = join(number_chars)
+    if '0' <= firstnum <= '9'
+        nature = identity
+        number = parse(Int, number)
+    elseif 0x2080 <= Int(firstnum) <= 0x2089 || firstnum == Char(0x208B)
+        nature = subscriptnumber
+        number = from_subscriptnumber(number)
+    elseif firstnum in (Char(0x2070), Char(0x00B9), Char(0x00B2), Char(0x00B3)) || (0x2074 <= Int(firstnum) <= 0x2079)
+        nature = superscriptnumber
+        number = from_superscriptnumber(number)
+    else
+        nature = identity
+        number = 0
+    end
+    return (base = radical, index = number, convert_func = nature)
+end
+
+function extract_vars(expr)
+    vars = Set{Symbol}()
+    function _extract(e, is_func=false)
+        if isa(e, Symbol)
+            if !is_func
+                push!(vars, e)
+            end
+        elseif isa(e, Expr)
+            if e.head == :call
+                _extract(e.args[1], true)
+                for arg in e.args[2:end]
+                    _extract(arg, false)
+                end
+            else
+                for arg in e.args
+                    _extract(arg, false)
+                end
+            end
+        end
+    end
+    _extract(expr, false)
+    return collect(vars)
+end
+
 root_type(T) = T isa UnionAll ? root_type(T.body) : T.name.wrapper
 
 function stoich_coef_round(x::T; tol=1e-4) where {T<:Real}

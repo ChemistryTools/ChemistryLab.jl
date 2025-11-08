@@ -1,7 +1,7 @@
 using Revise, ChemistryLab, Unicode
 using DynamicQuantities
-using SymPy
 using ModelingToolkit
+import SymPy: symbols, Sym, N, subs, factor, simplify
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -73,7 +73,7 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
-ox = Dict(:C => â, :S => one(SymPy.Sym), :A => b̂, :H => ĝ)
+ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 numCSH = apply(N, apply(subs, CSH, â=>1.8, b̂=>1, ĝ=>5))
 floatCSH = apply(x->convert(Float64, x), numCSH) # only coefficients of oxides are converted to Float64 here not those of atoms
@@ -122,9 +122,9 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
  ## application of a function to stoichimetric coefficients (here simplify)
-r = apply(SymPy.simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
+r = apply(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
-SymPy.simplify.(A)
+simplify.(A)
 
 # Chen & Brouwers
 CSH = CemSpecies(Dict(:C => â, :S => one(â), :A => b̂, :H => ĝ))
@@ -182,14 +182,13 @@ lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
-degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
 coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
-cemJennite.Cp = ThermoFunction(degrees, coeffs; Tref=298.15)
+cemJennite.Cp = ThermoFunction(:Cp, coeffs; ref=(T=298.15u"K", P=1u"bar"))
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15u"K") ;
 @show cemJennite.Cp() ; # application by default on Tref
  # same without units
-cemJennite.Cp = ThermoFunction(degrees, ustrip.(coeffs); Tref=298.15)
+cemJennite.Cp = ThermoFunction(:Cp, ustrip.(coeffs); ref=(T=298.15u"K", P=1u"bar"))
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
@@ -212,6 +211,8 @@ end
 # Check consistency of logKr at Tref and logKr0 of the database
 for r in df_reactions.reaction println(r.logKr(), " == ", r.logKr0) end
 
-degrees = [0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]
 coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
-Cp = ThermoFunction(degrees, coeffs)
+Cp = ThermoFunction(:Cp, coeffs)
+
+rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [1.0, 2.0u"1/s", 3.0, 4.0u"1/√s"])
+rate(1u"s")

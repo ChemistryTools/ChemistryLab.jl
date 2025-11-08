@@ -651,7 +651,7 @@ function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=
         print(crayon"reset")
     end
     if with_units
-        val = val*(try sym_uparse(vunit) catch; default_unit end)
+        val = val*(try uparse(vunit) catch; default_unit end)
     end
     return val
 end
@@ -666,7 +666,7 @@ function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)
         if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
         if with_units
             units = tuple_coefs.units
-            values = [values[i]*sym_uparse(units[i]) for i=1:min(length(values), length(units))]
+            values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
         end
         return values
     else
@@ -691,7 +691,9 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         s = row.species
         if debug println(s) end
         Tref = with_units ? row.Tst*u"K" : row.Tst
+        Pref = with_units ? row.Pst*u"Pa" : row.Pst
         s.Tref = Tref
+        s.Pref = Pref
         if !with_units
             s.M = ustrip(s.M)
         end
@@ -699,14 +701,15 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         if all_properties
             coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
 
-            s.Cp = ThermoFunction(:Cp, coeffa; Tref=Tref)
+            s.Cp = ThermoFunction(:Cp, coeffa; ref=(T=Tref, P=Pref))
 
             ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
             ∫Cp = ∫(s.Cp)
             s.ΔfH = ΔfH0 + (∫Cp - ∫Cp(Tref))
 
             S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            ∫CpoverT = ∫(divT(s.Cp))
+            CpoverT = ThermoFunction(:CpoverT, coeffa; ref=(T=Tref, P=Pref))
+            ∫CpoverT = ∫(CpoverT)
             s.S = S0 + (∫CpoverT - ∫CpoverT(Tref))
 
             ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
@@ -755,11 +758,13 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
     function populate_reaction(r, row)
         if debug println(r) end
         Tref = with_units ? row.Tst*u"K" : row.Tst
+        Pref = with_units ? row.Pst*u"Pa" : row.Pst
         r.Tref = Tref
+        r.Pref = Pref
 
         if all_properties
             coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
-            r.logKr = ThermoFunction(:logKr, coefflogKr; Tref=Tref)
+            r.logKr = ThermoFunction(:logKr, coefflogKr; ref=(T=Tref, P=Pref))
 
             r.ΔrCp0 = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
             r.ΔrH0 = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")

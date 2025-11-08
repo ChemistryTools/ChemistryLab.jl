@@ -13,6 +13,7 @@ using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using ProgressMeter
+using SymbolicNumericIntegration
 using Unicode
 
 *(x::Num, y::AbstractQuantity) = Quantity(x*y.value, y.dimensions)

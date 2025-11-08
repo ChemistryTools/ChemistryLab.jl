@@ -1,261 +1,122 @@
+
+
 abstract type Callable end  # Base type for all callable thermodynamic functions
 
-struct BasisFunction{D,I} <: Callable end
-
-const ExtendedDegree = Union{Int,Symbol}
-degree(::BasisFunction{D,I}) where {D,I} = D
-integlevel(::BasisFunction{D,I}) where {D,I} = I
-
-unitdegree(::BasisFunction{D,I}) where {D,I} = D+I
-unitdegree(::BasisFunction{:log,I}) where {I} = I
-unitdegree(::BasisFunction{:logdivT,I}) where {I} = D-1
-
-(bf::BasisFunction{0,0})(T) = one(T)
-strexp(α) = α == 1 ? "" : normal_to_super("$α")
-strcoef(α) = α == 1 ? "" : "$α"
-show_expr(::BasisFunction{0,0}) = ""
-for α in 1:5
-    @eval begin
-        (bf::BasisFunction{$α,0})(T) = T^$α
-        (bf::BasisFunction{-$α,0})(T) = inv(T^$α)
-        show_expr(::BasisFunction{$α,0}) = "T$(strexp($α))"
-        show_expr(::BasisFunction{-$α,0}) = "/T$(strexp($α))"
-    end
-end
-(bf::BasisFunction{0.5,0})(T) = sqrt(T)
-show_expr(::BasisFunction{0.5,0}) = "√T"
-(bf::BasisFunction{-0.5,0})(T) = inv(sqrt(T))
-show_expr(::BasisFunction{-0.5,0}) = "/√T"
-(bf::BasisFunction{:log,0})(T) = log(ustrip(T))
-show_expr(::BasisFunction{:log,0}) = "ln(T)"
-(bf::BasisFunction{:logdivT,0})(T) = log(ustrip(T))/T
-show_expr(::BasisFunction{:logdivT,0}) = "ln(T)/T"
-
-(bf::BasisFunction{0,-1})(T) = zero(T)
-for α in (1:5..., 0.5, 1.5)
-    @eval begin
-        (bf::BasisFunction{$α,-1})(T) = $α * T^($α - 1)
-        show_expr(::BasisFunction{$α,-1}) = "$(strcoef($α))T$(strexp($α-1))"
-        (bf::BasisFunction{-$α,-1})(T) = -$α * inv(T^($α + 1))
-        show_expr(::BasisFunction{-$α,-1}) = "(-$(strcoef($α))/T$(strexp($α+1)))"
-    end
-end
-(bf::BasisFunction{:log,-1})(T) = inv(T)
-show_expr(::BasisFunction{:log,-1}) = "/T"
-(bf::BasisFunction{:logdivT,-1})(T) = (1 - log(ustrip(T)))/T^2
-show_expr(::BasisFunction{:logdivT,-1}) = "(1-ln(T))/T²"
-
-for α in (0:5..., 0.5, 1.5)
-    @eval begin
-        (bf::BasisFunction{$α,1})(T) = T^($α + 1) / ($α + 1)
-        if $α != 0 show_expr(::BasisFunction{$α,1}) = "T$(strexp($α+1))/$($α+1)" end
-    end
-    if α ∉ (0, 1)
-        @eval begin
-            (bf::BasisFunction{-$α,1})(T) = inv(T^($α - 1)) / (1 - $α)
-            if $α != 2 show_expr(::BasisFunction{-$α,1}) = "(-1/($(strcoef($α-1))T$(strexp($α-1))))" end
-        end
-    end
-end
-show_expr(::BasisFunction{-2,1}) = "(-1/T)"
-show_expr(::BasisFunction{0,1}) = "T"
-(bf::BasisFunction{-1,1})(T) = log(ustrip(T))
-show_expr(::BasisFunction{-1,1}) = "ln(T)"
-(bf::BasisFunction{:log,1})(T) = T * (log(ustrip(T)) - 1)
-show_expr(::BasisFunction{:log,1}) = "T(ln(T)-1)"
-(bf::BasisFunction{:logdivT,1})(T) = (log(ustrip(T)))^2 / 2
-show_expr(::BasisFunction{:logdivT,1}) = "ln(T)²/2"
-
-for α in (0:5..., 0.5, 1.5)
-    @eval begin
-        (bf::BasisFunction{$α,2})(T) = T^($α + 2) / (($α + 1)*($α + 2))
-        show_expr(::BasisFunction{$α,2}) = "T$(strexp($α+2))/$(($α+1)*($α+2))"
-    end 
-    if α ∉ (0, 1, 2)
-        @eval begin
-            (bf::BasisFunction{-$α,2})(T) = inv(T^($α - 2)) / ((1 - $α)*(2 - $α))
-            show_expr(::BasisFunction{-$α,2}) = "(1/($(($α-1)*($α-2))T$(strexp($α-1))))"
-        end 
-    end
-end
-(bf::BasisFunction{-1,2})(T) = T*(log(ustrip(T)) - 1)
-show_expr(::BasisFunction{-1,2}) = "T(ln(T)-1)"
-(bf::BasisFunction{-2,2})(T) = -log(ustrip(T))
-show_expr(::BasisFunction{-2,2}) = "(-ln(T))"
-(bf::BasisFunction{:log,2})(T) = T^2*log(ustrip(T))/2 - 3*T^2/4
-show_expr(::BasisFunction{:log,2}) = "(T²ln(T)/2 - 3/4T²)"
-(bf::BasisFunction{:logdivT,2})(T) = T*(log(ustrip(T)))^2/2 - T*log(ustrip(T)) + T
-show_expr(::BasisFunction{:logdivT,2}) = "(Tln(T)²/2 - Tln(T) + T)"
-
-BasisFunction{1,-1}() = BasisFunction{0,0}()
-
-∂(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I-1}()
-∫(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I+1}()
-∬(::BasisFunction{D,I}) where {D,I} = BasisFunction{D,I+2}()
-divT(::BasisFunction{D,I}) where {D,I} = BasisFunction{D-1,I}()
-divT(::BasisFunction{:log,I}) where {I} = BasisFunction{:logdivT,I}()
-
-isconstant(::BasisFunction) = false
-isconstant(::BasisFunction{0,0}) = true
-iszerofunc(::BasisFunction) = false
-iszerofunc(::BasisFunction{0,-1}) = true
-
-show_expr(bf::BasisFunction) = "unknown"
-
-function Base.show(io::IO, bf::BasisFunction)
-    print(io, show_expr(bf))
+struct ThermoFunction{P,U,F,R} <: Callable
+    expr::Num
+    parameters::P
+    var::Num
+    unit::U
+    func::F
+    ref::R
 end
 
-struct ThermoFunction{F<:NamedTuple,C<:NamedTuple,T<:Number,Z<:Number} <: Callable
-    bases::F
-    coeffs::C
-    Tref::T
-    zeroinit::Z
-    cstidx::Union{Symbol,Nothing}
-    param::Symbol
+function ThermoFunction(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+    symexpr = Num(symexpr)
+    varofexpr = Symbol.(get_variables(symexpr))
+    if isnothing(var)
+        vars = [:T, :t]
+        idxvar = findfirst(x->x in varofexpr, vars)
+        if isnothing(idxvar) idxvar = 1 end
+        var = @eval (@variables $(vars[idxvar]))[1]
+    end
+    nounitfunc = [f(var) => 1 for f in [log, log10, log2, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh, exp]]
+    unit = promote_type(typeof.(values(params_unit))...) <: Quantity ? 
+                Quantity(1, dimension(substitute(symexpr, [[eval(k)=>v for (k,v) in pairs(params_unit)] ; nounitfunc ; var=>getfield(ref, Symbol(var))]))) : 1
+    params_unit = (; (k => v for (k,v) in pairs(params_unit) if k in varofexpr || isempty(varofexpr))...)
+    params_nounit = (; (k=>ustrip(v) for (k,v) in pairs(params_unit))...)
+    func = eval(build_function(substitute(symexpr, [eval(k)=>v for (k,v) in pairs(params_nounit)]), var; expression=Val{false}))
+    if iszero(symexpr) && !isempty(params_unit)
+        symexpr = eval(keys(params_unit)[1])
+    end
+    return ThermoFunction(symexpr, params_unit, var, unit, func, ref)
 end
 
-function (lf::ThermoFunction)(T)
-    s = lf.zeroinit
-    @inbounds @simd for name in keys(lf.coeffs)
-        s += getfield(lf.coeffs, name) * getfield(lf.bases, name)(T)
+function ThermoFunction(expr::Expr, params::AbstractVector{<:Number}, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+    v = extract_vars(expr)
+    if isnothing(var)
+        vars = [:T, :t]
+        idxvar = findfirst(x->x in v, vars)
+        var = @eval (@variables $(vars[idxvar]))[1]
     end
-    return s
+    deleteat!(v, findfirst(x -> x == Symbol(var), v))
+    sort!(v; by = x->Int(parse_symbol_num(string(x)).index))
+    dict_vars = Dict{Symbol, Num}()
+    for x in v dict_vars[x] = @eval (@parameters $x)[1] end
+    subszeros = Dict(eval(k)=>0 for (i,k) in enumerate(v) if length(params)<i || iszero(params[i]))
+    if length(subszeros) == length(v)
+        subszeros = Dict(eval(k)=>0 for (i,k) in enumerate(v) if length(params)<i || (iszero(params[i]) && i>1))
+    end
+    symexpr = substitute(eval(expr), subszeros)
+    nonzeros = (!iszero).(params)
+    if !isempty(nonzeros) && !any(nonzeros)
+        nonzeros[1] = true
+    end
+    params_unit = NamedTuple{Tuple(v[CartesianIndices(params)][nonzeros])}(Tuple(params[nonzeros]))
+    return ThermoFunction(symexpr, params_unit, var; ref=ref)
 end
 
-function (lf::ThermoFunction)()
-    return lf(lf.Tref)
+const thermo_function_library = Dict(
+    :Cp => (:(a₀ + a₁*T + a₂/T^2 + a₃/√T + a₄*T^2 + a₅*T^3 + a₆*T^4 + a₇/T^3 + a₈/T + a₉*√T + a₁₀*log(T)), @eval (@variables T)[1]),
+    :CpoverT => (:(a₀/T + a₁ + a₂/T^3 + a₃/T^(3/2) + a₄*T + a₅*T^2 + a₆*T^3 + a₇/T^4 + a₈/T^2 + a₉/√T + a₁₀*log(T)/T), @eval (@variables T)[1]),
+    :logKr => (:(A₀ + A₁*T + A₂/T + A₃*log(T) + A₄/T^2 + A₅*T^2 + A₆*√T), @eval (@variables T)[1]),
+)
+
+function ThermoFunction(sym::Symbol, params::AbstractVector{<:Number}; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+    expr, var = thermo_function_library[sym]
+    return ThermoFunction(expr, params, var; ref=ref)
 end
 
-coefficients(lf::ThermoFunction) = lf.coeffs
-
-function ThermoFunction(degrees::AbstractVector, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0, param=:a)
-
-    if length(coeffs) == 0
-        cstidx = Symbol(param, "₀")
-        return ThermoFunction((cstidx => BasisFunction{0, 0}()), (cstidx => 0), Tref, 0, cstidx, param)
-    end
-
-    with_units = promote_type(typeof.(coeffs)...) <: Quantity
-    if with_units && !(Tref isa Quantity)
-        Tref *= u"K"
-    end
-
-    funcs = [BasisFunction{d, 0}() for d in degrees]
-
-    nonzero = findall(!iszero, coeffs)
-    if length(nonzero) == 0
-        nonzero = [1]
-    end
-    kept_funcs = funcs[nonzero]
-    kept_coefs = coeffs[nonzero]
-
-    varunit = dimension(1)
-    if with_units
-        varunitvec = dimension.(kept_coefs .* (u"K" .^ unitdegree.(kept_funcs)))
-        if !allequal(varunitvec) error("Degrees $degrees and coefficients $coeffs are not dimensionally compatible.") end
-        varunit = length(varunitvec)>0 ? varunitvec[1] : dimension(1)
-    end
-
-    kept_names = [Symbol(param, normal_to_sub(string(i + startindex - 1))) for i in nonzero]
-    idxcst = findfirst(==(0), degrees)
-    cstidx = isnothing(idxcst) ? nothing : Symbol(param, normal_to_sub(string(idxcst + startindex - 1)))
-
-    base_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_funcs))
-    coef_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_coefs))
-
-    return ThermoFunction(base_nt, coef_nt, Tref, with_units ? Quantity(0, varunit) : 0, cstidx, param)
+function (tf::ThermoFunction)(T)
+    return tf.func(T)
 end
 
-function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0, param=:a)
-    if name == :Cp
-        return ThermoFunction([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log], coeffs; Tref=Tref, startindex=startindex, param=param)
-    elseif name == :logKr
-        return ThermoFunction([0, 1, -1, :log, -2, 2, 0.5], coeffs; Tref=Tref, startindex=startindex, param=param)
-    else
-        error("$name not registered for ThermoFunction construction")
-    end
+function (tf::ThermoFunction)(T::Quantity)
+    return tf.func(ustrip(T))*tf.unit
+end
+
+function (tf::ThermoFunction)()
+    return tf(getfield(tf.ref, Symbol(tf.var)))
 end
 
 function +(tf::ThermoFunction, x::Number)
-    if isnothing(tf.cstidx)
-        cstidx = Symbol(tf.param, "₀")
-        idx = 0
-        while hasfield(typeof(tf.coeffs), cstidx)
-            idx -= 1
-            cstidx = Symbol(tf.param, normal_to_sub(string(idx)))
+    indexcst = findfirst(a->iszero(expand_derivatives(ModelingToolkit.Differential(tf.var)(ModelingToolkit.Differential(eval(a))(tf.expr)))), keys(tf.parameters))
+    if isnothing(indexcst)
+        varcst = :a₀
+        if length(tf.parameters) > 0
+            ps = parse_symbol_num(string(keys(tf.parameters)[1]))
+            varcst = Symbol(ps.base, ps.convert_func(ps.index-1))
         end
-        return ThermoFunction(merge(NamedTuple{(cstidx,)}((BasisFunction{0,0}(),)), tf.bases),
-                              merge(NamedTuple{(cstidx,)}(x), tf.coeffs),
-                              tf.Tref, tf.zeroinit, cstidx, tf.param)
+        @eval (@parameters $(varcst))[1]
+        expr = eval(varcst) + tf.expr
+        return ThermoFunction(expand(expr), merge((NamedTuple{(varcst,)}(x)), tf.parameters), tf.var; ref=tf.ref)
     else
-        return ThermoFunction(tf.bases, merge(tf.coeffs, NamedTuple{(tf.cstidx,)}((getfield(tf.coeffs, tf.cstidx)+x,))), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
+        varcst = keys(tf.parameters)[indexcst]
+        return ThermoFunction(tf.expr, merge(tf.parameters, NamedTuple{(varcst,)}((getfield(tf.parameters, varcst)+x,))), tf.var; ref=tf.ref)
     end
 end
 
 +(x::Number, tf::ThermoFunction) = +(tf, x)
 
-function -(tf::ThermoFunction, x::Number)
-    if isnothing(tf.cstidx)
-        cstidx = Symbol(tf.param, "₀")
-        idx = 0
-        while hasfield(typeof(tf.coeffs), cstidx)
-            idx -= 1
-            cstidx = Symbol(tf.param, normal_to_sub(string(idx)))
-        end
-        return ThermoFunction(merge(NamedTuple{(cstidx,)}((BasisFunction{0,0}(),)), tf.bases),
-                              merge(NamedTuple{(cstidx,)}(-x), tf.coeffs),
-                              tf.Tref, tf.zeroinit, cstidx, tf.param)
-    else
-        return ThermoFunction(tf.bases, merge(tf.coeffs, NamedTuple{(tf.cstidx,)}((getfield(tf.coeffs, tf.cstidx)-x,))), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
-    end
-end
+-(tf::ThermoFunction) = ThermoFunction(-1*tf.expr, tf.parameters, tf.var; ref=tf.ref)
 
-function *(tf::ThermoFunction, x::Number)
-    ThermoFunction(tf.bases, (; (k => v*x for (k,v) in pairs(tf.coeffs))...), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
-end
+-(tf::ThermoFunction, x::Number) = +(tf, -1*x)
+
+-(x::Number, tf::ThermoFunction) = +(x, -1*tf)
+
+*(tf::ThermoFunction, x::Number) = ThermoFunction(x*tf.expr, tf.parameters, tf.var; ref=tf.ref)
 
 *(x::Number, tf::ThermoFunction) = *(tf, x)
 
--(tf::ThermoFunction) = *(tf, -1)
+/(tf::ThermoFunction, x::Number) = ThermoFunction(tf.expr/x, tf.parameters, tf.var; ref=tf.ref)
 
--(x::Number, tf::ThermoFunction) = +(-tf, x)
+∂(tf::ThermoFunction, var=tf.var) = ThermoFunction(expand_derivatives(ModelingToolkit.Differential(var)(tf.expr)), tf.parameters, tf.var; ref=tf.ref)
 
-function /(tf::ThermoFunction, x::Number)
-    ThermoFunction(tf.bases, (; (k => v/x for (k,v) in pairs(tf.coeffs))...), tf.Tref, tf.zeroinit, tf.cstidx, tf.param)
-end
+∫(tf::ThermoFunction, var=tf.var) = ThermoFunction(SymbolicNumericIntegration.integrate(tf.expr, var; symbolic=true, detailed=false), tf.parameters, tf.var; ref=tf.ref)
 
-function ∫(tf::ThermoFunction)
-    newbases = (; (k => ∫(v) for (k,v) in pairs(tf.bases))...)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*u"K" : tf.zeroinit, nothing, tf.param)
-end
-
-function ∬(tf::ThermoFunction)
-    newbases = (; (k => ∬(v) for (k,v) in pairs(tf.bases))...)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit*u"K^2" : tf.zeroinit, nothing, tf.param)
-end
-
-function ∂(tf::ThermoFunction)
-    newbases = (; (k => ∂(v) for (k,v) in pairs(tf.bases))...)
-    newcoeffs = tf.coeffs
-    zeroidx = findfirst(bf->iszerofunc(bf), newbases)
-    if !isnothing(zeroidx)
-        newbases = (; (k => v for (k,v) in pairs(newbases) if k != zeroidx)...)
-        newcoeffs = (; (k => v for (k,v) in pairs(newcoeffs) if k != zeroidx)...)
-    end
-    cstidx = findfirst(bf->isconstant(bf), newbases)
-    ThermoFunction(newbases, newcoeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/u"K" : tf.zeroinit, cstidx, tf.param)
-end
-
-function divT(tf::ThermoFunction)
-    newbases = (; (k => divT(v) for (k,v) in pairs(tf.bases))...)
-    cstidx = findfirst(bf->isconstant(bf), newbases)
-    ThermoFunction(newbases, tf.coeffs, tf.Tref, tf.Tref isa Quantity ? tf.zeroinit/u"K" : tf.zeroinit, cstidx, tf.param)
-end
-
-function Base.show(io::IO, lf::ThermoFunction)
-    print(io, join(["$k$v" for (k,v) in pairs(lf.bases)]," + "))
+function Base.show(io::IO, tf::ThermoFunction)
+    print(io, tf.expr)
     print(io, " with {")
-    print(io, replace(string(lf.coeffs), "("=>"", ")"=>"", " = "=>"="))
-    print(io, " ; Tref=", lf.Tref,"}")
+    print(io, replace(string(tf.parameters), "("=>"", ")"=>"", " = "=>"="))
+    print(io, " ; ref: ", replace(string(tf.ref), "("=>"", ")"=>"", " = "=>"="), "}")
 end
