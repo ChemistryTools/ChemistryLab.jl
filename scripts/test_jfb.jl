@@ -47,6 +47,7 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=false, with_units=true, all_properties=true) # debug only for conception phase (not to be put in the doc)
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
 # filter(p->!haskey(p.second, :Cp), dict_species)
 # filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -200,11 +201,19 @@ lT = ((0:1:100) .+ 273.15).*u"K"
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for row in eachrow(df_reactions)
     re = row.reaction
-    for s in keys(re.products)
-        if !haskey(s, :Cp) println(s) end
-    end
     for s in keys(re.reactants)
-        if !haskey(s, :Cp) println(s) end
+        if !haskey(s, :Cp)
+            println(s, "  ∙  ", row.symbol)
+        end
+    end
+end
+
+for row in eachrow(df_reactions)
+    re = row.reaction
+    for s in keys(re.products)
+        if !haskey(s, :Cp)
+            println(s, "  ∙  ", row.symbol)
+        end
     end
 end
 
@@ -216,3 +225,24 @@ Cp = ThermoFunction(:Cp, coeffs)
 
 rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [1.0, 2.0u"1/s", 3.0, 4.0u"1/√s"])
 rate(1u"s")
+
+for row in eachrow(df_reactions)
+    re = row.reaction
+end
+
+r = dict_reactions["Cal"]
+Tref = 298.15u"K"
+ΔrG0(T) = sum(ν*re.ΔfG(T) for (re,ν) in r.products) - sum(ν*re.ΔfG(T) for (re,ν) in r.reactants)
+logK = -ΔrG0(Tref)/(Constants.R*Tref)/log(10)
+K(T) = 10^(-ΔrG0(T)/(Constants.R*T)/log(10))
+pK(T) = ΔrG0(T)/(Constants.R*T)/log(10)
+r.logKr()
+plot(ustrip.(lT), ustrip.(ΔrG0.(lT)))
+
+for (re,ν) in r.reactants
+    println(re, " ", re.ΔfG(Tref))
+end
+for (re,ν) in r.products
+    println(re, " ", re.ΔfG(Tref))
+end
+

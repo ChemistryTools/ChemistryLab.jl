@@ -28,6 +28,7 @@ function ThermoFunction(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=29
     func = eval(build_function(substitute(symexpr, [eval(k)=>v for (k,v) in pairs(params_nounit)]), var; expression=Val{false}))
     if iszero(symexpr) && !isempty(params_unit)
         symexpr = eval(keys(params_unit)[1])
+        params_unit = (; keys(params_unit)[1] => zero(values(params_unit)[1]))
     end
     return ThermoFunction(symexpr, params_unit, var, unit, func, ref)
 end
@@ -79,9 +80,19 @@ function (tf::ThermoFunction)()
     return tf(getfield(tf.ref, Symbol(tf.var)))
 end
 
-function +(tf::ThermoFunction, x::Number)
+function get_constant_param(tf::ThermoFunction)
     indexcst = findfirst(a->iszero(expand_derivatives(ModelingToolkit.Differential(tf.var)(ModelingToolkit.Differential(eval(a))(tf.expr)))), keys(tf.parameters))
     if isnothing(indexcst)
+        return nothing, 0
+    else
+        varcst = keys(tf.parameters)[indexcst]
+        return varcst, expand_derivatives(ModelingToolkit.Differential(eval(varcst))(tf.expr))
+    end
+end
+
+function +(tf::ThermoFunction, x::Number)
+    varcst, α = get_constant_param(tf::ThermoFunction)
+    if isnothing(varcst)
         varcst = :a₀
         if length(tf.parameters) > 0
             ps = parse_symbol_num(string(keys(tf.parameters)[1]))
@@ -91,8 +102,8 @@ function +(tf::ThermoFunction, x::Number)
         expr = eval(varcst) + tf.expr
         return ThermoFunction(expand(expr), merge((NamedTuple{(varcst,)}(x)), tf.parameters), tf.var; ref=tf.ref)
     else
-        varcst = keys(tf.parameters)[indexcst]
-        return ThermoFunction(tf.expr, merge(tf.parameters, NamedTuple{(varcst,)}((getfield(tf.parameters, varcst)+x,))), tf.var; ref=tf.ref)
+        expr = ModelingToolkit.expand(tf.expr + (1-α)*eval(varcst))
+        return ThermoFunction(expr, merge(tf.parameters, NamedTuple{(varcst,)}((α*getfield(tf.parameters, varcst)+x,))), tf.var; ref=tf.ref)
     end
 end
 
@@ -104,11 +115,27 @@ end
 
 -(x::Number, tf::ThermoFunction) = +(x, -1*tf)
 
-*(tf::ThermoFunction, x::Number) = ThermoFunction(x*tf.expr, tf.parameters, tf.var; ref=tf.ref)
+function *(tf::ThermoFunction, x::Number)
+    varcst, α = get_constant_param(tf::ThermoFunction)
+    if isnothing(varcst)
+        ThermoFunction(tf.expr*x, tf.parameters, tf.var; ref=tf.ref)
+    else
+        expr = ModelingToolkit.expand(tf.expr*x + (1-α*x)*eval(varcst))
+        return ThermoFunction(expr, merge(tf.parameters, NamedTuple{(varcst,)}((α*getfield(tf.parameters, varcst)*x,))), tf.var; ref=tf.ref)
+    end
+end
 
 *(x::Number, tf::ThermoFunction) = *(tf, x)
 
-/(tf::ThermoFunction, x::Number) = ThermoFunction(tf.expr/x, tf.parameters, tf.var; ref=tf.ref)
+function /(tf::ThermoFunction, x::Number)
+    varcst, α = get_constant_param(tf::ThermoFunction)
+    if isnothing(varcst)
+        ThermoFunction(tf.expr/x, tf.parameters, tf.var; ref=tf.ref)
+    else
+        expr = ModelingToolkit.expand(tf.expr/x + (x-α)*eval(varcst)/x)
+        return ThermoFunction(expr, merge(tf.parameters, NamedTuple{(varcst,)}((α*getfield(tf.parameters, varcst)/x,))), tf.var; ref=tf.ref)
+    end
+end
 
 ∂(tf::ThermoFunction, var=tf.var) = ThermoFunction(expand_derivatives(ModelingToolkit.Differential(var)(tf.expr)), tf.parameters, tf.var; ref=tf.ref)
 
