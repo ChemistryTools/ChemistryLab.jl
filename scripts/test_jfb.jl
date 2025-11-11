@@ -98,7 +98,7 @@ reac, prod, equal_sign = parse_equation(equation)
  ## construction of a Reaction struct from a string
 r = Reaction(equation)
  ## simplification of a Reaction
-r = Reaction("2H₂O → H⁺ + OH⁻ +H₂O")
+r = Reaction("2H₂O → H⁺ + OH⁻ + H₂O")
 println(simplify_reaction(r))
  ## construction of a Reaction of only CemSpecies by CemReaction
 eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH₄"
@@ -238,11 +238,18 @@ K(T) = 10^(-ΔrG0(T)/(Constants.R*T)/log(10))
 pK(T) = ΔrG0(T)/(Constants.R*T)/log(10)
 r.logKr()
 plot(ustrip.(lT), ustrip.(ΔrG0.(lT)))
-
 for (re,ν) in r.reactants
-    println(re, " ", re.ΔfG(Tref))
+    println(re, " ΔfG=", re.ΔfG(Tref))
 end
-for (re,ν) in r.products
-    println(re, " ", re.ΔfG(Tref))
+for (pr,ν) in r.products
+    println(pr, " ΔfG=", pr.ΔfG(Tref))
 end
 
+# Construction of a Reaction from a string and a list of species (possibly with thermodynamic properties from a database)
+r = Reaction("NaOH → Na+ + OH-"; species_list = df_substances.species)
+for re in keys(r.reactants)
+    display(re)
+end
+for pr in keys(r.products)
+    display(pr)
+end

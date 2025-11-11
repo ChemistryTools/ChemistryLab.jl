@@ -305,3 +305,35 @@ function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpeci
     end
     return newSpecies
 end
+
+function find_species(s::AbstractString, species_list=nothing, S::Type{<:AbstractSpecies} = Species; aggregate_state = AS_UNDEF, class = SC_UNDEF)
+    if isnothing(species_list)
+        return S(s)
+    else
+        for crit in (symbol, phreeqc, unicode, expr∘mainformula, name)
+            fil = filter(x-> !isnothing(x) && !ismissing(x) && (s == crit(x) || phreeqc_to_unicode(s) == crit(x) || unicode_to_phreeqc(s) == crit(x)) && (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) && (class == SC_UNDEF || class == x.class), species_list)
+            if length(fil) > 1
+                println(crayon"red bold"("Several species correspond to $s:"))
+                for x in fil
+                    println("∙ ", x)
+                end
+                println(crayon"red bold"("!!! In absence of more precision $(fil[1]) will be chosen !!!"))
+            end
+            if length(fil) > 0
+                return fil[1]
+            end
+        end
+        fil = filter(x-> !isnothing(x) && !ismissing(x) && composition(mainformula(x)) == parse_formula(s) && (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) && (class == SC_UNDEF || class == x.class), species_list)
+        if length(fil) > 1
+            println(crayon"red bold"("Several species correspond to $s:"))
+            for x in fil
+                println("∙ ", x)
+            end
+            println(crayon"red bold"("!!! In absence of more precision $(fil[1]) will be chosen !!!"))
+        end
+        if length(fil) > 0
+            return fil[1]
+        end
+        return S(s)
+    end
+end

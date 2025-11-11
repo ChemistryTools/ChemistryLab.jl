@@ -64,12 +64,12 @@ function remove_zeros(d::AbstractDict)
     return d
 end
 
-function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species; properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none)
+function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species; properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none, species_list=nothing)
     reactants, products, equal_sign = parse_equation(equation)
     r = Reaction(equation,
                     colored_equation(equation),
-                    ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in reactants if !iszero(v)), S, Number),
-                    ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in products if !iszero(v)), S, Number),
+                    ordered_dict_with_default((find_species(k, species_list) => stoich_coef_round(v) for (k, v) in reactants if !iszero(v)), S, Number),
+                    ordered_dict_with_default((find_species(k, species_list) => stoich_coef_round(v) for (k, v) in products if !iszero(v)), S, Number),
                     equal_sign,
                     OrderedDict{Symbol,PropertyType}(properties)
                     )
@@ -326,8 +326,8 @@ function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...)
         ) : (
         try func(v, args...; kwargs...); catch; v; end
         )
-    reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
-    prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
+    reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs...) => tryfunc(v) for (k,v) ∈ reactants(r))
+    prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs...) => tryfunc(v) for (k,v) ∈ products(r))
     newReaction = Reaction(reac, prod; equal_sign=get(kwargs, :equal_sign, equal_sign(r)), 
                                        properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in get(kwargs, :properties, properties(r))),
                                        side=get(kwargs, :side, :none))

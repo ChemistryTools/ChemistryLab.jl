@@ -54,6 +54,9 @@ const thermo_function_library = Dict(
     :Cp => :(a₀ + a₁*T + a₂/T^2 + a₃/√T + a₄*T^2 + a₅*T^3 + a₆*T^4 + a₇/T^3 + a₈/T + a₉*√T + a₁₀*log(T)),
     :CpoverT => :(a₀/T + a₁ + a₂/T^3 + a₃/T^(3/2) + a₄*T + a₅*T^2 + a₆*T^3 + a₇/T^4 + a₈/T^2 + a₉/√T + a₁₀*log(T)/T),
     :logKr => :(A₀ + A₁*T + A₂/T + A₃*log(T) + A₄/T^2 + A₅*T^2 + A₆*√T),
+    :∫Cp => :(((-1//2)*a₇) / (T^2) + (-a₂) / T + T*a₀ - T*a₁₀ + 2a₃*sqrt(T) + a₈*log(T) + (2//3)*(T^(3//2))*a₉ + (1//2)*(T^2)*a₁ + T*a₁₀*log(T) + (1//3)*(T^3)*a₄ + (1//4)*(T^4)*a₅ + (1//5)*(T^5)*a₆),
+    :∫CpoverT => :((-2a₃) / sqrt(T) + ((-1//3)*a₇) / (T^3) + ((-1//2)*a₂) / (T^2) + (-a₈) / T + T*a₁ + a₀*log(T) + (2//1)*a₉*sqrt(T) + (1//2)*(T^2)*a₄ + (1//2)*a₁₀*(log(T)^2) + (1//3)*(T^3)*a₅ + (1//4)*(T^4)*a₆),
+    :∫S => :(((1//2)*a₂) / T + ((1//6)*a₇) / (T^2) - T*a₀ + T*a₁₀ + T*a₋₁ - 4a₃*sqrt(T) - a₈*log(T) + (4//3)*(T^(3//2))*a₉ + (1//2)*(T^2)*a₁ + T*a₀*log(T) - T*a₁₀*log(T) + (1//6)*(T^3)*a₄ + (1//2)*T*a₁₀*(log(T)^2) + (1//12)*(T^4)*a₅ + (1//20)*(T^5)*a₆),
 )
 
 function ThermoFunction(sym::Symbol, params::AbstractVector{<:Number}; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))

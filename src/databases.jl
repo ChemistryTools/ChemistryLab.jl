@@ -704,17 +704,20 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
             s.Cp = ThermoFunction(:Cp, coeffa; ref=(T=Tref, P=Pref))
 
             ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            ∫Cp = ∫(s.Cp)
-            s.ΔfH = ΔfH0 + (∫Cp - ∫Cp(Tref))
+            # ∫Cp = ∫(s.Cp)
+            ∫Cp = ThermoFunction(:∫Cp, coeffa; ref=(T=Tref, P=Pref))
+            s.ΔfH = (ΔfH0 - ∫Cp(Tref)) + ∫Cp
 
             S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            CpoverT = ThermoFunction(:CpoverT, coeffa; ref=(T=Tref, P=Pref))
-            ∫CpoverT = ∫(CpoverT)
-            s.S = S0 + (∫CpoverT - ∫CpoverT(Tref))
+            # CpoverT = ThermoFunction(:CpoverT, coeffa; ref=(T=Tref, P=Pref))
+            # ∫CpoverT = ∫(CpoverT)
+            ∫CpoverT = ThermoFunction(:∫CpoverT, coeffa; ref=(T=Tref, P=Pref))
+            s.S = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
 
             ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
-            ∫S = ∫(s.S)
-            s.ΔfG = ΔfG0 - (∫S - ∫S(Tref))
+            # ∫S = ∫(s.S)
+            ∫S = ThermoFunction(:∫S, [S0 - ∫CpoverT(Tref); coeffa]; ref=(T=Tref, P=Pref))
+            s.ΔfG = (ΔfG0 + ∫S(Tref)) - ∫S
 
             Vm = get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar")
             s.Vm = with_units ? Vm/u"mol" : ustrip(Vm)
@@ -747,12 +750,6 @@ function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)
 end
 
 function complete_reaction_database!(df_reactions::DataFrame, df_substances::DataFrame; with_units=true, debug=false, all_properties=false)
-    d1 = Dict(zip(df_substances.formula, df_substances.species))
-    d2 = Dict(zip(df_substances.symbol, df_substances.species))
-    d3 = Dict(zip(parse_formula.(df_substances.formula), df_substances.species))
-    
-    find_species(k) = try d1[k] catch; try d2[k] catch; try d3[parse_formula(k)] catch; Species(k) end end end
-
     print_title("Reaction property completion"; crayon=Crayon(foreground=:red), style=:box, indent="")
 
     function populate_reaction(r, row)
@@ -778,7 +775,18 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
         return r
     end
 
-    reactions = @showprogress [populate_reaction(Reaction(Dict(find_species(k) => v for (k,v) in row.reactants if k != "e-")),row) for row in eachrow(df_reactions)]
+    function species_or_row_symbol(k, reaction_symbol)
+        if k == reaction_symbol
+            return k
+        end
+        if size(filter(x-> x.symbol == reaction_symbol && (x.formula == k || occursin(k, x.symbol)), df_substances), 1) == 1
+            return reaction_symbol
+        else
+            return k
+        end
+    end
+
+    reactions = @showprogress [populate_reaction(Reaction(Dict(find_species(species_or_row_symbol(k, row.symbol), df_substances.species) => v for (k,v) in row.reactants if k != "e-")), row) for row in eachrow(df_reactions)]
     insertcols!(df_reactions, :reaction => reactions)
 
     return df_reactions
