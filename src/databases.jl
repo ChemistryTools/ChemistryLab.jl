@@ -733,15 +733,16 @@ end
 
 function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)            
     TPMethods = row.TPMethods
-    idx = findfirst(d -> haskey(d, "method") && d["method"] == "logk_ft_coeffs", TPMethods)
+    idx = findfirst(d -> haskey(d, "method") && d["method"] == "logk_fpt_function", TPMethods)
     if !isnothing(idx)
         d = TPMethods[idx]
-        tuple_coefs = d["m_heat_capacity_ft_coeffs"]
+        tuple_coefs = d["logk_ft_coeffs"]
         values = tuple_coefs.values
         if debug>1 && !iszero(max(abs.(values[8:end])...)) println(crayon("$(row.symbol) => logKr=$values")) end
         if with_units
             units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
-            values = [values[i]*units[i] for i=1:min(length(values), length(units))]
+            # values = [values[i]*units[i] for i=1:min(length(values), length(units))]
+            values = [Quantity(values[i], units[i]) for i=1:min(length(values), length(units))]            
         end
         return values
     else

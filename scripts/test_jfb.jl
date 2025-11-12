@@ -218,7 +218,9 @@ for row in eachrow(df_reactions)
 end
 
 # Check consistency of logKr at Tref and logKr0 of the database
-for r in df_reactions.reaction println(r.logKr(), " == ", r.logKr0) end
+for r in df_reactions.reaction
+    println(r, " → ", r.logKr(), " == ", r.logKr0)
+end
 
 coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
 Cp = ThermoFunction(:Cp, coeffs)
@@ -243,6 +245,20 @@ for (re,ν) in r.reactants
 end
 for (pr,ν) in r.products
     println(pr, " ΔfG=", pr.ΔfG(Tref))
+end
+for (s, ν) in r
+    println(s, " ΔfG=", s.ΔfG(Tref))
+end
+
+for r in df_reactions.reaction
+    println(r)
+    println("     → logKr given at $(Tref) = ", r.logKr0)
+    println("     → logKr calculated at $(Tref) = ", r.logKr())
+    try
+        println("     → logKr=-∑νᵢΔfGᵢ(Tref)/(R Tref ln(10)) = ", -sum(ν*s.ΔfG(Tref) for (s,ν) in r)/(Constants.R*Tref)/log(10))
+    catch
+        println("     → logKr=-∑νᵢΔfGᵢ(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
+    end
 end
 
 # Construction of a Reaction from a string and a list of species (possibly with thermodynamic properties from a database)

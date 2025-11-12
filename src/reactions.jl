@@ -55,6 +55,47 @@ function Base.setproperty!(r::Reaction, sym::Symbol, value)
     return r
 end
 
+function Base.iterate(r::Reaction, state=(1, nothing))
+    idx, inner_state = state
+    if idx == 1
+        if inner_state === nothing
+            inner_state = iterate(reactants(r))
+        else
+            inner_state = iterate(reactants(r), inner_state)
+        end
+        if inner_state === nothing
+            return iterate(r, (2, nothing))
+        else
+            (k, v), new_state = inner_state
+            return (k, -v), (1, new_state)
+        end
+    elseif idx == 2
+        if inner_state === nothing
+            inner_state = iterate(products(r))
+        else
+            inner_state = iterate(products(r), inner_state)
+        end
+        if inner_state === nothing
+            return nothing
+        else
+            kv, new_state = inner_state
+            return kv, (2, new_state)
+        end
+    else
+        return nothing
+    end
+end
+
+function Base.keys(r::Reaction)
+    return Iterators.flatten((keys(reactants(r)), keys(products(r))))
+end
+
+function Base.values(r::Reaction)
+    vals1 = ( -v for v in values(reactants(r)) )
+    vals2 = values(products(r))
+    return Iterators.flatten((vals1, vals2))
+end
+
 function remove_zeros(d::AbstractDict)
     for (k,v) in d
         if iszero(v)
