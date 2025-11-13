@@ -167,7 +167,10 @@ function parse_phases(dat_content)
                     end
                 end
             elseif startswith(line, "-analytical_expression") && current_phase !== nothing
-                current_phase["analytical_expression"] = parse_float_array(line)
+                analytical_expression = parse_float_array(line)
+                # coef of log10 in .dat becomes a coef of log in .json
+                if length(analytical_expression)>3 analytical_expression[4] /= log(10) end
+                current_phase["analytical_expression"] = analytical_expression
             elseif startswith(line, "-Vm") && current_phase !== nothing
                 vm_parts = split(line)
                 if length(vm_parts) >= 2
@@ -764,13 +767,13 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
             coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
             r.logKr = ThermoFunction(:logKr, coefflogKr; ref=(T=Tref, P=Pref))
 
-            r.ΔrCp0 = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            r.ΔrH0 = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            r.ΔrG0 = get_value(row, :ΔrG; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            r.ΔrS0 = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+            r.ΔrCp_Tref = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+            r.ΔrH_Tref = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+            r.ΔrG_Tref = get_value(row, :ΔrG; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+            r.ΔrS_Tref = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
             ΔVm = get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=true, default_unit=u"J/bar")
-            r.ΔrV = with_units ? ΔVm/u"mol" : ustrip(ΔVm)
-            r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"1")
+            r.ΔrV_Tref = with_units ? ΔVm/u"mol" : ustrip(ΔVm)
+            r.logKr_Tref = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"1")
 
         end
         return r

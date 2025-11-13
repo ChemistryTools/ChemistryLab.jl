@@ -58,10 +58,12 @@ function Base.haskey(s::AbstractSpecies, sym::Symbol)
 end
 
 function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
-    if sym in fieldnames(typeof(s))
-        error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
-    else
-        properties(s)[sym] = value
+    if !ismissing(value)
+        if sym in fieldnames(typeof(s))
+            error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
+        else
+            properties(s)[sym] = value
+        end
     end
     return s
 end

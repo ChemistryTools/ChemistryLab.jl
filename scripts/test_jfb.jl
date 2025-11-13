@@ -217,9 +217,9 @@ for row in eachrow(df_reactions)
     end
 end
 
-# Check consistency of logKr at Tref and logKr0 of the database
+# Check consistency of logKr at Tref and logKr_Tref of the database
 for r in df_reactions.reaction
-    println(r, " → ", r.logKr(), " == ", r.logKr0)
+    println(r, " → ", r.logKr(), " == ", r.logKr_Tref)
 end
 
 coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
@@ -251,13 +251,15 @@ for (s, ν) in r
 end
 
 for r in df_reactions.reaction
-    println(r)
-    println("     → logKr given at $(Tref) = ", r.logKr0)
-    println("     → logKr calculated at $(Tref) = ", r.logKr())
-    try
-        println("     → logKr=-∑νᵢΔfGᵢ(Tref)/(R Tref ln(10)) = ", -sum(ν*s.ΔfG(Tref) for (s,ν) in r)/(Constants.R*Tref)/log(10))
-    catch
-        println("     → logKr=-∑νᵢΔfGᵢ(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
+    if true # abs((r.logKr_Tref -r.logKr())/r.logKr_Tref)>0.01
+        println(collect(keys(r))[1].symbol, " ", r)
+        println("     → logKr given at $(Tref) = ", r.logKr_Tref)
+        println("     → logKr calculated at $(Tref) = ", r.logKr())
+        try
+            println("     → logKr=-ΔrG(Tref)/(R Tref ln(10)) = ", -r.ΔrG(Tref)/(Constants.R*Tref)/log(10))
+        catch
+            println("     → logKr=-ΔrG(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
+        end
     end
 end
 

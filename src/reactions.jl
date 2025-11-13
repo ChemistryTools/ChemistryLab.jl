@@ -47,10 +47,12 @@ function Base.haskey(r::Reaction, sym::Symbol)
 end
 
 function Base.setproperty!(r::Reaction, sym::Symbol, value)
-    if sym in fieldnames(typeof(r))
-        error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
-    else
-        properties(r)[sym] = value
+    if !ismissing(value)
+        if sym in fieldnames(typeof(r))
+            error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
+        else
+            properties(r)[sym] = value
+        end
     end
     return r
 end
@@ -103,6 +105,25 @@ function remove_zeros(d::AbstractDict)
         end
     end
     return d
+end
+
+function complete_thermo_functions(r::Reaction)
+    species_list = keys(r)
+    if all(x->haskey(x, :Cp), species_list)
+        r.Cp = T -> sum(ν*s.Cp(T) for (s,ν) in r)
+    end
+    if all(x->haskey(x, :S), species_list)
+        r.ΔrS = T -> sum(ν*s.S(T) for (s,ν) in r)
+    end
+    if all(x->haskey(x, :ΔfH), species_list)
+        r.ΔrH = T -> sum(ν*s.ΔfH(T) for (s,ν) in r)
+    end
+    if all(x->haskey(x, :ΔfG), species_list)
+        r.ΔrG = T -> sum(ν*s.ΔfG(T) for (s,ν) in r)
+    end
+    if all(x->haskey(x, :Vm), species_list)
+        r.ΔrV = T -> sum(ν*s.Vm(T) for (s,ν) in r)
+    end
 end
 
 function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species; properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none, species_list=nothing)
@@ -195,13 +216,15 @@ function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP
     equation = sreac * " " * string(equal_sign) * " " * sprod
     colored = creac * " " * string(COL_PAR(string(equal_sign))) * " " * cprod
 
-    return Reaction(equation,
+    r = Reaction(equation,
                     colored,
                     OrderedDict{SR, TR}(reactants),
                     OrderedDict{SP, TP}(products),
                     equal_sign,
                     OrderedDict{Symbol,PropertyType}(properties)
                     )
+    complete_thermo_functions(r)
+    return r
 end
 
 function Reaction(species_stoich::AbstractDict{S, T}; equal_sign::Char='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
