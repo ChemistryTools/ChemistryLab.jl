@@ -1,6 +1,6 @@
 module ChemistryLab
 
-import Base: ==, +, -, *, /, //
+import Base: ==, +, -, *, /, //, ^
 using Crayons
 using CSV
 using DataFrames

@@ -109,20 +109,20 @@ end
 
 function complete_thermo_functions(r::Reaction)
     species_list = keys(r)
-    if all(x->haskey(x, :Cp), species_list)
-        r.Cp = T -> sum(ν*s.Cp(T) for (s,ν) in r)
+    if all(x->haskey(x, :Cp⁰), species_list)
+        r.ΔrCp⁰ = sum(ν*s.Cp⁰ for (s,ν) in r)
     end
-    if all(x->haskey(x, :S), species_list)
-        r.ΔrS = T -> sum(ν*s.S(T) for (s,ν) in r)
+    if all(x->haskey(x, :S⁰), species_list)
+        r.ΔrS⁰ = sum(ν*s.S⁰ for (s,ν) in r)
     end
-    if all(x->haskey(x, :ΔfH), species_list)
-        r.ΔrH = T -> sum(ν*s.ΔfH(T) for (s,ν) in r)
+    if all(x->haskey(x, :ΔfH⁰), species_list)
+        r.ΔrH⁰ = sum(ν*s.ΔfH⁰ for (s,ν) in r)
     end
-    if all(x->haskey(x, :ΔfG), species_list)
-        r.ΔrG = T -> sum(ν*s.ΔfG(T) for (s,ν) in r)
+    if all(x->haskey(x, :ΔfG⁰), species_list)
+        r.ΔrG⁰ = sum(ν*s.ΔfG⁰ for (s,ν) in r)
     end
     if all(x->haskey(x, :Vm), species_list)
-        r.ΔrV = T -> sum(ν*s.Vm(T) for (s,ν) in r)
+        r.ΔrV = sum(ν*s.Vm for (s,ν) in r)
     end
 end
 

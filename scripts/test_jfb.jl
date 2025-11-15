@@ -88,7 +88,7 @@ cemJennite = CemSpecies(Jennite)
 Jennite == cemJennite
 
 # Extraction of properties
-cemJennite.ΔfG = df_Jennite.ΔfG[1].values*uparse(df_Jennite.ΔfG[1].units)
+cemJennite.ΔfG⁰ = df_Jennite.ΔfG⁰[1].values*uparse(df_Jennite.ΔfG⁰[1].units)
 cemJennite
 
 # Equation parsing
@@ -183,20 +183,20 @@ lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
-coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
-cemJennite.Cp = ThermoFunction(:Cp, coeffs; ref=(T=298.15u"K", P=1u"bar"))
+coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
+cemJennite.Cp = ThermoFunction(:Cp, coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15u"K") ;
 @show cemJennite.Cp() ; # application by default on Tref
  # same without units
-cemJennite.Cp = ThermoFunction(:Cp, ustrip.(coeffs); ref=(T=298.15u"K", P=1u"bar"))
+cemJennite.Cp = ThermoFunction(:Cp, ustrip.(coeffs); ref=[:T=>298.15u"K", :P=>1u"bar"])
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
 
 using Plots
 lT = ((0:1:100) .+ 273.15).*u"K"
-@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH.(lT)))
+@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH⁰.(lT)))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for row in eachrow(df_reactions)
@@ -222,10 +222,10 @@ for r in df_reactions.reaction
     println(r, " → ", r.logKr(), " == ", r.logKr_Tref)
 end
 
-coeffs = [210.0u"J/K/mol", 0.120u"J/mol/K^2", -3.07e6u"J*K/mol", 0.0u"J/mol/√K"]
+coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
 Cp = ThermoFunction(:Cp, coeffs)
 
-rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [1.0, 2.0u"1/s", 3.0, 4.0u"1/√s"])
+rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
 rate(1u"s")
 
 for row in eachrow(df_reactions)
@@ -234,20 +234,20 @@ end
 
 r = dict_reactions["Cal"]
 Tref = 298.15u"K"
-ΔrG0(T) = sum(ν*re.ΔfG(T) for (re,ν) in r.products) - sum(ν*re.ΔfG(T) for (re,ν) in r.reactants)
-logK = -ΔrG0(Tref)/(Constants.R*Tref)/log(10)
-K(T) = 10^(-ΔrG0(T)/(Constants.R*T)/log(10))
-pK(T) = ΔrG0(T)/(Constants.R*T)/log(10)
+ΔrG⁰(T) = sum(ν*s.ΔfG⁰(T) for (s,ν) in r)
+logK = -ΔrG⁰(Tref)/(Constants.R*Tref)/log(10)
+K(T) = 10^(-ΔrG⁰(T)/(Constants.R*T)/log(10))
+pK(T) = ΔrG⁰(T)/(Constants.R*T)/log(10)
 r.logKr()
-plot(ustrip.(lT), ustrip.(ΔrG0.(lT)))
+plot(ustrip.(lT), ustrip.(ΔrG⁰.(lT)))
 for (re,ν) in r.reactants
-    println(re, " ΔfG=", re.ΔfG(Tref))
+    println(re, " ΔfG⁰=", re.ΔfG⁰(Tref))
 end
 for (pr,ν) in r.products
-    println(pr, " ΔfG=", pr.ΔfG(Tref))
+    println(pr, " ΔfG⁰=", pr.ΔfG⁰(Tref))
 end
 for (s, ν) in r
-    println(s, " ΔfG=", s.ΔfG(Tref))
+    println(s, " ΔfG⁰=", s.ΔfG⁰(Tref))
 end
 
 for r in df_reactions.reaction
@@ -256,9 +256,9 @@ for r in df_reactions.reaction
         println("     → logKr given at $(Tref) = ", r.logKr_Tref)
         println("     → logKr calculated at $(Tref) = ", r.logKr())
         try
-            println("     → logKr=-ΔrG(Tref)/(R Tref ln(10)) = ", -r.ΔrG(Tref)/(Constants.R*Tref)/log(10))
+            println("     → logKr=-ΔrG⁰(Tref)/(R Tref ln(10)) = ", -r.ΔrG⁰(Tref)/(Constants.R*Tref)/log(10))
         catch
-            println("     → logKr=-ΔrG(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
+            println("     → logKr=-ΔrG⁰(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
         end
     end
 end

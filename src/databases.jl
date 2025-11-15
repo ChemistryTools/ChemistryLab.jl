@@ -598,10 +598,10 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
             [parse_TPMethod(m) for m in get(s, "TPMethods", [])]
             for s in substances
         ],
-        Cp = [extract_field_with_units(s, "sm_heat_capacity_p") for s in substances],
-        ΔfG = [extract_field_with_units(s, "sm_gibbs_energy") for s in substances],
-        ΔfH = [extract_field_with_units(s, "sm_enthalpy") for s in substances],
-        S = [extract_field_with_units(s, "sm_entropy_abs") for s in substances],
+        Cp⁰ = [extract_field_with_units(s, "sm_heat_capacity_p") for s in substances],
+        ΔfG⁰ = [extract_field_with_units(s, "sm_gibbs_energy") for s in substances],
+        ΔfH⁰ = [extract_field_with_units(s, "sm_enthalpy") for s in substances],
+        S⁰ = [extract_field_with_units(s, "sm_entropy_abs") for s in substances],
         Vm = [extract_field_with_units(s, "sm_volume") for s in substances],
         datasources = [get(s, "datasources", missing) for s in substances],
     )
@@ -624,10 +624,10 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
             for r in reactions
         ],
         logKr = [extract_field_with_units(r, "logKr") for r in reactions],
-        ΔrCp = [extract_field_with_units(r, "drsm_heat_capacity_p") for r in reactions],
-        ΔrG = [extract_field_with_units(r, "drsm_gibbs_energy") for r in reactions],
-        ΔrH = [extract_field_with_units(r, "drsm_enthalpy") for r in reactions],
-        ΔrS = [extract_field_with_units(r, "drsm_entropy") for r in reactions],
+        ΔrCp⁰ = [extract_field_with_units(r, "drsm_heat_capacity_p") for r in reactions],
+        ΔrG⁰ = [extract_field_with_units(r, "drsm_gibbs_energy") for r in reactions],
+        ΔrH⁰ = [extract_field_with_units(r, "drsm_enthalpy") for r in reactions],
+        ΔrS⁰ = [extract_field_with_units(r, "drsm_entropy") for r in reactions],
         ΔrV = [extract_field_with_units(r, "drsm_volume") for r in reactions],
         datasources = [get(r, "datasources", missing) for r in reactions]
     )
@@ -669,11 +669,11 @@ function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)
         if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
         if with_units
             units = tuple_coefs.units
-            values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
+            values = [Symbol("a", subscriptnumber(i-1)) => float(values[i]*uparse(units[i])) for i=1:min(length(values), length(units))]
         end
         return values
     else
-        return [get_value(row, :Cp; debug=debug, crayon=crayon, with_units=with_units, default_unit=u"J/(mol*K)")]
+        return [:a₀ => get_value(row, :Cp⁰; debug=debug, crayon=crayon, with_units=with_units, default_unit=u"J/(mol*K)")]
     end
 end
 
@@ -702,25 +702,22 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         end
 
         if all_properties
-            coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
+            coeffa = get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units)
 
-            s.Cp = ThermoFunction(:Cp, coeffa; ref=(T=Tref, P=Pref))
+            s.Cp⁰ = ThermoFunction(:Cp, coeffa; ref=[:T=>Tref, :P=>Pref])
 
-            ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            # ∫Cp = ∫(s.Cp)
-            ∫Cp = ThermoFunction(:∫Cp, coeffa; ref=(T=Tref, P=Pref))
-            s.ΔfH = (ΔfH0 - ∫Cp(Tref)) + ∫Cp
+            ΔfH⁰ = get_value(row, :ΔfH⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+            ∫Cp = ∫(s.Cp⁰)
+            s.ΔfH⁰ = (ΔfH⁰ - ∫Cp(Tref)) + ∫Cp
 
-            S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            # CpoverT = ThermoFunction(:CpoverT, coeffa; ref=(T=Tref, P=Pref))
-            # ∫CpoverT = ∫(CpoverT)
-            ∫CpoverT = ThermoFunction(:∫CpoverT, coeffa; ref=(T=Tref, P=Pref))
-            s.S = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
+            S0 = get_value(row, :S⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+            CpoverT = ThermoFunction(:CpoverT, coeffa; ref=[:T=>Tref, :P=>Pref])
+            ∫CpoverT = ∫(CpoverT)
+            s.S⁰ = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
 
-            ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
-            # ∫S = ∫(s.S)
-            ∫S = ThermoFunction(:∫S, [S0 - ∫CpoverT(Tref); coeffa]; ref=(T=Tref, P=Pref))
-            s.ΔfG = (ΔfG0 + ∫S(Tref)) - ∫S
+            ΔfG⁰ = get_value(row, :ΔfG⁰; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
+            ∫S = ∫(s.S⁰)
+            s.ΔfG⁰ = (ΔfG⁰ + ∫S(Tref)) - ∫S
 
             Vm = get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar")
             s.Vm = with_units ? Vm/u"mol" : ustrip(Vm)
@@ -745,11 +742,11 @@ function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)
         if with_units
             units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
             # values = [values[i]*units[i] for i=1:min(length(values), length(units))]
-            values = [Quantity(values[i], units[i]) for i=1:min(length(values), length(units))]            
+            values = [Symbol("A", subscriptnumber(i-1)) => float(Quantity(values[i], units[i])) for i=1:min(length(values), length(units))]            
         end
         return values
     else
-        return [get_value(row, :logKr; debug=debug, crayon=crayon, with_units=false)]
+        return [:A₀ => get_value(row, :logKr; debug=debug, crayon=crayon, with_units=false)]
     end
 end
 
@@ -764,13 +761,13 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
         r.Pref = Pref
 
         if all_properties
-            coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units))
-            r.logKr = ThermoFunction(:logKr, coefflogKr; ref=(T=Tref, P=Pref))
+            coefflogKr = get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units)
+            r.logKr = ThermoFunction(:logKr, coefflogKr; ref=[:T=>Tref, :P=>Pref])
 
-            r.ΔrCp_Tref = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            r.ΔrH_Tref = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            r.ΔrG_Tref = get_value(row, :ΔrG; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            r.ΔrS_Tref = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+            r.ΔrCp⁰_Tref = get_value(row, :ΔrCp⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+            r.ΔrH⁰_Tref = get_value(row, :ΔrH⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+            r.ΔrG⁰_Tref = get_value(row, :ΔrG⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+            r.ΔrS⁰_Tref = get_value(row, :ΔrS⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
             ΔVm = get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=true, default_unit=u"J/bar")
             r.ΔrV_Tref = with_units ? ΔVm/u"mol" : ustrip(ΔVm)
             r.logKr_Tref = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"1")
