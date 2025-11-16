@@ -646,17 +646,21 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
     return df_elements, df_substances, df_reactions
 end
 
-function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=true, default_unit=u"1")            
-    val = row[field].values
-    vunit = row[field].units
-    if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
-        println(crayon("$(row.symbol) => $field=$val $vunit"))
-        print(crayon"reset")
+function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=true, default_unit=u"1")
+    if haskey(row, field)
+        val = row[field].values
+        vunit = row[field].units
+        if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
+            println(crayon("$(row.symbol) => $field=$val $vunit"))
+            print(crayon"reset")
+        end
+        if with_units
+            val = val*(try uparse(vunit) catch; default_unit end)
+        end
+        return val
+    else
+        return missing
     end
-    if with_units
-        val = val*(try uparse(vunit) catch; default_unit end)
-    end
-    return val
 end
 
 function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)            
@@ -673,7 +677,12 @@ function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)
         end
         return values
     else
-        return [:a₀ => get_value(row, :Cp⁰; debug=debug, crayon=crayon, with_units=with_units, default_unit=u"J/(mol*K)")]
+        Cp = get_value(row, :Cp⁰; debug=debug, crayon=crayon, with_units=with_units, default_unit=u"J/(mol*K)")
+        if !ismissing(Cp)
+            return [:a₀ => Cp]
+        else
+            return missing
+        end
     end
 end
 
@@ -704,23 +713,25 @@ function complete_species_database!(df_substances::DataFrame; with_units=true, d
         if all_properties
             coeffa = get_Cp_coef(row; debug=debug, crayon=crayon"green", with_units=with_units)
 
-            s.Cp⁰ = ThermoFunction(:Cp, coeffa; ref=[:T=>Tref, :P=>Pref])
+            if !ismissing(coeffa)
+                s.Cp⁰ = ThermoFunction(:Cp, coeffa; ref=[:T=>Tref, :P=>Pref])
 
-            ΔfH⁰ = get_value(row, :ΔfH⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
-            ∫Cp = ∫(s.Cp⁰)
-            s.ΔfH⁰ = (ΔfH⁰ - ∫Cp(Tref)) + ∫Cp
+                ΔfH⁰ = get_value(row, :ΔfH⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
+                ∫Cp = ∫(s.Cp⁰)
+                s.ΔfH⁰ = (ΔfH⁰ - ∫Cp(Tref)) + ∫Cp
 
-            S0 = get_value(row, :S⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
-            CpoverT = ThermoFunction(:CpoverT, coeffa; ref=[:T=>Tref, :P=>Pref])
-            ∫CpoverT = ∫(CpoverT)
-            s.S⁰ = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
+                S0 = get_value(row, :S⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
+                CpoverT = ThermoFunction(:CpoverT, coeffa; ref=[:T=>Tref, :P=>Pref])
+                ∫CpoverT = ∫(CpoverT)
+                s.S⁰ = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
 
-            ΔfG⁰ = get_value(row, :ΔfG⁰; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
-            ∫S = ∫(s.S⁰)
-            s.ΔfG⁰ = (ΔfG⁰ + ∫S(Tref)) - ∫S
+                ΔfG⁰ = get_value(row, :ΔfG⁰; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=u"J/mol")
+                ∫S = ∫(s.S⁰)
+                s.ΔfG⁰ = (ΔfG⁰ + ∫S(Tref)) - ∫S
 
-            Vm = get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar")
-            s.Vm = with_units ? Vm/u"mol" : ustrip(Vm)
+                Vm = get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar")
+                s.Vm = with_units ? Vm/u"mol" : ustrip(Vm)
+            end
         end
     end
 
@@ -736,17 +747,26 @@ function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)
     idx = findfirst(d -> haskey(d, "method") && d["method"] == "logk_fpt_function", TPMethods)
     if !isnothing(idx)
         d = TPMethods[idx]
-        tuple_coefs = d["logk_ft_coeffs"]
-        values = tuple_coefs.values
-        if debug>1 && !iszero(max(abs.(values[8:end])...)) println(crayon("$(row.symbol) => logKr=$values")) end
-        if with_units
-            units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
-            # values = [values[i]*units[i] for i=1:min(length(values), length(units))]
-            values = [Symbol("A", subscriptnumber(i-1)) => float(Quantity(values[i], units[i])) for i=1:min(length(values), length(units))]            
+        if haskey(d, "logk_ft_coeffs")
+            tuple_coefs = d["logk_ft_coeffs"]
+            values = tuple_coefs.values
+            if debug>1 && !iszero(max(abs.(values[8:end])...)) println(crayon("$(row.symbol) => logKr=$values")) end
+            if with_units
+                units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
+                # values = [values[i]*units[i] for i=1:min(length(values), length(units))]
+                values = [Symbol("A", subscriptnumber(i-1)) => float(Quantity(values[i], units[i])) for i=1:min(length(values), length(units))]            
+            end
+            return values
+        else
+            return missing
         end
-        return values
     else
-        return [:A₀ => get_value(row, :logKr; debug=debug, crayon=crayon, with_units=false)]
+        logKr = get_value(row, :logKr; debug=debug, crayon=crayon, with_units=false)
+        if !ismissing(logKr)
+            return [:A₀ => logKr]
+        else
+            return missing
+        end
     end
 end
 
@@ -762,7 +782,10 @@ function complete_reaction_database!(df_reactions::DataFrame, df_substances::Dat
 
         if all_properties
             coefflogKr = get_logKr_coef(row; debug=debug, crayon=crayon"green", with_units=with_units)
-            r.logKr = ThermoFunction(:logKr, coefflogKr; ref=[:T=>Tref, :P=>Pref])
+
+            if !ismissing(coefflogKr)
+                r.logKr = ThermoFunction(:logKr, coefflogKr; ref=[:T=>Tref, :P=>Pref])
+            end
 
             r.ΔrCp⁰_Tref = get_value(row, :ΔrCp⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/(mol*K)")
             r.ΔrH⁰_Tref = get_value(row, :ΔrH⁰; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=u"J/mol")
