@@ -45,7 +45,11 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=false, with_units=true, all_properties=true) # debug only for conception phase (not to be put in the doc)
+# df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
+# Or sequentially substances then reactions (with potential reference to substances in reactions in order to link with species with proper aggregate_states and classes as well as thermodynamic data)
+df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_units=true, add_species=true, all_properties=true, debug=false)
+df_reactions = read_thermofun_reactions("data/cemdata18-merged.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
+# Construction of Dicts for convenience 
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
 # filter(p->!haskey(p.second, :Cp), dict_species)

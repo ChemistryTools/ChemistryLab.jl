@@ -56,7 +56,7 @@ export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GASFLUID
 export AbstractSpecies, Species, CemSpecies
 export name, symbol, formula, mendeleev_filter, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, aggregate_state, class, properties
-export merge_json, read_thermofun, extract_primary_species
+export merge_json, read_thermofun_substances, read_thermofun_reactions, read_thermofun_elements, read_thermofun, extract_primary_species
 export union_atoms, print_stoich_matrix, canonical_stoich_matrix, stoich_matrix, stoich_matrix_to_equations, stoich_matrix_to_reactions
 export Reaction, CemReaction, reactants, products, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...) 

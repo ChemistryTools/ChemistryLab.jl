@@ -40,25 +40,6 @@ using JSON3
         @test isempty(ChemistryLab.parse_float_array("# only comment"))
     end
     
-    # Test get_aqueous_species
-    @testset "get_aqueous_species" begin
-        json_data = Dict(
-            "substances" => [
-                Dict(
-                    "symbol" => "H2O@",
-                    "aggregate_state" => Dict("4" => "AS_AQUEOUS")
-                ),
-                Dict(
-                    "symbol" => "CaCO3",
-                    "aggregate_state" => Dict("3" => "AS_CRYSTAL")
-                )
-            ]
-        )
-        species = ChemistryLab.get_aqueous_species(json_data)
-        @test "H2O" in species
-        @test !("CaCO3" in species)
-    end
-    
     # Test parse_phases
     @testset "parse_phases" begin
         dat_content = """
