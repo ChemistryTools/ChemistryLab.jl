@@ -37,19 +37,6 @@ Try it locally
 --------------
 The repository contains a `docs` folder with Documenter sources and a `make.jl` script. To build the documentation locally from the project root, activate the docs environment and run the make script:
 
-```powershell
-# from the project root (Windows PowerShell)
-julia --project=docs docs/make.jl
-```
-
-Alternatively, ensure the package environment is prepared and run Documenter through the package project:
-
-```powershell
-julia --project=. -e "using Pkg; Pkg.instantiate(); include(\"docs/make.jl\")"
-```
-
-After the build completes, open `docs/build/index.html` in a browser to read the rendered tutorial and follow the example pages.
-
 Quick tips
 ----------
 - In the REPL try small calls like `using ChemistryLab; Species("CaCO3")` and `Formula("SO4-2")` to explore parsing behavior interactively.
