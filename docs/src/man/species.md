@@ -93,7 +93,7 @@ using DynamicQuantities, ModelingToolkit
 CO₂.ΔfG⁰ = -394.39u"kJ/mol"
 ```
 
-Heat capacity, on the other hand, is introduced in the following way:
+Heat capacity, on the other hand, is introduced in the following way: 
 
 ```@example CO2
 coeffs = [:a₀ => 44.22u"J/K/mol", :a₁ => 0.0088u"J/mol/K^2", :a₂ => -861.904e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
