@@ -18,7 +18,6 @@ makedocs(;
         ),
     pages=[
         "Home" => "index.md",
-        "Quickstart" => "quickstart.md",
         "Tutorial" => [
             "man/formula_manipulation.md",
             "man/species.md",
