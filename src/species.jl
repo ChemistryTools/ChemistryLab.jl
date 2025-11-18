@@ -1,26 +1,163 @@
+"""
+    @enum AggregateState
+
+Enumeration for species aggregate states.
+
+# Values
+
+  - `AS_UNDEF`: undefined state.
+  - `AS_AQUEOUS`: aqueous solution.
+  - `AS_CRYSTAL`: crystalline solid.
+  - `AS_GAS`: gas phase.
+"""
 @enum AggregateState AS_UNDEF AS_AQUEOUS AS_CRYSTAL AS_GAS
 
+"""
+    @enum Class
+
+Enumeration for species chemical classes.
+
+# Values
+
+  - `SC_UNDEF`: undefined class.
+  - `SC_AQSOLVENT`: aqueous solvent.
+  - `SC_AQSOLUTE`: aqueous solute.
+  - `SC_COMPONENT`: component.
+  - `SC_GASFLUID`: gas or fluid.
+"""
 @enum Class SC_UNDEF SC_AQSOLVENT SC_AQSOLUTE SC_COMPONENT SC_GASFLUID
 
+"""
+    abstract type AbstractSpecies end
+
+Abstract base type for all chemical species representations.
+
+All concrete species types (`Species`, `CemSpecies`) inherit from this type.
+"""
 abstract type AbstractSpecies end
 
-const PropertyType = Union{Number,AbstractVector{<:Number},Function,Callable,AbstractString,Missing}
+const PropertyType = Union{
+    Number,AbstractVector{<:Number},Function,Callable,AbstractString,Missing
+}
 
-Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(formula(s1), formula(s2)) && isequal(aggregate_state(s1), aggregate_state(s2)) && isequal(class(s1), class(s2))
+"""
+    Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) -> Bool
+
+Compare two species for equality based on formula, aggregate state, and class.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> s2 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> s1 == s2
+true
+```
+"""
+function Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies)
+    isequal(formula(s1), formula(s2)) &&
+        isequal(aggregate_state(s1), aggregate_state(s2)) &&
+        isequal(class(s1), class(s2))
+end
 ==(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(s1, s2)
-Base.hash(s::AbstractSpecies, h::UInt) = hash(symbol(s), hash(formula(s), hash(aggregate_state(s), hash(class(s), h))))
 
+"""
+    Base.hash(s::AbstractSpecies, h::UInt) -> UInt
+
+Compute hash for a species based on symbol, formula, aggregate state, and class.
+"""
+function Base.hash(s::AbstractSpecies, h::UInt)
+    hash(symbol(s), hash(formula(s), hash(aggregate_state(s), hash(class(s), h))))
+end
+
+"""
+    name(s::AbstractSpecies) -> String
+
+Return the name of the species.
+"""
 name(s::AbstractSpecies) = s.name
+
+"""
+    symbol(s::AbstractSpecies) -> String
+
+Return the symbol of the species.
+"""
 symbol(s::AbstractSpecies) = s.symbol
+
+"""
+    formula(s::AbstractSpecies) -> Formula
+
+Return the Formula object associated with the species.
+"""
 formula(s::AbstractSpecies) = s.formula
+
+"""
+    atoms(s::AbstractSpecies) -> OrderedDict{Symbol,Number}
+
+Return the atomic composition (element => coefficient) of the species.
+"""
 atoms(s::AbstractSpecies) = composition(formula(s))
+
+"""
+    charge(s::AbstractSpecies) -> Int8
+
+Return the formal charge of the species.
+"""
 charge(s::AbstractSpecies) = charge(formula(s))
+
+"""
+    aggregate_state(s::AbstractSpecies) -> AggregateState
+
+Return the aggregate state of the species.
+"""
 aggregate_state(s::AbstractSpecies) = s.aggregate_state
+
+"""
+    class(s::AbstractSpecies) -> Class
+
+Return the chemical class of the species.
+"""
 class(s::AbstractSpecies) = s.class
+
+"""
+    properties(s::AbstractSpecies) -> OrderedDict{Symbol,PropertyType}
+
+Return the properties dictionary of the species.
+"""
 properties(s::AbstractSpecies) = s.properties
+
+"""
+    check_mendeleev(s::AbstractSpecies) -> Bool
+
+Validate that all element symbols in the species exist in the periodic table.
+"""
 check_mendeleev(s::AbstractSpecies) = check_mendeleev(formula(s))
+
+"""
+    mendeleev_filter(s::AbstractSpecies) -> Union{AbstractSpecies,Nothing}
+
+Return the species if valid according to Mendeleev check, otherwise `nothing`.
+"""
 mendeleev_filter(s::AbstractSpecies) = check_mendeleev(s) ? s : nothing
 
+"""
+    atoms_charge(s::AbstractSpecies) -> OrderedDict{Symbol,Number}
+
+Return atomic composition including the charge as a :Zz key if non-zero.
+
+# Examples
+
+```jldoctest
+julia> s = Species("Ca+2");
+
+julia> atoms_charge(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :Ca => 1
+  :Zz => 2
+```
+"""
 function atoms_charge(s::AbstractSpecies)
     z = charge(s)
     if iszero(z)
@@ -32,6 +169,25 @@ function atoms_charge(s::AbstractSpecies)
     end
 end
 
+"""
+    Base.getindex(s::AbstractSpecies, i::Symbol) -> Any
+
+Access species components, atoms, or properties by symbol key.
+
+Returns 0 if the key is not found.
+
+# Examples
+
+```jldoctest
+julia> s = Species("H2O");
+
+julia> s[:H]
+2
+
+julia> s[:N]
+0
+```
+"""
 function Base.getindex(s::AbstractSpecies, i::Symbol)
     coef = get(components(s), i, get(atoms(s), i, get(properties(s), i, nothing)))
     if isnothing(coef)
@@ -41,8 +197,20 @@ function Base.getindex(s::AbstractSpecies, i::Symbol)
     return coef
 end
 
+"""
+    Base.setindex!(s::AbstractSpecies, value, i::Symbol)
+
+Set a property value for the species.
+"""
 Base.setindex!(s::AbstractSpecies, value, i::Symbol) = setindex!(properties(s), value, i)
 
+"""
+    Base.getproperty(s::AbstractSpecies, sym::Symbol) -> Any
+
+Access species fields or registered properties.
+
+Throws an error if the symbol is neither a field nor a property.
+"""
 function Base.getproperty(s::AbstractSpecies, sym::Symbol)
     if sym in fieldnames(typeof(s))
         return getfield(s, sym)
@@ -53,14 +221,28 @@ function Base.getproperty(s::AbstractSpecies, sym::Symbol)
     end
 end
 
+"""
+    Base.haskey(s::AbstractSpecies, sym::Symbol) -> Bool
+
+Check if a property key exists in the species properties dictionary.
+"""
 function Base.haskey(s::AbstractSpecies, sym::Symbol)
     return haskey(properties(s), sym)
 end
 
+"""
+    Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
+
+Set a property value, preventing direct modification of structural fields.
+
+Throws an error if attempting to modify a structural field directly.
+"""
 function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     if !ismissing(value)
         if sym in fieldnames(typeof(s))
-            error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
+            error(
+                "Cannot modify field '$sym' directly. Use constructor or dedicated methods."
+            )
         else
             properties(s)[sym] = value
         end
@@ -68,12 +250,42 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     return s
 end
 
+"""
+    ordered_dict_with_default(gen, key_type, val_type) -> OrderedDict
+
+Create an OrderedDict from a generator, ensuring proper typing even when empty.
+"""
 function ordered_dict_with_default(gen, key_type, val_type)
     d = OrderedDict(gen)
-    isempty(d) && (d = OrderedDict{key_type, val_type}())
+    isempty(d) && (d = OrderedDict{key_type,val_type}())
     return d
 end
 
+"""
+    struct Species{T<:Number} <: AbstractSpecies
+
+Standard chemical species representation using atomic composition.
+
+# Fields
+
+  - `name::String`: human-readable name.
+  - `symbol::String`: species symbol.
+  - `formula::Formula{T}`: chemical formula with stoichiometric coefficients.
+  - `aggregate_state::AggregateState`: physical state.
+  - `class::Class`: chemical class.
+  - `properties::OrderedDict{Symbol,PropertyType}`: thermodynamic and other properties.
+
+# Examples
+
+```jldoctest
+julia> s = Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS);
+
+julia> atoms(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :H => 2
+  :O => 1
+```
+"""
 struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
@@ -83,24 +295,194 @@ struct Species{T<:Number} <: AbstractSpecies
     properties::OrderedDict{Symbol,PropertyType}
 end
 
+"""
+    expr(s::Species) -> String
+
+Return the original expression string of the species formula.
+"""
 expr(s::Species) = expr(formula(s))
+
+"""
+    phreeqc(s::Species) -> String
+
+Return the PHREEQC-compatible representation of the species formula.
+"""
 phreeqc(s::Species) = phreeqc(formula(s))
+
+"""
+    unicode(s::Species) -> String
+
+Return the Unicode pretty representation of the species formula.
+"""
 unicode(s::Species) = unicode(formula(s))
+
+"""
+    colored(s::Species) -> String
+
+Return the colored terminal representation of the species formula.
+"""
 colored(s::Species) = colored(formula(s))
+
+"""
+    components(s::Species) -> OrderedDict{Symbol,Number}
+
+Return the components of a Species (atomic composition with charge).
+"""
 components(s::Species) = atoms_charge(s)
+
+"""
+    mainformula(s::Species) -> Formula
+
+Return the main formula representation for the species.
+"""
 mainformula(s::Species) = s.formula
 
-function Species(formula::Formula; name=expr(formula), symbol=expr(formula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
+"""
+    Species(formula::Formula; name, symbol, aggregate_state, class, properties) -> Species
+
+Construct a Species from a Formula object.
+
+# Arguments
+
+  - `formula`: Formula object with atomic composition.
+  - `name`: species name (default: formula expression).
+  - `symbol`: species symbol (default: formula expression).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+
+# Examples
+
+```jldoctest
+julia> f = Formula("NaCl");
+
+julia> s = Species(f; name="Sodium chloride", aggregate_state=AS_CRYSTAL);
+
+julia> name(s)
+"Sodium chloride"
+```
+"""
+function Species(
+    formula::Formula;
+    name=expr(formula),
+    symbol=expr(formula),
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
     atoms = composition(formula)
-    if !haskey(properties, :M) properties[:M] = calculate_molar_mass(atoms) end
-    return mendeleev_filter(Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)))
+    if !haskey(properties, :M)
+        properties[:M] = calculate_molar_mass(atoms)
+    end
+    return mendeleev_filter(
+        Species{valtype(atoms)}(
+            name,
+            symbol,
+            formula,
+            aggregate_state,
+            class,
+            OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        ),
+    )
 end
 
-Species(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = Species(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Species(; expr, name, symbol, aggregate_state, class, properties) -> Species
 
-Species(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = Species(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+Construct a Species from keyword arguments.
 
-function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
+# Arguments
+
+  - `expr`: formula string to parse (default: "").
+  - `name`: species name (default: expr).
+  - `symbol`: species symbol (default: expr).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+"""
+function Species(;
+    expr::AbstractString="",
+    name=expr,
+    symbol=expr,
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
+    Species(
+        Formula(expr);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
+
+"""
+    Species(f::AbstractString; name, symbol, aggregate_state, class, properties) -> Species
+
+Construct a Species from a formula string.
+
+# Arguments
+
+  - `f`: formula string to parse.
+  - `name`: species name (default: f).
+  - `symbol`: species symbol (default: f).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+
+# Examples
+
+```jldoctest
+julia> s = Species("Ca+2"; aggregate_state=AS_AQUEOUS);
+
+julia> charge(s)
+2
+```
+"""
+function Species(
+    f::AbstractString;
+    name=f,
+    symbol=f,
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
+    Species(;
+        expr=f,
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
+
+"""
+    Species(atoms::AbstractDict{Symbol,T}, charge=0; name, symbol, aggregate_state, class, properties) where {T} -> Species
+
+Construct a Species from an atomic composition dictionary.
+
+# Arguments
+
+  - `atoms`: dictionary mapping element symbols to stoichiometric coefficients.
+  - `charge`: formal charge (default 0).
+  - `name`: species name (default: computed from formula).
+  - `symbol`: species symbol (default: name).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+"""
+function Species(
+    atoms::AbstractDict{Symbol,T},
+    charge=0;
+    name="",
+    symbol="",
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+) where {T}
     formula = Formula(atoms, charge)
     if length(name) == 0
         name = unicode(formula)
@@ -108,29 +490,144 @@ function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="", ag
     if length(symbol) == 0
         symbol = name
     end
-    return Species(formula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+    return Species(
+        formula;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function Species(atoms::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
-    return Species(OrderedDict(atoms...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Species(atoms::Pair{Symbol,T}...; name, symbol, aggregate_state, class, properties) where {T} -> Species
+
+Construct a Species from element => coefficient pairs.
+
+# Examples
+
+```jldoctest
+julia> s = Species(:H => 2, :O => 1; name="Water");
+
+julia> atoms(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :H => 2
+  :O => 1
+```
+"""
+function Species(
+    atoms::Pair{Symbol,T}...;
+    name="",
+    symbol="",
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+) where {T}
+    return Species(
+        OrderedDict(atoms...);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function Base.convert(::Type{Species{T}}, s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {T}
-    return Species(convert(T, formula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Base.convert(::Type{Species{T}}, s::Species; kwargs...) where {T} -> Species{T}
+
+Convert a Species to a different stoichiometric coefficient type.
+
+# Arguments
+
+  - `s`: source Species.
+  - `name`: override name (default: keep original).
+  - `symbol`: override symbol (default: keep original).
+  - `aggregate_state`: override state (default: keep original).
+  - `class`: override class (default: keep original).
+  - `properties`: override properties (default: keep original).
+"""
+function Base.convert(
+    ::Type{Species{T}},
+    s::Species;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+) where {T}
+    return Species(
+        convert(T, formula(s));
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function Species{T}(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {T}
-    return convert(Species{T}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Species{T}(s::Species; kwargs...) where {T} -> Species{T}
+
+Construct a Species with a specific coefficient type from another Species.
+"""
+function Species{T}(
+    s::Species;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+) where {T}
+    return convert(
+        Species{T},
+        s;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function Species(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
-    return Species(formula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Species(s::Species; kwargs...) -> Species
+
+Copy constructor for Species with optional field overrides.
+"""
+function Species(
+    s::Species;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+)
+    return Species(
+        formula(s);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
+"""
+    Base.show(io::IO, s::Species)
+
+Compact single-line representation of a Species.
+"""
 function Base.show(io::IO, s::Species)
     print(io, symbol(s), " {", name(s), "} [", formula(s), "]")
 end
 
+"""
+    Base.show(io::IO, ::MIME"text/plain", s::Species)
+
+Detailed multi-line REPL display for Species.
+"""
 function Base.show(io::IO, ::MIME"text/plain", s::Species)
     pad = 15
     println(io, typeof(s))
@@ -148,10 +645,41 @@ function Base.show(io::IO, ::MIME"text/plain", s::Species)
     pr = length(properties(s)) > 0 ? println : print
     pr(io, lpad("class", pad), ": ", class(s))
     if length(properties(s)) > 0
-        print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
+        print(
+            io,
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
     end
 end
 
+"""
+    struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
+
+Cement chemistry species representation using oxide notation.
+
+# Fields
+
+  - `name::String`: human-readable name.
+  - `symbol::String`: species symbol.
+  - `formula::Formula{T}`: atomic composition formula.
+  - `cemformula::Formula{S}`: oxide notation formula.
+  - `aggregate_state::AggregateState`: physical state.
+  - `class::Class`: chemical class.
+  - `properties::OrderedDict{Symbol,PropertyType}`: thermodynamic and other properties.
+
+# Examples
+
+```jldoctest
+julia> s = CemSpecies("C3A"; name="Tricalcium aluminate");
+
+julia> oxides(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :C => 3
+  :A => 1
+```
+"""
 struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
     name::String
     symbol::String
@@ -162,13 +690,60 @@ struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
     properties::OrderedDict{Symbol,PropertyType}
 end
 
+"""
+    cemformula(s::CemSpecies) -> Formula
+
+Return the oxide notation formula of the cement species.
+"""
 cemformula(s::CemSpecies) = s.cemformula
+
+"""
+    mainformula(s::CemSpecies) -> Formula
+
+Return the main formula representation (oxide notation) for the cement species.
+"""
 mainformula(s::CemSpecies) = s.cemformula
+
+"""
+    expr(s::CemSpecies) -> String
+
+Return the expression string of the cement formula.
+"""
 expr(s::CemSpecies) = expr(cemformula(s))
+
+"""
+    phreeqc(s::CemSpecies) -> String
+
+Return the PHREEQC-compatible representation of the cement formula.
+"""
 phreeqc(s::CemSpecies) = phreeqc(cemformula(s))
+
+"""
+    unicode(s::CemSpecies) -> String
+
+Return the Unicode representation of the cement formula.
+"""
 unicode(s::CemSpecies) = unicode(cemformula(s))
+
+"""
+    colored(s::CemSpecies) -> String
+
+Return the colored terminal representation of the cement formula.
+"""
 colored(s::CemSpecies) = colored(cemformula(s))
+
+"""
+    oxides(s::CemSpecies) -> OrderedDict{Symbol,Number}
+
+Return the oxide composition of the cement species.
+"""
 oxides(s::CemSpecies) = composition(cemformula(s))
+
+"""
+    oxides_charge(s::CemSpecies) -> OrderedDict{Symbol,Number}
+
+Return oxide composition including the charge as a :Zz key if non-zero.
+"""
 function oxides_charge(s::CemSpecies)
     z = charge(s)
     if iszero(z)
@@ -179,20 +754,129 @@ function oxides_charge(s::CemSpecies)
         return ac
     end
 end
+
+"""
+    components(s::CemSpecies) -> OrderedDict{Symbol,Number}
+
+Return the components of a CemSpecies (oxide composition with charge).
+"""
 components(s::CemSpecies) = oxides_charge(s)
 
-function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemformula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
+"""
+    CemSpecies(cemformula::Formula; name, symbol, aggregate_state, class, properties) -> CemSpecies
+
+Construct a CemSpecies from an oxide formula.
+
+# Arguments
+
+  - `cemformula`: Formula object in oxide notation.
+  - `name`: species name (default: formula expression).
+  - `symbol`: species symbol (default: formula expression).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+"""
+function CemSpecies(
+    cemformula::Formula;
+    name=expr(cemformula),
+    symbol=expr(cemformula),
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
-    if !haskey(properties, :M) properties[:M] = calculate_molar_mass(atoms) end
-    return mendeleev_filter(CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, aggregate_state, class, properties))
+    if !haskey(properties, :M)
+        properties[:M] = calculate_molar_mass(atoms)
+    end
+    return mendeleev_filter(
+        CemSpecies{valtype(atoms),valtype(composition(cemformula))}(
+            name, symbol, formula, cemformula, aggregate_state, class, properties
+        ),
+    )
 end
 
-CemSpecies(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = CemSpecies(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    CemSpecies(; expr, name, symbol, aggregate_state, class, properties) -> CemSpecies
 
-CemSpecies(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = CemSpecies(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+Construct a CemSpecies from keyword arguments with an oxide formula string.
+"""
+function CemSpecies(;
+    expr::AbstractString="",
+    name=expr,
+    symbol=expr,
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
+    CemSpecies(
+        Formula(expr);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
 
-function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
+"""
+    CemSpecies(f::AbstractString; name, symbol, aggregate_state, class, properties) -> CemSpecies
+
+Construct a CemSpecies from an oxide formula string.
+
+# Examples
+
+```jldoctest
+julia> s = CemSpecies("C3S"; name="Alite");
+
+julia> oxides(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :C => 3
+  :S => 1
+```
+"""
+function CemSpecies(
+    f::AbstractString;
+    name=f,
+    symbol=f,
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+)
+    CemSpecies(;
+        expr=f,
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
+
+"""
+    CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name, symbol, aggregate_state, class, properties) where {T} -> CemSpecies
+
+Construct a CemSpecies from an oxide composition dictionary.
+
+# Arguments
+
+  - `oxides`: dictionary mapping oxide symbols to stoichiometric coefficients.
+  - `charge`: formal charge (default 0).
+  - `name`: species name (default: computed from formula).
+  - `symbol`: species symbol (default: name).
+  - `aggregate_state`: physical state (default: AS_UNDEF).
+  - `class`: chemical class (default: SC_UNDEF).
+  - `properties`: property dictionary (default: empty OrderedDict).
+"""
+function CemSpecies(
+    oxides::AbstractDict{Symbol,T},
+    charge=0;
+    name="",
+    symbol="",
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+) where {T}
     cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
     if length(name) == 0
         name = unicode(cemformula)
@@ -200,33 +884,119 @@ function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol=""
     if length(symbol) == 0
         symbol = name
     end
-    return CemSpecies(cemformula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+    return CemSpecies(
+        cemformula;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
-    return CemSpecies(OrderedDict(oxides...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    CemSpecies(oxides::Pair{Symbol,T}...; name, symbol, aggregate_state, class, properties) where {T} -> CemSpecies
+
+Construct a CemSpecies from oxide => coefficient pairs.
+
+# Examples
+
+```jldoctest
+julia> s = CemSpecies(:C => 3, :S => 2; name="C3S2");
+
+julia> oxides(s)
+OrderedDict{Symbol, Int64} with 2 entries:
+  :C => 3
+  :S => 2
+```
+"""
+function CemSpecies(
+    oxides::Pair{Symbol,T}...;
+    name="",
+    symbol="",
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
+) where {T}
+    return CemSpecies(
+        OrderedDict(oxides...);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
+"""
+    CemSpecies(s::Species; name, symbol, aggregate_state, class, properties) -> CemSpecies
+
+Convert a Species to CemSpecies by decomposing into oxide notation.
+
+Throws an error if the species cannot be decomposed into cement oxides.
+
+# Arguments
+
+  - `s`: source Species.
+  - `name`: override name (default: keep original).
+  - `symbol`: override symbol (default: keep original).
+  - `aggregate_state`: override state (default: keep original).
+  - `class`: override class (default: keep original).
+  - `properties`: override properties (default: keep original).
+"""
+function CemSpecies(
+    s::Species;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+)
     satoms = atoms(s)
     b = zeros(valtype(satoms), size(Aoxides, 1))
     for (atom, coef) in satoms
-        if atom ∉ atoms_in_oxides
-            error("$(name) cannot be decomposed in cement oxides since $(atom) does not belong to cement atoms")
+        if atom ∉ atoms_in_oxides
+            error(
+                "$(name) cannot be decomposed in cement oxides since $(atom) does not belong to cement atoms",
+            )
         else
             b[order_atom_in_oxides[atom]] = coef
         end
     end
-    x = stoich_coef_round.(Aoxides\b)
-    bcalc = stoich_coef_round.(Aoxides*x)
-    if try isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4) catch; false end
-        oxides = OrderedDict(OXIDE_ORDER[i] => vx for (i,vx) in enumerate(x) if !iszero(vx))
-        return CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+    x = stoich_coef_round.(Aoxides \ b)
+    bcalc = stoich_coef_round.(Aoxides * x)
+    if try
+        isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4)
+    catch
+        false
+    end
+        oxides = OrderedDict(
+            OXIDE_ORDER[i] => vx for (i, vx) in enumerate(x) if !iszero(vx)
+        )
+        return CemSpecies(
+            oxides,
+            charge(s);
+            name=name,
+            symbol=symbol,
+            aggregate_state=aggregate_state,
+            class=class,
+            properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        )
     else
         A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; display=false)
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
         if !isempty(oxides)
-            cemspecies = CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+            cemspecies = CemSpecies(
+                oxides,
+                charge(s);
+                name=name,
+                symbol=symbol,
+                aggregate_state=aggregate_state,
+                class=class,
+                properties=OrderedDict{Symbol,PropertyType}(
+                    k => v for (k, v) in properties
+                ),
+            )
             if cemspecies == s
                 return cemspecies
             end
@@ -235,30 +1005,171 @@ function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=
     error("$(name) cannot be decomposed in cement oxides")
 end
 
-Species(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species{valtype(atoms(s))}(name, symbol, formula(s), aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Species(s::CemSpecies; name, symbol, aggregate_state, class, properties) -> Species
 
-Base.convert(::Type{<:Species}, s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species(s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+Convert a CemSpecies to Species using atomic composition.
 
-function Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S}
-    return CemSpecies(convert(S, cemformula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+# Arguments
+
+  - `s`: source CemSpecies.
+  - `name`: override name (default: keep original).
+  - `symbol`: override symbol (default: keep original).
+  - `aggregate_state`: override state (default: keep original).
+  - `class`: override class (default: keep original).
+  - `properties`: override properties (default: keep original).
+"""
+function Species(
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+)
+    Species{valtype(atoms(s))}(
+        name,
+        symbol,
+        formula(s),
+        aggregate_state,
+        class,
+        OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function CemSpecies{S}(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S}
-    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Base.convert(::Type{<:Species}, s::CemSpecies; kwargs...) -> Species
+
+Convert a CemSpecies to Species type.
+"""
+function Base.convert(
+    ::Type{<:Species},
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+)
+    Species(
+        s;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function CemSpecies{S,T}(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S,T}
-    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
+
+Convert a CemSpecies to a different stoichiometric coefficient type.
+"""
+function Base.convert(
+    ::Type{CemSpecies{S}},
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+) where {S}
+    return CemSpecies(
+        convert(S, cemformula(s));
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
-function CemSpecies(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
-    return CemSpecies(cemformula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+"""
+    CemSpecies{S}(s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
+
+Construct a CemSpecies with a specific coefficient type from another CemSpecies.
+"""
+function CemSpecies{S}(
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+) where {S}
+    return convert(
+        CemSpecies{S},
+        s;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
+"""
+    CemSpecies{S,T}(s::CemSpecies; kwargs...) where {S,T} -> CemSpecies{S,T}
+
+Construct a CemSpecies with specific coefficient types from another CemSpecies.
+"""
+function CemSpecies{S,T}(
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+) where {S,T}
+    return convert(
+        CemSpecies{S},
+        s;
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
+
+"""
+    CemSpecies(s::CemSpecies; kwargs...) -> CemSpecies
+
+Copy constructor for CemSpecies with optional field overrides.
+"""
+function CemSpecies(
+    s::CemSpecies;
+    name=name(s),
+    symbol=symbol(s),
+    aggregate_state=aggregate_state(s),
+    class=class(s),
+    properties=properties(s),
+)
+    return CemSpecies(
+        cemformula(s);
+        name=name,
+        symbol=symbol,
+        aggregate_state=aggregate_state,
+        class=class,
+        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
+end
+
+"""
+    Base.show(io::IO, s::CemSpecies)
+
+Compact single-line representation of a CemSpecies.
+"""
 function Base.show(io::IO, s::CemSpecies)
     print(io, symbol(s), " {", name(s), "} [", cemformula(s), "]")
 end
 
+"""
+    Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
+
+Detailed multi-line REPL display for CemSpecies.
+"""
 function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
     pad = 15
     println(io, typeof(s))
@@ -281,10 +1192,20 @@ function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
     pr = length(properties(s)) > 0 ? println : print
     pr(io, lpad("class", pad), ": ", class(s))
     if length(properties(s)) > 0
-        print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
+        print(
+            io,
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
     end
 end
 
+"""
+    Base.promote_rule(::Type{Species}, ::Type{<:AbstractSpecies}) -> Type{Species}
+
+Define promotion rule to convert AbstractSpecies to Species.
+"""
 Base.promote_rule(::Type{Species}, ::Type{<:AbstractSpecies}) = Species
 Base.promote_rule(::Type{<:AbstractSpecies}, ::Type{Species}) = Species
 
@@ -294,44 +1215,154 @@ Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
 Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
 
+"""
+    apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies} -> S
+
+Apply a function element-wise to all numeric components and properties of a species.
+
+# Arguments
+
+  - `func`: function to apply.
+  - `s`: source species.
+  - `args...`: additional arguments for func.
+  - `kwargs...`: keyword arguments (including potential overrides for name, symbol, etc.).
+
+# Returns
+
+  - New species with transformed values.
+
+Handles Quantity types, attempting to preserve dimensions when possible.
+"""
 function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}
-    tryfunc(v) = v isa Quantity ? (
-        try func(ustrip(v), args...; kwargs...) * func(dimension(v), args...; kwargs...); catch; try func(ustrip(v), args...; kwargs...) * dimension(v); catch; v; end; end
-        ) : (
-        try func(v, args...; kwargs...); catch; v; end
-        )
-    newcomponents = OrderedDict(k => tryfunc(v) for (k, v) ∈ components(s))
-    newSpecies = root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)), aggregate_state=get(kwargs, :aggregate_state, aggregate_state(s)), class=get(kwargs, :class, class(s)))
+    tryfunc(v) =
+        if v isa Quantity
+            (
+                try
+                    func(ustrip(v), args...; kwargs...) *
+                    func(dimension(v), args...; kwargs...)
+                catch
+                    try
+                        func(ustrip(v), args...; kwargs...) * dimension(v)
+                    catch
+                        v
+                    end
+                end
+            )
+        else
+            (
+                try
+                    func(v, args...; kwargs...)
+                catch
+                    v
+                end
+            )
+        end
+    newcomponents = OrderedDict(k => tryfunc(v) for (k, v) in components(s))
+    newSpecies = root_type(typeof(s))(
+        newcomponents,
+        tryfunc(charge(s));
+        name=get(kwargs, :name, name(s)),
+        symbol=get(kwargs, :symbol, symbol(s)),
+        aggregate_state=get(kwargs, :aggregate_state, aggregate_state(s)),
+        class=get(kwargs, :class, class(s)),
+    )
     for (k, v) in properties(s)
         newSpecies[k] = tryfunc(v)
     end
     return newSpecies
 end
 
-function find_species(s::AbstractString, species_list=nothing, S::Type{<:AbstractSpecies} = Species; aggregate_state = AS_UNDEF, class = SC_UNDEF)
+"""
+    find_species(s::AbstractString, species_list=nothing, S::Type{<:AbstractSpecies}=Species; aggregate_state=AS_UNDEF, class=SC_UNDEF) -> AbstractSpecies
+
+Find or construct a species from a string identifier.
+
+# Arguments
+
+  - `s`: species identifier string (formula, symbol, or name).
+  - `species_list`: optional list of species to search (default: nothing constructs new species).
+  - `S`: species type to construct if not found (default: Species).
+  - `aggregate_state`: filter by aggregate state (default: AS_UNDEF, no filter).
+  - `class`: filter by chemical class (default: SC_UNDEF, no filter).
+
+# Returns
+
+  - Matching species from list, or newly constructed species if not found.
+
+The function searches by symbol, PHREEQC format, Unicode format, formula expression,
+and name. If multiple matches are found, a warning is displayed and the first match is returned.
+
+# Examples
+
+```jldoctest
+julia> species_list = [
+           Species("H2O"; aggregate_state=AS_AQUEOUS), Species("H2O"; aggregate_state=AS_GAS)
+       ];
+
+julia> s = find_species("H2O", species_list; aggregate_state=AS_AQUEOUS);
+
+julia> aggregate_state(s)
+AS_AQUEOUS::AggregateState = 1
+```
+"""
+function find_species(
+    s::AbstractString,
+    species_list=nothing,
+    S::Type{<:AbstractSpecies}=Species;
+    aggregate_state=AS_UNDEF,
+    class=SC_UNDEF,
+)
     if isnothing(species_list)
         return S(s)
     else
-        for crit in (symbol, phreeqc, unicode, expr∘mainformula, name)
-            fil = filter(x-> !isnothing(x) && !ismissing(x) && (s == crit(x) || phreeqc_to_unicode(s) == crit(x) || unicode_to_phreeqc(s) == crit(x)) && (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) && (class == SC_UNDEF || class == x.class), species_list)
+        for crit in (symbol, phreeqc, unicode, expr ∘ mainformula, name)
+            fil = filter(
+                x ->
+                    !isnothing(x) &&
+                    !ismissing(x) &&
+                    (
+                        s == crit(x) ||
+                        phreeqc_to_unicode(s) == crit(x) ||
+                        unicode_to_phreeqc(s) == crit(x)
+                    ) &&
+                    (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
+                    (class == SC_UNDEF || class == x.class),
+                species_list,
+            )
             if length(fil) > 1
                 println(crayon"red bold"("Several species correspond to $s:"))
                 for x in fil
                     println("∙ ", x)
                 end
-                println(crayon"red bold"("!!! In absence of more precision $(fil[1]) will be chosen !!!"))
+                println(
+                    crayon"red bold"(
+                        "!!! In absence of more precision $(fil[1]) will be chosen !!!"
+                    ),
+                )
             end
             if length(fil) > 0
                 return fil[1]
             end
         end
-        fil = filter(x-> !isnothing(x) && !ismissing(x) && composition(mainformula(x)) == parse_formula(s) && (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) && (class == SC_UNDEF || class == x.class), species_list)
+        fil = filter(
+            x ->
+                !isnothing(x) &&
+                !ismissing(x) &&
+                composition(mainformula(x)) == parse_formula(s) &&
+                (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
+                (class == SC_UNDEF || class == x.class),
+            species_list,
+        )
         if length(fil) > 1
             println(crayon"red bold"("Several species correspond to $s:"))
             for x in fil
                 println("∙ ", x)
             end
-            println(crayon"red bold"("!!! In absence of more precision $(fil[1]) will be chosen !!!"))
+            println(
+                crayon"red bold"(
+                    "!!! In absence of more precision $(fil[1]) will be chosen !!!"
+                ),
+            )
         end
         if length(fil) > 0
             return fil[1]

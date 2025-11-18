@@ -4,52 +4,59 @@ same_components(::Vector{<:CemSpecies}) = oxides_charge
 item_order(::Vector{<:AbstractSpecies}) = ATOMIC_ORDER
 item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 
-union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
+function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
+    sort!(collect(union(keys.(atom_dicts)...)); by=k -> findfirst(==(k), order_vec))
+end
 
-function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
-    hl_p = TextHighlighter(
-        (data, i, j) -> (data[i, j] > 0),
-        crayon"bold light_red"
-    )
-    hl_n = TextHighlighter(
-        (data, i, j) -> (data[i, j] < 0),
-        crayon"bold light_blue"
-    )
-    hl_z = TextHighlighter(
-        (data, i, j) -> (data[i, j] == 0),
-        crayon"conceal"
-    )
+function print_stoich_matrix(
+    A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector
+)
+    hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
+    hl_n = TextHighlighter((data, i, j) -> (data[i, j] < 0), crayon"bold light_blue")
+    hl_z = TextHighlighter((data, i, j) -> (data[i, j] == 0), crayon"conceal")
     try
         pretty_table(
-            A,
-            column_labels = dep_comp_names,
-            row_labels    = indep_comp_names,
-            highlighters  = [hl_p, hl_n, hl_z],
-            style         = TextTableStyle(;
-                                row_label = crayon"magenta bold",
-                                first_line_column_label = crayon"cyan bold",
-                                table_border = crayon"green bold")
+            A;
+            column_labels=dep_comp_names,
+            row_labels=indep_comp_names,
+            highlighters=[hl_p, hl_n, hl_z],
+            style=TextTableStyle(;
+                row_label=crayon"magenta bold",
+                first_line_column_label=crayon"cyan bold",
+                table_border=crayon"green bold",
+            ),
         )
     catch
         pretty_table(
-            A,
-            column_labels = dep_comp_names,
-            row_labels    = indep_comp_names,
-            style         = TextTableStyle(;
-                                row_label = crayon"magenta bold",
-                                first_line_column_label = crayon"cyan bold",
-                                table_border = crayon"green bold")
+            A;
+            column_labels=dep_comp_names,
+            row_labels=indep_comp_names,
+            style=TextTableStyle(;
+                row_label=crayon"magenta bold",
+                first_line_column_label=crayon"cyan bold",
+                table_border=crayon"green bold",
+            ),
         )
     end
 end
 
-function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, display=true, equal_sign='=')
+function stoich_matrix_to_equations(
+    A::AbstractMatrix,
+    indep_comp_names::AbstractVector,
+    dep_comp_names::AbstractVector;
+    scaling=1,
+    display=true,
+    equal_sign='=',
+)
     eqns = String[]
     pad = 11
     for (j, sp) in enumerate(dep_comp_names)
         if sp in indep_comp_names
             if display
-                println(rpad("$(sp)", pad), "| $(colored_formula(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored_formula(sp))")
+                println(
+                    rpad("$(sp)", pad),
+                    "| $(colored_formula(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored_formula(sp))",
+                )
             end
         else
             coeffs = OrderedDict(zip(indep_comp_names, -A[:, j]))
@@ -64,17 +71,27 @@ function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Abstrac
     return eqns
 end
 
-function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::AbstractVector{<:AbstractSpecies}, dep_comp_names::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=')
+function stoich_matrix_to_reactions(
+    A::AbstractMatrix,
+    indep_comp_names::AbstractVector{<:AbstractSpecies},
+    dep_comp_names::AbstractVector{<:AbstractSpecies};
+    scaling=1,
+    display=true,
+    equal_sign='=',
+)
     eqns = Reaction[]
     pad = 11
     for (j, sp) in enumerate(dep_comp_names)
         if sp in indep_comp_names
             if display
-                println(rpad("$(symbol(sp))", pad), "│ $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))")
+                println(
+                    rpad("$(symbol(sp))", pad),
+                    "│ $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))",
+                )
             end
         else
-            coeffs = OrderedDict(zip([sp ; indep_comp_names], [1 ; -A[:, j]]))
-            eqn = scaling*Reaction(coeffs)
+            coeffs = OrderedDict(zip([sp; indep_comp_names], [1; -A[:, j]]))
+            eqn = scaling * Reaction(coeffs)
             push!(eqns, eqn)
             if display
                 println(rpad("$(symbol(sp))", pad), "│ ", colored(eqn))
@@ -84,7 +101,9 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
     return eqns
 end
 
-function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false)
+function canonical_stoich_matrix(
+    species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false
+)
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
     T = promote_type(valtype.(involved_atoms_dicts)...)
@@ -102,16 +121,39 @@ function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=tru
         A = Mat .* A .* inv.(Msp)'
     end
 
-    if display print_stoich_matrix(A, involved_atoms, eval(label).(species)) end
+    if display
+        print_stoich_matrix(A, involved_atoms, eval(label).(species))
+    end
     return A, involved_atoms
 end
 
-function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false)
+function stoich_matrix(
+    vs::Vector{<:AbstractSpecies},
+    candidate_primaries::Vector{<:AbstractSpecies}=vs;
+    display=true,
+    label=:symbol,
+    involve_all_atoms=false,
+    reorder_primaries=false,
+    mass=false,
+)
+    safe_rank(A; rtol=1e-6) =
+        try
+            rank(A, rtol=rtol)
+        catch
+            try
+                rank(A)
+            catch
+                min(size(A)...)
+            end
+        end
+    safe_pinv(A) =
+        try
+            pinv(A)
+        catch
+            inv(A)
+        end
 
-    safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; try rank(A) catch; min(size(A)...) end end
-    safe_pinv(A) = try pinv(A) catch; inv(A) end
-
-    all_species = union(vs,candidate_primaries)
+    all_species = union(vs, candidate_primaries)
     vec_components = same_components(all_species)
 
     S = promote_type(typeof.(vs)..., typeof.(candidate_primaries)...)
@@ -119,12 +161,17 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     species = S[]
     append!(species, vs)
     num_initial_species = length(species)
-    initial_involved_atoms = involve_all_atoms ? union_atoms(vec_components.(all_species), item_order(species)) : union_atoms(vec_components.(species), item_order(species))
+    initial_involved_atoms = if involve_all_atoms
+        union_atoms(vec_components.(all_species), item_order(species))
+    else
+        union_atoms(vec_components.(species), item_order(species))
+    end
     candidate_primaries = deepcopy(candidate_primaries)
 
     for x in candidate_primaries
-        idx = findfirst(y->x==y, species)
-        if isnothing(idx) && all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
+        idx = findfirst(y -> x == y, species)
+        if isnothing(idx) &&
+            all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
             push!(species, x)
         end
     end
@@ -136,20 +183,25 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     Zz = SpType(species)("Zz")
     charged = :Zz ∈ initial_involved_atoms
     if charged
-        if Zz ∉ species push!(species, Zz) end
-        if Zz ∉ candidate_primaries push!(candidate_primaries, Zz) end
+        if Zz ∉ species
+            push!(species, Zz)
+        end
+        if Zz ∉ candidate_primaries
+            push!(candidate_primaries, Zz)
+        end
     end
 
     M, involved_atoms = canonical_stoich_matrix(species; display=false)
-    redox = charged && safe_rank(M[:, 1:end-1]) != safe_rank(M[1:end-1, 1:end-1])
+    redox =
+        charged && safe_rank(M[:, 1:(end - 1)]) != safe_rank(M[1:(end - 1), 1:(end - 1)])
 
     if !redox && charged
         pop!(species)
-        M = M[1:end-1, 1:end-1]
+        M = M[1:(end - 1), 1:(end - 1)]
     end
 
     cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
-    filter!(x-> !isnothing(x), cols_candidates)
+    filter!(x -> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
     if size(M_subset, 1) >= size(M_subset, 2)
         independent_cols_indices = cols_candidates
@@ -159,19 +211,26 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
         independent_cols_indices = sort(cols_candidates[pivot_idx])
     end
-    sort!(independent_cols_indices, by = x->symbol(species[x]) !== "H2O@" && symbol(species[x]) !== "H2O" && symbol(species[x]) !== "H₂O" && symbol(species[x]) !== "H")
+    sort!(
+        independent_cols_indices;
+        by=x ->
+            symbol(species[x]) !== "H2O@" &&
+            symbol(species[x]) !== "H2O" &&
+            symbol(species[x]) !== "H₂O" &&
+            symbol(species[x]) !== "H",
+    )
 
     M_indep = M[:, independent_cols_indices]
     M_indep = promote_type(typeof.(M_indep)...).(M_indep)
-    A = stoich_coef_round.(safe_pinv(M_indep)*M)
+    A = stoich_coef_round.(safe_pinv(M_indep) * M)
 
     indep_comp = species[independent_cols_indices]
     dep_comp = species[1:num_initial_species]
     A = A[:, 1:num_initial_species]
 
     if redox && Zz ∈ dep_comp
-        A = A[:, 1:end-1]
-        dep_comp = dep_comp[1:end-1]
+        A = A[:, 1:(end - 1)]
+        dep_comp = dep_comp[1:(end - 1)]
     end
 
     if mass
@@ -181,13 +240,15 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         A = Mindep .* A .* inv.(Mdep)'
     end
 
-    if display print_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp)) end
+    if display
+        print_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp))
+    end
 
-    return A, indep_comp, dep_comp 
+    return A, indep_comp, dep_comp
 end
 
 const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in cement_to_mendeleev]
 
 const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; display=false)
 
-const order_atom_in_oxides = Dict(atom=>i for (i, atom) in enumerate(atoms_in_oxides))
+const order_atom_in_oxides = Dict(atom => i for (i, atom) in enumerate(atoms_in_oxides))

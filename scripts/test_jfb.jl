@@ -41,7 +41,7 @@ spCH = Species("Ca(OH)2"; name="Portlandite", symbol="CH", aggregate_state=AS_CR
 CH = CemSpecies(spCH)
 spCH == CH # true
 spCH == CemSpecies("CH") # false since aggregate_state and class are undef
-spCH == CemSpecies("CH"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT) # true even though names and/or symbols do not coincide 
+spCH == CemSpecies("CH"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT) # true even though names and/or symbols do not coincide
 try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in cement oxides" end
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
@@ -56,7 +56,7 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # serialize("data/psinagra.jls", (df_substances, df_reactions))
 # # Quicker with serialized data
 df_substances, df_reactions = deserialize("data/cemdata18.jls")
-# Construction of Dicts for convenience 
+# Construction of Dicts for convenience
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
 # filter(p->!haskey(p.second, :Cp), dict_species)
@@ -65,7 +65,7 @@ df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
 given_species = filter(row->row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
-secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
+secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS"
                           && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
                           && row.symbol ∉ split("H2@ O2@"),
                           df_substances)
