@@ -1,7 +1,8 @@
 
 # Species
 
-`Species` is a composite type (introduced by the keyword `struct`) and is defined by a name, a symbol, a formula, an aggregate state, a class and properties. It creates chemical species for solution or solid phases:
+`Species` is a composite type (introduced by the keyword `struct`) and is defined by a human-readable name, a chemical symbol/notation, an underlying `Formula` object holding composition, charge, and string representations, a physical state `aggregate_state`, a species `class`, as well as an extensible map of custom properties (molar mass, thermodynamic data, etc.)
+
 
 ```julia
 struct Species{T<:Number} <: AbstractSpecies
@@ -17,7 +18,7 @@ end
 !!! info "Advanced description"
     - `aggregate_state` denotes the state of the species (solid, liquid, gas) for which the possible keywords are `AS_AQUEOUS`, `AS_CRYSTAL`, `AS_GAS` and `AS_UNDEF`
     - `class` defines the role played by the species in the solution. The possible keywords are `SC_AQSOLVENT`, `SC_AQSOLUTE`, `SC_COMPONENT`, `SC_GASFLUID` and `SC_UNDEF`
-    - `properties` refers to the set of properties intrinsic to the species. These properties are detailed below ([Species properties](@ref)). 
+    - `properties` refers to the set of properties intrinsic to the species. These properties are detailed below. 
 
 ## Species construction
 
@@ -59,7 +60,7 @@ H₂O = Species(fH₂O; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEOU
 ```
 
 And `symbol` accept unicode characters.
-```@example
+```@example CO2
 using ChemistryLab #hide
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 ```
@@ -77,106 +78,30 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 
 ---
 
-## Cement Species
-
-The manipulation of chemical formulas can also be done in cement notation. Here are examples of anhydrous phases:
-
-```@setup example_cemspecies
-    using ChemistryLab
-```
-
-```@example example_cemspecies
-C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
-C2S = CemSpecies("C₂S"; name="Belite", symbol="C₂S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
-C3A = CemSpecies("C3A"; name="Aluminate", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
-C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄AF")
-```
-
-!!! warning "Warning"
-    Not every molecule can be used to build a cement species. It is necessary for this molecule to decompose into a combination of the oxides present in the manufacturers' cement sheet (e.g. $CaO$, $SiO_2$, $Fe_2O_3$, $Al_2O_3$) and water. Thus, the following code will return an error.
-    ```julia
-    CemSpecies(Species("Ca(OH)"))
-    ```
-
-
----
-
-## Numeric and Symbolic CemSpecies
-
-The previous species were constructed from integer values ​​of the number of chemical elements. However, other numerical value types ​​are possible (as for [species](./databases.md#formulas)), such as fraction or Real values.
-
-```@example
-using ChemistryLab
-ox = Dict(:C => 1.666667, :S => 1, :H => 2.1)
-jennite = CemSpecies(ox)
-```
-
-Symbolic values are also allowed. In this case, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
-
-```@example sympy1
-using ChemistryLab
-using SymPy
-â, ĝ = symbols("â ĝ", real = true)
-ox = Dict(:C => â, :S => one(Sym), :H => ĝ)
-CSH = CemSpecies(ox)
-```
-
-The value of variables can be defined *a posteriori*.
-
-```julia
-jennite = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.666667, ĝ => 2.1)))
-```
-
-!!! note "Remark"
-    Conversion of coefficient types can also be done.
-    ```julia
-    floatCSH = Species(convert(Float64, formula(numCSH)))
-    ```
-
----
-
-## Conversion of Species to CemSpecies and vice versa
-
-Convert species to cement notation and Unicode. Conversion can be done on simple species:
-
-```@example example_cemspecies
-H2O = Species("H₂O")
-cemH2O = CemSpecies(H2O)
-```
-
-```@example example_cemspecies
-C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
-spC3S = Species(C3S)
-```
-
-Or more complex one:
-
-```@example CSH
-using ChemistryLab #hide
-CSH = Species("(SiO2)1(CaO)1.666667(H2O)2.1")
-jennite = CemSpecies(CSH)
-```
-
----
-
 ## Species properties
 
-Species properties are open and left to the discretion of users. Only the molar mass is systematically calculated and integrated into the species properties, for now. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation, the heat capacity or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
+The molar mass is systematically calculated and integrated into the species properties. The heat capacity function is also integrated as a predefined function of the `Species` structure. This function is expressed as follows:
 
-Imagine, for example, that we wanted to construct the jennite ($C_{1.67}SH_{2.1}$) molecule with some of its thermodynamic properties. The Gibbs energy of formation of this species is equal to -2480.81 KJ/mol. This property, intrinsic to the species, can be added simply as follows:
+${C_p}^° = a_0 + a_1 T + a_2 T^{−2} + a_3 T^{−0.5}$
 
-```@example CSH
-using DynamicQuantities
-jennite.ΔfG⁰ = -2480.81us"kJ/mol"
+Other species properties are open and left to the discretion of users. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
+
+Imagine, for example, that we wanted to construct the $CO_2$ molecule with some of its thermodynamic properties. The Gibbs energy of formation of this species is equal to $-394.39\; KJ/mol$. This property, intrinsic to the species, can be added simply as follows:
+
+```@example CO2
+using DynamicQuantities, ModelingToolkit
+CO₂.ΔfG⁰ = -394.39u"kJ/mol"
 ```
 
-```@example CSH
-function Cₚ(T, a)
-    y= a[1] + a[2] * T + a[3] * T^(-2) + a[4] * T^(−0.5)
-    return y
-end
-jennite.Cₚ = T -> Cₚ(T, [210.0us"J/K/mol", 0.120us"J/mol/K^2", -3.07e6us"J*K/mol", 0.0us"J/mol/K^(0.5)"]) #Todo unitful
-jennite.Cₚ(273us"K")
+Heat capacity, on the other hand, is introduced in the following way:
+
+```@example CO2
+coeffs = [:a₀ => 44.22u"J/K/mol", :a₁ => 0.0088u"J/mol/K^2", :a₂ => -861.904e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
+CO₂.Cp = ThermoFunction(:Cp, coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
 ```
 
-
+!!! note "Heat capacity value"
+    By default, the call of $C_p$ function return the value of the function for a temperature equal to $T_{ref}$.
+    ```julia
+    CO₂.Cp()
+    ```

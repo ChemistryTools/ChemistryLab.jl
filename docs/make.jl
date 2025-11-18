@@ -19,8 +19,10 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Tutorial" => [
+            "man/introduction.md",
             "man/formula_manipulation.md",
             "man/species.md",
+            "man/cement_species.md",
             "man/databases.md",
             "man/stoichio_matrix.md",
             "man/equations.md",

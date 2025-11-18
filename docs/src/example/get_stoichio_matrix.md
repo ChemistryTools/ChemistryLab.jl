@@ -1,5 +1,7 @@
 # Stoichiometric Matrix
 
+Calculating stoichiometric matrices is a prerequisite for equilibrium calculations by minimizing Gibbs energy. The examples below show how they can be constructed.
+
 ## Get Stoichiometric Matrix from a list of species
 
 Let's imagine that we want to form the stochiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate and retrieve the list of primary species from that database.
@@ -10,7 +12,6 @@ using PrettyTables
 df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
-See [`ChemistryLab.read_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
 
 It is then necessary to identify the list of secondary species likely to appear during the reactions.
 
@@ -34,7 +35,9 @@ And construct the stoichiometric matrix
 
 ```@setup example1
     using ChemistryLab #hide
+    # using Serialization
     using PrettyTables
+    # df_substances, df_reactions = deserialize("../../../data/cemdata18.jls")
     df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 
@@ -58,11 +61,14 @@ using PrettyTables #hide
 
 ## Get Stoichiometric Matrix from a database file
 
-```@example example2
+```julia
 using ChemistryLab
 using PrettyTables
 df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
+```
+
+```@example example1
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
@@ -73,7 +79,7 @@ using PrettyTables #hide
 
 All the reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
 
-```@example example2
+```@example example1
 stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 ```
 
@@ -81,23 +87,19 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 The exercise can also be done on solid species. In this case, the data filter is carried out using the keyword "AS_CRYSTAL", in accordance with the terminology adopted in Thermofun.
 
-```@setup example3
-using ChemistryLab
-using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
+```@setup example1
 aqueous_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 ```
 
-```@example example3
+```@example example1
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ; #hide
 
 using PrettyTables #hide
 ```
 
-```@example example3
+```@example example1
 stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
 ```
 
@@ -105,22 +107,18 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
 
 Or with gases ("AS_GAS")
 
-```@setup example4
-using ChemistryLab
-using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
+```@setup example1
 aqueous_species = filter(row->row.aggregate_state == "AS_GAS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 ```
 
-```@example example4
+```@example example1
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ; #hide
 
 using PrettyTables #hide
 ```
 
-```@example example4
+```@example example1
 stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
 ```
