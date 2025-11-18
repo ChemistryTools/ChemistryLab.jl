@@ -7,10 +7,7 @@ This quickstart shows a few common, minimal examples to get you productive with 
 - Julia 1.6+ (recommended: latest 1.x release)
 - Activate the project environment at the repository root (optional for development):
 
-```powershell
-# from the project root (PowerShell)
-julia --project=.
-```
+
 
 ## Install and load
 
