@@ -1,13 +1,68 @@
+"""
+    same_components(::Vector{<:AbstractSpecies}) -> Function
+
+Return the function to extract components from species vectors.
+
+Returns `atoms_charge` for Species vectors, `oxides_charge` for CemSpecies vectors.
+"""
 same_components(::Vector{<:AbstractSpecies}) = atoms_charge
 same_components(::Vector{<:CemSpecies}) = oxides_charge
 
+"""
+    item_order(::Vector{<:AbstractSpecies}) -> Vector{Symbol}
+
+Return the ordering vector for components.
+
+Returns `ATOMIC_ORDER` for Species vectors, `OXIDE_ORDER` for CemSpecies vectors.
+"""
 item_order(::Vector{<:AbstractSpecies}) = ATOMIC_ORDER
 item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 
+"""
+    union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER) -> Vector{Symbol}
+
+Compute the union of all keys from dictionaries, sorted by a given order.
+
+# Arguments
+
+  - `atom_dicts`: vector of dictionaries (e.g., atomic compositions).
+  - `order_vec`: ordering vector for sorting keys (default: ATOMIC_ORDER).
+
+# Returns
+
+  - Sorted vector of unique symbols appearing in any dictionary.
+
+# Examples
+
+```jldoctest
+julia> d1 = OrderedDict(:H => 2, :O => 1);
+
+julia> d2 = OrderedDict(:C => 1, :O => 2);
+
+julia> union_atoms([d1, d2], ATOMIC_ORDER)
+3-element Vector{Symbol}:
+ :C
+ :H
+ :O
+```
+"""
 function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
     sort!(collect(union(keys.(atom_dicts)...)); by=k -> findfirst(==(k), order_vec))
 end
 
+"""
+    print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
+
+Print a stoichiometric matrix with colored formatting.
+
+# Arguments
+
+  - `A`: stoichiometric matrix.
+  - `indep_comp_names`: row labels (independent components).
+  - `dep_comp_names`: column labels (dependent components).
+
+Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
+"""
 function print_stoich_matrix(
     A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector
 )
@@ -40,6 +95,27 @@ function print_stoich_matrix(
     end
 end
 
+"""
+    stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, display=true, equal_sign='=') -> Vector{String}
+
+Convert a stoichiometric matrix to chemical equation strings.
+
+# Arguments
+
+  - `A`: stoichiometric matrix.
+  - `indep_comp_names`: independent component names.
+  - `dep_comp_names`: dependent component names.
+  - `scaling`: scaling factor for coefficients (default 1).
+  - `display`: if true, print equations to stdout (default true).
+  - `equal_sign`: equality operator character (default '=').
+
+# Returns
+
+  - Vector of equation strings.
+
+Each column of A represents a dependent component expressed as a linear combination
+of independent components.
+"""
 function stoich_matrix_to_equations(
     A::AbstractMatrix,
     indep_comp_names::AbstractVector,
@@ -71,6 +147,24 @@ function stoich_matrix_to_equations(
     return eqns
 end
 
+"""
+    stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::AbstractVector{<:AbstractSpecies}, dep_comp_names::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=') -> Vector{Reaction}
+
+Convert a stoichiometric matrix to Reaction objects.
+
+# Arguments
+
+  - `A`: stoichiometric matrix.
+  - `indep_comp_names`: independent component species.
+  - `dep_comp_names`: dependent component species.
+  - `scaling`: scaling factor for coefficients (default 1).
+  - `display`: if true, print reactions to stdout (default true).
+  - `equal_sign`: equality operator character (default '=').
+
+# Returns
+
+  - Vector of Reaction objects.
+"""
 function stoich_matrix_to_reactions(
     A::AbstractMatrix,
     indep_comp_names::AbstractVector{<:AbstractSpecies},
@@ -101,6 +195,36 @@ function stoich_matrix_to_reactions(
     return eqns
 end
 
+"""
+    canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false) -> (Matrix, Vector{Symbol})
+
+Build the canonical stoichiometric matrix for a species list.
+
+# Arguments
+
+  - `species`: vector of species to analyze.
+  - `display`: if true, print the matrix (default true).
+  - `label`: field name for labeling columns (default :symbol).
+  - `mass`: if true, compute mass-based matrix (default false).
+
+# Returns
+
+  - Tuple of (stoichiometric_matrix, involved_atoms_vector).
+
+The matrix has rows for each atom/oxide and columns for each species.
+Entry (i,j) is the coefficient of atom i in species j.
+
+# Examples
+
+```jldoctest
+julia> species = [Species("H2O"), Species("H2"), Species("O2")];
+
+julia> A, atoms = canonical_stoich_matrix(species; display=false);
+
+julia> size(A)
+(2, 3)
+```
+"""
 function canonical_stoich_matrix(
     species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false
 )
@@ -127,6 +251,39 @@ function canonical_stoich_matrix(
     return A, involved_atoms
 end
 
+"""
+    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
+
+Compute the stoichiometric matrix expressing dependent species in terms of independent components.
+
+# Arguments
+
+  - `vs`: vector of dependent species to express.
+  - `candidate_primaries`: vector of candidate primary species (default: vs).
+  - `display`: if true, print the matrix (default true).
+  - `label`: field name for labeling (default :symbol).
+  - `involve_all_atoms`: if true, include all atoms from candidates (default false).
+  - `reorder_primaries`: if true, use QR pivoting to select primaries (default false).
+  - `mass`: if true, compute mass-based matrix (default false).
+
+# Returns
+
+  - Tuple of (A, independent_components, dependent_components) where A[i,j] is the
+    coefficient of independent component i in the decomposition of dependent component j.
+
+# Examples
+
+```jldoctest
+julia> h2o = Species("H2O");
+       h2 = Species("H2");
+       o2 = Species("O2");
+
+julia> A, indep, dep = stoich_matrix([h2o], [h2, o2]; display=false);
+
+julia> size(A)
+(2, 1)
+```
+"""
 function stoich_matrix(
     vs::Vector{<:AbstractSpecies},
     candidate_primaries::Vector{<:AbstractSpecies}=vs;
@@ -183,10 +340,10 @@ function stoich_matrix(
     Zz = SpType(species)("Zz")
     charged = :Zz ∈ initial_involved_atoms
     if charged
-        if Zz ∉ species
+        if Zz ∉ species
             push!(species, Zz)
         end
-        if Zz ∉ candidate_primaries
+        if Zz ∉ candidate_primaries
             push!(candidate_primaries, Zz)
         end
     end
@@ -247,8 +404,23 @@ function stoich_matrix(
     return A, indep_comp, dep_comp
 end
 
+"""
+    const oxides_as_species
+
+Vector of Species representing cement oxides (C, S, A, F, etc.) in atomic composition.
+"""
 const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in cement_to_mendeleev]
 
+"""
+    const Aoxides
+
+Canonical stoichiometric matrix for cement oxides.
+"""
 const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; display=false)
 
+"""
+    const order_atom_in_oxides
+
+Dictionary mapping atoms to their row indices in the oxide stoichiometric matrix.
+"""
 const order_atom_in_oxides = Dict(atom => i for (i, atom) in enumerate(atoms_in_oxides))

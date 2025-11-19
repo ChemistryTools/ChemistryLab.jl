@@ -234,11 +234,83 @@ const dict_unicode_frac = OrderedDict(
     '⅞' => 7 // 8,
 )
 
+"""
+    fwd_arrows
+
+Collection of forward arrow symbols used in chemical reaction notation.
+
+Contains symbols representing forward reaction directions, including:
+
+  - Simple arrows: '>', '→'
+  - Various Unicode arrows with different styles and weights
+  - Specialized arrows for reaction notation
+
+Used to define reaction directionality from reactants to products.
+"""
 const fwd_arrows = ['>', '→', '↣', '↦', '⇾', '⟶', '⟼', '⥟', '⥟', '⇀', '⇁', '⇒', '⟾']
+
+"""
+    bwd_arrows
+
+Collection of backward arrow symbols used in chemical reaction notation.
+
+Contains symbols representing reverse reaction directions, including:
+
+  - Simple arrows: '<', '←'
+  - Various Unicode arrows with different styles and weights
+  - Specialized arrows for reverse reaction notation
+
+Used to define reaction directionality from products to reactants.
+"""
 const bwd_arrows = ['<', '←', '↢', '↤', '⇽', '⟵', '⟻', '⥚', '⥞', '↼', '↽', '⇐', '⟽']
+
+"""
+    double_arrows
+
+Collection of double arrow symbols representing equilibrium reactions.
+
+Contains symbols representing:
+
+  - Simple equilibrium: '↔'
+  - Various Unicode double arrows
+  - Specialized equilibrium symbols
+  - Bidirectional reaction indicators
+
+Used to denote reversible reactions and equilibrium states.
+"""
 const double_arrows = ['↔', '⟷', '⇄', '⇆', '⇌', '⇋', '⇔', '⟺']
+
+"""
+    pure_rate_arrows
+
+Collection of specialized arrows for rate-based reaction notation.
+
+Contains symbols commonly used to represent:
+
+  - Reaction rates
+  - Kinetic directions
+  - Specialized reaction mechanisms
+
+These are often used in more advanced chemical kinetics notation.
+"""
 const pure_rate_arrows = ['⇐', '⟽', '⇒', '⟾', '⇔', '⟺']
+
+"""
+    equal_signs
+
+Collection of equality signs used in chemical reaction equations.
+
+Contains various forms of equality operators including:
+
+  - Standard equals sign: '='
+  - Definition operators: '≔'
+  - Specialized equality symbols
+  - Assignment operators
+
+Used to separate reactants from products in balanced equations.
+"""
 const equal_signs = ['=', '≔', '⩴', '≕']
+
 const EQUAL_REACTION = vcat(
     fwd_arrows, bwd_arrows, double_arrows, pure_rate_arrows, equal_signs
 )
