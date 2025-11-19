@@ -105,3 +105,10 @@ CO₂.Cp = ThermoFunction(:Cp, coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
     ```julia
     CO₂.Cp()
     ```
+
+Other functions can be added to species. For example, we can add a `rate` to the CO2 species:
+
+```@example CO2
+CO₂.rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
+CO₂.rate(1u"s")
+```

@@ -9,7 +9,7 @@ This is why Cement Chemistry relies on existing databases, in particular [Cemdat
 With ChemistryLab, you can parse a ThermoFun-like json file and return DataFrames for  elements, species (aqueous, solid or gaseous phases) or reactions:
 
 ```julia
-using ChemistryLab #hide
+using ChemistryLab
 df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 ```
 
@@ -30,6 +30,13 @@ Reading can also be done by entity using functions `read_thermofun_elements`, `r
 df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_units=true, add_species=true, all_properties=true, debug=false)
 ```
 
+!!! warning "Database loading speed"
+    Loading databases can be time-consuming because ChemistryLab reconstructs numerous structures, such as 'Species' and their associated properties, as well as 'Reactions'. However, this reconstruction, when performed from databases, is not intended to be repeated multiple times, as the databases are static. One way to increase loading speed is to serialize the data used by ChemistryLab and save the result in its working directory. This can be done as follows:
+    ```julia
+    serialize("cemdata18.jls", (df_substances, df_reactions))
+    df_substances, df_reactions = deserialize("cemdata18.jls")
+    ```
+
 
 ## Species properties construction during database parsing
 Species properties can be constructed while reading the database with `all_properties=true` as an argument. These properties are values ​​or functions that generally depend on temperature. This is the default option. However, the construction process can be time-consuming. Therefore, it's wise to call this type of function sparingly.
@@ -37,7 +44,7 @@ Species properties can be constructed while reading the database with `all_prope
 Currently, species properties are: molar mass (`molar_mass`), a reference temperature `Tref`, heat capacity `Cp` (see [here](./species.md) to express `Cp` as a function of the temperature), enthalpy change of formation `ΔfH`, entropy of formation `S`, Gibbs energy of formation `ΔfG`, and molar volume `Vm`. Values and functions are described in [Cemdata18 paper](https://www.empa.ch/web/s308/thermodynamic-data).
 
 ```julia
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json"; with_units=true, all_properties=true) #hide
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json"; with_units=true, all_properties=true)
 ```
 
 For each species, properties can then be obtained as follows:

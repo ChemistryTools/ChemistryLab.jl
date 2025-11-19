@@ -5,12 +5,6 @@ This quickstart shows a few common, minimal examples to get you productive with 
 ## Prerequisites
 
 - Julia 1.6+ (recommended: latest 1.x release)
-- Activate the project environment at the repository root (optional for development):
-
-```powershell
-# from the project root (PowerShell)
-julia --project=.
-```
 
 ## Install and load
 
@@ -19,8 +13,6 @@ Install the package (or activate the local development copy):
 ```julia
 # In the Julia REPL, enter pkg mode with `]` then:
 pkg> add ChemistryLab
-# or for a local editable dev copy while in the repo root
-pkg> develop --local .
 ```
 
 Then use the package:
