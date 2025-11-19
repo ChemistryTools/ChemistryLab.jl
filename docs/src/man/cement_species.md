@@ -52,7 +52,7 @@ jennite = CemSpecies(ox)
 
 Symbolic values are also allowed. In this case, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
 
-```@example sympy1
+```julia
 using ChemistryLab
 using SymPy
 â, ĝ = symbols("â ĝ", real = true)

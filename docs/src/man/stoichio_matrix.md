@@ -70,22 +70,16 @@ using PrettyTables #hide
 Finally, primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
 
 ```julia
-using ChemistryLab #hide
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
+using ChemistryLab
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 ```
 
 Stoichiometric matrix can then be obtained based on an set of independent primary species.
 
-```@example stoich
-using ChemistryLab #hide
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
-candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)] #hide
+```julia
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
-
-using PrettyTables #hide
 ```
 
 
