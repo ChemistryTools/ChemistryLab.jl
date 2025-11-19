@@ -42,7 +42,7 @@ water.M         # molar mass (automatically calculated and stored in properties)
 3) Build and inspect a Reaction
 
 ```julia
-r = Reaction("CaCO3 = Ca2+ + CO3-2")
+r = Reaction("CaCO3 = Ca2+ + CO32-")
 println(r)           # pretty/colored output in the REPL
 reactants(r)         # OrderedDict of reactants
 products(r)          # OrderedDict of products

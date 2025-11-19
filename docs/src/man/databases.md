@@ -33,6 +33,7 @@ df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_uni
 !!! warning "Database loading speed"
     Loading databases can be time-consuming because ChemistryLab reconstructs numerous structures, such as 'Species' and their associated properties, as well as 'Reactions'. However, this reconstruction, when performed from databases, is not intended to be repeated multiple times, as the databases are static. One way to increase loading speed is to serialize the data used by ChemistryLab and save the result in its working directory. This can be done as follows:
     ```julia
+    using Serialization
     serialize("cemdata18.jls", (df_substances, df_reactions))
     df_substances, df_reactions = deserialize("cemdata18.jls")
     ```
