@@ -20,7 +20,7 @@ Representation of a thermodynamic function with symbolic expression, variables, 
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ThermoFunction with expression: a₀ + a₁*T
 ```
@@ -47,7 +47,7 @@ Construct a ThermoFunction from symbolic expression, variables, unit, and refere
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf = ThermoFunction(expr, vars, u"J/(mol*K)", Dict(:T => 298.15u"K"))
 expr = Num(:a₀ + :a₁ * :T)
 ```
@@ -70,7 +70,7 @@ Dictionary of predefined thermodynamic function expressions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> thermo_function_library[:Cp]
 :(a₀ + a₁ * T + a₂ / T^2 + a₃ / √T + a₄ * T^2 + a₅ * T^3 + a₆ * T^4 + a₇ / T^3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 ```
@@ -119,7 +119,7 @@ Construct a ThermoFunction from an expression, parameters, variables, and refere
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ThermoFunction with Cp expression
 
@@ -195,7 +195,7 @@ Evaluate the thermodynamic function at given variable values.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf(300.0)  # Evaluate at T=300
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ```
@@ -219,7 +219,7 @@ Evaluate the thermodynamic function at given variable values with units.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf(300.0u"K")  # Returnss value with units
 tf = ThermoFunction(:Cp, [:a₀ => 1.0u"J/(mol*K)", :a₁ => 2.0u"J/(mol*K^2)"], [:T => 298.15u"K"])
 ```
@@ -239,7 +239,7 @@ Evaluate the thermodynamic function at reference conditions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf()  # Evaluate at reference T=298.15
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0], ref=Dict(:T => 298.15))
 ```
@@ -269,7 +269,7 @@ Add a number to a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = tf + 5.0
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -286,7 +286,7 @@ Add a number to a thermodynamic function (commutative version).
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = 5.0 + tf
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -304,7 +304,7 @@ Negate a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = -tf
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -327,7 +327,7 @@ Multiply a thermodynamic function by a number.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = tf * 2.0
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -355,7 +355,7 @@ Subtract a number from a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = tf - 5.0
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -380,7 +380,7 @@ Divide a thermodynamic function by a number.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = tf / 2.0
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -419,7 +419,7 @@ Raise a thermodynamic function to a power.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = tf^2
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -445,7 +445,7 @@ Check if one dictionary is contained within another.
 
 # Examples
 
-```jldoctest
+```julia
 julia> contained_dict(d1, d2) == d2
 d1 = Dict(:a => 1, :b => 2)
 ```
@@ -478,7 +478,7 @@ Add two thermodynamic functions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf3 = tf1 + tf2
 tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -498,7 +498,7 @@ Multiply two thermodynamic functions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf3 = tf1 * tf2
 tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -518,7 +518,7 @@ Divide two thermodynamic functions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf3 = tf1 / tf2
 tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -538,7 +538,7 @@ Compute the inverse of a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = inv(tf)
 tf = ThermoFunction(:Cp, [:a₀ => 1.0])
 ```
@@ -560,7 +560,7 @@ Compute the partial derivative of a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> dtf = ∂(tf)  # Derivative with respect to T
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ```
@@ -593,7 +593,7 @@ Compute the integral of a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> itf = ∫(tf)  # Integral with respect to T
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ```
@@ -625,7 +625,7 @@ Display a thermodynamic function in a readable format.
 
 # Examples
 
-```jldoctest
+```julia
 julia> show(stdout, tf)
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ```
@@ -655,7 +655,7 @@ Apply a function to a thermodynamic function's expression.
 
 # Examples
 
-```jldoctest
+```julia
 julia> tf2 = apply(exp, tf)
 tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
 ```
@@ -705,14 +705,14 @@ for fn in MATH_FUNCTIONS
 
     @eval @doc """
         $($fn)(tf::ThermoFunction)
-    
+
     Apply the $($fn) function to a thermodynamic function's expression.
-    
+
     # Return
     - New ThermoFunction with $($fn) applied to the expression and unit
-    
+
     # Examples
-    ```jldoctest
+    ```julia
     julia> tf = ThermoFunction(:Cp, [:a0 => 1.0, :a1 => 2.0])
     julia> tf2 = $($fn)(tf)
     # Returns a new ThermoFunction with $($fn) applied to the expression

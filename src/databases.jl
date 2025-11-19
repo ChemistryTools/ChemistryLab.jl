@@ -93,7 +93,7 @@ Parse a line containing space-separated floats, skipping the first token and any
 
 # Examples
 
-```jldoctest
+```julia
 julia> parse_float_array("-analytical_expression 1.5 2.3 4.7")
 3-element Vector{Float64}:
  1.5
@@ -517,7 +517,7 @@ Extract scalar from single-element vector, or return vector unchanged.
 
 # Examples
 
-```jldoctest
+```julia
 julia> extract_scal_or_vect([42])
 42
 

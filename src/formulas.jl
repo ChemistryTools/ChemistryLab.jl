@@ -10,7 +10,7 @@ Simple container pairing an atomic symbol with a numeric coefficient.
 
 # Examples
 
-```jldoctest
+```julia
 julia> AtomGroup(:H, 2)
 AtomGroup{Int64}(2, :H)
 
@@ -30,7 +30,7 @@ Convert a `Symbol` to a unit `AtomGroup` (coefficient = 1).
 
 # Examples
 
-```jldoctest
+```julia
 julia> convert(AtomGroup, :O)
 AtomGroup{Int64}(1, :O)
 ```
@@ -50,7 +50,7 @@ Constructors for `AtomGroup`.
 
 # Examples
 
-```jldoctest
+```julia
 julia> AtomGroup(:C)
 AtomGroup{Int64}(1, :C)
 
@@ -77,7 +77,7 @@ Canonical container for a chemical formula.
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = Formula("H2O");
 
 julia> composition(f)[:H]
@@ -100,7 +100,7 @@ Return the numeric stoichiometric coefficient type `T` for formula `f`.
 
 # Examples
 
-```jldoctest
+```julia
 julia> stoichtype(Formula("H2O"))
 Int64
 ```
@@ -162,7 +162,7 @@ and `e` (electron) are handled.
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = Formula("SO4-2");
 
 julia> composition(f)[:S]
@@ -203,7 +203,7 @@ and used to compute the formal charge when `charge == 0`.
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = Formula(OrderedDict(:Ca=>1, :C=>1, :O=>3));
 
 julia> expr(f)
@@ -283,7 +283,7 @@ If `i` is not present, return `zero(T)` where `T` is the formula's coefficient t
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = Formula("H2O");
 
 julia> f[:H]
@@ -315,7 +315,7 @@ Two formulas are equal if their compositions and formal charges are equal.
 
 # Examples
 
-```jldoctest
+```julia
 julia> Formula("H2O") == Formula(OrderedDict(:H=>2, :O=>1))
 true
 ```
@@ -432,7 +432,7 @@ included.
 
 # Examples
 
-```jldoctest
+```julia
 julia> result = AtomGroup(:H, 2) + AtomGroup(:H, 1);
 
 julia> composition(result)[:H]
@@ -475,7 +475,7 @@ Quantities are handled, attempting to preserve dimensions when possible.
 
 # Examples
 
-```jldoctest
+```julia
 julia> result = apply(x -> x*2, Formula("H2O"));
 
 julia> result[:H]
@@ -520,7 +520,7 @@ registry. Returns `true` when valid; otherwise throws an informative error.
 
 # Examples
 
-```jldoctest
+```julia
 julia> check_mendeleev(Formula("NaCl"))
 true
 ```

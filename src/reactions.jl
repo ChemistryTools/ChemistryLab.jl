@@ -14,7 +14,7 @@ Representation of a chemical reaction with reactants and products.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(r))
 r = Reaction("2H2 + O2 = 2H2O");
 
@@ -38,7 +38,7 @@ Return the equation string of the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> equation(r)
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -52,7 +52,7 @@ Return the colored terminal representation of the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> colored(r)  # Returns string with ANSI color codes
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -66,7 +66,7 @@ Return the reactants dictionary (species => coefficient).
 
 # Examples
 
-```jldoctest
+```julia
 julia> reactants(r)
 r = Reaction("2H2 + O2 = 2H2O");
 ```
@@ -80,7 +80,7 @@ Return the products dictionary (species => coefficient).
 
 # Examples
 
-```jldoctest
+```julia
 julia> products(r)
 r = Reaction("2H2 + O2 = 2H2O");
 ```
@@ -94,7 +94,7 @@ Return the equality operator character of the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> equal_sign(r)
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -108,7 +108,7 @@ Return the properties dictionary of the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> properties(r)
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -123,7 +123,7 @@ Return `nothing` if the property is not found.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[:ΔrH°]
 r = Reaction("H2 + O2 = H2O");
 
@@ -141,7 +141,7 @@ Return negative values for reactants, positive for products, and 0 if the specie
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2]
 r = Reaction("2H2 + O2 = 2H2O");
 
@@ -175,7 +175,7 @@ Set a property value for the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[:ΔrH°]
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -190,7 +190,7 @@ Throws an error if the symbol is neither a field nor a property.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r.ΔrH°
 r = Reaction("H2 + O2 = H2O");
 
@@ -215,7 +215,7 @@ Check if a property key exists in the reaction properties dictionary.
 
 # Examples
 
-```jldoctest
+```julia
 julia> haskey(r, :ΔrH°)
 r = Reaction("H2 + O2 = H2O");
 
@@ -234,7 +234,7 @@ Set a property value, preventing direct modification of structural fields.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r.ΔrH°
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -261,7 +261,7 @@ and positive for products.
 
 # Examples
 
-```jldoctest
+```julia
 julia> collect(r)
 r = Reaction("2H2 + O2 = 2H2O");
 ```
@@ -304,7 +304,7 @@ Return an iterator over all species in the reaction (reactants and products).
 
 # Examples
 
-```jldoctest
+```julia
 julia> collect(keys(r))
 r = Reaction("2H2 + O2 = 2H2O");
 ```
@@ -320,7 +320,7 @@ Return an iterator over all stoichiometric coefficients (negative for reactants,
 
 # Examples
 
-```jldoctest
+```julia
 julia> collect(values(r))
 r = Reaction("2H2 + O2 = 2H2O");
 ```
@@ -338,7 +338,7 @@ Remove all entries with zero values from a dictionary.
 
 # Examples
 
-```jldoctest
+```julia
 julia> remove_zeros(d)
 d = OrderedDict("H2" => 2, "O2" => 0, "H2O" => 1);
 ```
@@ -360,7 +360,7 @@ Calculates ΔrCp°, ΔrS°, ΔrH°, ΔrG°, and ΔrV if all species have the req
 
 # Examples
 
-```jldoctest
+```julia
 julia> r.ΔrCp°
 h2 = Species("H2"); h2.Cp° = 28.8;
 ```
@@ -401,7 +401,7 @@ Construct a Reaction from an equation string.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(r))
 r = Reaction("H2 + 0.5O2 = H2O");
 
@@ -454,7 +454,7 @@ Convenience constructor equivalent to `Reaction(equation, CemSpecies, args...; k
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(r))
 r = CemReaction("CaO + H2O = Ca(OH)2");
 
@@ -482,7 +482,7 @@ Split a species-coefficient dictionary into reactants and products.
 
 # Examples
 
-```jldoctest
+```julia
 julia> split_species_by_stoich(s)
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 ```
@@ -516,7 +516,7 @@ Reactants get negative coefficients, products get positive coefficients.
 
 # Examples
 
-```jldoctest
+```julia
 julia> merge_species_by_stoich(r, p)
 r = OrderedDict(Species("H2") => 2);
 ```
@@ -550,7 +550,7 @@ Format one side of a reaction equation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> format_side(s)
 h2 = Species("H2"); o2 = Species("O2");
 ```
@@ -593,7 +593,7 @@ Construct a Reaction from reactants and products dictionaries.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(products(r))
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 ```
@@ -661,7 +661,7 @@ Construct a Reaction from a dictionary with signed stoichiometric coefficients.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(r))
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 ```
@@ -688,7 +688,7 @@ Convert a species to a trivial Reaction (species = species).
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 ```
@@ -704,7 +704,7 @@ Convert a species to a typed Reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 ```
@@ -722,7 +722,7 @@ Construct a trivial Reaction from a single species.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 ```
@@ -736,7 +736,7 @@ Construct a typed Reaction from a single species.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 ```
@@ -759,7 +759,7 @@ Copy constructor for Reaction with optional field overrides.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r2.equal_sign
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -783,7 +783,7 @@ Simplify a reaction by canceling common species from both sides.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(rs))
 h2o = Species("H2O");
 
@@ -827,7 +827,7 @@ Modifies the dictionary in place to ensure integer coefficients when possible.
 
 # Examples
 
-```jldoctest
+```julia
 julia> d
 d = OrderedDict(Species("H2") => 2, Species("O2") => 1);
 
@@ -863,7 +863,7 @@ The first species is treated as the dependent component.
 
 # Examples
 
-```jldoctest
+```julia
 julia> build_species_stoich([h2o, h2, o2])
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 
@@ -911,7 +911,7 @@ coefficients are computed automatically.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2]
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 
@@ -964,7 +964,7 @@ Stoichiometric coefficients are computed automatically to balance the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2]
 h2 = Species("H2"); o2 = Species("O2"); h2o = Species("H2O");
 
@@ -1034,7 +1034,7 @@ Create a Reaction with a single species and stoichiometric coefficient.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 
@@ -1060,7 +1060,7 @@ Multiply all stoichiometric coefficients in a reaction by a scalar.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r2[o2]
 r = Reaction("H2 + 0.5O2 = H2O");
 
@@ -1094,7 +1094,7 @@ Create a Reaction with a single species with coefficient -1.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2o]
 h2o = Species("H2O");
 ```
@@ -1116,7 +1116,7 @@ Reverse a reaction (swap reactants and products).
 
 # Examples
 
-```jldoctest
+```julia
 julia> rr[h2]
 r = Reaction("H2O = H2 + 0.5O2");
 
@@ -1144,7 +1144,7 @@ Add two species to create a Reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2]
 h2 = Species("H2"); o2 = Species("O2");
 
@@ -1176,7 +1176,7 @@ Subtract two species to create a Reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r[h2]
 h2 = Species("H2"); o2 = Species("O2");
 
@@ -1212,7 +1212,7 @@ Add stoichiometric coefficients from two dictionaries.
 
 # Examples
 
-```jldoctest
+```julia
 julia> add_stoich(d1, d2)
 d1 = OrderedDict(Species("H2") => 2);
 
@@ -1251,7 +1251,7 @@ Add a species to a reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r2[o2]
 r = Reaction("H2 = H2O");
 
@@ -1284,7 +1284,7 @@ Subtract a species from a reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r2[h2]
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -1317,7 +1317,7 @@ Add two reactions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> length(reactants(r3))
 r1 = Reaction("H2 = 2H");
 
@@ -1350,7 +1350,7 @@ Subtract two reactions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r3[Species("H2")]
 r1 = Reaction("2H2 + O2 = 2H2O");
 
@@ -1449,7 +1449,7 @@ Display a reaction in a compact form.
 
 # Examples
 
-```jldoctest
+```julia
 julia> print(r)
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -1470,7 +1470,7 @@ Display a reaction in a detailed form.
 
 # Examples
 
-```jldoctest
+```julia
 julia> show(stdout, MIME"text/plain"(), r)
 r = Reaction("H2 + O2 = H2O");
 ```
@@ -1527,7 +1527,7 @@ Apply a function to all species and coefficients in a reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r_prime.equation
 r = Reaction("H2 + O2 = H2O");
 

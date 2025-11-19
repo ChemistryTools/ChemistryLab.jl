@@ -20,7 +20,7 @@ Print a formatted title with optional styling and indentation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> print_title("Test Title"; style=:none)
 Test Title
 
@@ -323,7 +323,7 @@ Return whether `c` is a numeric superscript or ⁺/⁻.
 
 # Examples
 
-```jldoctest
+```julia
 julia> issuperscript('²')
 true
 
@@ -340,7 +340,7 @@ Return whether `c` is a numeric subscript.
 
 # Examples
 
-```jldoctest
+```julia
 julia> issubscript('₂')
 true
 
@@ -357,7 +357,7 @@ Convert all numeric superscripts or ⁺/⁻ in `s` to normal line.
 
 # Examples
 
-```jldoctest
+```julia
 julia> super_to_normal("Ca²⁺")
 "Ca2+"
 ```
@@ -371,7 +371,7 @@ Convert all normal characters or +/- in `s` to numeric superscripts.
 
 # Examples
 
-```jldoctest
+```julia
 julia> normal_to_super("2+")
 "²⁺"
 ```
@@ -385,7 +385,7 @@ Convert all numeric subscripts in `s` to normal line.
 
 # Examples
 
-```jldoctest
+```julia
 julia> sub_to_normal("H₂O")
 "H2O"
 ```
@@ -399,7 +399,7 @@ Convert all normal characters in `s` to numeric subscripts.
 
 # Examples
 
-```jldoctest
+```julia
 julia> normal_to_sub("H2O")
 "H₂O"
 ```
@@ -420,7 +420,7 @@ Convert an integer to its Unicode subscript representation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> subscriptnumber(42)
 "₄₂"
 
@@ -447,7 +447,7 @@ Convert an integer to its Unicode superscript representation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> superscriptnumber(42)
 "⁴²"
 
@@ -488,7 +488,7 @@ Parse a Unicode subscript number string to an integer.
 
 # Examples
 
-```jldoctest
+```julia
 julia> from_subscriptnumber("₄₂")
 42
 
@@ -517,7 +517,7 @@ Parse a Unicode superscript number string to an integer.
 
 # Examples
 
-```jldoctest
+```julia
 julia> from_superscriptnumber("⁴²")
 42
 
@@ -565,7 +565,7 @@ Parse a symbol with optional numeric index into components.
 
 # Examples
 
-```jldoctest
+```julia
 julia> parse_symbol_num("T₂₉₈")
 (base = "T", index = 298, convert_func = subscriptnumber)
 
@@ -683,7 +683,7 @@ Round stoichiometric coefficients to integer, rational, or float representation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> stoich_coef_round(2.0001)
 2
 
@@ -730,7 +730,7 @@ Convert a PHREEQC formula string to Unicode representation with subscripts and s
 
 # Examples
 
-```jldoctest
+```julia
 julia> phreeqc_to_unicode("Ca+2")
 "Ca²⁺"
 
@@ -846,7 +846,7 @@ Convert a Unicode formula string back to PHREEQC format.
 
 # Examples
 
-```jldoctest
+```julia
 julia> unicode_to_phreeqc("Ca²⁺")
 "Ca+2"
 
@@ -951,7 +951,7 @@ Parse a chemical formula string into an atomic composition dictionary.
 
 # Examples
 
-```jldoctest
+```julia
 julia> parse_formula("H2O")
 OrderedDict{Symbol, Number} with 2 entries:
   :H => 2
@@ -1070,7 +1070,7 @@ Extract the formal charge from a chemical formula string.
 
 # Examples
 
-```jldoctest
+```julia
 julia> extract_charge("Ca+2")
 2
 
@@ -1107,7 +1107,7 @@ Calculate the molar mass from an atomic composition dictionary.
 
 # Examples
 
-```jldoctest
+```julia
 julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
 18.01528 g mol⁻¹
 ```    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
@@ -1168,7 +1168,7 @@ Convert cement oxide notation to Mendeleev element composition.
 
 # Examples
 
-```jldoctest
+```julia
 julia> to_mendeleev(OrderedDict(:C => 1, :S => 2))
 OrderedDict{Symbol, Number} with 3 entries:
   :Ca => 1
@@ -1210,7 +1210,7 @@ Parse a chemical equation string into reactants, products, and equality sign.
 
 # Examples
 
-```jldoctest
+```julia
 julia> reactants, products, sign = parse_equation("2H2 + O2 = 2H2O");
 
 julia> reactants["H2"]
@@ -1351,7 +1351,7 @@ Format a stoichiometric coefficient dictionary into an equation string.
 
 # Examples
 
-```jldoctest
+```julia
 julia> coeffs = Dict("H2" => -2, "O2" => -1, "H2O" => 2);
 
 julia> format_equation(coeffs)

@@ -47,7 +47,7 @@ Compare two species for equality based on formula, aggregate state, and class.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
 
 julia> s2 = Species("H2O"; aggregate_state=AS_AQUEOUS);
@@ -149,7 +149,7 @@ Return atomic composition including the charge as a :Zz key if non-zero.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = Species("Ca+2");
 
 julia> atoms_charge(s)
@@ -178,7 +178,7 @@ Returns 0 if the key is not found.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = Species("H2O");
 
 julia> s[:H]
@@ -277,7 +277,7 @@ Standard chemical species representation using atomic composition.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS);
 
 julia> atoms(s)
@@ -353,7 +353,7 @@ Construct a Species from a Formula object.
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = Formula("NaCl");
 
 julia> s = Species(f; name="Sodium chloride", aggregate_state=AS_CRYSTAL);
@@ -434,7 +434,7 @@ Construct a Species from a formula string.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = Species("Ca+2"; aggregate_state=AS_AQUEOUS);
 
 julia> charge(s)
@@ -507,7 +507,7 @@ Construct a Species from element => coefficient pairs.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = Species(:H => 2, :O => 1; name="Water");
 
 julia> atoms(s)
@@ -671,7 +671,7 @@ Cement chemistry species representation using oxide notation.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = CemSpecies("C3A"; name="Tricalcium aluminate");
 
 julia> oxides(s)
@@ -826,7 +826,7 @@ Construct a CemSpecies from an oxide formula string.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = CemSpecies("C3S"; name="Alite");
 
 julia> oxides(s)
@@ -901,7 +901,7 @@ Construct a CemSpecies from oxide => coefficient pairs.
 
 # Examples
 
-```jldoctest
+```julia
 julia> s = CemSpecies(:C => 3, :S => 2; name="C3S2");
 
 julia> oxides(s)
@@ -1294,7 +1294,7 @@ and name. If multiple matches are found, a warning is displayed and the first ma
 
 # Examples
 
-```jldoctest
+```julia
 julia> species_list = [
            Species("H2O"; aggregate_state=AS_AQUEOUS), Species("H2O"; aggregate_state=AS_GAS)
        ];

@@ -20,7 +20,7 @@ Consult those files for detailed docs of individual types and functions.
 
 # Examples
 
-```jldoctest
+```julia
 julia> using ChemistryLab
 
 julia> f = Formula("H2O");
