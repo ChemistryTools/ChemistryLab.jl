@@ -4,17 +4,17 @@ using PrettyTables
 
 DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab); recursive=true)
 
-makedocs(;
+makedocs(
     modules=[ChemistryLab],
     # doctest = true,
     # linkcheck = true,
     authors="Jean-François Barthélémy and Anthony Soive",
     # repo = "https://github.com/jfbarthelemy/ChemistryLab.jl/blob/{commit}{path}#{line}",
     sitename="ChemistryLab.jl",
-    format=Documenter.HTML(;
+    format=Documenter.HTML(
         canonical="https://jfbarthelemy.github.io/ChemistryLab.jl",
         edit_link="main",
-        assets = String[],
+        assets = ["assets/favicon.ico"],
         ),
     pages=[
         "Home" => "index.md",
@@ -31,8 +31,16 @@ makedocs(;
             "example/get_stoichio_matrix.md",
             "example/bogue_calculation.md",
             ],
-        "API" => "reference.md",
+        # "API" => Any[
+        # "Overview" => "api/overview.md",
+        # "Modules" => "api/module.md",
+        # "Constants" => "api/constant.md",
+        # "Types" => "api/type.md",
+        # "Functions" => "api/function.md",
+        # "Macros" => "api/macro.md",
+        # ],
     ],
+    warnonly = [:missing_docs],
 )
 
 deploydocs(;

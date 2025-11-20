@@ -11,18 +11,6 @@
 
 ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicated to low-carbon cementitious materials and aqueous solutions and designed for researchers, engineers, and developers working with cement chemistry, its scope is actually wider. It provides formula handling, species management, stoichiometric matrix construction, and database interoperability (ThermoFun and Cemdata). Main features include chemical formula parsing, Unicode/Phreeqc notation conversion, reaction and equilibrium analysis, and data import/export.
 
-<!-- ## Table of Contents
-
-- [Installation](#installation)
-- [Usage](#usage)
-- [Prerequisites](#prerequisites)
-- [Contributing](#contributing)
-- [Known Bugs](#known-bugs)
-- [FAQ](#faq)
-- [License](#license)
-- [Credits and Acknowledgements](#credits-and-acknowledgements)
-- [Contact](#contact) -->
-
 ## Features
 
 - **Chemical formula handling**: Create, convert, and display formulas with charge management and Unicode/Phreeqc notation.
@@ -31,39 +19,16 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 - **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
 
-## Prerequisites
-
-- Julia 1.6 or higher
-- No API account or special access required 
-
 ## Installation
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/jfbarthelemy/ChemistryLab.jl")
+Pkg.add("ChemistryLab")
 ```
-
-## Project Status
-
-- Version: x.y.z
-- Last update: 2025-09-25
-- Status: In development / Stable
 
 ## Usage
 
-See the [documentation and tutorials](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/
-) for examples on formula creation, species management, reaction parsing, and database merging.
-
-## Contributing
-
-Contributions are welcome! Please submit issues or pull requests via GitHub.
-
-## Known Bugs
-See GitHub Issues for current bug reports.
-
-## FAQ
-
-Frequently asked questions are addressed in the [documentation](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/).
+See the [documentation and tutorials](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/) for examples on formula creation, species management, reaction parsing, and database merging.
 
 ## License
 
@@ -71,8 +36,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Credits and Acknowledgements
 
-Developed by Jean-François Barthélémy and Anthony Soive. Thanks to contributors and the open-source community.
-
-## Contact
-
-For questions or support, contact the authors via GitHub or email listed in the repository.
+Developed by [Jean-François Barthélémy](https://github.com/jfbarthelemy) and [Anthony Soive](https://github.com/anthonysoive), both researchers at [Cerema](https://www.cerema.fr/en) in the research team [UMR MCD](https://mcd.univ-gustave-eiffel.fr/).
