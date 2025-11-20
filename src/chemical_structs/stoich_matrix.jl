@@ -148,15 +148,15 @@ function stoich_matrix_to_equations(
 end
 
 """
-    stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::AbstractVector{<:AbstractSpecies}, dep_comp_names::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=') -> Vector{Reaction}
+    stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp::AbstractVector{<:AbstractSpecies}, dep_comp::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=') -> Vector{Reaction}
 
 Convert a stoichiometric matrix to Reaction objects.
 
 # Arguments
 
   - `A`: stoichiometric matrix.
-  - `indep_comp_names`: independent component species.
-  - `dep_comp_names`: dependent component species.
+  - `indep_comp`: independent component species.
+  - `dep_comp`: dependent component species.
   - `scaling`: scaling factor for coefficients (default 1).
   - `display`: if true, print reactions to stdout (default true).
   - `equal_sign`: equality operator character (default '=').
@@ -167,16 +167,16 @@ Convert a stoichiometric matrix to Reaction objects.
 """
 function stoich_matrix_to_reactions(
     A::AbstractMatrix,
-    indep_comp_names::AbstractVector{<:AbstractSpecies},
-    dep_comp_names::AbstractVector{<:AbstractSpecies};
+    indep_comp::AbstractVector{<:AbstractSpecies},
+    dep_comp::AbstractVector{<:AbstractSpecies};
     scaling=1,
     display=true,
     equal_sign='=',
 )
     eqns = Reaction[]
     pad = 11
-    for (j, sp) in enumerate(dep_comp_names)
-        if sp in indep_comp_names
+    for (j, sp) in enumerate(dep_comp)
+        if sp in indep_comp
             if display
                 println(
                     rpad("$(symbol(sp))", pad),
@@ -184,7 +184,7 @@ function stoich_matrix_to_reactions(
                 )
             end
         else
-            coeffs = OrderedDict(zip([sp; indep_comp_names], [1; -A[:, j]]))
+            coeffs = OrderedDict(zip([sp; indep_comp], [1; -A[:, j]]))
             eqn = scaling * Reaction(coeffs)
             push!(eqns, eqn)
             if display
@@ -409,7 +409,7 @@ end
 
 Vector of Species representing cement oxides (C, S, A, F, etc.) in atomic composition.
 """
-const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in cement_to_mendeleev]
+const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in CEMENT_TO_MENDELEEV]
 
 """
     const Aoxides

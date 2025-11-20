@@ -12,21 +12,69 @@ formulas, species, stoichiometric matrices and ThermoFun / PHREEQC-like data.
   - Stoichiometric matrix construction and reaction helpers.
   - Utilities for units, colored and Unicode terminal output.
 
-# Note
-
-This file mainly aggregates and re-exports functionality implemented
-in submodules (parsing_utils.jl, formulas.jl, species.jl, databases.jl, ...).
-Consult those files for detailed docs of individual types and functions.
-
 # Examples
 
 ```julia
 julia> using ChemistryLab
 
-julia> f = Formula("H2O");
+julia> f = Formula("H2O")
+Formula{Int64}
+    formula: H2O ◆ H₂O ◆ H₂O
+composition: H => 2, O => 1
+     charge: 0
 
 julia> f[:H]
 2
+
+julia> H2O = Species(f; name="Vapour", symbol="H₂O", aggregate_state=AS_GAS, class=SC_GASFLUID)
+Species{Int64}
+           name: Vapour
+         symbol: H₂O
+        formula: H2O ◆ H₂O ◆ H₂O
+          atoms: H => 2, O => 1
+         charge: 0
+aggregate_state: AS_GAS
+          class: SC_GASFLUID
+     properties: M = 0.0180149999937744 kg mol⁻¹
+
+julia> CO2 = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂", aggregate_state=AS_GAS, class=SC_GASFLUID) # definition from Dict
+Species{Int64}
+           name: Dioxygen
+         symbol: CO₂
+        formula: CO2 ◆ CO₂ ◆ CO₂
+          atoms: O => 2, C => 1
+         charge: 0
+aggregate_state: AS_GAS
+          class: SC_GASFLUID
+     properties: M = 0.04400899998479143 kg mol⁻¹
+
+julia> O2 = Species("O2"; name="Dioxygen", symbol="O₂", aggregate_state=AS_GAS, class=SC_GASFLUID) # definition from String
+Species{Int64}
+           name: Carbon dioxide
+         symbol: CO₂
+        formula: CO2 ◆ CO₂ ◆ CO₂
+          atoms: C => 1, O => 2
+         charge: 0
+aggregate_state: AS_GAS
+          class: SC_GASFLUID
+     properties: M = 0.04400899998479143 kg mol⁻¹
+
+julia> C3H8 = Species("C₃H₈"; name="Propane", symbol="C₃H₈", aggregate_state=AS_GAS, class=SC_GASFLUID) # definition from Unicode String
+Species{Int64}
+           name: Propane
+         symbol: C₃H₈
+        formula: C₃H₈ ◆ C3H8 ◆ C₃H₈
+          atoms: C => 3, H => 8
+         charge: 0
+aggregate_state: AS_GAS
+          class: SC_GASFLUID
+     properties: M = 0.04409699998476102 kg mol⁻¹
+
+julia> r = Reaction([C3H8, O2, CO2, H2O])
+C₃H₈ + 5O₂ = 4H₂O + 3CO₂
+ reactants: C₃H₈ => 1, O₂ => 5
+  products: H₂O => 4, CO₂ => 3
+
 ```
 """
 module ChemistryLab
@@ -48,37 +96,72 @@ using ProgressMeter
 using SymbolicNumericIntegration
 using Unicode
 
-include("parsing_utils.jl")
-include("thermodynamical_functions.jl")
-include("formulas.jl")
-include("species.jl")
-include("databases.jl")
-include("stoich_matrix.jl")
-include("reactions.jl")
+include("utils/misc.jl")
+include("utils/subsuperscripts.jl")
+
+include("chemical_structs/element_order.jl")
+include("chemical_structs/parsing_tools.jl")
+include("chemical_structs/thermo_functions.jl")
+include("chemical_structs/formulas.jl")
+include("chemical_structs/species.jl")
+include("chemical_structs/stoich_matrix.jl")
+include("chemical_structs/reactions.jl")
+
+include("databases/phreeqc_dat.jl")
+include("databases/thermofun_json.jl")
+include("databases/merge_dat_json.jl")
 
 export ATOMIC_ORDER,
-    OXIDE_ORDER,
-    stoich_coef_round,
+     CEMENT_TO_MENDELEEV,
+     OXIDE_ORDER
+
+export stoich_coef_round,
     phreeqc_to_unicode,
-    colored_formula,
     unicode_to_phreeqc,
+    colored_formula,
     parse_formula,
     extract_charge,
-    calculate_molar_mass,
     to_mendeleev,
     parse_equation,
-    format_equation,
-    colored_equation
-export Callable, ThermoFunction, ∂, ∫
+    colored_equation,
+    format_equation
+
+export Callable,
+     ThermoFunction,
+     ∂,
+     ∫,
+     calculate_molar_mass,
+     apply
+
 export AtomGroup,
-    Formula, expr, phreeqc, unicode, colored, composition, charge, apply, check_mendeleev
-export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
-export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GASFLUID
-export AbstractSpecies, Species, CemSpecies
-export name,
+    Formula,
+    expr,
+    phreeqc,
+    unicode,
+    colored,
+    composition,
+    charge,
+    check_mendeleev
+
+export AggregateState,
+    AS_UNDEF,
+    AS_AQUEOUS,
+    AS_CRYSTAL,
+    AS_GAS
+
+export Class,
+    SC_UNDEF,
+    SC_AQSOLVENT,
+    SC_AQSOLUTE,
+    SC_COMPONENT,
+    SC_GASFLUID
+
+export AbstractSpecies,
+    Species,
+    CemSpecies,
+    name,
     symbol,
     formula,
-    mendeleev_filter,
     cemformula,
     atoms,
     atoms_charge,
@@ -88,19 +171,28 @@ export name,
     aggregate_state,
     class,
     properties
-export merge_json,
-    read_thermofun_substances,
-    read_thermofun_reactions,
-    read_thermofun_elements,
-    read_thermofun,
-    extract_primary_species
+
 export union_atoms,
     print_stoich_matrix,
     canonical_stoich_matrix,
     stoich_matrix,
     stoich_matrix_to_equations,
     stoich_matrix_to_reactions
-export Reaction, CemReaction, reactants, products, simplify_reaction
+
+export Reaction,
+    CemReaction,
+    reactants,
+    products,
+    simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
+
+export extract_primary_species
+
+export read_thermofun_substances,
+    read_thermofun_reactions,
+    read_thermofun_elements,
+    read_thermofun
+
+export merge_json
 
 end

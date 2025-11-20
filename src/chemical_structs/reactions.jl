@@ -1,4 +1,86 @@
 """
+    fwd_arrows
+
+Collection of forward arrow symbols used in chemical reaction notation.
+
+Contains symbols representing forward reaction directions, including:
+
+  - Simple arrows: '>', '→'
+  - Various Unicode arrows with different styles and weights
+  - Specialized arrows for reaction notation
+
+Used to define reaction directionality from reactants to products.
+"""
+const fwd_arrows = ['>', '→', '↣', '↦', '⇾', '⟶', '⟼', '⥟', '⥟', '⇀', '⇁', '⇒', '⟾']
+
+"""
+    bwd_arrows
+
+Collection of backward arrow symbols used in chemical reaction notation.
+
+Contains symbols representing reverse reaction directions, including:
+
+  - Simple arrows: '<', '←'
+  - Various Unicode arrows with different styles and weights
+  - Specialized arrows for reverse reaction notation
+
+Used to define reaction directionality from products to reactants.
+"""
+const bwd_arrows = ['<', '←', '↢', '↤', '⇽', '⟵', '⟻', '⥚', '⥞', '↼', '↽', '⇐', '⟽']
+
+"""
+    double_arrows
+
+Collection of double arrow symbols representing equilibrium reactions.
+
+Contains symbols representing:
+
+  - Simple equilibrium: '↔'
+  - Various Unicode double arrows
+  - Specialized equilibrium symbols
+  - Bidirectional reaction indicators
+
+Used to denote reversible reactions and equilibrium states.
+"""
+const double_arrows = ['↔', '⟷', '⇄', '⇆', '⇌', '⇋', '⇔', '⟺']
+
+"""
+    pure_rate_arrows
+
+Collection of specialized arrows for rate-based reaction notation.
+
+Contains symbols commonly used to represent:
+
+  - Reaction rates
+  - Kinetic directions
+  - Specialized reaction mechanisms
+
+These are often used in more advanced chemical kinetics notation.
+"""
+const pure_rate_arrows = ['⇐', '⟽', '⇒', '⟾', '⇔', '⟺']
+
+"""
+    equal_signs
+
+Collection of equality signs used in chemical reaction equations.
+
+Contains various forms of equality operators including:
+
+  - Standard equals sign: '='
+  - Definition operators: '≔'
+  - Specialized equality symbols
+  - Assignment operators
+
+Used to separate reactants from products in balanced equations.
+"""
+const equal_signs = ['=', '≔', '⩴', '≕']
+
+const EQUAL_REACTION = vcat(
+    fwd_arrows, bwd_arrows, double_arrows, pure_rate_arrows, equal_signs
+)
+const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
+
+"""
     struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
 
 Representation of a chemical reaction with reactants and products.
@@ -124,11 +206,11 @@ Return `nothing` if the property is not found.
 # Examples
 
 ```julia
-julia> r[:ΔrH°]
+julia> r[:ΔrH⁰]
 r = Reaction("H2 + O2 = H2O");
 
 julia> r[:nonexistent]
-r[:ΔrH°] = -241.8;
+r[:ΔrH⁰] = -241.8;
 ```
 """
 Base.getindex(r::Reaction, i::Symbol) = get(properties(r), i, nothing)
@@ -176,7 +258,7 @@ Set a property value for the reaction.
 # Examples
 
 ```julia
-julia> r[:ΔrH°]
+julia> r[:ΔrH⁰]
 r = Reaction("H2 + O2 = H2O");
 ```
 """
@@ -191,11 +273,11 @@ Throws an error if the symbol is neither a field nor a property.
 # Examples
 
 ```julia
-julia> r.ΔrH°
+julia> r.ΔrH⁰
 r = Reaction("H2 + O2 = H2O");
 
 julia> r.equation
-r[:ΔrH°] = -241.8;
+r[:ΔrH⁰] = -241.8;
 ```
 """
 function Base.getproperty(r::Reaction, sym::Symbol)
@@ -216,11 +298,11 @@ Check if a property key exists in the reaction properties dictionary.
 # Examples
 
 ```julia
-julia> haskey(r, :ΔrH°)
+julia> haskey(r, :ΔrH⁰)
 r = Reaction("H2 + O2 = H2O");
 
 julia> haskey(r, :nonexistent)
-r[:ΔrH°] = -241.8;
+r[:ΔrH⁰] = -241.8;
 ```
 """
 function Base.haskey(r::Reaction, sym::Symbol)
@@ -235,7 +317,7 @@ Set a property value, preventing direct modification of structural fields.
 # Examples
 
 ```julia
-julia> r.ΔrH°
+julia> r.ΔrH⁰
 r = Reaction("H2 + O2 = H2O");
 ```
 """
@@ -356,29 +438,29 @@ end
     complete_thermo_functions(r::Reaction)
 
 Compute reaction thermodynamic properties from species properties.
-Calculates ΔrCp°, ΔrS°, ΔrH°, ΔrG°, and ΔrV if all species have the required properties.
+Calculates ΔrCp⁰, ΔrS⁰, ΔrH⁰, ΔrG⁰, and ΔrV if all species have the required properties.
 
 # Examples
 
 ```julia
-julia> r.ΔrCp°
-h2 = Species("H2"); h2.Cp° = 28.8;
+julia> r.ΔrCp⁰
+h2 = Species("H2"); h2.Cp⁰ = 28.8;
 ```
 """
 function complete_thermo_functions(r::Reaction)
     species_list = keys(r)
     if !isempty(species_list)
-        if all(x -> haskey(x, :Cp°), species_list)
-            r.ΔrCp° = sum(ν * s.Cp° for (s, ν) in r)
+        if all(x -> haskey(x, :Cp⁰), species_list)
+            r.ΔrCp⁰ = sum(ν * s.Cp⁰ for (s, ν) in r)
         end
-        if all(x -> haskey(x, :S°), species_list)
-            r.ΔrS° = sum(ν * s.S° for (s, ν) in r)
+        if all(x -> haskey(x, :S⁰), species_list)
+            r.ΔrS⁰ = sum(ν * s.S⁰ for (s, ν) in r)
         end
-        if all(x -> haskey(x, :ΔfH°), species_list)
-            r.ΔrH° = sum(ν * s.ΔfH° for (s, ν) in r)
+        if all(x -> haskey(x, :ΔfH⁰), species_list)
+            r.ΔrH⁰ = sum(ν * s.ΔfH⁰ for (s, ν) in r)
         end
-        if all(x -> haskey(x, :ΔfG°), species_list)
-            r.ΔrG° = sum(ν * s.ΔfG° for (s, ν) in r)
+        if all(x -> haskey(x, :ΔfG⁰), species_list)
+            r.ΔrG⁰ = sum(ν * s.ΔfG⁰ for (s, ν) in r)
         end
         if all(x -> haskey(x, :Vm), species_list)
             r.ΔrV = sum(ν * s.Vm for (s, ν) in r)

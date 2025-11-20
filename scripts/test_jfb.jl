@@ -10,7 +10,7 @@ convert(Float64, fgen)
 ATOMIC_ORDER # provides the order of atoms in formulas
 
 # Species
-H₂O = Species("H₂O"; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+H₂O = Species("H₂O"; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
@@ -46,7 +46,7 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-# df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
+df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
 # # Or sequentially substances then reactions (with potential reference to substances in reactions in order to link with species with proper aggregate_states and classes as well as thermodynamic data)
 # df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_units=true, add_species=true, all_properties=true, debug=false)
 # df_reactions = read_thermofun_reactions("data/cemdata18-merged.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
@@ -55,7 +55,7 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # df_reactions = read_thermofun_reactions("data/psinagra-12-07-thermofun.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
 # serialize("data/psinagra.jls", (df_substances, df_reactions))
 # # Quicker with serialized data
-df_substances, df_reactions = deserialize("data/cemdata18.jls")
+# df_substances, df_reactions = deserialize("data/cemdata18.jls")
 # Construction of Dicts for convenience
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))

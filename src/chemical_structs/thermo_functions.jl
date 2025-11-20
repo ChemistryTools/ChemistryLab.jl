@@ -1,3 +1,6 @@
+*(x::Num, y::AbstractQuantity) = Quantity(x * y.value, y.dimensions)
+*(x::AbstractQuantity, y::Num) = *(y, x)
+
 """
     Callable
 
@@ -718,4 +721,35 @@ for fn in MATH_FUNCTIONS
     # Returns a new ThermoFunction with $($fn) applied to the expression
     ```
     """ $(mod).$(func_name)
+end
+
+"""
+    calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} -> Quantity
+
+Calculate the molar mass from an atomic composition dictionary.
+
+# Arguments
+
+  - `atoms`: dictionary mapping element symbols to stoichiometric coefficients.
+
+# Returns
+
+  - Molar mass as a Quantity in g/mol units.
+
+# Examples
+
+```julia
+julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
+18.01528 g mol⁻¹
+```    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
+```
+"""
+function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
+    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
+    # return uconvert(u"g/mol", sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
+    molar_masses = [
+        cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for
+        (element, cnt) in atoms if haskey(elements, element)
+    ]
+    return length(molar_masses) > 0 ? sum(molar_masses) * Constants.N_A : 0u"g/mol"
 end
