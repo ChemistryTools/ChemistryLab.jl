@@ -19,6 +19,52 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 - **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
 
+## Examples
+
+- Reaction defined from a string
+
+```julia
+julia> using ChemistryLab
+
+julia> equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
+"13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
+
+julia> r = Reaction(equation)
+13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@
+ reactants: H⁺ => 13, NO₃⁻ => 1, CO₃²⁻ => 1
+  products: H₂O@ => 6, HCN@ => 1
+properties: charge = -10
+```
+
+- Self-balancing of a chemical reaction: symbolic example of alkane combustion
+
+```julia
+julia> using SymPy
+
+julia> n = symbols("n", real=true) ;
+
+julia> CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2) ;
+
+julia> O₂, H₂O, CO₂ = Species.(split("O₂ H₂O CO₂")) ;
+
+julia> r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
+CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
+ reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
+  products: H₂O => n + 1, CO₂ => n
+properties: charge = 0
+
+julia> for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
+n=1 ⇒ CH₄ + 2O₂ = 2H₂O + CO₂
+n=2 ⇒ C₂H₆ + 7/2O₂ = 3H₂O + 2CO₂
+n=3 ⇒ C₃H₈ + 5O₂ = 4H₂O + 3CO₂
+n=4 ⇒ C₄H₁₀ + 13/2O₂ = 5H₂O + 4CO₂
+n=5 ⇒ C₅H₁₂ + 8O₂ = 6H₂O + 5CO₂
+n=6 ⇒ C₆H₁₄ + 19/2O₂ = 7H₂O + 6CO₂
+n=7 ⇒ C₇H₁₆ + 11O₂ = 8H₂O + 7CO₂
+n=8 ⇒ C₈H₁₈ + 25/2O₂ = 9H₂O + 8CO₂
+n=9 ⇒ C₉H₂₀ + 14O₂ = 10H₂O + 9CO₂
+```
+
 ## Installation
 
 ```julia

@@ -161,11 +161,11 @@ print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
 print_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
 # Alkane combustion with SymPy
-n = symbols("n", real=true)
-CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2)
-O₂ = Species("O₂")
-H₂O = Species("H₂O")
-CO₂ = Species("CO₂")
+n = symbols("n", real=true) ;
+CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2) ;
+O₂ = Species("O₂") ;
+H₂O = Species("H₂O") ;
+CO₂ = Species("CO₂") ;
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 apply(factor, r)
 println(2r)

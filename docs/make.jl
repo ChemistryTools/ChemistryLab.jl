@@ -4,7 +4,12 @@ using PrettyTables
 
 include("pages.jl")
 
-DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab, OrderedCollections); recursive=true)
+DocMeta.setdocmeta!(
+    ChemistryLab,
+    :DocTestSetup,
+    :(using ChemistryLab, OrderedCollections);
+    recursive=true
+)
 
 makedocs(;
     modules=[ChemistryLab],
