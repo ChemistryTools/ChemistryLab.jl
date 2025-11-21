@@ -371,19 +371,17 @@ function Species(
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
 )
     atoms = composition(formula)
-    if !haskey(properties, :M)
+    if !haskey(properties, :M) && check_mendeleev(formula)
         properties[:M] = calculate_molar_mass(atoms)
     end
-    return mendeleev_filter(
-        Species{valtype(atoms)}(
+    return Species{valtype(atoms)}(
             name,
             symbol,
             formula,
             aggregate_state,
             class,
             OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
-        ),
-    )
+        )
 end
 
 """
@@ -786,14 +784,12 @@ function CemSpecies(
 )
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
-    if !haskey(properties, :M)
+    if !haskey(properties, :M) && check_mendeleev(formula)
         properties[:M] = calculate_molar_mass(atoms)
     end
-    return mendeleev_filter(
-        CemSpecies{valtype(atoms),valtype(composition(cemformula))}(
+    return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(
             name, symbol, formula, cemformula, aggregate_state, class, properties
-        ),
-    )
+        )
 end
 
 """

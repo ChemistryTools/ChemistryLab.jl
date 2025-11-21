@@ -11,6 +11,7 @@ pages = [
     ],
     "Examples" => ["example/get_stoichio_matrix.md", "example/bogue_calculation.md"],
     "API" => Any[
-    "Parsing tools" => "api/parsing_utils.md",
+    "Element order" => "api/element_order.md",
+    "Parsing tools" => "api/parsing_tools.md",
     ],
 ]

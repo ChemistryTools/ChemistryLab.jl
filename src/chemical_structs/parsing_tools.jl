@@ -63,7 +63,7 @@ Convert a PHREEQC formula string to Unicode representation with subscripts and s
 
 # Examples
 
-```julia
+```jldoctest
 julia> phreeqc_to_unicode("Ca+2")
 "Ca²⁺"
 
@@ -147,7 +147,7 @@ Convert a Unicode formula string back to PHREEQC format.
 
 # Examples
 
-```julia
+```jldoctest
 julia> unicode_to_phreeqc("Ca²⁺")
 "Ca+2"
 
@@ -284,14 +284,14 @@ Parse a chemical formula string into an atomic composition dictionary.
 
 # Examples
 
-```julia
+```jldoctest
 julia> parse_formula("H2O")
-OrderedDict{Symbol, Number} with 2 entries:
+OrderedDict{Symbol, Int64} with 2 entries:
   :H => 2
   :O => 1
 
 julia> parse_formula("Ca(OH)2")
-OrderedDict{Symbol, Number} with 3 entries:
+OrderedDict{Symbol, Int64} with 3 entries:
   :Ca => 1
   :O  => 2
   :H  => 2
@@ -403,7 +403,7 @@ Extract the formal charge from a chemical formula string.
 
 # Examples
 
-```julia
+```jldoctest
 julia> extract_charge("Ca+2")
 2
 
@@ -440,13 +440,17 @@ Convert cement oxide notation to Mendeleev element composition.
 
 # Examples
 
-```julia
+```jldoctest
 julia> to_mendeleev(OrderedDict(:C => 1, :S => 2))
-OrderedDict{Symbol, Number} with 3 entries:
+OrderedDict{Symbol, Int64} with 3 entries:
   :Ca => 1
   :O  => 5
   :Si => 2
 ```
+
+# See also
+
+  - [`CEMENT_TO_MENDELEEV`](@ref)
 """
 function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
     result = OrderedDict{Symbol,Number}()
@@ -478,12 +482,13 @@ Parse a chemical equation string into reactants, products, and equality sign.
 
 # Returns
 
-  - Tuple of (reactants_dict, products_dict, equal_sign_char).
+  - Tuple of (reactants dict, products dict, equal sign char).
 
 # Examples
 
-```julia
-julia> reactants, products, sign = parse_equation("2H2 + O2 = 2H2O");
+```jldoctest
+julia> reactants, products, sign = parse_equation("2H2 + O2 = 2H2O")
+(OrderedDict("H2" => 2, "O2" => 1), OrderedDict("H2O" => 2), '=')
 
 julia> reactants["H2"]
 2
@@ -623,12 +628,11 @@ Format a stoichiometric coefficient dictionary into an equation string.
 
 # Examples
 
-```julia
-julia> coeffs = Dict("H2" => -2, "O2" => -1, "H2O" => 2);
+```jldoctest
+julia> coeffs = OrderedDict("H2" => -2, "O2" => -1, "H2O" => 2);
 
 julia> format_equation(coeffs)
 "2H2 + O2 = 2H2O"
-```    # Separate reactants and products
 ```
 """
 function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')

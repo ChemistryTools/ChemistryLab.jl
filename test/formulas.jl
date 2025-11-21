@@ -46,7 +46,7 @@
     f_applied = apply(x->x, f_int)
     @test composition(f_applied) == composition(f_int)
 
-    # check_mendeleev should throw on invalid atom
-    @test_throws ErrorException check_mendeleev(Formula("Xx"))
+    # check_mendeleev returns false on invalid atom
+    @test !check_mendeleev(Formula("Xx"))
 
 end
