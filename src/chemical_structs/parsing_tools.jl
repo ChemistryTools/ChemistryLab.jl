@@ -460,7 +460,11 @@ function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
             end
         end
     end
-    return length(result) > 0 ? OrderedDict(k => stoich_coef_round(v) for (k, v) in result) : result
+    return if length(result) > 0
+        OrderedDict(k => stoich_coef_round(v) for (k, v) in result)
+    else
+        result
+    end
 end
 
 """

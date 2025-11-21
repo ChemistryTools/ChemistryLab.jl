@@ -379,6 +379,10 @@ function Base.iterate(r::Reaction, state=(1, nothing))
     end
 end
 
+function Base.length(r::Reaction)
+    return length(reactants(r)) + length(products(r))
+end
+
 """
     Base.keys(r::Reaction)
 
@@ -465,6 +469,9 @@ function complete_thermo_functions(r::Reaction)
         if all(x -> haskey(x, :Vm), species_list)
             r.ΔrV = sum(ν * s.Vm for (s, ν) in r)
         end
+        r.charge = sum(ν * charge(s) for (s, ν) in r)
+    else
+        r.charge = 0
     end
 end
 
@@ -505,7 +512,7 @@ function Reaction(
         ordered_dict_with_default(
             (
                 find_species(k, species_list) => stoich_coef_round(v) for
-                (k, v) in reactants if !iszero(v)
+                (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
             ),
             S,
             Number,
@@ -513,7 +520,7 @@ function Reaction(
         ordered_dict_with_default(
             (
                 find_species(k, species_list) => stoich_coef_round(v) for
-                (k, v) in products if !iszero(v)
+                (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
             ),
             S,
             Number,
@@ -521,6 +528,7 @@ function Reaction(
         equal_sign,
         OrderedDict{Symbol,PropertyType}(properties),
     )
+    complete_thermo_functions(r)
     if side == :none
         return r
     else
@@ -692,6 +700,10 @@ function Reaction(
             merge_species_by_stoich(reactants, products); side=side
         )
     end
+    delete!(reactants, root_type(SR)("Zz"))
+    delete!(reactants, root_type(SR)("e"))
+    delete!(products, root_type(SP)("Zz"))
+    delete!(products, root_type(SP)("e"))
     sreac, creac, charge_left = format_side(reactants)
     sprod, cprod, charge_right = format_side(products)
     charge_diff = charge_right - charge_left

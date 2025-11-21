@@ -51,7 +51,7 @@ products(r)          # OrderedDict of products
 species = [Species("H2O"), Species("H2"), Species("O2")]
 A, indep, dep = stoich_matrix(species; display=false)
 # Convert a numeric stoichiometric matrix to equation strings
-eqns = stoich_matrix_to_equations(A, indep, dep; display=false)
+eqns = stoich_matrix_to_reactions(A, indep, dep; display=false)
 println(eqns)
 ```
 

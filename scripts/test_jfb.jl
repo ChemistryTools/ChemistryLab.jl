@@ -46,7 +46,7 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
+# df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
 # # Or sequentially substances then reactions (with potential reference to substances in reactions in order to link with species with proper aggregate_states and classes as well as thermodynamic data)
 # df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_units=true, add_species=true, all_properties=true, debug=false)
 # df_reactions = read_thermofun_reactions("data/cemdata18-merged.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
@@ -55,7 +55,7 @@ df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged
 # df_reactions = read_thermofun_reactions("data/psinagra-12-07-thermofun.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
 # serialize("data/psinagra.jls", (df_substances, df_reactions))
 # # Quicker with serialized data
-# df_substances, df_reactions = deserialize("data/cemdata18.jls")
+df_substances, df_reactions = deserialize("data/cemdata18.jls")
 # Construction of Dicts for convenience
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
@@ -81,7 +81,7 @@ aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
-stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
