@@ -53,6 +53,9 @@ CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
   products: H₂O => n + 1, CO₂ => n
 properties: charge = 0
 
+julia> println(2r)
+2CₙH₂ₙ₊₂ + (3n+1)O₂ = (2n+2)H₂O + 2nCO₂
+
 julia> for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
 n=1 ⇒ CH₄ + 2O₂ = 2H₂O + CO₂
 n=2 ⇒ C₂H₆ + 7/2O₂ = 3H₂O + 2CO₂

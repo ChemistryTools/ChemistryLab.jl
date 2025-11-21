@@ -13,5 +13,6 @@ pages = [
     "API" => Any[
     "Element order" => "api/element_order.md",
     "Parsing tools" => "api/parsing_tools.md",
+    "Thermodynamical functions" => "api/thermo_functions.md",
     ],
 ]

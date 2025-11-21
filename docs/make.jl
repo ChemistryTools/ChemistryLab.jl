@@ -7,7 +7,7 @@ include("pages.jl")
 DocMeta.setdocmeta!(
     ChemistryLab,
     :DocTestSetup,
-    :(using ChemistryLab, OrderedCollections);
+    :(using ChemistryLab, OrderedCollections, DynamicQuantities);
     recursive=true
 )
 

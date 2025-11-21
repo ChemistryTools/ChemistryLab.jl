@@ -131,7 +131,7 @@ export stoich_coef_round,
     colored_equation,
     format_equation
 
-export Callable, ThermoFunction, ∂, ∫, calculate_molar_mass, apply
+export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
 
 export AtomGroup,
     Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev

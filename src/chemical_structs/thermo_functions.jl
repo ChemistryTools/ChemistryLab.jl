@@ -20,13 +20,6 @@ Representation of a thermodynamic function with symbolic expression, variables, 
   - `unit::U`: Unit of the function's output
   - `func::F`: Compiled function for evaluation
   - `ref::R`: Reference conditions dictionary
-
-# Examples
-
-```julia
-julia> tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
-ThermoFunction with expression: a₀ + a₁*T
-```
 """
 struct ThermoFunction{U,F,R} <: Callable
     symexpr::Num
@@ -47,13 +40,6 @@ Construct a ThermoFunction from symbolic expression, variables, unit, and refere
   - `vars`: Dictionary of variables
   - `unit`: Unit of the function
   - `ref`: Reference conditions
-
-# Examples
-
-```julia
-julia> tf = ThermoFunction(expr, vars, u"J/(mol*K)", Dict(:T => 298.15u"K"))
-expr = Num(:a₀ + :a₁ * :T)
-```
 """
 function ThermoFunction(symexpr::Num, vars::Dict{Symbol,Num}, unit::U, ref::R) where {U,R}
     func = eval(build_function(symexpr, values(vars)...; expression=Val{false}))
@@ -73,9 +59,15 @@ Dictionary of predefined thermodynamic function expressions.
 
 # Examples
 
-```julia
+```jldoctest
 julia> thermo_function_library[:Cp]
-:(a₀ + a₁ * T + a₂ / T^2 + a₃ / √T + a₄ * T^2 + a₅ * T^3 + a₆ * T^4 + a₇ / T^3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
+:(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
+
+julia> thermo_function_library[:CpoverT]
+:(a₀ / T + a₁ + a₂ / T ^ 3 + a₃ / T ^ (3 / 2) + a₄ * T + a₅ * T ^ 2 + a₆ * T ^ 3 + a₇ / T ^ 4 + a₈ / T ^ 2 + a₉ / √T + (a₁₀ * log(T)) / T)
+
+julia> thermo_function_library[:logKr]
+:(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T ^ 2 + A₅ * T ^ 2 + A₆ * √T)
 ```
 """
 const thermo_function_library = Dict(
@@ -118,17 +110,51 @@ Construct a ThermoFunction from an expression, parameters, variables, and refere
   - `expr`: Symbol or expression (or key from thermo_function_library)
   - `params`: Parameter values as Pairs
   - `vars`: Variable symbols (default: [:T, :P, :t])
-  - `ref`: Reference conditions dictionary
+  - `ref`: Reference conditions dictionary (default: ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"])
+
+!!! warning
+    It is possible to use or not units when defining parameters and reference values but in case of dimensioned quantities, the user should take care of the homogeneity of the expression consistently with parameters and variables units. However variables inside functions such as `log`, `exp`, `cos`... are assumed to be dimensionless (or better implicitly divided by a unit value in the International System of Units) so that it is possible to write `log(T)`, `exp(T)`, `cos(T)` while keeping `T` in Kelvins.
 
 # Examples
 
-```julia
-julia> tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
-ThermoFunction with Cp expression
+```jldoctest
+julia> expr = :(α + β * T + γ * log(T))
+:(α + β * T + γ * log(T))
 
-julia> tf = ThermoFunction(:(a₀ + a₁*T), [:a₀ => 1.0, :a₁ => 2.0])
-Custom thermodynamic function
+julia> params = [:α => 210.0u"J/K/mol", :β => 0.0u"J/mol/K^2", :γ => -3.07e6u"J/K/mol"]
+3-element Vector{Pair{Symbol, Quantity{Float64, Dimensions{FRInt32}}}}:
+ :α => 210.0 m² kg s⁻² K⁻¹ mol⁻¹
+ :β => 0.0 m² kg s⁻² K⁻² mol⁻¹
+ :γ => -3.07e6 m² kg s⁻² K⁻¹ mol⁻¹
+
+julia> vars = [:T]
+1-element Vector{Symbol}:
+ :T
+
+julia> tf = ThermoFunction(expr, params, vars; ref=[:T => 298.15u"K"])
+210.0 - 3.07e6log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
+
+julia> tf() # default evaluation at reference variable here Tref=298.15K
+-1.7491411916797183e7 m² kg s⁻² K⁻¹ mol⁻¹
+
+julia> tf(300.0u"K")
+-1.7510402197194535e7 m² kg s⁻² K⁻¹ mol⁻¹
+
+julia> tf(300.0)
+-1.7510402197194535e7
+
+julia> tf_nounits = ThermoFunction(expr, [:α => 210.0, :β => 0.0, :γ => -3.07e6], vars; ref=[:T => 298.15])
+210.0 - 3.07e6log(T) ♢ unit=[] ♢ ref=[T=298.15]
+
+julia> tf_nounits(300.0u"K")
+-1.7510402197194535e7
+
+julia> tf_nounits(300.)
+-1.7510402197194535e7
 ```
+
+!!! note
+    Note that `ThermoFunction` can be used as a functor i.e. can apply on a dimensioned or dimensionless value, which respectively returns a dimensioned or dimensionless result. The default argument(s) is (are) the reference one(s).
 """
 function ThermoFunction(
     expr::Union{Symbol,Expr},
@@ -195,13 +221,6 @@ Evaluate the thermodynamic function at given variable values.
 # Returns
 
   - The function value (scalar)
-
-# Examples
-
-```julia
-julia> tf(300.0)  # Evaluate at T=300
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
-```
 """
 function (tf::ThermoFunction)(vars...)
     return tf.func(vars...)
@@ -219,13 +238,6 @@ Evaluate the thermodynamic function at given variable values with units.
 # Returns
 
   - The function value with appropriate units
-
-# Examples
-
-```julia
-julia> tf(300.0u"K")  # Returnss value with units
-tf = ThermoFunction(:Cp, [:a₀ => 1.0u"J/(mol*K)", :a₁ => 2.0u"J/(mol*K^2)"], [:T => 298.15u"K"])
-```
 """
 function (tf::ThermoFunction)(vars::Quantity...)
     return tf.func(ustrip.(vars)...) * tf.unit
@@ -239,13 +251,6 @@ Evaluate the thermodynamic function at reference conditions.
 # Returns
 
   - The function value at reference conditions
-
-# Examples
-
-```julia
-julia> tf()  # Evaluate at reference T=298.15
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0], ref=Dict(:T => 298.15))
-```
 """
 function (tf::ThermoFunction)()
     vars = [tf.ref[var] for var in keys(tf.vars)]
@@ -269,13 +274,6 @@ Add a number to a thermodynamic function.
 # Returns
 
   - New ThermoFunction with added constant
-
-# Examples
-
-```julia
-julia> tf2 = tf + 5.0
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function +(tf::ThermoFunction, x::Number)
     @assert dimension(tf.unit) == dimension(x)
@@ -286,13 +284,6 @@ end
     +(x::Number, tf::ThermoFunction)
 
 Add a number to a thermodynamic function (commutative version).
-
-# Examples
-
-```julia
-julia> tf2 = 5.0 + tf
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 +(x::Number, tf::ThermoFunction) = +(tf, x)
 
@@ -304,13 +295,6 @@ Negate a thermodynamic function.
 # Returns
 
   - New ThermoFunction with negated expression
-
-# Examples
-
-```julia
-julia> tf2 = -tf
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 -(tf::ThermoFunction) = ThermoFunction(-1 * tf.symexpr, tf.vars, tf.unit, tf.ref)
 
@@ -327,13 +311,6 @@ Multiply a thermodynamic function by a number.
 # Returns
 
   - New ThermoFunction with scaled expression and units
-
-# Examples
-
-```julia
-julia> tf2 = tf * 2.0
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function *(tf::ThermoFunction, x::Number)
     return ThermoFunction(
@@ -355,13 +332,6 @@ Multiply a thermodynamic function by a number (commutative version).
     -(tf::ThermoFunction, x)
 
 Subtract a number from a thermodynamic function.
-
-# Examples
-
-```julia
-julia> tf2 = tf - 5.0
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 -(tf::ThermoFunction, x) = +(tf, -1 * x)
 
@@ -380,13 +350,6 @@ Divide a thermodynamic function by a number.
 # Returns
 
   - New ThermoFunction with divided expression and units
-
-# Examples
-
-```julia
-julia> tf2 = tf / 2.0
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function /(tf::ThermoFunction, x::Number)
     return ThermoFunction(
@@ -419,13 +382,6 @@ Raise a thermodynamic function to a power.
 # Arguments
 
   - `x`: Power (must be dimensionless)
-
-# Examples
-
-```julia
-julia> tf2 = tf^2
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function ^(tf::ThermoFunction, x::Number)
     @assert dimension(1) == dimension(x)
@@ -445,13 +401,6 @@ Check if one dictionary is contained within another.
 # Returns
 
   - The containing dictionary if one contains the other, nothing otherwise
-
-# Examples
-
-```julia
-julia> contained_dict(d1, d2) == d2
-d1 = Dict(:a => 1, :b => 2)
-```
 """
 function contained_dict(d1, d2)
     c1 = all(k -> haskey(d2, k) && isequal(d2[k], d1[k]), keys(d1))
@@ -478,13 +427,6 @@ Add two thermodynamic functions.
 # Returns
 
   - New ThermoFunction with combined expressions
-
-# Examples
-
-```julia
-julia> tf3 = tf1 + tf2
-tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function +(tf1::ThermoFunction, tf2::ThermoFunction)
     vars = contained_dict(tf1.vars, tf2.vars)
@@ -498,13 +440,6 @@ end
     *(tf1::ThermoFunction, tf2::ThermoFunction)
 
 Multiply two thermodynamic functions.
-
-# Examples
-
-```julia
-julia> tf3 = tf1 * tf2
-tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function *(tf1::ThermoFunction, tf2::ThermoFunction)
     vars = contained_dict(tf1.vars, tf2.vars)
@@ -518,13 +453,6 @@ end
     /(tf1::ThermoFunction, tf2::ThermoFunction)
 
 Divide two thermodynamic functions.
-
-# Examples
-
-```julia
-julia> tf3 = tf1 / tf2
-tf1 = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 function /(tf1::ThermoFunction, tf2::ThermoFunction)
     vars = contained_dict(tf1.vars, tf2.vars)
@@ -538,13 +466,6 @@ end
     Base.inv(tf::ThermoFunction)
 
 Compute the inverse of a thermodynamic function.
-
-# Examples
-
-```julia
-julia> tf2 = inv(tf)
-tf = ThermoFunction(:Cp, [:a₀ => 1.0])
-```
 """
 Base.inv(tf::ThermoFunction) = 1 / tf
 
@@ -563,9 +484,18 @@ Compute the partial derivative of a thermodynamic function.
 
 # Examples
 
-```julia
-julia> dtf = ∂(tf)  # Derivative with respect to T
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
+```jldoctest
+julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"])
+210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+
+julia> ∂(Cp)
+0.12 + 6.14e6 / (T^3) ♢ unit=[m² kg s⁻² K⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+
+julia> rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
+(1.0 + 2.0t) / (3.0 + 4.0sqrt(t)) ♢ unit=[] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+
+julia> ∂(rate)(1u"h")
+0.004165467097946903 s⁻¹
 ```
 """
 function ∂(tf::ThermoFunction, var=collect(keys(tf.vars))[1])
@@ -596,9 +526,18 @@ Compute the integral of a thermodynamic function.
 
 # Examples
 
-```julia
-julia> itf = ∫(tf)  # Integral with respect to T
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
+```jldoctest
+julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"])
+210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+
+julia> ∫Cp = ∫(Cp)
+210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+
+julia> ΔfH⁰_Tref = -2.72e6u"J/mol"
+-2.72e6 m² kg s⁻² mol⁻¹
+
+julia> ΔfH⁰ = (ΔfH⁰_Tref -∫Cp()) + ∫Cp
+-2.798241935804469e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
 ```
 """
 function ∫(tf::ThermoFunction, var=collect(keys(tf.vars))[1])
@@ -738,10 +677,9 @@ Calculate the molar mass from an atomic composition dictionary.
 
 # Examples
 
-```julia
+```jldoctest
 julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
-18.01528 g mol⁻¹
-```    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
+0.0180149999937744 kg mol⁻¹
 ```
 """
 function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
