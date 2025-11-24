@@ -101,7 +101,7 @@ const thermo_function_library = Dict(
 )
 
 """
-    ThermoFunction(expr::Union{Symbol,Expr}, params=Pair[], vars=[:T, :P, :t]; ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"])
+    ThermoFunction(expr::Union{Symbol,Expr}, params=Pair[], vars=[:T, :P, :t]; ref=[])
 
 Construct a ThermoFunction from an expression, parameters, variables, and reference conditions.
 
@@ -160,17 +160,23 @@ function ThermoFunction(
     expr::Union{Symbol,Expr},
     params=Pair[],
     vars=[:T, :P, :t];
-    ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"],
+    ref=[],
 )
     expr = get(thermo_function_library, expr, expr)
     symexpr = Num(parse_expr_to_symbolic(expr, @__MODULE__))
     varofexpr = Num.(get_variables(symexpr))
     dictallvars = Dict(Symbol(v) => v for v in varofexpr)
     dictparams = Dict(dictallvars[k] => v for (k, v) in params if haskey(dictallvars, k))
-    dictref = Dict(dictallvars[k] => v for (k, v) in ref if haskey(dictallvars, k))
+    with_units = promote_type(typeof.(values(dictparams))...) <: Quantity
+    default_ref = with_units ? Dict(:T => 298.15u"K", :P => 1u"bar", :t => 0u"s") :
+                    Dict(:T => 298.15, :P => 100000., :t => 0.)
+    givenref = Dict(ref)
     vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
+    dictvars = Dict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
+    dictref = Dict(v=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
+    dictvarref = Dict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
     vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
-    veczeros = filter(x -> x ∉ keys(dictparams), vecparams)
+    veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
     symexpr = substitute(symexpr, Dict(k => 0 for k in veczeros))
     nounitfunc = vec([
         f(var) => 1 for f in [
@@ -193,20 +199,17 @@ function ThermoFunction(
         ],
         var in vecvars
     ])
-    unit = if promote_type(typeof.(values(dictparams))...) <: Quantity
+    unit = if with_units
         Quantity(
-            1,
-            dimension(
-                substitute(symexpr, [collect(dictparams); nounitfunc; collect(dictref)])
-            ),
-        )
+        1,
+        dimension(substitute(symexpr, [nounitfunc; collect(dictparams); collect(dictvarref)])),
+    )
     else
         1
     end
     symexpr = substitute(symexpr, [k => ustrip(v) for (k, v) in dictparams])
-    dictvars = Dict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     func = eval(build_function(symexpr, vecvars...; expression=Val{false}))
-    return ThermoFunction(symexpr, dictvars, unit, func, Dict(ref))
+    return ThermoFunction(symexpr, dictvars, unit, func, dictref)
 end
 
 """
@@ -506,7 +509,7 @@ function ∂(tf::ThermoFunction, var=collect(keys(tf.vars))[1])
             ),
         ),
         tf.vars,
-        tf.unit / dimension(tf.ref[var]),
+        oneunit(tf.unit / Quantity(1, dimension(tf.ref[var]))),
         tf.ref,
     )
 end
@@ -550,7 +553,7 @@ function ∫(tf::ThermoFunction, var=collect(keys(tf.vars))[1])
             ),
         ),
         tf.vars,
-        tf.unit * dimension(tf.ref[var]),
+        oneunit(tf.unit * Quantity(1, dimension(tf.ref[var]))),
         tf.ref,
     )
 end
@@ -564,13 +567,6 @@ Display a thermodynamic function in a readable format.
 
   - `io`: Output stream
   - `tf`: ThermoFunction to display
-
-# Examples
-
-```julia
-julia> show(stdout, tf)
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
-```
 """
 function Base.show(io::IO, tf::ThermoFunction)
     print(io, tf.symexpr)
