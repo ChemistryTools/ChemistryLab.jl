@@ -109,7 +109,7 @@ Construct a ThermoFunction from an expression, parameters, variables, and refere
 
   - `expr`: Symbol or expression (or key from thermo_function_library)
   - `params`: Parameter values as Pairs
-  - `vars`: Variable symbols (default: [:T, :P, :t])
+  - `vars`: Variable symbols (default: [:T, :P, :t, :x, :y, :z])
   - `ref`: Reference conditions dictionary (default: ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"])
 
 !!! warning
@@ -159,7 +159,7 @@ julia> tf_nounits(300.)
 function ThermoFunction(
     expr::Union{Symbol,Expr},
     params=Pair[],
-    vars=[:T, :P, :t];
+    vars=[:T, :P, :t, :x, :y, :z];
     ref=[],
 )
     expr = get(thermo_function_library, expr, expr)
