@@ -596,9 +596,12 @@ Apply a function to a thermodynamic function's expression.
 
 # Examples
 
-```julia
-julia> tf2 = apply(exp, tf)
-tf = ThermoFunction(:Cp, [:a₀ => 1.0, :a₁ => 2.0])
+```jldoctest
+julia> f = ThermoFunction(:(a+b*x), [:a=>3, :b=>2])
+3 + 2x ♢ unit=[] ♢ ref=[x=0]
+
+julia> apply(expand∘(x->x^2), f)
+9 + 12x + 4(x^2) ♢ unit=[] ♢ ref=[x=0]
 ```
 """
 function apply(func::Function, tf::ThermoFunction, args...; kwargs...)
@@ -653,10 +656,12 @@ for fn in MATH_FUNCTIONS
     - New ThermoFunction with $($fn) applied to the expression and unit
 
     # Examples
-    ```julia
-    julia> tf = ThermoFunction(:Cp, [:a0 => 1.0, :a1 => 2.0])
-    julia> tf2 = $($fn)(tf)
-    # Returns a new ThermoFunction with $($fn) applied to the expression
+    ```jldoctest
+    julia> f = ThermoFunction(:(a+b*x), [:a=>2.3, :b=>4.6])
+    2.3 + 4.6x ♢ unit=[] ♢ ref=[x=0]
+
+    julia> exp(f)
+    exp(2.3 + 4.6x) ♢ unit=[] ♢ ref=[x=0]
     ```
     """
     $(mod).$(func_name)

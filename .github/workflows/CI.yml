@@ -68,5 +68,5 @@ jobs:
         run: |
           using Documenter: DocMeta, doctest
           using ChemistryLab
-          DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab, OrderedCollections, DynamicQuantities); recursive=true)
+          DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab, DynamicQuantities, OrderedCollections, ModelingToolkit); recursive=true)
           doctest(ChemistryLab)
