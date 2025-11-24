@@ -45,17 +45,17 @@ spCH == CemSpecies("CH"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT) # true 
 try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in cement oxides" end
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
-# Thermofun cemdata18
-# df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) # debug only for conception phase (not to be put in the doc)
-# # Or sequentially substances then reactions (with potential reference to substances in reactions in order to link with species with proper aggregate_states and classes as well as thermodynamic data)
-# df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_units=true, add_species=true, all_properties=true, debug=false)
-# df_reactions = read_thermofun_reactions("data/cemdata18-merged.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
-# serialize("data/cemdata18.jls", (df_substances, df_reactions))
-# df_substances = read_thermofun_substances("data/psinagra-12-07-thermofun.json"; with_units=true, add_species=true, all_properties=true, debug=false)
-# df_reactions = read_thermofun_reactions("data/psinagra-12-07-thermofun.json", df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
-# serialize("data/psinagra.jls", (df_substances, df_reactions))
-# # Quicker with serialized data
-df_substances, df_reactions = deserialize("data/cemdata18.jls")
+# Thermofun input
+json_file, jls_file = "data/cemdata18-merged.json", "data/cemdata18.jls"
+# json_file, jls_file = "data/psinagra-12-07-thermofun.json", "data/psinagra.jls"
+try
+    global df_substances, df_reactions = deserialize(jls_file)
+catch
+    # df_elements, df_substances, df_reactions = read_thermofun(json_file; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false)
+    global df_substances = read_thermofun_substances(json_file; with_units=true, add_species=true, all_properties=true, debug=false)
+    global df_reactions = read_thermofun_reactions(json_file, df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
+    serialize(jls_file, (df_substances, df_reactions))
+end
 # Construction of Dicts for convenience
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))

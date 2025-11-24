@@ -91,6 +91,7 @@ Representation of a chemical reaction with reactants and products.
   - `colored::String`: colored terminal representation.
   - `reactants::OrderedDict{SR,TR}`: species => coefficient for reactants.
   - `products::OrderedDict{SP,TP}`: species => coefficient for products.
+  - `charge::IC`: charge difference between products and reactants.
   - `equal_sign::Char`: equality operator character.
   - `properties::OrderedDict{Symbol,PropertyType}`: thermodynamic and other properties.
 
@@ -104,11 +105,12 @@ julia> length(products(r))
 2
 ```
 """
-struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
+struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number}
     equation::String
     colored::String
     reactants::OrderedDict{SR,TR}
     products::OrderedDict{SP,TP}
+    charge::IC
     equal_sign::Char
     properties::OrderedDict{Symbol,PropertyType}
 end
@@ -168,6 +170,20 @@ r = Reaction("2H2 + O2 = 2H2O");
 ```
 """
 products(r::Reaction) = r.products
+
+"""
+    charge(r::Reaction)
+
+Return the charge difference between products and reactants.
+
+# Examples
+
+```julia
+julia> charge(r)
+r = Reaction("2H2 + O2 = 2H2O");
+```
+"""
+charge(r::Reaction) = r.charge
 
 """
     equal_sign(r::Reaction) -> Char
@@ -469,9 +485,9 @@ function complete_thermo_functions(r::Reaction)
         if all(x -> haskey(x, :Vm), species_list)
             r.ΔrV = sum(ν * s.Vm for (s, ν) in r)
         end
-        r.charge = sum(ν * charge(s) for (s, ν) in r)
-    else
-        r.charge = 0
+    #     r.charge = sum(ν * charge(s) for (s, ν) in r)
+    # else
+    #     r.charge = 0
     end
 end
 
@@ -506,25 +522,31 @@ function Reaction(
     species_list=nothing,
 )
     reactants, products, equal_sign = parse_equation(equation)
+    reacdict = ordered_dict_with_default(
+        (
+            find_species(k, species_list) => stoich_coef_round(v) for
+            (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
+        ),
+        S,
+        Number,
+    )
+    proddict = ordered_dict_with_default(
+        (
+            find_species(k, species_list) => stoich_coef_round(v) for
+            (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
+        ),
+        S,
+        Number,
+    )
+    reaccharge = stoich_coef_round(
+    sum(ν * charge(s) for (s, ν) in proddict; init=0) -
+    sum(ν * charge(s) for (s, ν) in reacdict; init=0))
     r = Reaction(
         equation,
         colored_equation(equation),
-        ordered_dict_with_default(
-            (
-                find_species(k, species_list) => stoich_coef_round(v) for
-                (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
-            ),
-            S,
-            Number,
-        ),
-        ordered_dict_with_default(
-            (
-                find_species(k, species_list) => stoich_coef_round(v) for
-                (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
-            ),
-            S,
-            Number,
-        ),
+        reacdict,
+        proddict,
+        reaccharge,
         equal_sign,
         OrderedDict{Symbol,PropertyType}(properties),
     )
@@ -729,11 +751,17 @@ function Reaction(
     end
     equation = sreac * " " * string(equal_sign) * " " * sprod
     colored = creac * " " * string(COL_PAR(string(equal_sign))) * " " * cprod
+    reacdict = OrderedDict{SR,TR}(reactants)
+    proddict = OrderedDict{SP,TP}(products)
+    reaccharge = stoich_coef_round(
+    sum(ν * charge(s) for (s, ν) in proddict; init=0) -
+    sum(ν * charge(s) for (s, ν) in reacdict; init=0))
     r = Reaction(
         equation,
         colored,
-        OrderedDict{SR,TR}(reactants),
-        OrderedDict{SP,TP}(products),
+        reacdict,
+        proddict,
+        reaccharge,
         equal_sign,
         OrderedDict{Symbol,PropertyType}(properties),
     )
@@ -1593,6 +1621,7 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
     else
         pr(io, lpad("products", pad), ": ∅")
     end
+    pr(io, lpad("charge", pad), ": $(charge(r))")
     if length(properties(r)) > 0
         print(
             io,

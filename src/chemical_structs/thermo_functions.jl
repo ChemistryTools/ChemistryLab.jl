@@ -650,7 +650,7 @@ for fn in MATH_FUNCTIONS
 
     Apply the $($fn) function to a thermodynamic function's expression.
 
-    # Return
+    # Returns
     - New ThermoFunction with $($fn) applied to the expression and unit
 
     # Examples
@@ -659,7 +659,8 @@ for fn in MATH_FUNCTIONS
     julia> tf2 = $($fn)(tf)
     # Returns a new ThermoFunction with $($fn) applied to the expression
     ```
-    """ $(mod).$(func_name)
+    """
+    $(mod).$(func_name)
 end
 
 """

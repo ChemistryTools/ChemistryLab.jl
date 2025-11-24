@@ -163,7 +163,7 @@ export union_atoms,
     stoich_matrix_to_equations,
     stoich_matrix_to_reactions
 
-export Reaction, CemReaction, reactants, products, simplify_reaction
+export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
 
 export extract_primary_species
