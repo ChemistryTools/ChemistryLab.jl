@@ -173,10 +173,13 @@ function ThermoFunction(
     givenref = Dict(ref)
     vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
     dictvars = Dict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
-    dictref = Dict(v=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
+    dictref = Dict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
     dictvarref = Dict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
     vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
     veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
+    if length(veczeros)==length(vecparams)
+        veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
+    end
     symexpr = substitute(symexpr, Dict(k => 0 for k in veczeros))
     nounitfunc = vec([
         f(var) => 1 for f in [
@@ -488,14 +491,14 @@ Compute the partial derivative of a thermodynamic function.
 # Examples
 
 ```jldoctest
-julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"])
-210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]; ref=[:T => 298.15u"K", :P => 1u"bar"])
+210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> ∂(Cp)
-0.12 + 6.14e6 / (T^3) ♢ unit=[m² kg s⁻² K⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+0.12 + 6.14e6 / (T^3) ♢ unit=[m² kg s⁻² K⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
-(1.0 + 2.0t) / (3.0 + 4.0sqrt(t)) ♢ unit=[] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+(1.0 + 2.0t) / (3.0 + 4.0sqrt(t)) ♢ unit=[] ♢ ref=[t=0.0 s]
 
 julia> ∂(rate)(1u"h")
 0.004165467097946903 s⁻¹
@@ -530,17 +533,17 @@ Compute the integral of a thermodynamic function.
 # Examples
 
 ```jldoctest
-julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"])
-210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+julia> Cp = ThermoFunction(:Cp, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]; ref=[:T => 298.15u"K", :P => 1u"bar"])
+210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> ∫Cp = ∫(Cp)
-210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> ΔfH⁰_Tref = -2.72e6u"J/mol"
 -2.72e6 m² kg s⁻² mol⁻¹
 
 julia> ΔfH⁰ = (ΔfH⁰_Tref -∫Cp()) + ∫Cp
--2.798241935804469e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻², t=0.0 s]
+-2.798241935804469e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 ```
 """
 function ∫(tf::ThermoFunction, var=collect(keys(tf.vars))[1])
