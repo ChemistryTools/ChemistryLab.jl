@@ -1610,17 +1610,17 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
     else
         println(io, lpad("reactants", pad), ": ∅")
     end
-    pr = length(properties(r)) > 0 ? println : print
     if length(products(r)) > 0
-        pr(
+        println(
             io,
             lpad("products", pad),
             ": ",
             join(["$(colored(k)) => $v" for (k, v) in products(r)], ", "),
         )
     else
-        pr(io, lpad("products", pad), ": ∅")
+        println(io, lpad("products", pad), ": ∅")
     end
+    pr = length(properties(r)) > 0 ? println : print
     pr(io, lpad("charge", pad), ": $(charge(r))")
     if length(properties(r)) > 0
         print(

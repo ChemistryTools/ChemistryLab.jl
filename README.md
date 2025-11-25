@@ -33,7 +33,7 @@ julia> r = Reaction(equation)
 13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@
  reactants: H⁺ => 13, NO₃⁻ => 1, CO₃²⁻ => 1
   products: H₂O@ => 6, HCN@ => 1
-properties: charge = -10
+    charge: -10
 ```
 
 - Self-balancing of a chemical reaction: symbolic example of alkane combustion
