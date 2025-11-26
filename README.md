@@ -1,4 +1,3 @@
-<!-- ![ChemistryLab Logo](https://raw.githubusercontent.com/jfbarthelemy/ChemistryLab.jl/main/docs/src/assets/logo.svg) -->
 <p>
   <img src="./docs/src/assets/logo.svg" width="100">
 </p>
@@ -70,9 +69,17 @@ n=9 ⇒ C₉H₂₀ + 14O₂ = 10H₂O + 9CO₂
 
 ## Installation
 
+The package can be installed with the Julia package manager.
+From the Julia REPL, type `]` to enter the Pkg REPL mode and run:
+
 ```julia
-using Pkg
-Pkg.add("ChemistryLab")
+pkg> add ChemistryLab
+```
+
+Or, equivalently, via the `Pkg` API:
+
+```julia
+julia> import Pkg; Pkg.add("ChemistryLab")
 ```
 
 ## Usage

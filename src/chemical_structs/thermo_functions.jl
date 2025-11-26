@@ -16,21 +16,21 @@ Representation of a thermodynamic function with symbolic expression, variables, 
 # Fields
 
   - `symexpr::Num`: Symbolic expression of the thermodynamic function
-  - `vars::Dict{Symbol,Num}`: Dictionary of variables (symbols to symbolic expressions)
+  - `vars::OrderedDict{Symbol,Num}`: Dictionary of variables (symbols to symbolic expressions)
   - `unit::U`: Unit of the function's output
   - `func::F`: Compiled function for evaluation
   - `ref::R`: Reference conditions dictionary
 """
 struct ThermoFunction{U,F,R} <: Callable
     symexpr::Num
-    vars::Dict{Symbol,Num}
+    vars::OrderedDict{Symbol,Num}
     unit::U
     func::F
     ref::R
 end
 
 """
-    ThermoFunction(symexpr::Num, vars::Dict{Symbol,Num}, unit::U, ref::R) where {U,R}
+    ThermoFunction(symexpr::Num, vars::OrderedDict{Symbol,Num}, unit::U, ref::R) where {U,R}
 
 Construct a ThermoFunction from symbolic expression, variables, unit, and reference.
 
@@ -41,7 +41,7 @@ Construct a ThermoFunction from symbolic expression, variables, unit, and refere
   - `unit`: Unit of the function
   - `ref`: Reference conditions
 """
-function ThermoFunction(symexpr::Num, vars::Dict{Symbol,Num}, unit::U, ref::R) where {U,R}
+function ThermoFunction(symexpr::Num, vars::OrderedDict{Symbol,Num}, unit::U, ref::R) where {U,R}
     func = eval(build_function(symexpr, values(vars)...; expression=Val{false}))
     return ThermoFunction(symexpr, vars, unit, func, ref)
 end
@@ -165,22 +165,22 @@ function ThermoFunction(
     expr = get(thermo_function_library, expr, expr)
     symexpr = Num(parse_expr_to_symbolic(expr, @__MODULE__))
     varofexpr = Num.(get_variables(symexpr))
-    dictallvars = Dict(Symbol(v) => v for v in varofexpr)
-    dictparams = Dict(dictallvars[k] => v for (k, v) in params if haskey(dictallvars, k))
+    dictallvars = OrderedDict(Symbol(v) => v for v in varofexpr)
+    dictparams = OrderedDict(dictallvars[k] => v for (k, v) in params if haskey(dictallvars, k))
     with_units = promote_type(typeof.(values(dictparams))...) <: Quantity
-    default_ref = with_units ? Dict(:T => 298.15u"K", :P => 1u"bar", :t => 0u"s") :
-                    Dict(:T => 298.15, :P => 100000., :t => 0.)
-    givenref = Dict(ref)
+    default_ref = with_units ? OrderedDict(:T => 298.15u"K", :P => 1u"bar", :t => 0u"s") :
+                    OrderedDict(:T => 298.15, :P => 100000., :t => 0.)
+    givenref = OrderedDict(ref)
     vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
-    dictvars = Dict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
-    dictref = Dict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
-    dictvarref = Dict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
+    dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
+    dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
+    dictvarref = OrderedDict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
     vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
     veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
     if length(veczeros)==length(vecparams)
         veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
     end
-    symexpr = substitute(symexpr, Dict(k => 0 for k in veczeros))
+    symexpr = substitute(symexpr, [k => 0 for k in veczeros])
     nounitfunc = vec([
         f(var) => 1 for f in [
             log,
@@ -213,6 +213,81 @@ function ThermoFunction(
     symexpr = substitute(symexpr, [k => ustrip(v) for (k, v) in dictparams])
     func = eval(build_function(symexpr, vecvars...; expression=Val{false}))
     return ThermoFunction(symexpr, dictvars, unit, func, dictref)
+end
+
+"""
+    ThermoFunction(x::Number; ref=[]) -> ThermoFunction
+
+Create a constant ThermoFunction that returns the numeric value `x` for its
+single internal variable `:c`. The `ref` keyword is forwarded as reference
+metadata to the underlying ThermoFunction constructor.
+
+Arguments
+- `x` : numeric constant value
+- `ref` : optional reference metadata (default: empty array)
+
+Examples
+
+```jldoctest
+julia> ΔfH⁰ = ThermoFunction(-2.72e6u"J/mol"; ref=[:T => 298.15u"K", :P => 1u"bar"])
+-2.72e6 ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+
+julia> ΔfH⁰()
+-2.72e6
+
+julia> ΔfH⁰(300u"K")
+-2.72e6 m² kg s⁻² mol⁻¹
+
+julia> ℓ = ThermoFunction(5.0u"m")
+5.0 ♢ unit=[m] ♢ ref=[]
+
+julia> ℓ()
+5.0
+
+julia> ℓ(Quantity(0))
+5.0 m
+```
+"""
+function ThermoFunction(x::Number; ref=[])
+    return ThermoFunction(:(c), [:c => x]; ref=ref)
+end
+
+"""
+    ThermoFunction(x::Pair{Symbol,V}; ref=[]) -> ThermoFunction
+
+Create a constant ThermoFunction that returns the numeric/quantity value `v`
+while using the provided symbol as the internal variable name.
+
+Arguments
+  - `x`: Pair{Symbol,Number|Quantity} where the first element is the variable
+         name and the second is the numeric/quantity value to store.
+  - `ref`: optional reference metadata (default: empty)
+
+Behavior
+  - The created ThermoFunction is constant (no stored callable variables).
+  - The provided symbol is included in `ref` (if it is not already) so the
+    symbol/value pair is displayed when showing the ThermoFunction.
+
+Examples
+```jldoctest
+julia> f = ThermoFunction(:c => 2.5)
+2.5 ♢ unit=[] ♢ ref=[]
+
+julia> f()
+2.5
+
+julia> g = ThermoFunction(:L => 5.0u"m")
+5.0 ♢ unit=[m] ♢ ref=[]
+
+julia> g()
+5.0
+
+julia> g(Quantity(0))
+5.0 m
+```
+"""
+function ThermoFunction(x::Pair{Symbol,V}; ref=[]) where {V}
+    return ThermoFunction(x.first, [x]; ref=ref)
 end
 
 """

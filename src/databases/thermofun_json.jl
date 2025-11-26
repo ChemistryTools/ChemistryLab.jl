@@ -367,7 +367,7 @@ function complete_species_database!(
                 Vm = get_value(
                     row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar"
                 )
-                s.Vm = with_units ? Vm / u"mol" : ustrip(Vm)
+                s.Vm = ThermoFunction(:cst => (with_units ? Vm / u"mol" : ustrip(Vm)); ref=[:T => Tref, :P => Pref])
             end
         end
     end
