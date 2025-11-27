@@ -1,6 +1,6 @@
 # Chemical reactions
 
-In CementChermistry it is possible to build chemical reactions and manipulate them. A reaction is constructed as a structure, "a composite data type that allows you to store multiple values in a single object". The `struct` is organized as follows:
+In ChemistryLab it is possible to build chemical reactions and manipulate them. A reaction is constructed as a structure, "a composite data type that allows you to store multiple values in a single object". The `struct` is organized as follows:
 
 ```julia
 struct Reaction{SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
@@ -66,3 +66,10 @@ CSH = CemSpecies("C1.7SH4")
 r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
 ``` 
+
+!!! note "Collection of arrow symbols"
+    In ChemistryLab, there are collections of arrow symbols used in chemical reaction notation, such as:
+    - `>`, `→`, `↣`, `↦`, `⇾`, `⟶`, `⟼`, `⥟`, `⥟`, `⇀`, `⇁`, `⇒`, `⟾` for reaction directionality from reactants to products;
+    - `<`, `←`, `↢`, `↤`, `⇽`, `⟵`, `⟻`, `⥚`, `⥞`, `↼`, `↽`, `⇐`, `⟽` for reaction directionality from products to reactants;
+    - `↔`, `⟷`, `⇄`, `⇆`, `⇌`, `⇋`, `⇔`, `⟺` for reversible reactions and equilibrium states;
+    - `=`, `≔`, `⩴`, `≕` to separate reactants from products in balanced equations.

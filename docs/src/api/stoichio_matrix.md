@@ -1,4 +1,4 @@
-# Thermodynamical functions
+# Stoichiometric Matrix
 
 ```@index
 Pages = ["stoichio_matrix.md"]

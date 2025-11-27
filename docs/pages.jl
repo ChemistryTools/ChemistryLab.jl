@@ -7,7 +7,7 @@ pages = [
         "man/cement_species.md",
         "man/databases.md",
         "man/stoichio_matrix.md",
-        "man/equations.md",
+        "man/reactions.md",
     ],
     "Examples" => ["example/get_stoichio_matrix.md", "example/bogue_calculation.md"],
     "API" => Any[
@@ -16,6 +16,7 @@ pages = [
     "Thermodynamical functions" => "api/thermo_functions.md",
     "Formulas" => "api/formulas.md",
     "Species" => "api/species.md",
-    # "Stoichiometric Matrix" => "api/stoichio_matrix.md",
+    "Stoichiometric Matrix" => "api/stoichio_matrix.md",
+    "Reactions" => "api/reactions.md",
     ],
 ]

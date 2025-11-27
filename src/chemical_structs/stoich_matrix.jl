@@ -34,7 +34,7 @@ Compute the union of all keys from dictionaries, sorted by a given order.
 
 # Examples
 
-```julia
+```jldoctest
 julia> d1 = OrderedDict(:H => 2, :O => 1);
 
 julia> d2 = OrderedDict(:C => 1, :O => 2);
@@ -216,7 +216,7 @@ Entry (i,j) is the coefficient of atom i in species j.
 
 # Examples
 
-```julia
+```jldoctest
 julia> species = [Species("H2O"), Species("H2"), Species("O2")];
 
 julia> A, atoms = canonical_stoich_matrix(species; display=false);
@@ -273,7 +273,7 @@ Compute the stoichiometric matrix expressing dependent species in terms of indep
 
 # Examples
 
-```julia
+```jldoctest
 julia> h2o = Species("H2O");
        h2 = Species("H2");
        o2 = Species("O2");

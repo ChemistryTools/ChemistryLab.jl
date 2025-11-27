@@ -97,12 +97,26 @@ Representation of a chemical reaction with reactants and products.
 
 # Examples
 
-```julia
-julia> length(reactants(r))
-r = Reaction("2H2 + O2 = 2H2O");
-
-julia> length(products(r))
+```jldoctest
+julia> rH2O = Reaction("2H2 + O2 = 2H2O");
+julia> length(reactants(rH2O))
 2
+
+julia> length(products(rH2O))
+1
+```
+
+```julia
+julia> r = Reaction("2H2 + O2 = 2H2O");
+julia> r2 = Reaction("2H2 + O2 → 2H2O");
+julia> r == r2
+true
+```
+
+```julia
+julia> r = Reaction("2H2 + O2 = 2H2O");
+julia> r.products == Dict(Species("H2O") => 2)
+true
 ```
 """
 struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number}
@@ -123,8 +137,8 @@ Return the equation string of the reaction.
 # Examples
 
 ```julia
+julia> r = Reaction("CaSO4 = Ca²⁺ + SO4²⁻");
 julia> equation(r)
-r = Reaction("H2 + O2 = H2O");
 ```
 """
 equation(r::Reaction) = r.equation
@@ -137,8 +151,8 @@ Return the colored terminal representation of the reaction.
 # Examples
 
 ```julia
+julia> r = Reaction("CaSO4 = Ca²⁺ + SO4²⁻");
 julia> colored(r)  # Returns string with ANSI color codes
-r = Reaction("H2 + O2 = H2O");
 ```
 """
 colored(r::Reaction) = r.colored
@@ -151,8 +165,8 @@ Return the reactants dictionary (species => coefficient).
 # Examples
 
 ```julia
-julia> reactants(r)
-r = Reaction("2H2 + O2 = 2H2O");
+julia> reactants(Reaction("CaCO3 = CO3-2 + Ca+2")) == Dict(Species("CaCO3") => 1)
+true
 ```
 """
 reactants(r::Reaction) = r.reactants
@@ -165,8 +179,8 @@ Return the products dictionary (species => coefficient).
 # Examples
 
 ```julia
-julia> products(r)
-r = Reaction("2H2 + O2 = 2H2O");
+julia> products(Reaction("CaCO3 = CO3-2 + Ca+2")) == Dict(Species("CO3-2") => 1, Species("Ca+2") => 1)
+true
 ```
 """
 products(r::Reaction) = r.products
@@ -179,8 +193,8 @@ Return the charge difference between products and reactants.
 # Examples
 
 ```julia
-julia> charge(r)
-r = Reaction("2H2 + O2 = 2H2O");
+julia> charge(Reaction("Fe + 2H2O = FeO2- + 4H+"))
+3
 ```
 """
 charge(r::Reaction) = r.charge
@@ -193,8 +207,8 @@ Return the equality operator character of the reaction.
 # Examples
 
 ```julia
-julia> equal_sign(r)
-r = Reaction("H2 + O2 = H2O");
+julia> equal_sign(Reaction("Fe + 2H2O = FeO2- + 4H+"))
+=
 ```
 """
 equal_sign(r::Reaction) = r.equal_sign
