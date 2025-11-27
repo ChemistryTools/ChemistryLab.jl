@@ -97,7 +97,7 @@ Representation of a chemical reaction with reactants and products.
 
 # Examples
 
-```jldoctest
+```julia
 julia> rH2O = Reaction("2H2 + O2 = 2H2O");
 julia> length(reactants(rH2O))
 2
@@ -164,7 +164,7 @@ Return the reactants dictionary (species => coefficient).
 
 # Examples
 
-```julia
+```jldoctest
 julia> reactants(Reaction("CaCO3 = CO3-2 + Ca+2")) == Dict(Species("CaCO3") => 1)
 true
 ```
