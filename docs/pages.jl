@@ -14,5 +14,8 @@ pages = [
     "Element order" => "api/element_order.md",
     "Parsing tools" => "api/parsing_tools.md",
     "Thermodynamical functions" => "api/thermo_functions.md",
+    "Formulas" => "api/formulas.md",
+    "Species" => "api/species.md",
+    # "Stoichiometric Matrix" => "api/stoichio_matrix.md",
     ],
 ]

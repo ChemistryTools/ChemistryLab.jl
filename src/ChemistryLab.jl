@@ -134,7 +134,7 @@ export stoich_coef_round,
 export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
 
 export AtomGroup,
-    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev
+    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, stoichtype
 
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 

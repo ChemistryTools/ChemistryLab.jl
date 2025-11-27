@@ -47,10 +47,10 @@ Compare two species for equality based on formula, aggregate state, and class.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
 
-julia> s2 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+julia> s2 = Species("H₂O"; aggregate_state=AS_AQUEOUS);
 
 julia> s1 == s2
 true
@@ -76,6 +76,15 @@ end
     name(s::AbstractSpecies) -> String
 
 Return the name of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> s1.name == "H2O"
+true
+```
 """
 name(s::AbstractSpecies) = s.name
 
@@ -90,6 +99,15 @@ symbol(s::AbstractSpecies) = s.symbol
     formula(s::AbstractSpecies) -> Formula
 
 Return the Formula object associated with the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> formula(s1) == Formula("H2O")
+true
+```
 """
 formula(s::AbstractSpecies) = s.formula
 
@@ -104,6 +122,15 @@ atoms(s::AbstractSpecies) = composition(formula(s))
     charge(s::AbstractSpecies) -> Int8
 
 Return the formal charge of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("Ca(HSiO3)+");
+
+julia> charge(s1) == 1
+true
+```
 """
 charge(s::AbstractSpecies) = charge(formula(s))
 
@@ -111,6 +138,15 @@ charge(s::AbstractSpecies) = charge(formula(s))
     aggregate_state(s::AbstractSpecies) -> AggregateState
 
 Return the aggregate state of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> aggregate_state(s1) == AS_AQUEOUS
+true
+```
 """
 aggregate_state(s::AbstractSpecies) = s.aggregate_state
 
@@ -149,7 +185,7 @@ Return atomic composition including the charge as a :Zz key if non-zero.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("Ca+2");
 
 julia> atoms_charge(s)
@@ -178,7 +214,7 @@ Returns 0 if the key is not found.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("H2O");
 
 julia> s[:H]
@@ -277,7 +313,7 @@ Standard chemical species representation using atomic composition.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS);
 
 julia> atoms(s)
@@ -299,6 +335,16 @@ end
     expr(s::Species) -> String
 
 Return the original expression string of the species formula.
+
+# Examples
+
+```jldoctest
+julia> expr(Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS))
+"H2O"
+
+julia> expr(Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS)) == expr(Formula("H2O"))
+true
+```
 """
 expr(s::Species) = expr(formula(s))
 

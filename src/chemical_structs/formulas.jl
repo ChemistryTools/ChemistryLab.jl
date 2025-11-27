@@ -10,7 +10,7 @@ Simple container pairing an atomic symbol with a numeric coefficient.
 
 # Examples
 
-```julia
+```jldoctest
 julia> AtomGroup(:H, 2)
 AtomGroup{Int64}(2, :H)
 
@@ -30,7 +30,7 @@ Convert a `Symbol` to a unit `AtomGroup` (coefficient = 1).
 
 # Examples
 
-```julia
+```jldoctest
 julia> convert(AtomGroup, :O)
 AtomGroup{Int64}(1, :O)
 ```
@@ -50,7 +50,7 @@ Constructors for `AtomGroup`.
 
 # Examples
 
-```julia
+```jldoctest
 julia> AtomGroup(:C)
 AtomGroup{Int64}(1, :C)
 
@@ -77,7 +77,7 @@ Canonical container for a chemical formula.
 
 # Examples
 
-```julia
+```jldoctest
 julia> f = Formula("H2O");
 
 julia> composition(f)[:H]
@@ -100,17 +100,24 @@ Return the numeric stoichiometric coefficient type `T` for formula `f`.
 
 # Examples
 
-```julia
+```jldoctest
 julia> stoichtype(Formula("H2O"))
 Int64
 ```
 """
-stoichtype(::Formula{T}) where {T} = T
+stoichtype(f::Formula{T}) where {T} = T
 
 """
     expr(f::Formula) -> String
 
 Return the original expression string stored in `f`.
+
+# Examples
+
+```jldoctest
+julia> expr(Formula("H2O"))
+"H2O"
+```
 """
 expr(f::Formula) = f.expr
 
@@ -118,6 +125,13 @@ expr(f::Formula) = f.expr
     phreeqc(f::Formula) -> String
 
 Return the PHREEQC-compatible representation of `f`.
+
+# Examples
+
+```jldoctest
+julia> phreeqc(Formula("H2O"))
+"H2O"
+```
 """
 phreeqc(f::Formula) = f.phreeqc
 
@@ -125,6 +139,13 @@ phreeqc(f::Formula) = f.phreeqc
     unicode(f::Formula) -> String
 
 Return the Unicode pretty representation of `f`.
+
+# Examples
+
+```jldoctest
+julia> phreeqc(Formula("C3A"))
+"C3A"
+```
 """
 unicode(f::Formula) = f.unicode
 
@@ -132,6 +153,12 @@ unicode(f::Formula) = f.unicode
     colored(f::Formula) -> String
 
 Return the colored terminal representation of `f`.
+
+# Examples
+
+```@example
+julia> colored(Formula("Ca(HSiO3)+"))
+```
 """
 colored(f::Formula) = f.colored
 
@@ -139,6 +166,12 @@ colored(f::Formula) = f.colored
     composition(f::Formula) -> OrderedDict{Symbol,T}
 
 Return the composition mapping (element symbol => coefficient).
+
+# Examples
+
+```@example
+julia> composition(Formula("Ca(HSiO3)+"))
+```
 """
 composition(f::Formula) = f.composition
 
@@ -146,6 +179,13 @@ composition(f::Formula) = f.composition
     charge(f::Formula) -> Int8
 
 Return the formal integer charge of the formula.
+
+# Examples
+
+```jldoctest
+julia> charge(Formula("Ca(HSiO3)+"))
+1
+```
 """
 charge(f::Formula) = f.charge
 
@@ -162,7 +202,7 @@ and `e` (electron) are handled.
 
 # Examples
 
-```julia
+```jldoctest
 julia> f = Formula("SO4-2");
 
 julia> composition(f)[:S]
@@ -203,7 +243,7 @@ and used to compute the formal charge when `charge == 0`.
 
 # Examples
 
-```julia
+```jldoctest
 julia> f = Formula(OrderedDict(:Ca=>1, :C=>1, :O=>3));
 
 julia> expr(f)
@@ -283,7 +323,7 @@ If `i` is not present, return `zero(T)` where `T` is the formula's coefficient t
 
 # Examples
 
-```julia
+```jldoctest
 julia> f = Formula("H2O");
 
 julia> f[:H]
@@ -305,6 +345,13 @@ end
     Base.length(f::Formula) -> Int
 
 Return the number of distinct element symbols in the formula composition.
+
+# Examples
+
+```jldoctest
+julia> length(Formula("(CaO)1.25(SiO2)1(Al2O3)0.125(Na2O)0.25(H2O)1.375"))
+6
+```
 """
 Base.length(f::Formula) = length(composition(f))
 
@@ -315,7 +362,7 @@ Two formulas are equal if their compositions and formal charges are equal.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Formula("H2O") == Formula(OrderedDict(:H=>2, :O=>1))
 true
 ```
@@ -432,7 +479,7 @@ included.
 
 # Examples
 
-```julia
+```jldoctest
 julia> result = AtomGroup(:H, 2) + AtomGroup(:H, 1);
 
 julia> composition(result)[:H]
@@ -475,7 +522,7 @@ Quantities are handled, attempting to preserve dimensions when possible.
 
 # Examples
 
-```julia
+```jldoctest
 julia> result = apply(x -> x*2, Formula("H2O"));
 
 julia> result[:H]
@@ -520,7 +567,7 @@ registry. Returns `true` when valid; otherwise throws an informative error.
 
 # Examples
 
-```julia
+```jldoctest
 julia> check_mendeleev(Formula("NaCl"))
 true
 ```
