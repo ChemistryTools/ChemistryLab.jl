@@ -47,7 +47,11 @@ julia> union_atoms([d1, d2], ATOMIC_ORDER)
 ```
 """
 function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
-    sort!(collect(union(keys.(atom_dicts)...)); by=k -> findfirst(==(k), order_vec))
+    function sortfunc(k)
+        idx = findfirst(==(k), order_vec)
+        return isnothing(idx) ? max(1, length(order_vec)-1) : idx
+    end
+    sort!(collect(union(keys.(atom_dicts)...)); by=sortfunc)
 end
 
 """
@@ -360,14 +364,36 @@ function stoich_matrix(
     cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
     filter!(x -> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
-    if size(M_subset, 1) >= size(M_subset, 2)
-        independent_cols_indices = cols_candidates
-    else
-        F = qr(M_subset, reorder_primaries ? Val(true) : NoPivot())
-        r = Int(safe_rank(M_subset))
-        pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
+    # if size(M_subset, 1) >= size(M_subset, 2)
+    #     independent_cols_indices = cols_candidates
+    # else
+    #     F = qr(M_subset, reorder_primaries ? Val(true) : NoPivot())
+    #     r = Int(safe_rank(M_subset))
+    #     pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
+    #     independent_cols_indices = sort(cols_candidates[pivot_idx])
+    # end
+
+    r = Int(safe_rank(M_subset))
+    if reorder_primaries
+        F = qr(M_subset, Val(true))
+        pivot_idx = F.p[1:r]
         independent_cols_indices = sort(cols_candidates[pivot_idx])
+    else
+        pivot_idx = Int[]
+        current_matrix = zeros(eltype(M_subset), size(M_subset, 1), 0)
+        for j in axes(M_subset, 2)
+            candidate = hcat(current_matrix, M_subset[:, j])
+            if Int(safe_rank(candidate)) > size(current_matrix, 2)
+                push!(pivot_idx, j)
+                current_matrix = candidate
+                if length(pivot_idx) == r
+                    break
+                end
+            end
+        end
+        independent_cols_indices = cols_candidates[pivot_idx]
     end
+
     sort!(
         independent_cols_indices;
         by=x ->
@@ -376,7 +402,6 @@ function stoich_matrix(
             symbol(species[x]) !== "H₂O" &&
             symbol(species[x]) !== "H",
     )
-
     M_indep = M[:, independent_cols_indices]
     M_indep = promote_type(typeof.(M_indep)...).(M_indep)
     A = stoich_coef_round.(safe_pinv(M_indep) * M)
