@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Barthélemy"
+    given-names: "Jean-François"
+    orcid: "0000-0002-1968-8939"
+  - family-names: "Soive"
+    given-names: "Anthony"
+    orcid: "0000-0002-2368-6848"
+title: "ChemistryLab.jl: Numerical laboratory for computational chemistry"
+abstract: "Computational chemistry toolkit providing formula handling, species management, stoichiometric matrix construction, and interoperability with ThermoFun and Cemdata databases. Initially focused on cement chemistry but applicable more broadly."
+keywords:
+  - "computational chemistry"
+  - "Julia"
+  - "chemical formulas"
+  - "reactions"
+  - "cement"
+version: "0.1.0"
+doi: "10.5281/zenodo.XXXXXXX"
+url: "https://github.com/jfbarthelemy/ChemistryLab.jl"
+repository-code: "https://github.com/jfbarthelemy/ChemistryLab.jl"
+license: "MIT"
