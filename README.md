@@ -113,7 +113,7 @@ See [CITATION.cff](CITATION.cff) for citation details.
 @software{chemistrylab_jl,
   authors = {Barthélemy, Jean-François and Soive, Anthony},
   title = {ChemistryLab.jl: Numerical laboratory for computational chemistry},
-  doi = {10.5281/zenodo.XXXXXXX},
+  doi = {10.5281/zenodo.17756074},
   url = {https://github.com/jfbarthelemy/ChemistryLab.jl}
 }
 ```
