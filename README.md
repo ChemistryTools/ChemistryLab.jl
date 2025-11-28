@@ -105,7 +105,7 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
 
-See [CITATION.cff](CITATION.cff) for citation details in various formats.
+See [CITATION.cff](CITATION.cff) for citation details.
 
 **BibTeX entry:**
 
