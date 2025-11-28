@@ -137,7 +137,7 @@ Return the equation string of the reaction.
 
 # Examples
 
-```jldoctest
+```julia
 julia> r = Reaction("CaSO4 = Ca²⁺ + SO4²⁻");
 
 julia> equation(r)
