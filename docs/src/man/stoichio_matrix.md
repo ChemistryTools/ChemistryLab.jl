@@ -18,7 +18,7 @@ H2O = Species("H₂O")
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]
-canonical_stoich_matrix(species) ;
+canonical_stoich_matrix(species; display=true) ;
 
 using PrettyTables #hide
 ```
@@ -34,14 +34,14 @@ C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
 C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp = canonical_stoich_matrix(cemspecies)
+A, indep_comp = canonical_stoich_matrix(cemspecies; display=true)
 
 using PrettyTables #hide
 ```
 
 ---
 
-## Stochiometric matrix for species and primary species
+## Define stochiometric matrix from primary species
 
 The decomposition of a set of species can also be done according to a base of primary species.
 
@@ -55,7 +55,7 @@ H⁺ = Species("H⁺")
 SO₄²⁻ = Species("SO₄²⁻")
 CO₃²⁻ = Species("CO₃²⁻")
 primary_species = [H⁺, SO₄²⁻, CO₃²⁻, H2O]
-A, indep_comp, dep_comp = stoich_matrix(species, primary_species)
+A, indep_comp, dep_comp = stoich_matrix(species, primary_species; display=true)
 
 using PrettyTables #hide
 ```
@@ -67,7 +67,8 @@ using PrettyTables #hide
     A, indep_comp, dep_comp = stoich_matrix(species, label=:name)
     ```
 
-Finally, primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
+## Construct stoichiometric matrix from database
+In chemistryLab, it is possible to construct a stoichiometric matrix of species as a function of primary species given a database. Primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
 
 ```julia
 using ChemistryLab
@@ -76,13 +77,51 @@ df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phase
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 ```
 
-Stoichiometric matrix can then be obtained based on an set of independent primary species.
+For a given number of species (eg. Portlandite and water), all ionic species which could appear during chemical reactions have to be identified:
 
 ```julia
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances)
+secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
+                          && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
+                          && row.symbol ∉ split("H2@ O2@"),
+                          df_substances)
 ```
 
+Primary species concerning by the reactions can then be deduced.
 
+```julia
+all_species = unique(vcat(given_species, secondaries), :symbol)
+species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
+candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
+```
+
+Finally, the stoichiometric matrix can be calculated:
+
+```@setup example1
+    using ChemistryLab #hide
+    # using Serialization
+    using PrettyTables
+    # df_substances, df_reactions = deserialize("../../../data/cemdata18.jls")
+    df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
+    df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
+
+    given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances) #hide
+    secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
+                            && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
+                            && row.symbol ∉ split("H2@ O2@"),
+                            df_substances)
+
+
+    all_species = unique(vcat(given_species, secondaries), :symbol) #hide
+    species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)] #hide
+    candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)] #hide
+```
+
+```@example example1
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+
+using PrettyTables #hide
+```
 
 
 ---

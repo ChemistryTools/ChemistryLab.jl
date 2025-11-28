@@ -9,7 +9,7 @@ pages = [
         "man/stoichio_matrix.md",
         "man/reactions.md",
     ],
-    "Examples" => ["example/get_stoichio_matrix.md", "example/bogue_calculation.md"],
+    "Examples" => ["example/bogue_calculation.md"],
     "API" => Any[
     "Element order" => "api/element_order.md",
     "Parsing tools" => "api/parsing_tools.md",
