@@ -14,9 +14,9 @@ H₂O = Species("H₂O"; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEO
 HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
-A, atomlist = canonical_stoich_matrix(species; label=:name) ; # label only for display
-A, atomlist = canonical_stoich_matrix(species; label=:symbol) ;
-A, atomlist = canonical_stoich_matrix(species; label=:formula) ;
+A, atomlist = canonical_stoich_matrix(species; label=:name, pprint=true) ; # label only for display
+A, atomlist = canonical_stoich_matrix(species; label=:symbol, pprint=true) ;
+A, atomlist = canonical_stoich_matrix(species; label=:formula, pprint=true) ;
 
 water_without_name_symbol = Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 water_without_name_symbol == H₂O # true since atoms, aggregate_state and class are equal despite instances are different
@@ -30,9 +30,9 @@ C2S = CemSpecies("C₂S"; name="Belite", symbol="C₂S", aggregate_state=AS_CRYS
 C3A = CemSpecies("C3A"; name="Aluminate", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="Ferrite", symbol="C₄AF", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp = canonical_stoich_matrix(cemspecies; label=:name) ;
-A, indep_comp = canonical_stoich_matrix(cemspecies; label=:symbol) ;
-A, indep_comp = canonical_stoich_matrix(cemspecies; label=:formula) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:name, pprint=true) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:symbol, pprint=true) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:formula, pprint=true) ;
  # conversion CemSpecies → Species always possible
 spC3S = Species(C3S)
 spC3S == C3S # true since atoms, aggregate_state and class are identical
@@ -74,13 +74,13 @@ all_species = unique(vcat(given_species, secondaries), :symbol)
 # candidate_primaries = Species.(df_primaries.formula)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(all_species.formula, all_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; pprint=true) ;
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; pprint=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
@@ -135,7 +135,7 @@ CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
  ## application of a function to stoichimetric coefficients (here simplify)
 r = apply(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
-A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
+A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true, pprint=true) ;
 simplify.(A)
 
 # Chen & Brouwers
@@ -145,20 +145,20 @@ HG = CemSpecies("C₆AFS₂H₈")
 AFt = CemSpecies("C₆S̄₃H₃₂")
 ST = CemSpecies("C₂ASH₈")
 AH = CemSpecies("C₄AH₁₃")
-A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
+A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; pprint=true);
 A = typeof(â).(A[1:end-1, 1:end]) # end-1 to remove the line corresponding to water H
 oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
-print_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
-print_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
+pprint_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
+pprint_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
 Mhyd = ustrip.(getproperty.(hydrates, :M))
 Mox = ustrip.(getproperty.(oxides, :M))
 B = Mox .* A .* inv.(Mhyd)'
 # or directly
-B, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; mass=true) ;
+B, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; mass=true, pprint=true) ;
 B = B[1:end-1, 1:end] # to remove the H line
-print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
-print_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
+pprint_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
+pprint_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
 # Alkane combustion with SymPy
 n = symbols("n", real=true) ;
@@ -188,8 +188,8 @@ for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘(x->x isa Num ? x.
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
 species = Species.(formulas) ;
 candidate_primaries = species[1:6] ;
-A, indep_comp, dep_comp = stoich_matrix(species) ;
-B, indep_comp, dep_comp = stoich_matrix(species; mass=true) ;
+A, indep_comp, dep_comp = stoich_matrix(species; pprint=true) ;
+B, indep_comp, dep_comp = stoich_matrix(species; mass=true, pprint=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
@@ -278,3 +278,13 @@ end
 for pr in keys(r.products)
     display(pr)
 end
+
+# Example from Leal et al. 2017
+H₂O = dict_species["H2O@"]
+H⁺ = dict_species["H+"]
+OH⁻ = dict_species["OH-"]
+CO₂ = dict_species["CO2@"]
+HCO₃⁻ = dict_species["HCO3-"]
+CO₃²⁻ = dict_species["CO3-2"]
+A, indep_comp = canonical_stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
+A, indep_comp, dep_comp = stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;

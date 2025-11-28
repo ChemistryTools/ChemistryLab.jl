@@ -1014,7 +1014,7 @@ function build_species_stoich(
     species::AbstractVector{<:AbstractSpecies}; scaling=1, auto_scale=false
 )
     A, indep_comp, dep_comp = stoich_matrix(
-        species[1:1], species[2:end]; display=false, involve_all_atoms=true
+        species[1:1], species[2:end]; pprint=false, involve_all_atoms=true
     )
     S, T = promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...), eltype(A)
     species_stoich = OrderedDict{S,T}()

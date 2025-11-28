@@ -18,7 +18,7 @@ H2O = Species("H₂O")
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]
-canonical_stoich_matrix(species; display=true) ;
+canonical_stoich_matrix(species; pprint=true) ;
 
 using PrettyTables #hide
 ```
@@ -34,7 +34,7 @@ C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
 C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp = canonical_stoich_matrix(cemspecies; display=true)
+A, indep_comp = canonical_stoich_matrix(cemspecies; pprint=true)
 
 using PrettyTables #hide
 ```
@@ -55,7 +55,7 @@ H⁺ = Species("H⁺")
 SO₄²⁻ = Species("SO₄²⁻")
 CO₃²⁻ = Species("CO₃²⁻")
 primary_species = [H⁺, SO₄²⁻, CO₃²⁻, H2O]
-A, indep_comp, dep_comp = stoich_matrix(species, primary_species; display=true)
+A, indep_comp, dep_comp = stoich_matrix(species, primary_species; pprint=true)
 
 using PrettyTables #hide
 ```

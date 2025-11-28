@@ -49,9 +49,9 @@ products(r)          # OrderedDict of products
 ```julia
 # Example species vector
 species = [Species("H2O"), Species("H2"), Species("O2")]
-A, indep, dep = stoich_matrix(species; display=false)
+A, indep, dep = stoich_matrix(species; pprint=false)
 # Convert a numeric stoichiometric matrix to equation strings
-eqns = stoich_matrix_to_reactions(A, indep, dep; display=false)
+eqns = stoich_matrix_to_reactions(A, indep, dep; pprint=false)
 println(eqns)
 ```
 

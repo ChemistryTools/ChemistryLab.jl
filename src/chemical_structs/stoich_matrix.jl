@@ -47,11 +47,15 @@ julia> union_atoms([d1, d2], ATOMIC_ORDER)
 ```
 """
 function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
-    sort!(collect(union(keys.(atom_dicts)...)); by=k -> findfirst(==(k), order_vec))
+    function sortfunc(k)
+        idx = findfirst(==(k), order_vec)
+        return isnothing(idx) ? max(1, length(order_vec)-1) : idx
+    end
+    sort!(collect(union(keys.(atom_dicts)...)); by=sortfunc)
 end
 
 """
-    print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
+    pprint_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
 
 Print a stoichiometric matrix with colored formatting.
 
@@ -63,7 +67,7 @@ Print a stoichiometric matrix with colored formatting.
 
 Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
 """
-function print_stoich_matrix(
+function pprint_stoich_matrix(
     A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector
 )
     hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
@@ -96,7 +100,7 @@ function print_stoich_matrix(
 end
 
 """
-    stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, display=true, equal_sign='=') -> Vector{String}
+    stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, pprint=true, equal_sign='=') -> Vector{String}
 
 Convert a stoichiometric matrix to chemical equation strings.
 
@@ -106,7 +110,7 @@ Convert a stoichiometric matrix to chemical equation strings.
   - `indep_comp_names`: independent component names.
   - `dep_comp_names`: dependent component names.
   - `scaling`: scaling factor for coefficients (default 1).
-  - `display`: if true, print equations to stdout (default true).
+  - `pprint`: if true, print equations to stdout (default true).
   - `equal_sign`: equality operator character (default '=').
 
 # Returns
@@ -121,14 +125,14 @@ function stoich_matrix_to_equations(
     indep_comp_names::AbstractVector,
     dep_comp_names::AbstractVector;
     scaling=1,
-    display=true,
+    pprint=true,
     equal_sign='=',
 )
     eqns = String[]
     pad = 11
     for (j, sp) in enumerate(dep_comp_names)
         if sp in indep_comp_names
-            if display
+            if pprint
                 println(
                     rpad("$(sp)", pad),
                     "| $(colored_formula(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored_formula(sp))",
@@ -139,7 +143,7 @@ function stoich_matrix_to_equations(
             coeffs[sp] = 1
             eqn = format_equation(coeffs; scaling=scaling, equal_sign=equal_sign)
             push!(eqns, eqn)
-            if display
+            if pprint
                 println(rpad("$(sp)", pad), "| ", colored_equation(eqn))
             end
         end
@@ -148,7 +152,7 @@ function stoich_matrix_to_equations(
 end
 
 """
-    stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp::AbstractVector{<:AbstractSpecies}, dep_comp::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=') -> Vector{Reaction}
+    stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp::AbstractVector{<:AbstractSpecies}, dep_comp::AbstractVector{<:AbstractSpecies}; scaling=1, pprint=true, equal_sign='=') -> Vector{Reaction}
 
 Convert a stoichiometric matrix to Reaction objects.
 
@@ -158,7 +162,7 @@ Convert a stoichiometric matrix to Reaction objects.
   - `indep_comp`: independent component species.
   - `dep_comp`: dependent component species.
   - `scaling`: scaling factor for coefficients (default 1).
-  - `display`: if true, print reactions to stdout (default true).
+  - `pprint`: if true, print reactions to stdout (default true).
   - `equal_sign`: equality operator character (default '=').
 
 # Returns
@@ -170,14 +174,14 @@ function stoich_matrix_to_reactions(
     indep_comp::AbstractVector{<:AbstractSpecies},
     dep_comp::AbstractVector{<:AbstractSpecies};
     scaling=1,
-    display=true,
+    pprint=true,
     equal_sign='=',
 )
     eqns = Reaction[]
     pad = 11
     for (j, sp) in enumerate(dep_comp)
         if sp in indep_comp
-            if display
+            if pprint
                 println(
                     rpad("$(symbol(sp))", pad),
                     "│ $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))",
@@ -187,7 +191,7 @@ function stoich_matrix_to_reactions(
             coeffs = OrderedDict(zip([sp; indep_comp], [1; -A[:, j]]))
             eqn = scaling * Reaction(coeffs)
             push!(eqns, eqn)
-            if display
+            if pprint
                 println(rpad("$(symbol(sp))", pad), "│ ", colored(eqn))
             end
         end
@@ -196,14 +200,14 @@ function stoich_matrix_to_reactions(
 end
 
 """
-    canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=false, label=:symbol, mass=false) -> (Matrix, Vector{Symbol})
+    canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; pprint=false, label=:symbol, mass=false) -> (Matrix, Vector{Symbol})
 
 Build the canonical stoichiometric matrix for a species list.
 
 # Arguments
 
   - `species`: vector of species to analyze.
-  - `display`: if true, print the matrix (default true).
+  - `pprint`: if true, print the matrix (default true).
   - `label`: field name for labeling columns (default :symbol).
   - `mass`: if true, compute mass-based matrix (default false).
 
@@ -226,7 +230,7 @@ julia> size(A)
 ```
 """
 function canonical_stoich_matrix(
-    species::Vector{<:AbstractSpecies}; display=false, label=:symbol, mass=false
+    species::Vector{<:AbstractSpecies}; pprint=false, label=:symbol, mass=false
 )
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
@@ -245,14 +249,14 @@ function canonical_stoich_matrix(
         A = Mat .* A .* inv.(Msp)'
     end
 
-    if display
-        print_stoich_matrix(A, involved_atoms, eval(label).(species))
+    if pprint
+        pprint_stoich_matrix(A, involved_atoms, eval(label).(species))
     end
     return A, involved_atoms
 end
 
 """
-    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=false, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
+    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; pprint=false, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
 
 Compute the stoichiometric matrix expressing dependent species in terms of independent components.
 
@@ -260,7 +264,7 @@ Compute the stoichiometric matrix expressing dependent species in terms of indep
 
   - `vs`: vector of dependent species to express.
   - `candidate_primaries`: vector of candidate primary species (default: vs).
-  - `display`: if true, print the matrix (default true).
+  - `pprint`: if true, print the matrix (default true).
   - `label`: field name for labeling (default :symbol).
   - `involve_all_atoms`: if true, include all atoms from candidates (default false).
   - `reorder_primaries`: if true, use QR pivoting to select primaries (default false).
@@ -287,7 +291,7 @@ julia> size(A)
 function stoich_matrix(
     vs::Vector{<:AbstractSpecies},
     candidate_primaries::Vector{<:AbstractSpecies}=vs;
-    display=false,
+    pprint=false,
     label=:symbol,
     involve_all_atoms=false,
     reorder_primaries=false,
@@ -348,7 +352,7 @@ function stoich_matrix(
         end
     end
 
-    M, involved_atoms = canonical_stoich_matrix(species; display=false)
+    M, involved_atoms = canonical_stoich_matrix(species; pprint=false)
     redox =
         charged && safe_rank(M[:, 1:(end - 1)]) != safe_rank(M[1:(end - 1), 1:(end - 1)])
 
@@ -360,14 +364,36 @@ function stoich_matrix(
     cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
     filter!(x -> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
-    if size(M_subset, 1) >= size(M_subset, 2)
-        independent_cols_indices = cols_candidates
-    else
-        F = qr(M_subset, reorder_primaries ? Val(true) : NoPivot())
-        r = Int(safe_rank(M_subset))
-        pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
+    # if size(M_subset, 1) >= size(M_subset, 2)
+    #     independent_cols_indices = cols_candidates
+    # else
+    #     F = qr(M_subset, reorder_primaries ? Val(true) : NoPivot())
+    #     r = Int(safe_rank(M_subset))
+    #     pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
+    #     independent_cols_indices = sort(cols_candidates[pivot_idx])
+    # end
+
+    r = Int(safe_rank(M_subset))
+    if reorder_primaries
+        F = qr(M_subset, Val(true))
+        pivot_idx = F.p[1:r]
         independent_cols_indices = sort(cols_candidates[pivot_idx])
+    else
+        pivot_idx = Int[]
+        current_matrix = zeros(eltype(M_subset), size(M_subset, 1), 0)
+        for j in axes(M_subset, 2)
+            candidate = hcat(current_matrix, M_subset[:, j])
+            if Int(safe_rank(candidate)) > size(current_matrix, 2)
+                push!(pivot_idx, j)
+                current_matrix = candidate
+                if length(pivot_idx) == r
+                    break
+                end
+            end
+        end
+        independent_cols_indices = cols_candidates[pivot_idx]
     end
+
     sort!(
         independent_cols_indices;
         by=x ->
@@ -376,7 +402,6 @@ function stoich_matrix(
             symbol(species[x]) !== "H₂O" &&
             symbol(species[x]) !== "H",
     )
-
     M_indep = M[:, independent_cols_indices]
     M_indep = promote_type(typeof.(M_indep)...).(M_indep)
     A = stoich_coef_round.(safe_pinv(M_indep) * M)
@@ -397,8 +422,8 @@ function stoich_matrix(
         A = Mindep .* A .* inv.(Mdep)'
     end
 
-    if display
-        print_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp))
+    if pprint
+        pprint_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp))
     end
 
     return A, indep_comp, dep_comp
@@ -416,7 +441,7 @@ const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in CEMENT_TO_
 
 Canonical stoichiometric matrix for cement oxides.
 """
-const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; display=false)
+const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; pprint=false)
 
 """
     const order_atom_in_oxides

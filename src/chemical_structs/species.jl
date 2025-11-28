@@ -1025,7 +1025,7 @@ function CemSpecies(
             properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
         )
     else
-        A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; display=false)
+        A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; pprint=false)
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
         if !isempty(oxides)
             cemspecies = CemSpecies(

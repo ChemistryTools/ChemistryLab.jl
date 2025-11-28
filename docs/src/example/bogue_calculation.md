@@ -22,7 +22,7 @@ Mw = map(x -> ustrip(us"g/mol",x.M), cemspecies)
 Mwo = map(x -> ustrip(us"g/mol",x.M), oxides)
 Aoa = Mwo .* A .* inv.(Mw)'
 
-print_stoich_matrix(inv(Aoa), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
+pprint_stoich_matrix(inv(Aoa), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
 ```
 By taking a cement sheet with a classic percentages of oxides (CaO=65.6%; SiO2=21.5%; Al2O3=5.2% and Fe2O3=2.8%), we then obtain the anhydrous masses of the cementitious material. 
 ```@example Bogue
@@ -40,5 +40,5 @@ A, indep_comp = canonical_stoich_matrix(cemspecies; mass=true)
 Bogue's formulas are then immediate.
 
 ```@example Bogue
-print_stoich_matrix(inv(A), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
+pprint_stoich_matrix(inv(A), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
 ```
