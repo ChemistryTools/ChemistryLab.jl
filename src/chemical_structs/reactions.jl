@@ -107,16 +107,17 @@ julia> length(products(rH2O))
 ```
 
 ```julia
-julia> r = Reaction("2H2 + O2 = 2H2O");
-julia> r2 = Reaction("2H2 + O2 → 2H2O");
-julia> r == r2
-true
+julia> Reaction("2H2 + O2 = 2H2O")
+2H2 + O2 = 2H2O
+ reactants: H₂ => 2, O₂ => 1
+  products: H₂O => 2
+    charge: 0
 ```
 
 ```julia
-julia> r = Reaction("2H2 + O2 = 2H2O");
-julia> r.products == Dict(Species("H2O") => 2)
-true
+julia> Reaction("2H2 + O2 = 2H2O").products
+OrderedCollections.OrderedDict{Species{Int64}, Int64} with 1 entry:
+  H2O {H2O} [H2O ◆ H₂O] => 2
 ```
 """
 struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number}
@@ -136,9 +137,11 @@ Return the equation string of the reaction.
 
 # Examples
 
-```julia
+```jldoctest
 julia> r = Reaction("CaSO4 = Ca²⁺ + SO4²⁻");
+
 julia> equation(r)
+"CaSO4 = Ca²⁺ + SO4²⁻"
 ```
 """
 equation(r::Reaction) = r.equation
