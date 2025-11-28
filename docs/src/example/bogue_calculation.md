@@ -13,6 +13,7 @@ A, indep_comp = stoich_matrix(cemspecies,oxides)
 
 using PrettyTables #hide
 ```
+
 Bogue's formulas are thus found by converting species into mass and inverting the matrix.
 
 ```@example Bogue
@@ -22,9 +23,11 @@ Mw = map(x -> ustrip(us"g/mol",x.M), cemspecies)
 Mwo = map(x -> ustrip(us"g/mol",x.M), oxides)
 Aoa = Mwo .* A .* inv.(Mw)'
 
-pprint_stoich_matrix(inv(Aoa), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
+pprint(inv(Aoa), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
 ```
+
 By taking a cement sheet with a classic percentages of oxides (CaO=65.6%; SiO2=21.5%; Al2O3=5.2% and Fe2O3=2.8%), we then obtain the anhydrous masses of the cementitious material. 
+
 ```@example Bogue
 inv(Aoa) *  [65.6, 21.5, 5.2, 2.8]
 ```
@@ -40,5 +43,5 @@ A, indep_comp = canonical_stoich_matrix(cemspecies; mass=true)
 Bogue's formulas are then immediate.
 
 ```@example Bogue
-pprint_stoich_matrix(inv(A), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
+pprint(inv(A), map(x -> x.name, cemspecies), map(x -> x.name, oxides))
 ```

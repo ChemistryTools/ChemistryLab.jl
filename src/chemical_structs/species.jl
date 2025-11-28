@@ -699,6 +699,45 @@ function Base.show(io::IO, ::MIME"text/plain", s::Species)
 end
 
 """
+    pprint(s::Species)
+
+Pretty-print a Species to standard output using the same multi-line layout
+as the MIME "text/plain" show method.
+
+# Arguments
+
+  - `s` : Species instance to print.
+
+# Returns
+
+  - `nothing` (side-effect: formatted output to stdout).
+"""
+function pprint(s::Species)
+    pad = 15
+    println(typeof(s))
+    if name(s) != formula(s) && length(name(s)) > 0
+        println(lpad("name", pad), ": ", name(s))
+    end
+    if symbol(s) != formula(s) && length(symbol(s)) > 0
+        println(lpad("symbol", pad), ": ", symbol(s))
+    end
+    pprint_formula(formula(s), "formula", pad)
+    println(lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
+    println(lpad("charge", pad), ": ", charge(s))
+    println(lpad("aggregate_state", pad), ": ", aggregate_state(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(lpad("class", pad), ": ", class(s))
+    if length(properties(s)) > 0
+        print(
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
+    end
+    println()
+end
+
+"""
     struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
 
 Cement chemistry species representation using oxide notation.
@@ -1241,6 +1280,51 @@ function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
             join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
         )
     end
+end
+
+"""
+    pprint(s::CemSpecies)
+
+Pretty-print a CemSpecies to standard output using the same multi-line layout
+as the MIME "text/plain" show method.
+
+# Arguments
+
+  - `s` : CemSpecies instance to print.
+
+# Returns
+
+  - `nothing` (side-effect: formatted output to stdout).
+"""
+function pprint(s::CemSpecies)
+    pad = 15
+    println(typeof(s))
+    if name(s) != expr(s) && length(name(s)) > 0
+        println(lpad("name", pad), ": ", name(s))
+    end
+    if symbol(s) != expr(s) && length(symbol(s)) > 0
+        println(lpad("symbol", pad), ": ", symbol(s))
+    end
+    cf = cemformula(s)
+    f = formula(s)
+    # println(lpad("cemformula", pad), ": ", colored_formula(expr(cf)), " | ", colored_formula(phreeqc(cf)), " | ", colored_formula(unicode(cf)))
+    pprint_formula(cf, "cemformula", pad)
+    println(lpad("oxides", pad), ": ", join(["$k => $v" for (k, v) in oxides(s)], ", "))
+    # println(lpad("formula", pad), ": ", colored_formula(expr(f)), " | ", colored_formula(phreeqc(f)), " | ", colored_formula(unicode(f)))
+    pprint_formula(f, "formula", pad)
+    println(lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
+    println(lpad("charge", pad), ": ", charge(s))
+    println(lpad("aggregate_state", pad), ": ", aggregate_state(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(lpad("class", pad), ": ", class(s))
+    if length(properties(s)) > 0
+        print(
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
+    end
+    println()
 end
 
 """

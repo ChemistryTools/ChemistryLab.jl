@@ -470,7 +470,7 @@ Construct a Reaction from an equation string.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Reaction("2H2 + O2 = 2H2O")
 2H2 + O2 = 2H2O
  reactants: H₂ => 2, O₂ => 1
@@ -736,13 +736,6 @@ end
     Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies} -> Reaction
 
 Convert a species to a trivial Reaction (species = species).
-
-# Examples
-
-```julia
-julia> r[h2o]
-h2o = Species("H2O");
-```
 """
 function Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies}
     Reaction(OrderedDict(s => 1))
@@ -806,8 +799,8 @@ Simplify a reaction by canceling common species from both sides.
 
 # Examples
 
-```julia
-julia> simplify_reaction(Reaction("2H2 + O2 = 2H2O"))
+```jldoctest
+julia> simplify_reaction(Reaction("2H2 + O2 +H2O = 3H2O"))
 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -873,10 +866,6 @@ The first species is treated as the dependent component.
 # Returns
 
   - OrderedDict mapping species to signed stoichiometric coefficients (negative for reactants)
-
-# Examples
-
-TODO
 """
 function build_species_stoich(
     species::AbstractVector{<:AbstractSpecies}; scaling=1, auto_scale=false
@@ -1029,7 +1018,7 @@ Multiply all stoichiometric coefficients in a reaction by a scalar.
 
 # Examples
 
-```julia
+```jldoctest
 julia> 3 * Reaction("2H2 + O2 = 2H2O")
 6H₂ + 3O₂ = 6H₂O
  reactants: H₂ => 6, O₂ => 3
@@ -1063,7 +1052,7 @@ Create a Reaction with a single species with coefficient -1.
 
 # Examples
 
-```julia
+```jldoctest
 julia> -Species("H2O")
 H₂O = ∅
  reactants: H₂O => 1
@@ -1088,7 +1077,7 @@ Reverse a reaction (swap reactants and products).
 
 # Examples
 
-```julia
+```jldoctest
 julia> 3 * Reaction("2H2 + O2 = 2H2O") - 2* Reaction("2H2 + O2 = 2H2O")
 6H₂ + 3O₂ + 4H₂O = 6H₂O + 4H₂ + 2O₂
  reactants: H₂ => 6, O₂ => 3, H₂O => 4
@@ -1116,7 +1105,7 @@ Add two species to create a Reaction.
 
 # Examples
 
-```julia
+```jldoctest
 julia> 2 * Species("H2") + Species("O2") - Species("2H2O")
 ∅ = 2H₂ + O₂ + (-1)2H₂O
  reactants: ∅
@@ -1197,7 +1186,7 @@ Add a species to a reaction.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Reaction("2H2 + O2 = 2H2O") + Species("H2O")
 2H₂ + O₂ = 3H₂O
  reactants: H₂ => 2, O₂ => 1
@@ -1230,7 +1219,7 @@ Subtract a species from a reaction.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Reaction("2H2 + O2 = 2H2O") - Species("H2O")
 2H₂ + O₂ = H₂O
  reactants: H₂ => 2, O₂ => 1
@@ -1367,13 +1356,16 @@ Display a reaction in a compact form.
 
 # Examples
 
-```julia
-julia> show(Reaction("H2 + O2 = H2O"))
+```jldoctest
+julia>  Reaction("H2 + O2 = H2O")
 H2 + O2 = H2O
+ reactants: H₂ => 1, O₂ => 1
+  products: H₂O => 1
+    charge: 0
 ```
 """
 function Base.show(io::IO, r::Reaction)
-    print(io, colored(r))
+    print(io, equation(r))
 end
 
 """
@@ -1387,14 +1379,14 @@ Display a reaction in a detailed form.
   - `r`: reaction to display
 """
 function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
-    println(io, colored(r))
+    println(io, equation(r))
     pad = 10
     if length(reactants(r)) > 0
         println(
             io,
             lpad("reactants", pad),
             ": ",
-            join(["$(colored(k)) => $v" for (k, v) in reactants(r)], ", "),
+            join(["$(unicode(k)) => $v" for (k, v) in reactants(r)], ", "),
         )
     else
         println(io, lpad("reactants", pad), ": ∅")
@@ -1404,7 +1396,7 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
             io,
             lpad("products", pad),
             ": ",
-            join(["$(colored(k)) => $v" for (k, v) in products(r)], ", "),
+            join(["$(unicode(k)) => $v" for (k, v) in products(r)], ", "),
         )
     else
         println(io, lpad("products", pad), ": ∅")
@@ -1422,6 +1414,60 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
 end
 
 """
+    pprint(r::Reaction)
+
+Pretty-print a Reaction to standard output using the same multi-line layout
+as the MIME "text/plain" show method, but using the terminal-colored string
+when available.
+
+# Arguments
+
+  - `r` : Reaction instance to print.
+
+# Returns
+
+  - `nothing` (side-effect: formatted output to stdout).
+
+# Notes
+
+  - The colored equation may not render correctly in non-interactive environments
+    (CI, doctests, or redirected IO). This function uses `colored(r)` when
+    available to produce a user-friendly output.
+"""
+function pprint(r::Reaction)
+    println(colored(r))
+    pad = 10
+    if length(reactants(r)) > 0
+        println(
+            lpad("reactants", pad),
+            ": ",
+            join(["$(colored(k)) => $v" for (k, v) in reactants(r)], ", "),
+        )
+    else
+        println(lpad("reactants", pad), ": ∅")
+    end
+    if length(products(r)) > 0
+        println(
+            lpad("products", pad),
+            ": ",
+            join(["$(colored(k)) => $v" for (k, v) in products(r)], ", "),
+        )
+    else
+        println(lpad("products", pad), ": ∅")
+    end
+    pr = length(properties(r)) > 0 ? println : print
+    pr(lpad("charge", pad), ": $(charge(r))")
+    if length(properties(r)) > 0
+        print(
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(r)], "\n" * repeat(" ", pad + 2)),
+        )
+    end
+    println()
+end
+
+"""
     apply(func::Function, r::Reaction{SR,TR,SP,TP}, args...; kwargs...) where {SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
 
 Apply a function to all species and coefficients in a reaction.
@@ -1436,10 +1482,6 @@ Apply a function to all species and coefficients in a reaction.
 # Returns
 
   - A new Reaction with transformed species and coefficients
-
-# Examples
-
-TODO
 """
 function apply(
     func::Function, r::Reaction{SR,TR,SP,TP}, args...; kwargs...

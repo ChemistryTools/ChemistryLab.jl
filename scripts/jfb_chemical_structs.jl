@@ -149,16 +149,16 @@ A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; pprint=true);
 A = typeof(â).(A[1:end-1, 1:end]) # end-1 to remove the line corresponding to water H
 oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
-pprint_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
-pprint_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
+pprint(A, symbol.(oxides), symbol.(hydrates))
+pprint(inv(A), symbol.(hydrates), symbol.(oxides))
 Mhyd = ustrip.(getproperty.(hydrates, :M))
 Mox = ustrip.(getproperty.(oxides, :M))
 B = Mox .* A .* inv.(Mhyd)'
 # or directly
 B, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; mass=true, pprint=true) ;
 B = B[1:end-1, 1:end] # to remove the H line
-pprint_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
-pprint_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
+pprint(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
+pprint(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
 # Alkane combustion with SymPy
 n = symbols("n", real=true) ;
@@ -168,8 +168,8 @@ H₂O = Species("H₂O") ;
 CO₂ = Species("CO₂") ;
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 apply(factor, r)
-println(2r)
-for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
+pprint(2r)
+for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(subs, r, n=>vn))) end
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products))
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
 @show r[O₂]
@@ -181,8 +181,8 @@ O₂ = Species("O₂")
 H₂O = Species("H₂O")
 CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
-for vn in 1:9 println("n=$vn ⇒ ", apply(substitute, r, n=>vn)) end
-for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn)) end
+for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(substitute, r, n=>vn))) end
+for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn))) end
 
 # Example from https://github.com/thermohub/chemicalfun
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
@@ -214,7 +214,7 @@ for row in eachrow(df_reactions)
     re = row.reaction
     for s in keys(re.reactants)
         if !haskey(s, :Cp)
-            println(s, "  ∙  ", row.symbol)
+            println(colored(s), "  ∙  ", row.symbol)
         end
     end
 end
@@ -223,14 +223,14 @@ for row in eachrow(df_reactions)
     re = row.reaction
     for s in keys(re.products)
         if !haskey(s, :Cp)
-            println(s, "  ∙  ", row.symbol)
+            println(colored(s), "  ∙  ", row.symbol)
         end
     end
 end
 
 # Check consistency of logKr at Tref and logKr_Tref of the database
 for r in df_reactions.reaction
-    println(r, " → ", r.logKr(), " == ", r.logKr_Tref)
+    println(colored(r), " → ", r.logKr(), " == ", r.logKr_Tref)
 end
 
 coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
@@ -259,7 +259,8 @@ end
 
 for r in df_reactions.reaction
     if true # abs((r.logKr_Tref -r.logKr())/r.logKr_Tref)>0.01
-        println(collect(keys(r))[1].symbol, " ", r)
+        println(collect(keys(r))[1].symbol)
+        println(colored(r))
         println("     → logKr given at $(Tref) = ", r.logKr_Tref)
         println("     → logKr calculated at $(Tref) = ", r.logKr())
         try

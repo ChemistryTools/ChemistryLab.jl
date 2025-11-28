@@ -16,17 +16,23 @@ end
 ## Parsing reactions
 
 `Reaction` is a composite type `struct` which can be build from:
+
 - a string containing [species](./databases.md#species)
+
 ```julia
 equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
 reac, prod, equal_sign = parse_equation(equation)
 ```
+
 - a string containing [cement species](./databases.md#species)
+
 ```julia
 eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH₄"
 rC3S = CemReaction(eqC3S)
 ```
+
 - an operation on species
+
 ```@example
 using ChemistryLab
 C3S = CemSpecies("C3S")
@@ -36,7 +42,9 @@ CSH = CemSpecies("C1.7SH4")
 r = C3S + 5.3H ↔ 1.3CH + CSH
 typeof(r)
 ```
+
 - a balance calculation
+
 ```@example
 using ChemistryLab
 C3S = CemSpecies("C3S")
@@ -44,8 +52,11 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 CSH = CemSpecies("C1.7SH4")
 r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
+pprint(r)
 ```
+
 - a balance calculation with symbolic numbers
+
 ```julia
 using ChemistryLab
 using SymPy
@@ -64,8 +75,8 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 CSH = CemSpecies("C1.7SH4")
 r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
-A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
-``` 
+A, _, _ = stoich_matrix([C3S], [CSH, H, CH]) ;
+```
 
 !!! note "Collection of arrow symbols"
     In ChemistryLab, there are collections of arrow symbols used in chemical reaction notation, such as:

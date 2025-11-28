@@ -11,7 +11,6 @@ From the definition of species, it is possible to construct a stoichiometric mat
 
 Any species can be described as a linear combination of chemical elements. A species vector can be expressed as a function of the chemical elements on which they depend. This dependence leads to the creation of a stochiometric matrix.
 
-
 ```@example
 using ChemistryLab #hide
 H2O = Species("H₂O")
@@ -68,6 +67,7 @@ using PrettyTables #hide
     ```
 
 ## Construct stoichiometric matrix from database
+
 In chemistryLab, it is possible to construct a stoichiometric matrix of species as a function of primary species given a database. Primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
 
 ```julia
@@ -122,6 +122,5 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
 
 using PrettyTables #hide
 ```
-
 
 ---

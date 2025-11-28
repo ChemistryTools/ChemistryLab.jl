@@ -406,7 +406,7 @@ function print_formula(io::IO, f::Formula, title::String, pad::Int)
         io,
         lpad(title, pad),
         ": ",
-        join(unique!([expr(f), phreeqc(f), unicode(f), colored(f)]), " ◆ "),
+        join(unique!([expr(f), phreeqc(f), unicode(f)]), " ◆ "),
     )
 end
 
@@ -427,6 +427,48 @@ function Base.show(io::IO, ::MIME"text/plain", f::Formula)
         join(["$k => $v" for (k, v) in composition(f)], ", "),
     )
     println(io, lpad("charge", pad), ": ", charge(f))
+end
+
+"""
+    pprint_formula(f::Formula, title::String, pad::Int)
+
+Print a titled, padded representation of `f` using its available textual forms
+(expr, phreeqc, unicode, colored). This helper is used by `pprint` and by
+MIME/plain `show` helpers to render the "formula" field.
+
+# Arguments
+  - `f` : Formula to print.
+  - `title` : section title (e.g. "formula").
+  - `pad` : left-padding width.
+"""
+function pprint_formula(f::Formula, title::String, pad::Int)
+    println(
+        lpad(title, pad),
+        ": ",
+        join(unique!([expr(f), phreeqc(f), unicode(f), colored(f)]), " ◆ "),
+    )
+end
+
+"""
+    pprint(f::Formula)
+
+Pretty-print a `Formula` to standard output. Shows type, a titled "formula"
+line, composition and charge. The output matches the multi-line representation
+used by `show(io, MIME\"text/plain\", ...)` but is sent to stdout.
+
+# Arguments
+  - `f` : Formula to pretty-print.
+"""
+function pprint(f::Formula)
+    pad = 11
+    println(typeof(f))
+    pprint_formula(f, "formula", pad)
+    println(
+        lpad("composition", pad),
+        ": ",
+        join(["$k => $v" for (k, v) in composition(f)], ", "),
+    )
+    println(lpad("charge", pad), ": ", charge(f))
 end
 
 """

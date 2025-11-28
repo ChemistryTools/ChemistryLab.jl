@@ -50,12 +50,21 @@ julia> r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
  reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
   products: H₂O => n + 1, CO₂ => n
-properties: charge = 0
+    charge: 0
 
-julia> println(2r)
+julia> pprint(r)
+CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
+ reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
+  products: H₂O => n + 1, CO₂ => n
+    charge: 0
+
+julia> pprint(2r)
 2CₙH₂ₙ₊₂ + (3n+1)O₂ = (2n+2)H₂O + 2nCO₂
+ reactants: CₙH₂ₙ₊₂ => 2, O₂ => 3*n + 1
+  products: H₂O => 2*n + 2, CO₂ => 2*n
+    charge: 0
 
-julia> for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
+julia> for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(subs, r, n=>vn))) end
 n=1 ⇒ CH₄ + 2O₂ = 2H₂O + CO₂
 n=2 ⇒ C₂H₆ + 7/2O₂ = 3H₂O + 2CO₂
 n=3 ⇒ C₃H₈ + 5O₂ = 4H₂O + 3CO₂

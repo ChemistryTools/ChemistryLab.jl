@@ -55,7 +55,7 @@ function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
 end
 
 """
-    pprint_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
+    pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
 
 Print a stoichiometric matrix with colored formatting.
 
@@ -67,7 +67,7 @@ Print a stoichiometric matrix with colored formatting.
 
 Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
 """
-function pprint_stoich_matrix(
+function pprint(
     A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector
 )
     hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
@@ -250,13 +250,13 @@ function canonical_stoich_matrix(
     end
 
     if pprint
-        pprint_stoich_matrix(A, involved_atoms, eval(label).(species))
+        ChemistryLab.pprint(A, involved_atoms, eval(label).(species))
     end
     return A, involved_atoms
 end
 
 """
-    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; pprint=false, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
+    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; pprint=false, label=:symbol, involve_all_atoms=true, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
 
 Compute the stoichiometric matrix expressing dependent species in terms of independent components.
 
@@ -266,7 +266,7 @@ Compute the stoichiometric matrix expressing dependent species in terms of indep
   - `candidate_primaries`: vector of candidate primary species (default: vs).
   - `pprint`: if true, print the matrix (default true).
   - `label`: field name for labeling (default :symbol).
-  - `involve_all_atoms`: if true, include all atoms from candidates (default false).
+  - `involve_all_atoms`: if true, include all atoms from candidates (default true).
   - `reorder_primaries`: if true, use QR pivoting to select primaries (default false).
   - `mass`: if true, compute mass-based matrix (default false).
 
@@ -293,7 +293,7 @@ function stoich_matrix(
     candidate_primaries::Vector{<:AbstractSpecies}=vs;
     pprint=false,
     label=:symbol,
-    involve_all_atoms=false,
+    involve_all_atoms=true,
     reorder_primaries=false,
     mass=false,
 )
@@ -422,8 +422,12 @@ function stoich_matrix(
         A = Mindep .* A .* inv.(Mdep)'
     end
 
+    zero_rows = all(iszero.(A), dims=2)[:, 1]
+    A = A[.!zero_rows, :]
+    indep_comp = indep_comp[.!zero_rows]
+
     if pprint
-        pprint_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp))
+        ChemistryLab.pprint(A, eval(label).(indep_comp), eval(label).(dep_comp))
     end
 
     return A, indep_comp, dep_comp
