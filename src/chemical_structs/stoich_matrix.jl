@@ -125,7 +125,7 @@ function stoich_matrix_to_equations(
     indep_comp_names::AbstractVector,
     dep_comp_names::AbstractVector;
     scaling=1,
-    pprint=true,
+    pprint=false,
     equal_sign='=',
 )
     eqns = String[]
