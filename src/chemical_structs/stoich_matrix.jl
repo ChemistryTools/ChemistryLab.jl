@@ -196,7 +196,7 @@ function stoich_matrix_to_reactions(
 end
 
 """
-    canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false) -> (Matrix, Vector{Symbol})
+    canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=false, label=:symbol, mass=false) -> (Matrix, Vector{Symbol})
 
 Build the canonical stoichiometric matrix for a species list.
 
@@ -219,14 +219,14 @@ Entry (i,j) is the coefficient of atom i in species j.
 ```jldoctest
 julia> species = [Species("H2O"), Species("H2"), Species("O2")];
 
-julia> A, atoms = canonical_stoich_matrix(species; display=false);
+julia> A, atoms = canonical_stoich_matrix(species);
 
 julia> size(A)
 (2, 3)
 ```
 """
 function canonical_stoich_matrix(
-    species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false
+    species::Vector{<:AbstractSpecies}; display=false, label=:symbol, mass=false
 )
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
@@ -252,7 +252,7 @@ function canonical_stoich_matrix(
 end
 
 """
-    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
+    stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=false, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false) -> (Matrix, Vector{AbstractSpecies}, Vector{AbstractSpecies})
 
 Compute the stoichiometric matrix expressing dependent species in terms of independent components.
 
@@ -278,7 +278,7 @@ julia> h2o = Species("H2O");
        h2 = Species("H2");
        o2 = Species("O2");
 
-julia> A, indep, dep = stoich_matrix([h2o], [h2, o2]; display=false);
+julia> A, indep, dep = stoich_matrix([h2o], [h2, o2]);
 
 julia> size(A)
 (2, 1)
@@ -287,7 +287,7 @@ julia> size(A)
 function stoich_matrix(
     vs::Vector{<:AbstractSpecies},
     candidate_primaries::Vector{<:AbstractSpecies}=vs;
-    display=true,
+    display=false,
     label=:symbol,
     involve_all_atoms=false,
     reorder_primaries=false,
