@@ -12,9 +12,9 @@ C3A = CemSpecies(&quot;C3A&quot;; name=&quot;Aluminate&quot;, symbol=&quot;C₃A
 C4AF = CemSpecies(Dict(:C =&gt; 4, :A =&gt; 1, :F =&gt; 1); name=&quot;Ferrite&quot;, symbol=&quot;C₄AF&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Int64, Int64}
            name: Ferrite
          symbol: C₄AF
-     cemformula: C4AF ◆ C₄AF ◆ C<span class="sgr31"><span class="sgr1">₄</span></span>AF
+     cemformula: C4AF ◆ C₄AF
          oxides: F =&gt; 1, A =&gt; 1, C =&gt; 4
-        formula: Ca4Al2Fe2O10 ◆ Ca₄Al₂Fe₂O₁₀ ◆ Ca<span class="sgr31"><span class="sgr1">₄</span></span>Al<span class="sgr31"><span class="sgr1">₂</span></span>Fe<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span>
+        formula: Ca4Al2Fe2O10 ◆ Ca₄Al₂Fe₂O₁₀
           atoms: Fe =&gt; 2, O =&gt; 10, Al =&gt; 2, Ca =&gt; 4
          charge: 0
 aggregate_state: AS_UNDEF
@@ -24,9 +24,9 @@ ox = Dict(:C =&gt; 1.666667, :S =&gt; 1, :H =&gt; 2.1)
 jennite = CemSpecies(ox)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Real, Real}
            name: C₅//₃SH₂.₁
          symbol: C₅//₃SH₂.₁
-     cemformula: C5//3SH2.1 ◆ C₅//₃SH₂.₁ ◆ C<span class="sgr31"><span class="sgr1">₅//₃</span></span>SH<span class="sgr31"><span class="sgr1">₂.₁</span></span>
+     cemformula: C5//3SH2.1 ◆ C₅//₃SH₂.₁
          oxides: H =&gt; 2.1, S =&gt; 1, C =&gt; 1.666667
-        formula: Ca5//3SiH21//5O5.76667 ◆ Ca₅//₃SiH₂₁//₅O₅.₇₆₆₆₇ ◆ Ca<span class="sgr31"><span class="sgr1">₅//₃</span></span>SiH<span class="sgr31"><span class="sgr1">₂₁//₅</span></span>O<span class="sgr31"><span class="sgr1">₅.₇₆₆₆₇</span></span>
+        formula: Ca5//3SiH21//5O5.76667 ◆ Ca₅//₃SiH₂₁//₅O₅.₇₆₆₆₇
           atoms: H =&gt; 21//5, O =&gt; 5.76667, Si =&gt; 1, Ca =&gt; 5//3
          charge: 0
 aggregate_state: AS_UNDEF
@@ -41,7 +41,7 @@ cemH2O = CemSpecies(H2O)</code></pre><pre class="documenter-example-output"><cod
          symbol: H₂O
      cemformula: H
          oxides: H =&gt; 1
-        formula: H2O ◆ H₂O ◆ H<span class="sgr31"><span class="sgr1">₂</span></span>O
+        formula: H2O ◆ H₂O
           atoms: H =&gt; 2, O =&gt; 1
          charge: 0
 aggregate_state: AS_UNDEF
@@ -50,7 +50,7 @@ aggregate_state: AS_UNDEF
 spC3S = Species(C3S)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
            name: Alite
          symbol: C₃S
-        formula: Ca3SiO5 ◆ Ca₃SiO₅ ◆ Ca<span class="sgr31"><span class="sgr1">₃</span></span>SiO<span class="sgr31"><span class="sgr1">₅</span></span>
+        formula: Ca3SiO5 ◆ Ca₃SiO₅
           atoms: Ca =&gt; 3, O =&gt; 5, Si =&gt; 1
          charge: 0
 aggregate_state: AS_CRYSTAL
@@ -59,11 +59,11 @@ aggregate_state: AS_CRYSTAL
 jennite = CemSpecies(CSH)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Real, Real}
            name: (SiO2)1(CaO)1.666667(H2O)2.1
          symbol: (SiO2)1(CaO)1.666667(H2O)2.1
-     cemformula: C5//3SH2.1 ◆ C₅//₃SH₂.₁ ◆ C<span class="sgr31"><span class="sgr1">₅//₃</span></span>SH<span class="sgr31"><span class="sgr1">₂.₁</span></span>
+     cemformula: C5//3SH2.1 ◆ C₅//₃SH₂.₁
          oxides: C =&gt; 5//3, S =&gt; 1, H =&gt; 2.1
-        formula: Ca5//3SiH21//5O5.76667 ◆ Ca₅//₃SiH₂₁//₅O₅.₇₆₆₆₇ ◆ Ca<span class="sgr31"><span class="sgr1">₅//₃</span></span>SiH<span class="sgr31"><span class="sgr1">₂₁//₅</span></span>O<span class="sgr31"><span class="sgr1">₅.₇₆₆₆₇</span></span>
+        formula: Ca5//3SiH21//5O5.76667 ◆ Ca₅//₃SiH₂₁//₅O₅.₇₆₆₆₇
           atoms: Ca =&gt; 5//3, O =&gt; 5.76667, Si =&gt; 1, H =&gt; 21//5
          charge: 0
 aggregate_state: AS_UNDEF
           class: SC_UNDEF
-     properties: M = 0.1913762199305312 kg mol⁻¹</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Friday 28 November 2025 13:34">Friday 28 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+     properties: M = 0.1913762199305312 kg mol⁻¹</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Friday 28 November 2025 18:02">Friday 28 November 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
