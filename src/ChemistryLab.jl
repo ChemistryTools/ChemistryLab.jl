@@ -96,10 +96,12 @@ using JSON
 using JSON3
 using LinearAlgebra
 using ModelingToolkit
+using Optimization
 using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using ProgressMeter
+using SciMLBase
 using SymbolicNumericIntegration
 using Unicode
 
@@ -117,6 +119,8 @@ include("chemical_structs/reactions.jl")
 include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
+
+include("equilibrium/equilibrium_problems.jl")
 
 export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER
 
@@ -171,5 +175,7 @@ export read_thermofun_substances,
     read_thermofun_reactions, read_thermofun_elements, read_thermofun
 
 export merge_json
+
+export EquilibriumProblem
 
 end
