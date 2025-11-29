@@ -47,10 +47,10 @@ Compare two species for equality based on formula, aggregate state, and class.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
 
-julia> s2 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+julia> s2 = Species("H₂O"; aggregate_state=AS_AQUEOUS);
 
 julia> s1 == s2
 true
@@ -76,6 +76,15 @@ end
     name(s::AbstractSpecies) -> String
 
 Return the name of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> s1.name == "H2O"
+true
+```
 """
 name(s::AbstractSpecies) = s.name
 
@@ -90,6 +99,15 @@ symbol(s::AbstractSpecies) = s.symbol
     formula(s::AbstractSpecies) -> Formula
 
 Return the Formula object associated with the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> formula(s1) == Formula("H2O")
+true
+```
 """
 formula(s::AbstractSpecies) = s.formula
 
@@ -104,6 +122,15 @@ atoms(s::AbstractSpecies) = composition(formula(s))
     charge(s::AbstractSpecies) -> Int8
 
 Return the formal charge of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("Ca(HSiO3)+");
+
+julia> charge(s1) == 1
+true
+```
 """
 charge(s::AbstractSpecies) = charge(formula(s))
 
@@ -111,6 +138,15 @@ charge(s::AbstractSpecies) = charge(formula(s))
     aggregate_state(s::AbstractSpecies) -> AggregateState
 
 Return the aggregate state of the species.
+
+# Examples
+
+```jldoctest
+julia> s1 = Species("H2O"; aggregate_state=AS_AQUEOUS);
+
+julia> aggregate_state(s1) == AS_AQUEOUS
+true
+```
 """
 aggregate_state(s::AbstractSpecies) = s.aggregate_state
 
@@ -149,7 +185,7 @@ Return atomic composition including the charge as a :Zz key if non-zero.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("Ca+2");
 
 julia> atoms_charge(s)
@@ -178,7 +214,7 @@ Returns 0 if the key is not found.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("H2O");
 
 julia> s[:H]
@@ -277,7 +313,7 @@ Standard chemical species representation using atomic composition.
 
 # Examples
 
-```julia
+```jldoctest
 julia> s = Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS);
 
 julia> atoms(s)
@@ -299,6 +335,16 @@ end
     expr(s::Species) -> String
 
 Return the original expression string of the species formula.
+
+# Examples
+
+```jldoctest
+julia> expr(Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS))
+"H2O"
+
+julia> expr(Species("H2O"; name="Water", aggregate_state=AS_AQUEOUS)) == expr(Formula("H2O"))
+true
+```
 """
 expr(s::Species) = expr(formula(s))
 
@@ -653,6 +699,45 @@ function Base.show(io::IO, ::MIME"text/plain", s::Species)
 end
 
 """
+    pprint(s::Species)
+
+Pretty-print a Species to standard output using the same multi-line layout
+as the MIME "text/plain" show method.
+
+# Arguments
+
+  - `s` : Species instance to print.
+
+# Returns
+
+  - `nothing` (side-effect: formatted output to stdout).
+"""
+function pprint(s::Species)
+    pad = 15
+    println(typeof(s))
+    if name(s) != formula(s) && length(name(s)) > 0
+        println(lpad("name", pad), ": ", name(s))
+    end
+    if symbol(s) != formula(s) && length(symbol(s)) > 0
+        println(lpad("symbol", pad), ": ", symbol(s))
+    end
+    pprint_formula(formula(s), "formula", pad)
+    println(lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
+    println(lpad("charge", pad), ": ", charge(s))
+    println(lpad("aggregate_state", pad), ": ", aggregate_state(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(lpad("class", pad), ": ", class(s))
+    if length(properties(s)) > 0
+        print(
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
+    end
+    println()
+end
+
+"""
     struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
 
 Cement chemistry species representation using oxide notation.
@@ -979,7 +1064,7 @@ function CemSpecies(
             properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
         )
     else
-        A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; display=false)
+        A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; pprint=false)
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
         if !isempty(oxides)
             cemspecies = CemSpecies(
@@ -1195,6 +1280,51 @@ function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
             join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
         )
     end
+end
+
+"""
+    pprint(s::CemSpecies)
+
+Pretty-print a CemSpecies to standard output using the same multi-line layout
+as the MIME "text/plain" show method.
+
+# Arguments
+
+  - `s` : CemSpecies instance to print.
+
+# Returns
+
+  - `nothing` (side-effect: formatted output to stdout).
+"""
+function pprint(s::CemSpecies)
+    pad = 15
+    println(typeof(s))
+    if name(s) != expr(s) && length(name(s)) > 0
+        println(lpad("name", pad), ": ", name(s))
+    end
+    if symbol(s) != expr(s) && length(symbol(s)) > 0
+        println(lpad("symbol", pad), ": ", symbol(s))
+    end
+    cf = cemformula(s)
+    f = formula(s)
+    # println(lpad("cemformula", pad), ": ", colored_formula(expr(cf)), " | ", colored_formula(phreeqc(cf)), " | ", colored_formula(unicode(cf)))
+    pprint_formula(cf, "cemformula", pad)
+    println(lpad("oxides", pad), ": ", join(["$k => $v" for (k, v) in oxides(s)], ", "))
+    # println(lpad("formula", pad), ": ", colored_formula(expr(f)), " | ", colored_formula(phreeqc(f)), " | ", colored_formula(unicode(f)))
+    pprint_formula(f, "formula", pad)
+    println(lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
+    println(lpad("charge", pad), ": ", charge(s))
+    println(lpad("aggregate_state", pad), ": ", aggregate_state(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(lpad("class", pad), ": ", class(s))
+    if length(properties(s)) > 0
+        print(
+            lpad("properties", pad),
+            ": ",
+            join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
+        )
+    end
+    println()
 end
 
 """

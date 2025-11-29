@@ -23,6 +23,7 @@ end
 ## Species construction
 
 `Species` can be created from:
+
 - a `Formula`
 
 ```@example
@@ -32,12 +33,14 @@ H2O = Species(fH2O)
 ```
 
 - a string
+
 ```@example
 using ChemistryLab #hide
 HSO4⁻ = Species("HSO₄⁻")
 ```
 
 - a dictionary
+
 ```@example
 using ChemistryLab #hide
 CO2 = Species(Dict(:C => 1, :O => 2))
@@ -60,6 +63,7 @@ H₂O = Species(fH₂O; name="Water", symbol="H₂O@", aggregate_state=AS_AQUEOU
 ```
 
 And `symbol` accept unicode characters.
+
 ```@example CO2
 using ChemistryLab #hide
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
@@ -71,7 +75,6 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
     vapour = Species("H2O"; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
     vapour == H₂O
     ```
-
 
 !!! tip "Remark"
     You will also have noticed that a calculation of the molar mass of the species is systematically carried out.

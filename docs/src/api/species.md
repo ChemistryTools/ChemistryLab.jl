@@ -1,0 +1,25 @@
+# Species
+
+```@index
+Pages = ["species.md"]
+```
+
+```@docs
+Species
+Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies)
+charge(s::AbstractSpecies)
+CemSpecies
+name(s::AbstractSpecies)
+symbol(s::AbstractSpecies)
+formula(s::AbstractSpecies)
+cemformula
+atoms(s::AbstractSpecies)
+atoms_charge(s::AbstractSpecies)
+oxides
+oxides_charge
+components
+aggregate_state(s::AbstractSpecies)
+class(s::AbstractSpecies)
+properties(s::AbstractSpecies)
+check_mendeleev(s::AbstractSpecies)
+```

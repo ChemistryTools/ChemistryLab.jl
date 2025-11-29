@@ -138,7 +138,7 @@ export stoich_coef_round,
 export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
 
 export AtomGroup,
-    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev
+    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, stoichtype, pprint
 
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 
@@ -161,7 +161,6 @@ export AbstractSpecies,
     properties
 
 export union_atoms,
-    print_stoich_matrix,
     canonical_stoich_matrix,
     stoich_matrix,
     stoich_matrix_to_equations,

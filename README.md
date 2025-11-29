@@ -8,6 +8,8 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jfbarthelemy.github.io/ChemistryLab.jl/stable/)
 [![Build Status](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
+[![DOI](https://zenodo.org/badge/1054296488.svg)](https://doi.org/10.5281/zenodo.17756074)
+
 ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicated to low-carbon cementitious materials and aqueous solutions and designed for researchers, engineers, and developers working with cement chemistry, its scope is actually wider. It provides formula handling, species management, stoichiometric matrix construction, and database interoperability (ThermoFun and Cemdata). Main features include chemical formula parsing, Unicode/Phreeqc notation conversion, reaction and equilibrium analysis, and data import/export.
 
 ## Features
@@ -50,12 +52,21 @@ julia> r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
  reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
   products: H₂O => n + 1, CO₂ => n
-properties: charge = 0
+    charge: 0
 
-julia> println(2r)
+julia> pprint(r)
+CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
+ reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
+  products: H₂O => n + 1, CO₂ => n
+    charge: 0
+
+julia> pprint(2r)
 2CₙH₂ₙ₊₂ + (3n+1)O₂ = (2n+2)H₂O + 2nCO₂
+ reactants: CₙH₂ₙ₊₂ => 2, O₂ => 3*n + 1
+  products: H₂O => 2*n + 2, CO₂ => 2*n
+    charge: 0
 
-julia> for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
+julia> for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(subs, r, n=>vn))) end
 n=1 ⇒ CH₄ + 2O₂ = 2H₂O + CO₂
 n=2 ⇒ C₂H₆ + 7/2O₂ = 3H₂O + 2CO₂
 n=3 ⇒ C₃H₈ + 5O₂ = 4H₂O + 3CO₂
@@ -89,6 +100,23 @@ See the [documentation and tutorials](https://jfbarthelemy.github.io/ChemistryLa
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+## Citation
+
+[![DOI](https://zenodo.org/badge/1054296488.svg)](https://doi.org/10.5281/zenodo.17756074)
+
+See [CITATION.cff](CITATION.cff) for citation details.
+
+**BibTeX entry:**
+
+```bibtex
+@software{chemistrylab_jl,
+  authors = {Barthélemy, Jean-François and Soive, Anthony},
+  title = {ChemistryLab.jl: Numerical laboratory for computational chemistry},
+  doi = {10.5281/zenodo.17756074},
+  url = {https://github.com/jfbarthelemy/ChemistryLab.jl}
+}
+```
 
 ## Credits and Acknowledgements
 

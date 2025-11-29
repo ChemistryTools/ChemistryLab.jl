@@ -49,6 +49,7 @@ df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata
 ```
 
 For each species, properties can then be obtained as follows:
+
 ```julia
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 dict_species["Portlandite"]
@@ -64,4 +65,3 @@ show(df_primaries, allcols=true, allrows=true)
 ```
 
 ---
-

@@ -16,30 +16,36 @@ end
 ## Formula construction
 
  Formulas can be constructed:
+
 - by parsing a string containing eventually fractional or decimal coefficients
+
 ```@example 1
 using ChemistryLab #hide
 f = Formula("C3AFS5//8H4.32")
 ```
 
 - from a dictionary
+
 ```@example 1
 using ChemistryLab #hide
 fCaCO3 = Formula(Dict(:Ca => 1, :C => 1, :O => 3))
 ```
 
 - from atom groups
+
 ```@example
 using ChemistryLab #hide
 fCO2 = AtomGroup(:C) + AtomGroup(2,:O)
 ```
 
 Charges can also be included during the creation in two different ways:
+
 ```@example 1
 fHSO₄⁻ = AtomGroup(:H)+AtomGroup(:S)+AtomGroup(4,:O)+AtomGroup(:e)
 ```
 
 Or:
+
 ```@example 1
 fNa⁺ = AtomGroup(:Na)+AtomGroup(:Zz)
 ```
@@ -64,8 +70,4 @@ Coefficient types can be converted *a posteriori*.
 convert(Float64, Formula("H2O"))
 ```
 
-
-
 ---
-
-

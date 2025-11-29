@@ -21,7 +21,7 @@ makedocs(;
         assets=["assets/favicon.ico"],
     ),
     pages=pages,
-    warnonly=[:missing_docs],
+    warnonly=[:missing_docs, :docs_block],
 )
 
 deploydocs(; repo="github.com/jfbarthelemy/ChemistryLab.jl", devbranch="main")
