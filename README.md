@@ -41,6 +41,7 @@ julia> r = Reaction(equation)
 
 ```julia
 julia> for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
+           symsp = String(sp)
            @eval $sp = Species($(String(sp)))
        end # Shortcut for H₂O = Species("H₂O"); H⁺ = Species("H⁺"); ...
 
