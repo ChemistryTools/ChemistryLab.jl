@@ -574,10 +574,11 @@ function complete_reaction_database!(
     reactions = @showprogress [
         populate_reaction(
             Reaction(
-                Dict(
+                OrderedDict(
                     find_species(species_or_row_symbol(k, row.symbol), species_list) => v
                     for (k, v) in row.reactants if k != "e-"
-                ),
+                );
+                symbol=row.symbol
             ),
             row,
         ) for row in eachrow(df_reactions)
