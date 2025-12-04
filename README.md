@@ -37,6 +37,33 @@ julia> r = Reaction(equation)
     charge: -10
 ```
 
+- Stoichiometric matrix construction
+
+```julia
+julia> for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
+           @eval $sp = Species($(String(sp)))
+       end # Shortcut for H₂O = Species("H₂O"); H⁺ = Species("H⁺"); ...
+
+julia> A, indep_comp = canonical_stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
+┌────┬─────┬────┬─────┬─────┬───────┬───────┐
+│    │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
+├────┼─────┼────┼─────┼─────┼───────┼───────┤
+│  C │   0 │  0 │   0 │   1 │     1 │     1 │
+│  H │   2 │  1 │   1 │   0 │     1 │     0 │
+│  O │   1 │  0 │   1 │   2 │     3 │     3 │
+│ Zz │   0 │  1 │  -1 │   0 │    -1 │    -2 │
+└────┴─────┴────┴─────┴─────┴───────┴───────┘
+
+julia> A, indep_comp, dep_comp = stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
+┌─────┬─────┬────┬─────┬─────┬───────┬───────┐
+│     │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
+├─────┼─────┼────┼─────┼─────┼───────┼───────┤
+│ H₂O │   1 │  0 │   1 │   0 │     1 │     1 │
+│  H⁺ │   0 │  1 │  -1 │   0 │    -1 │    -2 │
+│ CO₂ │   0 │  0 │   0 │   1 │     1 │     1 │
+└─────┴─────┴────┴─────┴─────┴───────┴───────┘
+```
+
 - Self-balancing of a chemical reaction: symbolic example of alkane combustion
 
 ```julia
@@ -76,34 +103,6 @@ n=6 ⇒ C₆H₁₄ + 19/2O₂ = 7H₂O + 6CO₂
 n=7 ⇒ C₇H₁₆ + 11O₂ = 8H₂O + 7CO₂
 n=8 ⇒ C₈H₁₈ + 25/2O₂ = 9H₂O + 8CO₂
 n=9 ⇒ C₉H₂₀ + 14O₂ = 10H₂O + 9CO₂
-```
-
-- Stoichiometric matrix construction
-
-```julia
-julia> for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
-           symsp = String(sp)
-           @eval $sp = Species($symsp)
-       end
-
-julia> A, indep_comp = canonical_stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
-┌────┬─────┬────┬─────┬─────┬───────┬───────┐
-│    │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
-├────┼─────┼────┼─────┼─────┼───────┼───────┤
-│  C │   0 │  0 │   0 │   1 │     1 │     1 │
-│  H │   2 │  1 │   1 │   0 │     1 │     0 │
-│  O │   1 │  0 │   1 │   2 │     3 │     3 │
-│ Zz │   0 │  1 │  -1 │   0 │    -1 │    -2 │
-└────┴─────┴────┴─────┴─────┴───────┴───────┘
-
-julia> A, indep_comp, dep_comp = stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
-┌─────┬─────┬────┬─────┬─────┬───────┬───────┐
-│     │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
-├─────┼─────┼────┼─────┼─────┼───────┼───────┤
-│ H₂O │   1 │  0 │   1 │   0 │     1 │     1 │
-│  H⁺ │   0 │  1 │  -1 │   0 │    -1 │    -2 │
-│ CO₂ │   0 │  0 │   0 │   1 │     1 │     1 │
-└─────┴─────┴────┴─────┴─────┴───────┴───────┘
 ```
 
 ## Installation
