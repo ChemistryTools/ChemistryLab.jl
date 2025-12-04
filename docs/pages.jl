@@ -6,7 +6,7 @@ pages = [
         "man/species.md",
         "man/cement_species.md",
         "man/databases.md",
-        "man/stoichio_matrix.md",
+        "man/stoich_matrices.md",
         "man/reactions.md",
     ],
     "Examples" => ["example/bogue_calculation.md"],

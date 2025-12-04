@@ -73,15 +73,17 @@ all_species = unique(vcat(given_species, secondaries), :symbol)
 # species = Species.(all_species.formula)
 # candidate_primaries = Species.(df_primaries.formula)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(all_species.formula, all_species.symbol)]
-candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+# candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; pprint=true) ;
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
-candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+# candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; pprint=true) ;
-lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp; pprint=true) ;
 
 # CemSpecies with Sym coef
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
@@ -190,7 +192,7 @@ species = Species.(formulas) ;
 candidate_primaries = species[1:6] ;
 A, indep_comp, dep_comp = stoich_matrix(species; pprint=true) ;
 B, indep_comp, dep_comp = stoich_matrix(species; mass=true, pprint=true) ;
-lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp; pprint=true) ;
 
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
@@ -287,5 +289,9 @@ OH⁻ = dict_species["OH-"]
 CO₂ = dict_species["CO2@"]
 HCO₃⁻ = dict_species["HCO3-"]
 CO₃²⁻ = dict_species["CO3-2"]
+for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
+    symsp = String(sp)
+    @eval $sp = Species($(String(sp)))
+end
 A, indep_comp = canonical_stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
 A, indep_comp, dep_comp = stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;

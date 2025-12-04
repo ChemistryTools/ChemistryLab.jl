@@ -113,7 +113,7 @@ include("chemical_structs/parsing_tools.jl")
 include("chemical_structs/thermo_functions.jl")
 include("chemical_structs/formulas.jl")
 include("chemical_structs/species.jl")
-include("chemical_structs/stoich_matrix.jl")
+include("chemical_structs/stoich_matrices.jl")
 include("chemical_structs/reactions.jl")
 
 include("databases/phreeqc_dat.jl")
@@ -121,6 +121,7 @@ include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
 include("equilibrium/equilibrium_problems.jl")
+include("equilibrium/states.jl")
 
 export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER
 
@@ -177,5 +178,7 @@ export read_thermofun_substances,
 export merge_json
 
 export EquilibriumProblem
+
+export State, safe_ustrip, safe_uconvert
 
 end

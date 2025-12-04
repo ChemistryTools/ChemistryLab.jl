@@ -107,7 +107,8 @@ julia> length(products(Reaction("2H2 + O2 = 2H2O")))
 
 ```julia
 julia> Reaction("2H2 + O2 = 2H2O")
-2H2 + O2 = 2H2O
+    symbol: O2
+  equation: 2H2 + O2 = 2H2O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
     charge: 0
@@ -120,6 +121,7 @@ OrderedDict{Species{Int64}, Int64} with 1 entry:
 ```
 """
 struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number}
+    symbol::String
     equation::String
     colored::String
     reactants::OrderedDict{SR,TR}
@@ -128,6 +130,13 @@ struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC
     equal_sign::Char
     properties::OrderedDict{Symbol,PropertyType}
 end
+
+"""
+    symbol(r::Reaction) -> String
+
+Return the symbol string of the reaction.
+"""
+symbol(r::Reaction) = r.symbol
 
 """
     equation(r::Reaction) -> String
@@ -145,7 +154,8 @@ Return the colored terminal representation of the reaction.
 
 ```julia
 julia> r = Reaction("CaSO4 = Ca²⁺ + SO4²⁻");
-julia> colored(r)  # Returns string with ANSI color codes
+
+julia> print(colored(r))  # Returns string with ANSI color codes
 ```
 """
 colored(r::Reaction) = r.colored
@@ -171,7 +181,7 @@ Return the products dictionary (species => coefficient).
 
 # Examples
 
-```julia
+```jldoctest
 julia> products(Reaction("CaCO3 = CO3-2 + Ca+2")) == Dict(Species("CO3-2") => 1, Species("Ca+2") => 1)
 true
 ```
@@ -218,16 +228,6 @@ properties(r::Reaction) = r.properties
 
 Access a reaction property by symbol key.
 Return `nothing` if the property is not found.
-
-# Examples
-
-```julia
-julia> r[:ΔrH⁰]
-r = Reaction("H2 + O2 = H2O");
-
-julia> r[:nonexistent]
-r[:ΔrH⁰] = -241.8;
-```
 """
 Base.getindex(r::Reaction, i::Symbol) = get(properties(r), i, nothing)
 
@@ -472,7 +472,8 @@ Construct a Reaction from an equation string.
 
 ```jldoctest
 julia> Reaction("2H2 + O2 = 2H2O")
-2H2 + O2 = 2H2O
+    symbol: O2
+  equation: 2H2 + O2 = 2H2O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
     charge: 0
@@ -481,6 +482,7 @@ julia> Reaction("2H2 + O2 = 2H2O")
 function Reaction(
     equation::AbstractString,
     S::Type{<:AbstractSpecies}=Species;
+    symbol=nothing,
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:none,
     species_list=nothing,
@@ -488,7 +490,7 @@ function Reaction(
     reactants, products, equal_sign = parse_equation(equation)
     reacdict = ordered_dict_with_default(
         (
-            find_species(k, species_list) => stoich_coef_round(v) for
+            find_species(k, species_list, S) => stoich_coef_round(v) for
             (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
         ),
         S,
@@ -496,7 +498,7 @@ function Reaction(
     )
     proddict = ordered_dict_with_default(
         (
-            find_species(k, species_list) => stoich_coef_round(v) for
+            find_species(k, species_list, S) => stoich_coef_round(v) for
             (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
         ),
         S,
@@ -505,7 +507,21 @@ function Reaction(
     reaccharge = stoich_coef_round(
     sum(ν * charge(s) for (s, ν) in proddict; init=0) -
     sum(ν * charge(s) for (s, ν) in reacdict; init=0))
+    if isnothing(symbol)
+        reacspecies = keys(reacdict)
+        if !isempty(reacspecies)
+            symbol = ChemistryLab.symbol(collect(reacspecies)[end])
+        else
+            prodspecies = keys(proddict)
+            if !isempty(prodspecies)
+                symbol = ChemistryLab.symbol(collect(prodspecies)[begin])
+            else
+                symbol = ""
+            end
+        end
+    end
     r = Reaction(
+        symbol,
         equation,
         colored_equation(equation),
         reacdict,
@@ -530,11 +546,12 @@ Convenience constructor equivalent to `Reaction(equation, CemSpecies, args...; k
 
 # Examples
 
-```julia
-julia> CemReaction("CaO + H2O = Ca(OH)2")
-CaO + H2O = Ca(OH)2
- reactants: CaO => 1, H₂O => 1
-  products: Ca(OH)₂ => 1
+```jldoctest
+julia> CemReaction("C + H = CH")
+    symbol: H
+  equation: C + H = CH
+ reactants: C => 1, H => 1
+  products: CH => 1
     charge: 0
 ```
 """
@@ -633,7 +650,7 @@ function format_side(side::AbstractDict{S,T}) where {S<:AbstractSpecies,T<:Numbe
 end
 
 """
-    Reaction(reactants::AbstractDict{SR,TR}, products::AbstractDict{SP,TP}; equal_sign='=', properties, side) where {SR,TR,SP,TP} -> Reaction
+    Reaction(reactants::AbstractDict{SR,TR}, products::AbstractDict{SP,TP}; symbol, equal_sign='=', properties, side) where {SR,TR,SP,TP} -> Reaction
 
 Construct a Reaction from reactants and products dictionaries.
 
@@ -641,6 +658,7 @@ Construct a Reaction from reactants and products dictionaries.
 
   - `reactants`: dictionary mapping reactant species to coefficients.
   - `products`: dictionary mapping product species to coefficients.
+  - `symbol`: symbol naming the reaction.
   - `equal_sign`: equality operator character (default '=').
   - `properties`: property dictionary (default: empty OrderedDict).
   - `side`: how to reorganize species - :none, :sign, :reactants, :products (default: :none).
@@ -649,6 +667,7 @@ Construct a Reaction from reactants and products dictionaries.
 function Reaction(
     reactants::AbstractDict{SR,TR},
     products::AbstractDict{SP,TP};
+    symbol=nothing,
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:none,
@@ -692,7 +711,21 @@ function Reaction(
     reaccharge = stoich_coef_round(
     sum(ν * charge(s) for (s, ν) in proddict; init=0) -
     sum(ν * charge(s) for (s, ν) in reacdict; init=0))
+    if isnothing(symbol)
+        reacspecies = keys(reacdict)
+        if !isempty(reacspecies)
+            symbol = ChemistryLab.symbol(collect(reacspecies)[end])
+        else
+            prodspecies = keys(proddict)
+            if !isempty(prodspecies)
+                symbol = ChemistryLab.symbol(collect(prodspecies)[begin])
+            else
+                symbol = ""
+            end
+        end
+    end
     r = Reaction(
+        symbol,
         equation,
         colored,
         reacdict,
@@ -706,19 +739,21 @@ function Reaction(
 end
 
 """
-    Reaction(species_stoich::AbstractDict{S,T}; equal_sign='=', properties, side=:sign) where {S,T} -> Reaction
+    Reaction(species_stoich::AbstractDict{S,T}; symbol, equal_sign='=', properties, side=:sign) where {S,T} -> Reaction
 
 Construct a Reaction from a dictionary with signed stoichiometric coefficients.
 
 # Arguments
 
   - `species_stoich`: dictionary mapping species to signed coefficients (negative = reactants, positive = products).
+  - `symbol`: symbol naming the reaction.
   - `equal_sign`: equality operator character (default '=').
   - `properties`: property dictionary (default: empty OrderedDict).
   - `side`: splitting criterion (default: :sign).
 """
 function Reaction(
     species_stoich::AbstractDict{S,T};
+    symbol=nothing,
     equal_sign::Char='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:sign,
@@ -727,6 +762,7 @@ function Reaction(
     return Reaction(
         reactants,
         products;
+        symbol=symbol,
         equal_sign=equal_sign,
         properties=OrderedDict{Symbol,PropertyType}(properties),
     )
@@ -769,7 +805,7 @@ function Reaction{U,T}(s::S) where {U<:AbstractSpecies,T<:Number,S<:AbstractSpec
 end
 
 """
-    Reaction(r::R; equal_sign, properties, side) where {R<:Reaction} -> Reaction
+    Reaction(r::R; symbol, equal_sign, properties, side) where {R<:Reaction} -> Reaction
 
 Copy constructor for Reaction with optional field overrides.
 
@@ -781,11 +817,12 @@ Copy constructor for Reaction with optional field overrides.
   - `side`: reorganization criterion (default: :none).
 """
 function Reaction(
-    r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none
+    r::R; symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none
 ) where {R<:Reaction}
     Reaction(
         reactants(r),
         products(r);
+        symbol=symbol,
         equal_sign=equal_sign,
         side=side,
         properties=OrderedDict{Symbol,PropertyType}(properties),
@@ -800,8 +837,9 @@ Simplify a reaction by canceling common species from both sides.
 # Examples
 
 ```jldoctest
-julia> simplify_reaction(Reaction("2H2 + O2 +H2O = 3H2O"))
-2H₂ + O₂ = 2H₂O
+julia> simplify_reaction(Reaction("2H2 + O2 + H2O = 3H2O"))
+    symbol: H2O
+  equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
     charge: 0
@@ -828,7 +866,7 @@ function simplify_reaction(r::Reaction)
             delete!(prod, species)
         end
     end
-    return Reaction(reac, prod; equal_sign=equal_sign(r), properties=properties(r))
+    return Reaction(reac, prod; symbol=symbol(r), equal_sign=equal_sign(r), properties=properties(r))
 end
 
 """
@@ -907,6 +945,7 @@ coefficients are computed automatically.
 """
 function Reaction(
     species::AbstractVector{<:AbstractSpecies};
+    symbol=nothing,
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     scaling=1,
@@ -916,6 +955,7 @@ function Reaction(
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
     return Reaction(
         species_stoich;
+        symbol=symbol,
         equal_sign=equal_sign,
         properties=OrderedDict{Symbol,PropertyType}(properties),
         side=side,
@@ -945,6 +985,7 @@ Stoichiometric coefficients are computed automatically to balance the reaction.
 function Reaction(
     reac::AbstractVector{<:AbstractSpecies},
     prod::AbstractVector{<:AbstractSpecies};
+    symbol=nothing,
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     scaling=1,
@@ -957,6 +998,7 @@ function Reaction(
     if side != :none
         return Reaction(
             species_stoich;
+            symbol=symbol,
             equal_sign=equal_sign,
             properties=OrderedDict{Symbol,PropertyType}(properties),
             side=side,
@@ -969,6 +1011,7 @@ function Reaction(
             ordered_dict_with_default(
                 (k => v for (k, v) in species_stoich if k in prod), S, T
             );
+            symbol=symbol,
             equal_sign=equal_sign,
             properties=OrderedDict{Symbol,PropertyType}(properties),
             side=:none,
@@ -992,9 +1035,10 @@ Create a Reaction with a single species and stoichiometric coefficient.
 
 # Examples
 
-```julia
-julia> 2 * Species("H2O")
-∅ = 2H₂O
+```jldoctest
+julia> 2Species("H2O")
+    symbol: H2O
+  equation: ∅ = 2H₂O
  reactants: ∅
   products: H₂O => 2
     charge: 0
@@ -1019,8 +1063,9 @@ Multiply all stoichiometric coefficients in a reaction by a scalar.
 # Examples
 
 ```jldoctest
-julia> 3 * Reaction("2H2 + O2 = 2H2O")
-6H₂ + 3O₂ = 6H₂O
+julia> 3Reaction("2H2 + O2 = 2H2O")
+    symbol: O2
+  equation: 6H₂ + 3O₂ = 6H₂O
  reactants: H₂ => 6, O₂ => 3
   products: H₂O => 6
     charge: 0
@@ -1032,6 +1077,7 @@ function *(
     Reaction(
         ordered_dict_with_default((k => ν * v for (k, v) in reactants(r)), SR, TR),
         ordered_dict_with_default((k => ν * v for (k, v) in products(r)), SP, TP);
+        symbol=r.symbol,
         equal_sign=r.equal_sign,
         properties=r.properties,
     )
@@ -1054,7 +1100,8 @@ Create a Reaction with a single species with coefficient -1.
 
 ```jldoctest
 julia> -Species("H2O")
-H₂O = ∅
+    symbol: H2O
+  equation: H₂O = ∅
  reactants: H₂O => 1
   products: ∅
     charge: 0
@@ -1078,15 +1125,16 @@ Reverse a reaction (swap reactants and products).
 # Examples
 
 ```jldoctest
-julia> 3 * Reaction("2H2 + O2 = 2H2O") - 2* Reaction("2H2 + O2 = 2H2O")
-6H₂ + 3O₂ + 4H₂O = 6H₂O + 4H₂ + 2O₂
+julia> 3Reaction("2H2 + O2 = 2H2O") - 2Reaction("2H2 + O2 = 2H2O")
+    symbol: H2O
+  equation: 6H₂ + 3O₂ + 4H₂O = 6H₂O + 4H₂ + 2O₂
  reactants: H₂ => 6, O₂ => 3, H₂O => 4
   products: H₂O => 6, H₂ => 4, O₂ => 2
     charge: 0
 ```
 """
 -(r::Reaction) = Reaction(
-    products(r), reactants(r); equal_sign=r.equal_sign, properties=r.properties
+    products(r), reactants(r); symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties
 )
 
 """
@@ -1106,8 +1154,9 @@ Add two species to create a Reaction.
 # Examples
 
 ```jldoctest
-julia> 2 * Species("H2") + Species("O2") - Species("2H2O")
-∅ = 2H₂ + O₂ + (-1)2H₂O
+julia> 2Species("H2") + Species("O2") - Species("2H2O")
+    symbol: H2
+  equation: ∅ = 2H₂ + O₂ + (-1)2H₂O
  reactants: ∅
   products: H₂ => 2, O₂ => 1, 2H₂O => -1
     charge: 0
@@ -1187,10 +1236,11 @@ Add a species to a reaction.
 # Examples
 
 ```jldoctest
-julia> Reaction("2H2 + O2 = 2H2O") + Species("H2O")
-2H₂ + O₂ = 3H₂O
+julia> Reaction("2H2 + O2 = H2O") + Species("H2O")
+    symbol: O2
+  equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
-  products: H₂O => 3
+  products: H₂O => 2
     charge: 0
 ```
 """
@@ -1220,10 +1270,11 @@ Subtract a species from a reaction.
 # Examples
 
 ```jldoctest
-julia> Reaction("2H2 + O2 = 2H2O") - Species("H2O")
-2H₂ + O₂ = H₂O
+julia> Reaction("2H2 + O2 = 3H2O") - Species("H2O")
+    symbol: O2
+  equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
-  products: H₂O => 1
+  products: H₂O => 2
     charge: 0
 ```
 """
@@ -1357,8 +1408,9 @@ Display a reaction in a compact form.
 # Examples
 
 ```jldoctest
-julia>  Reaction("H2 + O2 = H2O")
-H2 + O2 = H2O
+julia> Reaction("H2 + O2 = H2O")
+    symbol: O2
+  equation: H2 + O2 = H2O
  reactants: H₂ => 1, O₂ => 1
   products: H₂O => 1
     charge: 0
@@ -1379,8 +1431,21 @@ Display a reaction in a detailed form.
   - `r`: reaction to display
 """
 function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
-    println(io, equation(r))
     pad = 10
+    if length(symbol(r)) > 0
+        println(
+            io,
+            lpad("symbol", pad),
+            ": ",
+            symbol(r),
+        )
+    end
+    println(
+        io,
+        lpad("equation", pad),
+        ": ",
+        equation(r),
+    )
     if length(reactants(r)) > 0
         println(
             io,
@@ -1435,8 +1500,19 @@ when available.
     available to produce a user-friendly output.
 """
 function pprint(r::Reaction)
-    println(colored(r))
     pad = 10
+    if length(symbol(r)) > 0
+        println(
+            lpad("symbol", pad),
+            ": ",
+            symbol(r),
+        )
+    end
+    println(
+        lpad("equation", pad),
+        ": ",
+        colored(r),
+    )
     if length(reactants(r)) > 0
         println(
             lpad("reactants", pad),
@@ -1518,6 +1594,7 @@ function apply(
     newReaction = Reaction(
         reac,
         prod;
+        symbol=get(kwargs, :symbol, symbol(r)),
         equal_sign=get(kwargs, :equal_sign, equal_sign(r)),
         properties=OrderedDict{Symbol,PropertyType}(
             k => v for (k, v) in get(kwargs, :properties, properties(r))

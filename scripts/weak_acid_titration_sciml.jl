@@ -73,13 +73,13 @@ indep_comp = [:H, :O, :A, :B]
 
 p = [:ΔGf₀ => ΔGf₀, :ϵ => 1.e-16, :ca => 0.1, :Va => 0.1, :cb => 0.1, :Vb => 0.]
 
-prob = EquilibriumProblem(A*_n0(p), A, μ, _n0(p), ub=_ub(p), p=p, indep_components=indep_comp, dep_components=dep_comp)
+prob = EquilibriumProblem(A, μ, _n0(p), ub=_ub(p), p=p, indep_components=indep_comp, dep_components=dep_comp)
 sol = solve(prob, Ipopt.Optimizer(), print_level=0, tol=1e-16)
 
 function numpH(p, Vb)
     idx = findfirst(x -> first(x) === :Vb, p)
     if idx !== nothing p[idx] = :Vb => Vb end
-    prob = EquilibriumProblem(A*_n0(p), A, μ, _n0(p), ub=_ub(p), p=p, indep_components=indep_comp, dep_components=dep_comp)
+    prob = EquilibriumProblem(A, μ, _n0(p), ub=_ub(p), p=p, indep_components=indep_comp, dep_components=dep_comp)
     sol = solve(prob, Ipopt.Optimizer(), print_level=0, tol=1e-16)
     pp = NamedTuple(p)
     Va, Vb = pp.Va, pp.Vb
@@ -105,6 +105,6 @@ plot!(lVb, anapH.(Ref(p), lVb))
 pH0 = (-log10(ca)+pKa)/2
 pHeq = 0.5*(pKa+14+log10(ca*Va/(Va+Vbeq)))
 scatter!([0, Vbeq], [pH0, pHeq])
-lVb = range(0Vbeq, 3Vbeq, 100)
+lVb = range(0Vbeq, 3Vbeq, 200)
 pHVb = numpH.(Ref(p), lVb)
 scatter!(lVb, pHVb)

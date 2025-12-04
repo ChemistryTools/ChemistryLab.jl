@@ -28,7 +28,7 @@ This documentation is intended for scientists, engineers and scientific programm
   - `formula_manipulation` — parsing, conversions (Phreeqc ⇄ Unicode), formatting and arithmetic on `Formula` objects.
   - `species` — constructing `Species` and `CemSpecies`, managing properties and basic queries.
   - `equations` — parsing, formatting and coloring of chemical equations and balancing helpers.
-  - `stoichio_matrix` — building canonical stoichiometric matrices and converting them to reaction objects.
+  - `stoich_matrices` — building canonical stoichiometric matrices and converting them to reaction objects.
   - `databases` — reading ThermoFun JSON and Cemdata `.dat` files, merging reactions and exporting results.
 - `example/` — runnable examples and small worked problems (also built to HTML under `docs/build/example/`).
 

@@ -39,6 +39,7 @@ const ATOMIC_ORDER = [
     :Cl,
     :Br,
     :I,
+    :U,
     :Zz,
 ]
 

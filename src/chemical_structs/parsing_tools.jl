@@ -27,7 +27,7 @@ julia> stoich_coef_round(3.14159)
 3.14159
 ```
 """
-function stoich_coef_round(x::T; tol=1e-4) where {T<:Real}
+function stoich_coef_round(x::T; tol=1e-3) where {T<:Real}
     try
         if isapprox(x, round(x); atol=tol)
             return Int(round(x))

@@ -19,7 +19,7 @@ reset_timer!()
 
     include("species.jl")
     include("formulas.jl")
-    include("stoich_matrix.jl")
+    include("stoich_matrices.jl")
     include("databases.jl")
     include("parsing_utils.jl")
     include("reactions.jl")
@@ -28,6 +28,3 @@ end
 
 print_timer()
 println()
-
-
-
