@@ -433,23 +433,8 @@ function stoich_matrix(
     return A, indep_comp, dep_comp
 end
 
-"""
-    const oxides_as_species
-
-Vector of Species representing cement oxides (C, S, A, F, etc.) in atomic composition.
-"""
 const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in CEMENT_TO_MENDELEEV]
 
-"""
-    const Aoxides, atoms_in_oxides
-
-Canonical stoichiometric matrix for cement oxides.
-"""
 const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; pprint=false)
 
-"""
-    const order_atom_in_oxides
-
-Dictionary mapping atoms to their row indices in the oxide stoichiometric matrix.
-"""
 const order_atom_in_oxides = Dict(atom => i for (i, atom) in enumerate(atoms_in_oxides))
