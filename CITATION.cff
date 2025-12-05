@@ -15,7 +15,7 @@ keywords:
   - "chemical formulas"
   - "reactions"
   - "cement"
-version: "0.1.0"
+version: "0.1.2"
 doi: "10.5281/zenodo.17756074"
 url: "https://github.com/jfbarthelemy/ChemistryLab.jl"
 repository-code: "https://github.com/jfbarthelemy/ChemistryLab.jl"
