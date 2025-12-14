@@ -120,6 +120,8 @@ include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
+export safe_ustrip, safe_uconvert
+
 export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER
 
 export stoich_coef_round,

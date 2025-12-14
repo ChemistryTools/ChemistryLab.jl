@@ -80,7 +80,7 @@ using PrettyTables #hide
 All the independent reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
 
 ```@example example1
-reactions(SM) ;
+reactions(SM) #hide
 ```
 
 ---
