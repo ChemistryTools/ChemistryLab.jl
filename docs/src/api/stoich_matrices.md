@@ -7,8 +7,10 @@ Pages = ["stoichio_matrix.md"]
 ```@docs
 union_atoms
 pprint
-canonical_stoich_matrix
-stoich_matrix
-stoich_matrix_to_equations
-stoich_matrix_to_reactions
+CanonicalStoichMatrix
+StoichMatrix
+pull_primaries
+push_primaries
+mass_matrix
+reactions
 ```

@@ -11,7 +11,8 @@ using LinearAlgebra
         species = [h2o, hplus, oh]
 
         # Test canonical matrix
-        A, atoms = canonical_stoich_matrix(species; pprint=false)
+        CSM = CanonicalStoichMatrix(species)
+        A, atoms = CSM.A, CSM.primaries
         @test size(A) == (3, 3)  # H, O atoms and e- x 3 species
         @test atoms == [:H, :O, :Zz]
         @test A[1,1] == 2  # H2O has 2 H
@@ -21,7 +22,8 @@ using LinearAlgebra
     @testsection "Matrix with charged species" begin
         # Test with charged species
         species = [Species("Fe2+"), Species("Fe3+"), Species("e-")]
-        A, indep_comp, dep_comp = stoich_matrix(species; pprint=false)
+        SM = StoichMatrix(species)
+        A, indep_comp, dep_comp = SM.A, SM.primaries, SM.species
 
         # Check that charge is properly handled
         @test length(dep_comp) == 3  # Fe2+, Fe3+ and e-
@@ -36,11 +38,11 @@ using LinearAlgebra
         naso4 = Species("Na(SO4)-")
         species = [na2so4, na, so4, naso4]
 
-        A, indep_comp, dep_comp = stoich_matrix(species; pprint=false)
-        reactions = stoich_matrix_to_reactions(A, indep_comp, dep_comp; pprint=false)
+        SM = StoichMatrix(species)
+        list_reactions = reactions(SM)
 
-        @test length(reactions) > 0
-        @test all(r -> last(r) isa Reaction, reactions)
+        @test length(list_reactions) > 0
+        @test all(r -> r isa Reaction, list_reactions)
     end
 
     @testsection "Mass-based calculations" begin
@@ -50,7 +52,8 @@ using LinearAlgebra
         o2 = Species("O2")
         species = [h2o, h2, o2]
 
-        A, atoms = canonical_stoich_matrix(species; pprint=false, mass=true)
+        CSM = mass_matrix(CanonicalStoichMatrix(species))
+        A, atoms = CSM.A, CSM.primaries
         @test size(A) == (2, 3)
 
         # Mass conservation check (approximate due to floating point)
@@ -61,7 +64,8 @@ using LinearAlgebra
     @testsection "CemSpecies handling" begin
         # Test handling of cement species
         species = [CemSpecies("C3S"), CemSpecies("CH"), CemSpecies("CSH")]
-        A, atoms = canonical_stoich_matrix(species; pprint=false)
+        CSM = CanonicalStoichMatrix(species)
+        A, atoms = CSM.A, CSM.primaries
         @test size(A, 1) ≥ 2  # Should have at least Ca and Si components
 
         # Test that oxides are properly handled

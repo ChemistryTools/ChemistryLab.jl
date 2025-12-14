@@ -107,7 +107,6 @@ julia> length(products(Reaction("2H2 + O2 = 2H2O")))
 
 ```julia
 julia> Reaction("2H2 + O2 = 2H2O")
-    symbol: O2
   equation: 2H2 + O2 = 2H2O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -472,7 +471,6 @@ Construct a Reaction from an equation string.
 
 ```jldoctest
 julia> Reaction("2H2 + O2 = 2H2O")
-    symbol: O2
   equation: 2H2 + O2 = 2H2O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -482,7 +480,7 @@ julia> Reaction("2H2 + O2 = 2H2O")
 function Reaction(
     equation::AbstractString,
     S::Type{<:AbstractSpecies}=Species;
-    symbol=nothing,
+    symbol="",
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:none,
     species_list=nothing,
@@ -548,7 +546,6 @@ Convenience constructor equivalent to `Reaction(equation, CemSpecies, args...; k
 
 ```jldoctest
 julia> CemReaction("C + H = CH")
-    symbol: H
   equation: C + H = CH
  reactants: C => 1, H => 1
   products: CH => 1
@@ -667,7 +664,7 @@ Construct a Reaction from reactants and products dictionaries.
 function Reaction(
     reactants::AbstractDict{SR,TR},
     products::AbstractDict{SP,TP};
-    symbol=nothing,
+    symbol="",
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:none,
@@ -753,7 +750,7 @@ Construct a Reaction from a dictionary with signed stoichiometric coefficients.
 """
 function Reaction(
     species_stoich::AbstractDict{S,T};
-    symbol=nothing,
+    symbol="",
     equal_sign::Char='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     side::Symbol=:sign,
@@ -838,7 +835,6 @@ Simplify a reaction by canceling common species from both sides.
 
 ```jldoctest
 julia> simplify_reaction(Reaction("2H2 + O2 + H2O = 3H2O"))
-    symbol: H2O
   equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -908,14 +904,12 @@ The first species is treated as the dependent component.
 function build_species_stoich(
     species::AbstractVector{<:AbstractSpecies}; scaling=1, auto_scale=false
 )
-    A, indep_comp, dep_comp = stoich_matrix(
-        species[1:1], species[2:end]; pprint=false, involve_all_atoms=true
-    )
-    S, T = promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...), eltype(A)
+    SM = StoichMatrix(species[1:1], species[2:end]; involve_all_atoms=true)
+    S, T = promote_type(typeof.(SM.primaries)..., typeof.(SM.species)...), eltype(SM.A)
     species_stoich = OrderedDict{S,T}()
-    species_stoich[dep_comp[1]] = -scaling
-    for (i, s) in enumerate(indep_comp)
-        species_stoich[s] = A[i, 1] * scaling
+    species_stoich[SM.species[1]] = -scaling
+    for (i, s) in enumerate(SM.primaries)
+        species_stoich[s] = SM.A[i, 1] * scaling
     end
     if auto_scale
         scale_stoich!(species_stoich)
@@ -945,7 +939,7 @@ coefficients are computed automatically.
 """
 function Reaction(
     species::AbstractVector{<:AbstractSpecies};
-    symbol=nothing,
+    symbol="",
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     scaling=1,
@@ -985,7 +979,7 @@ Stoichiometric coefficients are computed automatically to balance the reaction.
 function Reaction(
     reac::AbstractVector{<:AbstractSpecies},
     prod::AbstractVector{<:AbstractSpecies};
-    symbol=nothing,
+    symbol="",
     equal_sign='=',
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
     scaling=1,
@@ -1037,7 +1031,6 @@ Create a Reaction with a single species and stoichiometric coefficient.
 
 ```jldoctest
 julia> 2Species("H2O")
-    symbol: H2O
   equation: ∅ = 2H₂O
  reactants: ∅
   products: H₂O => 2
@@ -1064,7 +1057,6 @@ Multiply all stoichiometric coefficients in a reaction by a scalar.
 
 ```jldoctest
 julia> 3Reaction("2H2 + O2 = 2H2O")
-    symbol: O2
   equation: 6H₂ + 3O₂ = 6H₂O
  reactants: H₂ => 6, O₂ => 3
   products: H₂O => 6
@@ -1100,7 +1092,6 @@ Create a Reaction with a single species with coefficient -1.
 
 ```jldoctest
 julia> -Species("H2O")
-    symbol: H2O
   equation: H₂O = ∅
  reactants: H₂O => 1
   products: ∅
@@ -1126,7 +1117,6 @@ Reverse a reaction (swap reactants and products).
 
 ```jldoctest
 julia> 3Reaction("2H2 + O2 = 2H2O") - 2Reaction("2H2 + O2 = 2H2O")
-    symbol: H2O
   equation: 6H₂ + 3O₂ + 4H₂O = 6H₂O + 4H₂ + 2O₂
  reactants: H₂ => 6, O₂ => 3, H₂O => 4
   products: H₂O => 6, H₂ => 4, O₂ => 2
@@ -1155,7 +1145,6 @@ Add two species to create a Reaction.
 
 ```jldoctest
 julia> 2Species("H2") + Species("O2") - Species("2H2O")
-    symbol: H2
   equation: ∅ = 2H₂ + O₂ + (-1)2H₂O
  reactants: ∅
   products: H₂ => 2, O₂ => 1, 2H₂O => -1
@@ -1237,7 +1226,6 @@ Add a species to a reaction.
 
 ```jldoctest
 julia> Reaction("2H2 + O2 = H2O") + Species("H2O")
-    symbol: O2
   equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -1271,7 +1259,6 @@ Subtract a species from a reaction.
 
 ```jldoctest
 julia> Reaction("2H2 + O2 = 3H2O") - Species("H2O")
-    symbol: O2
   equation: 2H₂ + O₂ = 2H₂O
  reactants: H₂ => 2, O₂ => 1
   products: H₂O => 2
@@ -1409,7 +1396,6 @@ Display a reaction in a compact form.
 
 ```jldoctest
 julia> Reaction("H2 + O2 = H2O")
-    symbol: O2
   equation: H2 + O2 = H2O
  reactants: H₂ => 1, O₂ => 1
   products: H₂O => 1

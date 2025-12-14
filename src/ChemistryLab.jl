@@ -113,8 +113,8 @@ include("chemical_structs/parsing_tools.jl")
 include("chemical_structs/thermo_functions.jl")
 include("chemical_structs/formulas.jl")
 include("chemical_structs/species.jl")
-include("chemical_structs/stoich_matrices.jl")
 include("chemical_structs/reactions.jl")
+include("chemical_structs/stoich_matrices.jl")
 
 include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
@@ -158,14 +158,16 @@ export AbstractSpecies,
     class,
     properties
 
-export union_atoms,
-    canonical_stoich_matrix,
-    stoich_matrix,
-    stoich_matrix_to_equations,
-    stoich_matrix_to_reactions
-
 export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
+
+export StoichMatrix,
+    CanonicalStoichMatrix,
+    pull_primaries,
+    push_primaries,
+    mass_matrix,
+    reactions,
+    union_atoms
 
 export extract_primary_species
 
@@ -173,9 +175,5 @@ export read_thermofun_substances,
     read_thermofun_reactions, read_thermofun_elements, read_thermofun
 
 export merge_json
-
-export EquilibriumProblem
-
-export State, safe_ustrip, safe_uconvert
 
 end

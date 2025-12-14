@@ -1048,9 +1048,9 @@ function CemSpecies(
     bcalc = stoich_coef_round.(Aoxides * x)
     if try
         isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4)
-    catch
-        false
-    end
+        catch
+            false
+        end
         oxides = OrderedDict(
             OXIDE_ORDER[i] => vx for (i, vx) in enumerate(x) if !iszero(vx)
         )
@@ -1064,7 +1064,8 @@ function CemSpecies(
             properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
         )
     else
-        A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; pprint=false)
+        SM = StoichMatrix([s], oxides_as_species; pprint=false)
+        A, indep_comp = SM.A, SM.primaries
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
         if !isempty(oxides)
             cemspecies = CemSpecies(
@@ -1083,7 +1084,7 @@ function CemSpecies(
             end
         end
     end
-    error("$(name) cannot be decomposed in cement oxides")
+    return error("$(name) cannot be decomposed in cement oxides")
 end
 
 """

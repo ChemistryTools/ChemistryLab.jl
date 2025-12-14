@@ -48,11 +48,11 @@ products(r)          # OrderedDict of products
 
 ```julia
 # Example species vector
-species = [Species("H2O"), Species("H2"), Species("O2")]
-A, indep, dep = stoich_matrix(species; pprint=false)
-# Convert a numeric stoichiometric matrix to equation strings
-eqns = stoich_matrix_to_reactions(A, indep, dep; pprint=false)
-println(eqns)
+species = Species.(split("H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻"))
+SM = StoichMatrix(species)
+# Convert a numeric stoichiometric matrix to independent reactions
+list_reactions = reactions(SM)
+pprint(list_reactions)
 ```
 
 - Read ThermoFun / Cemdata JSON or .dat files (data directory expected)
@@ -63,7 +63,7 @@ df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-thermo
 
 ## Notes and next steps
 
-- The `Formula`, `Species`, `Reaction` and `stoich_matrix` APIs are intentionally small and composable — explore the `docs/src/` pages for detailed examples.
+- The `Formula`, `Species`, `Reaction` and `StoichMatrix` APIs are intentionally small and composable — explore the `docs/src/` pages for detailed examples.
 - For cement-specific workflows, use `CemSpecies` and the `databases` utilities to convert between oxide- and atom-based representations.
 
 Now try the `quickstart` examples interactively in the REPL and then follow the next pages of the tutorial for deeper coverage.

@@ -54,7 +54,7 @@ And construct the stoichiometric matrix
 ```
 
 ```@example example1
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+SM = StoichMatrix(species, candidate_primaries)
 
 using PrettyTables #hide
 ```
@@ -72,15 +72,15 @@ df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phase
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+SM = StoichMatrix(species, candidate_primaries) ;
 
 using PrettyTables #hide
 ```
 
-All the reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
+All the independent reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
 
 ```@example example1
-stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+reactions(SM) ;
 ```
 
 ---
@@ -88,19 +88,19 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 The exercise can also be done on solid species. In this case, the data filter is carried out using the keyword "AS_CRYSTAL", in accordance with the terminology adopted in Thermofun.
 
 ```@setup example1
-aqueous_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
-species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
-candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances).species
+dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 ```
 
 ```@example example1
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ; #hide
+SM = StoichMatrix(species, candidate_primaries) #hide
 
 using PrettyTables #hide
 ```
 
 ```@example example1
-stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
+reactions(SM) #hide
 ```
 
 ---
@@ -114,11 +114,11 @@ candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip
 ```
 
 ```@example example1
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ; #hide
+SM = StoichMatrix(species, candidate_primaries) #hide
 
 using PrettyTables #hide
 ```
 
 ```@example example1
-stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
+reactions(SM) #hide
 ```

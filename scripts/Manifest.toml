@@ -2,7 +2,7 @@
 
 julia_version = "1.12.2"
 manifest_format = "2.0"
-project_hash = "f67748f4748b44410770d0433ff2da470d566877"
+project_hash = "56dcecfd66b978ce8a9160f5206223dfac02178d"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "8b2b045b22740e4be20654175cc38291d48539db"
@@ -253,7 +253,7 @@ weakdeps = ["SparseArrays"]
 deps = ["CSV", "Crayons", "DataFrames", "DynamicQuantities", "JSON", "JSON3", "LinearAlgebra", "ModelingToolkit", "Optimization", "OrderedCollections", "PeriodicTable", "PrettyTables", "ProgressMeter", "SciMLBase", "SymbolicNumericIntegration", "TimerOutputs", "Unicode"]
 path = ".."
 uuid = "f346e401-14f9-407c-a0e2-c4f64a3e574a"
-version = "0.1.1"
+version = "0.1.2"
 
 [[deps.CloseOpenIntervals]]
 deps = ["Static", "StaticArrayInterface"]
@@ -1421,6 +1421,12 @@ version = "4.0.2"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     SymbolicAnalysis = "4297ee4d-0239-47d8-ba5d-195ecdf594fe"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[[deps.OptimizationIpopt]]
+deps = ["Ipopt", "LinearAlgebra", "OptimizationBase", "SciMLBase", "SparseArrays", "SymbolicIndexingInterface"]
+git-tree-sha1 = "fd7d1e9b2cb9b8d80274faab27d05c0d0fd2e91f"
+uuid = "43fad042-7963-4b32-ab19-e2a4f9a67124"
+version = "0.2.6"
 
 [[deps.OptimizationMOI]]
 deps = ["LinearAlgebra", "MathOptInterface", "ModelingToolkit", "OptimizationBase", "Reexport", "SciMLBase", "SciMLStructures", "SparseArrays", "SymbolicIndexingInterface", "Symbolics"]

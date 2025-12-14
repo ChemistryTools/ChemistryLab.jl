@@ -60,8 +60,8 @@ pprint(r)
 ```julia
 using ChemistryLab
 using SymPy
-â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
-CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :H => ĝ))
+a, b, g = symbols("a b g", real=true)
+CSH = CemSpecies(Dict(:C => a, :S => one(Sym), :H => g))
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
@@ -75,7 +75,7 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 CSH = CemSpecies("C1.7SH4")
 r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
-A, _, _ = stoich_matrix([C3S], [CSH, H, CH]) ;
+SM = StoichMatrix([C3S], [CSH, H, CH])
 ```
 
 !!! note "Collection of arrow symbols"

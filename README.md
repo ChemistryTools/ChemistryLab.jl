@@ -40,28 +40,32 @@ julia> r = Reaction(equation)
 - Stoichiometric matrix construction
 
 ```julia
-julia> for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
-           symsp = String(sp)
-           @eval $sp = Species($(String(sp)))
-       end # Shortcut for H₂O = Species("H₂O"); H⁺ = Species("H⁺"); ...
+julia> H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split("H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻"))
+6-element Vector{Species{Int64}}:
+ H₂O {H₂O} [H₂O ◆ H2O]
+ H⁺ {H⁺} [H⁺ ◆ H+]
+ OH⁻ {OH⁻} [OH⁻ ◆ OH-]
+ CO₂ {CO₂} [CO₂ ◆ CO2]
+ HCO₃⁻ {HCO₃⁻} [HCO₃⁻ ◆ HCO3-]
+ CO₃²⁻ {CO₃²⁻} [CO₃²⁻ ◆ CO3-2]
 
-julia> A, indep_comp = canonical_stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
+julia> CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻])
 ┌────┬─────┬────┬─────┬─────┬───────┬───────┐
 │    │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
 ├────┼─────┼────┼─────┼─────┼───────┼───────┤
-│  C │   0 │  0 │   0 │   1 │     1 │     1 │
-│  H │   2 │  1 │   1 │   0 │     1 │     0 │
-│  O │   1 │  0 │   1 │   2 │     3 │     3 │
-│ Zz │   0 │  1 │  -1 │   0 │    -1 │    -2 │
+│  C │     │    │     │   1 │     1 │     1 │
+│  H │   2 │  1 │   1 │     │     1 │       │
+│  O │   1 │    │   1 │   2 │     3 │     3 │
+│ Zz │     │  1 │  -1 │     │    -1 │    -2 │
 └────┴─────┴────┴─────┴─────┴───────┴───────┘
 
-julia> A, indep_comp, dep_comp = stoich_matrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]; pprint=true) ;
+julia> SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻])
 ┌─────┬─────┬────┬─────┬─────┬───────┬───────┐
 │     │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
 ├─────┼─────┼────┼─────┼─────┼───────┼───────┤
-│ H₂O │   1 │  0 │   1 │   0 │     1 │     1 │
-│  H⁺ │   0 │  1 │  -1 │   0 │    -1 │    -2 │
-│ CO₂ │   0 │  0 │   0 │   1 │     1 │     1 │
+│ H₂O │   1 │    │   1 │     │     1 │     1 │
+│  H⁺ │     │  1 │  -1 │     │    -1 │    -2 │
+│ CO₂ │     │    │     │   1 │     1 │     1 │
 └─────┴─────┴────┴─────┴─────┴───────┴───────┘
 ```
 

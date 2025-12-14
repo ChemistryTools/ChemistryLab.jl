@@ -9,14 +9,15 @@ pages = [
         "man/stoich_matrices.md",
         "man/reactions.md",
     ],
-    "Examples" => ["example/bogue_calculation.md"],
+    "Examples" => ["example/bogue_calculation.md",
+                   "example/example_stoich_matrix.md"],
     "API" => Any[
     "Element order" => "api/element_order.md",
     "Parsing tools" => "api/parsing_tools.md",
     "Thermodynamical functions" => "api/thermo_functions.md",
     "Formulas" => "api/formulas.md",
     "Species" => "api/species.md",
-    "Stoichiometric Matrix" => "api/stoichio_matrix.md",
+    "Stoichiometric Matrix" => "api/stoich_matrices.md",
     "Reactions" => "api/reactions.md",
     ],
 ]
