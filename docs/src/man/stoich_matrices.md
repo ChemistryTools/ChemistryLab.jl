@@ -7,9 +7,9 @@ From the definition of species, it is possible to construct a stoichiometric mat
     import Pkg; Pkg.add("PrettyTables")
 ```
 
-## Stochiometric matrix for species
+## Stoichiometric matrix for species
 
-Any species can be described as a linear combination of chemical elements. A species vector can be expressed as a function of the chemical elements on which they depend. This dependence leads to the creation of a stochiometric matrix.
+Any species can be described as a linear combination of chemical elements. A species vector can be expressed as a function of the chemical elements on which they depend. This dependence leads to the creation of a stoichiometric matrix.
 
 ```@example
 using ChemistryLab #hide
@@ -22,7 +22,7 @@ CSM = CanonicalStoichMatrix(species)
 using PrettyTables #hide
 ```
 
-## Stochiometric matrix for cement species
+## Stoichiometric matrix for cement species
 
 A cement species vector can also be expressed in terms of other species on which they depend. Here, the cement species are expressed in terms of the oxides from which they are composed.
 
@@ -40,7 +40,7 @@ using PrettyTables #hide
 
 ---
 
-## Define stochiometric matrix from primary species
+## Define stoichiometric matrix from primary species
 
 The decomposition of a set of species can also be done according to a base of primary species.
 
@@ -60,7 +60,7 @@ using PrettyTables #hide
 ```
 
 !!! note "Display of the stoichiometric matrix"
-    The stochiometric matrix can be pretty-printed with different column and row labels using `pprint`. Simply add the keyword `row_label`, `col_label` or `label` for both, which can take the following values: *:name*, *:symbol*, *:formula*
+    The stoichiometric matrix can be pretty-printed with different column and row labels using `pprint`. Simply add the keyword `row_label`, `col_label` or `label` for both, which can take the following values: *:name*, *:symbol*, *:formula*
     ```julia
     SM = StoichMatrix(species)
     pprint(SM; label=:name)

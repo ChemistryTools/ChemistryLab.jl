@@ -4,7 +4,7 @@ Calculating stoichiometric matrices is a prerequisite for equilibrium calculatio
 
 ## Get Stoichiometric Matrix from a list of species
 
-Let's imagine that we want to form the stochiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate and retrieve the list of primary species from that database.
+Let's imagine that we want to form the stoichiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate and retrieve the list of primary species from that database.
 
 ```julia
 using ChemistryLab
