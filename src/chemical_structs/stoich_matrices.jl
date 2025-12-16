@@ -349,9 +349,9 @@ function StoichMatrix(
     redox = charged && safe_rank(M[:, begin:end .!= num_initial_species]) != safe_rank(M[1:(end - 1), begin:end .!= num_initial_species])
 
     if !redox && charged
-        pop!(newspecies)
+        deleteat!(newspecies, num_initial_species)
+        M = M[1:(end - 1), 1:end .!= num_initial_species]
         num_initial_species -= 1
-        M = M[1:(end - 1), 1:(end - 1)]
     end
 
     cols_candidates = [findfirst(y -> y == x, newspecies) for x in candidate_primaries]
