@@ -444,6 +444,8 @@ function complete_thermo_functions(r::Reaction)
         end
         if all(x -> haskey(x, :ΔfG⁰), species_list)
             r.ΔrG⁰ = sum(ν * s.ΔfG⁰ for (s, ν) in r)
+            r.logK⁰ = ThermoFunction(-r.ΔrG⁰.symexpr/(ustrip(Constants.R)*log(10)*r.ΔrG⁰.vars[:T]),
+                r.ΔrG⁰.vars, dimension(1.), r.ΔrG⁰.ref)
         end
         if all(x -> haskey(x, :Vm), species_list)
             r.ΔrV = sum(ν * s.Vm for (s, ν) in r)

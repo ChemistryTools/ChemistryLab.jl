@@ -48,21 +48,25 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun input
-json_file, jls_file = "data/cemdata18-merged.json", "data/cemdata18.jls"
-# json_file, jls_file = "data/psinagra-12-07-thermofun.json", "data/psinagra.jls"
-try
-    global df_substances, df_reactions = deserialize(jls_file)
-catch
-    # df_elements, df_substances, df_reactions = read_thermofun(json_file; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false)
-    global df_substances = read_thermofun_substances(json_file; with_units=true, add_species=true, all_properties=true, debug=false)
-    global df_reactions = read_thermofun_reactions(json_file, df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
-    serialize(jls_file, (df_substances, df_reactions))
+function extract_database(json_file, jls_file)
+    df_substances, df_reactions = nothing, nothing
+    try
+        df_substances, df_reactions = deserialize(jls_file)
+    catch
+        # df_elements, df_substances, df_reactions = read_thermofun(json_file; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false)
+        df_substances = read_thermofun_substances(json_file; with_units=true, add_species=true, all_properties=true, debug=false)
+        df_reactions = read_thermofun_reactions(json_file, df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
+        serialize(jls_file, (df_substances, df_reactions))
+    end
+    dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+    dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
+    return df_substances, df_reactions, dict_species, dict_reactions
 end
-# Construction of Dicts for convenience
-dict_species = Dict(zip(df_substances.symbol, df_substances.species))
-dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
-# filter(p->!haskey(p.second, :Cp), dict_species)
-# filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
+df_substances, df_reactions, dict_species, dict_reactions = extract_database("data/cemdata18-merged.json", "data/cemdata18.jls")
+df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = extract_database("data/psinagra-12-07-thermofun.json", "data/psinagra.jls")
+df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = extract_database("data/aq17-thermofun.json", "data/aq17.jls")
+
+# Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
@@ -77,7 +81,6 @@ SM = StoichMatrix(species, candidate_primaries)
 pprint(SM)
 list_reactions = reactions(SM)
 pprint(list_reactions)
-
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
@@ -302,3 +305,16 @@ for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
 end
 CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(CSM)
 SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(SM)
+
+# Example from Miron et al. 2023, https://doi.org/10.21105/joss.04624
+plot(xlabel="Temperature [°C]", ylabel="log₁₀K⁰", xticks=0:50:250, yticks=-20:2:10)
+for lsp ∈ [
+            "Calcite Ca+2 CO3-2",
+            "H2O@ H+ OH-",
+            "NaCl@ Na+ Cl-",
+            "Al+3 H2O@ AlOH+2 H+",
+          ]
+    rr = Reaction(getindex.(Ref(dict_species_aq17), split(lsp)))
+    plot!(θ->rr.logK⁰(273.15+θ), 0:0.1:250, label=rr.equation)
+end
+plot!()

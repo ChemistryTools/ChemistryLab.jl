@@ -548,15 +548,8 @@ function complete_reaction_database!(
             return k
         end
         if !isnothing(df_substances) &&
-            size(
-            filter(
-                x ->
-                    x.symbol == reaction_symbol &&
-                    (x.formula == k || occursin(k, x.symbol)),
-                df_substances,
-            ),
-            1,
-        ) == 1
+            size(filter(x -> x.symbol == reaction_symbol &&
+               (x.formula == k || occursin(k, x.symbol)), df_substances), 1) == 1
             return reaction_symbol
         else
             return k
