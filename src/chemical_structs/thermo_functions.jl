@@ -101,7 +101,7 @@ const thermo_function_library = Dict(
 )
 
 """
-    ThermoFunction(expr::Union{Symbol,Expr}, params=Pair[], vars=[:T, :P, :t]; ref=[])
+    ThermoFunction(expr::Union{Symbol,Expr}, params=Pair[]; vars=[:T, :P, :t, :x, :y, :z], ref=[])
 
 Construct a ThermoFunction from an expression, parameters, variables, and reference conditions.
 
@@ -127,11 +127,7 @@ julia> params = [:α => 210.0u"J/K/mol", :β => 0.0u"J/mol/K^2", :γ => -3.07e6u
  :β => 0.0 m² kg s⁻² K⁻² mol⁻¹
  :γ => -3.07e6 m² kg s⁻² K⁻¹ mol⁻¹
 
-julia> vars = [:T]
-1-element Vector{Symbol}:
- :T
-
-julia> tf = ThermoFunction(expr, params, vars; ref=[:T => 298.15u"K"])
+julia> tf = ThermoFunction(expr, params; vars=[:T], ref=[:T => 298.15u"K"])
 210.0 - 3.07e6log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 
 julia> tf() # default evaluation at reference variable here Tref=298.15K
@@ -143,7 +139,7 @@ julia> tf(300.0u"K")
 julia> tf(300.0)
 -1.7510402197194535e7
 
-julia> tf_nounits = ThermoFunction(expr, [:α => 210.0, :β => 0.0, :γ => -3.07e6], vars; ref=[:T => 298.15])
+julia> tf_nounits = ThermoFunction(expr, [:α => 210.0, :β => 0.0, :γ => -3.07e6]; vars=[:T], ref=[:T => 298.15])
 210.0 - 3.07e6log(T) ♢ unit=[] ♢ ref=[T=298.15]
 
 julia> tf_nounits(300.0u"K")
@@ -158,8 +154,8 @@ julia> tf_nounits(300.)
 """
 function ThermoFunction(
     expr::Union{Symbol,Expr},
-    params=Pair[],
-    vars=[:T, :P, :t, :x, :y, :z];
+    params=Pair[];
+    vars=[:T, :P, :t, :x, :y, :z],
     ref=[],
 )
     expr = get(thermo_function_library, expr, expr)
@@ -172,6 +168,8 @@ function ThermoFunction(
                     OrderedDict(:T => 298.15, :P => 100000., :t => 0.)
     givenref = OrderedDict(ref)
     vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
+    pos = Dict(v => i for (i, v) in enumerate(vars))  # ordre de référence
+    sort!(vecvars, by = x -> pos[Symbol(x)])
     dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
     dictvarref = OrderedDict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))

@@ -48,7 +48,8 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun input
-function extract_database(json_file, jls_file)
+function extract_database(json_file)
+    jls_file = splitext(json_file)[1] * ".jls"
     df_substances, df_reactions = nothing, nothing
     try
         df_substances, df_reactions = deserialize(jls_file)
@@ -62,9 +63,9 @@ function extract_database(json_file, jls_file)
     dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
     return df_substances, df_reactions, dict_species, dict_reactions
 end
-df_substances, df_reactions, dict_species, dict_reactions = extract_database("data/cemdata18-merged.json", "data/cemdata18.jls")
-df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = extract_database("data/psinagra-12-07-thermofun.json", "data/psinagra.jls")
-df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = extract_database("data/aq17-thermofun.json", "data/aq17.jls")
+df_substances, df_reactions, dict_species, dict_reactions = extract_database("data/cemdata18-merged.json")
+df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = extract_database("data/psinagra-12-07-thermofun.json")
+df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = extract_database("data/aq17-thermofun.json")
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -307,7 +308,11 @@ CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]);
 SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(SM)
 
 # Example from Miron et al. 2023, https://doi.org/10.21105/joss.04624
-plot(xlabel="Temperature [°C]", ylabel="log₁₀K⁰", xticks=0:50:250, yticks=-20:2:10)
+p1 = plot(xlabel="Temperature [°C]", ylabel="Cp⁰ [J K⁻¹]", xticks=0:50:250, yticks=-2000:200:2000)
+for sp ∈ getindex.(Ref(dict_species_aq17), split("Na+ Ca+2 SiO2@ CO3-2 OH-"))
+    plot!(p1, θ->sp.Cp⁰(273.15+θ), 0:0.1:250, label=unicode(sp))
+end
+p2 = plot(xlabel="Temperature [°C]", ylabel="log₁₀K⁰", xticks=0:50:250, yticks=-20:2:10)
 for lsp ∈ [
             "Calcite Ca+2 CO3-2",
             "H2O@ H+ OH-",
@@ -315,6 +320,6 @@ for lsp ∈ [
             "Al+3 H2O@ AlOH+2 H+",
           ]
     rr = Reaction(getindex.(Ref(dict_species_aq17), split(lsp)))
-    plot!(θ->rr.logK⁰(273.15+θ), 0:0.1:250, label=rr.equation)
+    plot!(p2, θ->rr.logK⁰(273.15+θ), 0:0.1:250, label=rr.equation)
 end
-plot!()
+plot(p1, p2, layout = (1, 2))
