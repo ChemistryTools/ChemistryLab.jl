@@ -182,7 +182,7 @@ function ThermoFunction(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=29
     params_nounit = (; (k=>ustrip(v) for (k,v) in pairs(params_unit))...)
     func = eval(build_function(substitute(symexpr, [eval(k)=>v for (k,v) in pairs(params_nounit)]), var))
     nounitfunc = [f(var) => 1 for f in [log, log10, log2, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh, exp]]
-    unit = promote_type(typeof.(values(params_unit))...) <: Quantity ? 
+    unit = promote_type(typeof.(values(params_unit))...) <: Quantity ?
                    Quantity(1, dimension(substitute(symexpr, [[eval(k)=>v for (k,v) in pairs(params_unit)] ; nounitfunc ; var=>getfield(ref, Symbol(var))]))) : 1
     return ThermoFunction(symexpr, params_unit, var, unit, func, ref)
 end
@@ -273,5 +273,4 @@ tf2 = ThermoFunction(expand(expand_derivatives(Differential(T)(tf.expr))), tf.pa
 
 tf = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*t^2)), [1u"J",2u"J/s",3,4u"1/s^2"]; ref=(t=0u"s",))
 
-Cp = ThermoFunction(:Cp, params)
-
+Cp = ThermoFunction(dict_cp_ft_equation[:Cp], params)

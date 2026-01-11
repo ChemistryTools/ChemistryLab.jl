@@ -100,7 +100,7 @@ Heat capacity, on the other hand, is introduced in the following way:
 
 ```@example CO2
 coeffs = [:a₀ => 44.22u"J/K/mol", :a₁ => 0.0088u"J/mol/K^2", :a₂ => -861.904e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-CO₂.Cp = ThermoFunction(:Cp, coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
+CO₂.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
 ```
 
 !!! note "Heat capacity value"

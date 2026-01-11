@@ -134,7 +134,7 @@ Extract phase information from PHREEQC .dat file content.
 
 # Returns
 
-  - Dictionary mapping phase names to their properties (equation, log_K, analytical_expression, Vm).
+  - Dictionary mapping phase names to their properties (equation, log_K, analytical_expression, V⁰).
 
 Parses the PHASES section and extracts reaction equations, equilibrium constants, analytical
 expressions, and molar volumes for each phase.
@@ -182,13 +182,13 @@ function parse_phases(dat_content)
                     analytical_expression[4] /= log(10)
                 end
                 current_phase["analytical_expression"] = analytical_expression
-            elseif startswith(line, "-Vm") && current_phase !== nothing
-                vm_parts = split(line)
-                if length(vm_parts) >= 2
+            elseif startswith(line, "-V⁰") && current_phase !== nothing
+                V⁰_parts = split(line)
+                if length(V⁰_parts) >= 2
                     try
-                        current_phase["drsm_volume"] = parse(Float64, vm_parts[2])
+                        current_phase["drsm_volume"] = parse(Float64, V⁰_parts[2])
                     catch e
-                        @warn "Could not parse Vm value for phase $(current_phase["symbol"]), skipping."
+                        @warn "Could not parse V⁰ value for phase $(current_phase["symbol"]), skipping."
                     end
                 end
             end

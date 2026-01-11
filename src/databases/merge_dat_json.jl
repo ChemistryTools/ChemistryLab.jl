@@ -89,7 +89,7 @@ function merge_reactions(json_data, new_reactions)
                     "values" => [""], "units" => ["J/(mol*K)"]
                 )
 
-                # The Vm field in Phreeqc .dat is the molar volume of the solid phase in cm3/mol
+                # The V⁰ field in Phreeqc .dat is the molar volume of the solid phase in cm3/mol
                 # reaction_dict["drsm_volume"] = Dict{String, Any}(
                 #     "values" => [phase["drsm_volume"]],
                 #     "units" => ["cm3/mol"]

@@ -108,9 +108,11 @@ using Unicode
 include("utils/misc.jl")
 include("utils/subsuperscripts.jl")
 
+include("thermodynamics/thermo_functions.jl")
+include("thermodynamics/thermo_models.jl")
+
 include("chemical_structs/element_order.jl")
 include("chemical_structs/parsing_tools.jl")
-include("chemical_structs/thermo_functions.jl")
 include("chemical_structs/formulas.jl")
 include("chemical_structs/species.jl")
 include("chemical_structs/reactions.jl")
@@ -136,6 +138,8 @@ export stoich_coef_round,
     format_equation
 
 export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
+
+export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
 
 export AtomGroup,
     Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, stoichtype, pprint

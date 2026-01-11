@@ -328,7 +328,7 @@ function complete_species_database!(
             )
 
             if !ismissing(coeffa)
-                s.Cp⁰ = ThermoFunction(:Cp, coeffa; ref=[:T => Tref, :P => Pref])
+                # s.Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], coeffa; ref=[:T => Tref, :P => Pref])
 
                 ΔfH⁰ = get_value(
                     row,
@@ -338,10 +338,10 @@ function complete_species_database!(
                     with_units=with_units,
                     default_unit=u"J/mol",
                 )
-                ∫Cp = ∫(s.Cp⁰)
-                s.ΔfH⁰ = (ΔfH⁰ - ∫Cp(Tref)) + ∫Cp
+                # ∫Cp = ∫(s.Cp⁰)
+                # s.ΔfH⁰ = (ΔfH⁰ - ∫Cp(Tref)) + ∫Cp
 
-                S0 = get_value(
+                S⁰ = get_value(
                     row,
                     :S⁰;
                     debug=debug,
@@ -349,9 +349,9 @@ function complete_species_database!(
                     with_units=with_units,
                     default_unit=u"J/(mol*K)",
                 )
-                CpoverT = ThermoFunction(:CpoverT, coeffa; ref=[:T => Tref, :P => Pref])
-                ∫CpoverT = ∫(CpoverT)
-                s.S⁰ = (S0 - ∫CpoverT(Tref)) + ∫CpoverT
+                # CpoverT = ThermoFunction(:CpoverT, coeffa; ref=[:T => Tref, :P => Pref])
+                # ∫CpoverT = ∫(CpoverT)
+                # s.S⁰ = (S⁰ - ∫CpoverT(Tref)) + ∫CpoverT
 
                 ΔfG⁰ = get_value(
                     row,
@@ -361,13 +361,23 @@ function complete_species_database!(
                     with_units=with_units,
                     default_unit=u"J/mol",
                 )
-                ∫S = ∫(s.S⁰)
-                s.ΔfG⁰ = (ΔfG⁰ + ∫S(Tref)) - ∫S
+                # ∫S = ∫(s.S⁰)
+                # s.ΔfG⁰ = (ΔfG⁰ + ∫S(Tref)) - ∫S
 
-                Vm = get_value(
-                    row, :Vm; crayon=crayon"blue", with_units=true, default_unit=u"J/bar"
+                V⁰ = get_value(
+                    row, :V⁰; crayon=crayon"blue", with_units=true, default_unit=u"J/bar"
                 )
-                s.Vm = ThermoFunction(:cst => (with_units ? Vm / u"mol" : ustrip(Vm)); ref=[:T => Tref, :P => Pref])
+                # s.V⁰ = ThermoFunction(:cst => (with_units ? V⁰ / u"mol" : ustrip(V⁰)); ref=[:T => Tref, :P => Pref])
+
+                values0 = [:ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰]
+                dict_tf = thermo_functions_cp_ft_equation(coeffa, values0; ref=[:T => Tref, :P => Pref])
+
+                s.Cp⁰ = dict_tf[:Cp⁰]
+                s.ΔfH⁰ = dict_tf[:ΔfH⁰]
+                s.S⁰ = dict_tf[:S⁰]
+                s.ΔfG⁰ = dict_tf[:ΔfG⁰]
+                s.V⁰ = dict_tf[:V⁰]
+
             end
         end
     end
@@ -487,7 +497,8 @@ function complete_reaction_database!(
             )
 
             if !ismissing(coefflogKr)
-                r.logKr = ThermoFunction(:logKr, coefflogKr; ref=[:T => Tref, :P => Pref])
+                logKrexpr = :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T)
+                r.logKr = ThermoFunction(logKrexpr, coefflogKr; ref=[:T => Tref, :P => Pref])
             end
 
             r.ΔrCp⁰_Tref = get_value(
@@ -522,15 +533,15 @@ function complete_reaction_database!(
                 with_units=with_units,
                 default_unit=u"J/(mol*K)",
             )
-            ΔVm = get_value(
+            ΔV⁰ = get_value(
                 row,
-                :ΔrV;
+                :ΔrV⁰;
                 debug=debug,
                 crayon=crayon"red",
                 with_units=true,
                 default_unit=u"J/bar",
             )
-            r.ΔrV_Tref = with_units ? ΔVm / u"mol" : ustrip(ΔVm)
+            r.ΔrV⁰_Tref = with_units ? ΔV⁰ / u"mol" : ustrip(ΔV⁰)
             r.logKr_Tref = get_value(
                 row,
                 :logKr;
@@ -625,7 +636,7 @@ function read_thermofun_substances(
         ΔfG⁰=[extract_field_with_units(s, "sm_gibbs_energy") for s in substances],
         ΔfH⁰=[extract_field_with_units(s, "sm_enthalpy") for s in substances],
         S⁰=[extract_field_with_units(s, "sm_entropy_abs") for s in substances],
-        Vm=[extract_field_with_units(s, "sm_volume") for s in substances],
+        V⁰=[extract_field_with_units(s, "sm_volume") for s in substances],
         datasources=[get(s, "datasources", missing) for s in substances],
     )
     if add_species
@@ -697,7 +708,7 @@ function read_thermofun_reactions(
         ΔrG⁰=[extract_field_with_units(r, "drsm_gibbs_energy") for r in reactions],
         ΔrH⁰=[extract_field_with_units(r, "drsm_enthalpy") for r in reactions],
         ΔrS⁰=[extract_field_with_units(r, "drsm_entropy") for r in reactions],
-        ΔrV=[extract_field_with_units(r, "drsm_volume") for r in reactions],
+        ΔrV⁰=[extract_field_with_units(r, "drsm_volume") for r in reactions],
         datasources=[get(r, "datasources", missing) for r in reactions],
     )
     if add_reactions

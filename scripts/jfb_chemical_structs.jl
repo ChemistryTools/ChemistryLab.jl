@@ -1,4 +1,5 @@
-using Revise, ChemistryLab, Unicode
+using Revise
+using ChemistryLab, Unicode
 using DynamicQuantities
 using ModelingToolkit
 using Serialization
@@ -208,12 +209,12 @@ pprint(list_reactions)
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
 coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-cemJennite.Cp = ThermoFunction(:Cp, coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
+cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15u"K") ;
 @show cemJennite.Cp() ; # application by default on Tref
  # same without units
-cemJennite.Cp = ThermoFunction(:Cp, ustrip.(coeffs); ref=[:T=>298.15u"K", :P=>1u"bar"])
+cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], ustrip.(coeffs); ref=[:T=>298.15u"K", :P=>1u"bar"])
 @show cemJennite.Cp ;
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
@@ -226,7 +227,7 @@ lT = ((0:1:100) .+ 273.15).*u"K"
 for row in eachrow(df_reactions)
     re = row.reaction
     for s in keys(re.reactants)
-        if !haskey(s, :Cp)
+        if !haskey(s, :Cp⁰)
             println(colored(s), "  ∙  ", row.symbol)
         end
     end
@@ -235,7 +236,7 @@ end
 for row in eachrow(df_reactions)
     re = row.reaction
     for s in keys(re.products)
-        if !haskey(s, :Cp)
+        if !haskey(s, :Cp⁰)
             println(colored(s), "  ∙  ", row.symbol)
         end
     end
@@ -247,7 +248,7 @@ for r in df_reactions.reaction
 end
 
 coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-Cp = ThermoFunction(:Cp, coeffs)
+Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs)
 
 rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
 rate(1u"s")
@@ -323,3 +324,22 @@ for lsp ∈ [
     plot!(p2, θ->rr.logK⁰(273.15+θ), 0:0.1:250, label=rr.equation)
 end
 plot(p1, p2, layout = (1, 2))
+
+# Vapour pressure of water
+l = dict_species_aq17["H2O@"]
+v = dict_species_aq17["H2O"]
+T0 = 373.15u"K"
+ΔHₗᵥ = v.ΔfH⁰(T0)-l.ΔfH⁰(T0)
+Rankine(T) = 13.7-5120/T
+lnP(T) = ΔHₗᵥ/Constants.R*(1/T0-1/T)
+lθ = 0:1:200
+plot(xlabel="T [°C]", ylabel="ln(P/P0)")
+plot!(θ -> Rankine(273.15+θ), lθ, label="Rankine")
+plot!(θ -> lnP((273.15+θ)u"K"), lθ, label = "ΔHₗᵥ/Constants.R*(1/T0-1/T)")
+
+
+params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
+values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+Cpexpr = dict_cp_ft_equation[:Cp]
+dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
+dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15u"K"])

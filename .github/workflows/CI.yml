@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
+      pull-requests: read
       contents: write
       statuses: write
     steps:

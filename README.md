@@ -141,7 +141,7 @@ aggregate_state: AS_AQUEOUS
                  ΔfH⁰ = -1.417243319379807e6 - 104.60063934326T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  S⁰ = 616.8922592448816 - 104.60063934326log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  ΔfG⁰ = -1.27295402135706e6 - 721.4928985881417T + 104.60063934326T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 Vm = 4.700633883476301e-6 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+                 V⁰ = 4.700633883476301e-6 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> Ca²⁺ = dict_species["Ca+2"]
 Species{Int64}
@@ -159,7 +159,7 @@ aggregate_state: AS_AQUEOUS
                  ΔfH⁰ = -533849.4518936157 - 30.922515869141T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  S⁰ = 119.70002369348362 - 30.922515869141log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  ΔfG⁰ = -560411.1568393706 - 150.6225395626246T + 30.922515869141T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 Vm = -1.8438742160797e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+                 V⁰ = -1.8438742160797e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> SO₄²⁻ = dict_species["SO4-2"]
 Species{Int64}
@@ -177,7 +177,7 @@ aggregate_state: AS_AQUEOUS
                  ΔfH⁰ = -830362.0492202746 - 266.09072875977T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  S⁰ = 1534.9056613400478 - 266.09072875977log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
                  ΔfG⁰ = -659510.4812841403 - 1800.9963900998177T + 266.09072875977T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 Vm = 1.2917655706406e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+                 V⁰ = 1.2917655706406e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
 julia> r = Reaction([CaSO₄, Ca²⁺, SO₄²⁻])
   equation: CaSO₄@ = Ca²⁺ + SO₄²⁻
@@ -188,7 +188,7 @@ properties: ΔrCp⁰ = -192.412605285651 ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹
             ΔrS⁰ = 1037.7134257886498 - 192.412605285651log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
             ΔrH⁰ = 53031.81826591678 - 192.412605285651T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
             ΔrG⁰ = 53032.38323354907 - 1230.1260310743007T + 192.412605285651T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-            ΔrV = -1.02217203378673e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+            ΔrV⁰ = -1.02217203378673e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 ```
 
 ## Installation

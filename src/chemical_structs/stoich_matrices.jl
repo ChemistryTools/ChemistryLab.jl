@@ -155,7 +155,7 @@ function pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vec
     row_labels = try eval(col_label).(indep_comp_names) catch; indep_comp_names end
     hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
     hl_n = TextHighlighter((data, i, j) -> (data[i, j] < 0), crayon"bold light_blue")
-    hl_z = TextHighlighter((data, i, j) -> (data[i, j] == 0), crayon"conceal")
+    hl_z = TextHighlighter((data, i, j) -> (iszero(data[i, j])), crayon"conceal")
     try
         pretty_table(
             A;

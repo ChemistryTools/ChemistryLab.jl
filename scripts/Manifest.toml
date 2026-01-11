@@ -2250,10 +2250,10 @@ uuid = "013be700-e6cd-48c3-b4a1-df204f14c38f"
 version = "0.3.0"
 
     [deps.UnsafeAtomics.extensions]
-    UnsafeAtomicsLLVM = ["LLVM"]
+    UnsafeAtomicsLLV⁰ = ["LLV⁰"]
 
     [deps.UnsafeAtomics.weakdeps]
-    LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
+    LLV⁰ = "929cbde3-209d-540e-8aea-75f648917ca0"
 
 [[deps.WeakRefStrings]]
 deps = ["DataAPI", "InlineStrings", "Parsers"]

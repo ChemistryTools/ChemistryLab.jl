@@ -428,7 +428,7 @@ end
     complete_thermo_functions(r::Reaction)
 
 Compute reaction thermodynamic properties from species properties.
-Calculates ΔrCp⁰, ΔrS⁰, ΔrH⁰, ΔrG⁰, and ΔrV if all species have the required properties.
+Calculates ΔrCp⁰, ΔrS⁰, ΔrH⁰, ΔrG⁰, and ΔrV⁰ if all species have the required properties.
 """
 function complete_thermo_functions(r::Reaction)
     species_list = keys(r)
@@ -447,8 +447,8 @@ function complete_thermo_functions(r::Reaction)
             r.logK⁰ = ThermoFunction(-r.ΔrG⁰.symexpr/(ustrip(Constants.R)*log(10)*r.ΔrG⁰.vars[:T]),
                 r.ΔrG⁰.vars, dimension(1.), r.ΔrG⁰.ref)
         end
-        if all(x -> haskey(x, :Vm), species_list)
-            r.ΔrV = sum(ν * s.Vm for (s, ν) in r)
+        if all(x -> haskey(x, :V⁰), species_list)
+            r.ΔrV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
         end
     #     r.charge = sum(ν * charge(s) for (s, ν) in r)
     # else

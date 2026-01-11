@@ -13,7 +13,6 @@ ThermoFunction(
     vars=[:T, :P, :t];
     ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"],
 )
-thermo_function_library
 ∂
 ∫
 calculate_molar_mass
