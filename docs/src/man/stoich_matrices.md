@@ -72,7 +72,7 @@ In chemistryLab, it is possible to construct a stoichiometric matrix of species 
 
 ```julia
 using ChemistryLab
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
@@ -102,9 +102,8 @@ Finally, the stoichiometric matrix can be calculated:
     # using Serialization
     using PrettyTables
     # df_substances, df_reactions = deserialize("../../../data/cemdata18.jls")
-    df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
+    df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
-    dict_species = Dict(zip(df_substances.symbol, df_substances.species)) #hide
 
     given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances) #hide
     secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 

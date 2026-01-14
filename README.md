@@ -119,11 +119,9 @@ n=9 ⇒ C₉H₂₀ + 14O₂ = 10H₂O + 9CO₂
 - Extraction from database ([ThermoHub]("https://github.com/thermohub") `.json` file) and reconstruction of thermodynamical functions
 
 ```julia
-julia> json_file = "psinagra-12-07-thermofun.json"
+julia> filebasename = "psinagra-12-07-thermofun"
 
-julia> df_substances = read_thermofun_substances(json_file);
-
-julia> dict_species = Dict(zip(df_substances.symbol, df_substances.species)); # dictionary indexing species by their symbol
+julia> df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun(filebasename);
 
 julia> CaSO₄ = dict_species["Ca(SO4)@"]
 Species{Int64}

@@ -46,12 +46,31 @@ function ThermoFunction(symexpr::Num, vars::OrderedDict{Symbol,Num}, unit::U, re
     return ThermoFunction(symexpr, vars, unit, func, ref)
 end
 
+function substitute_with_units(expr, params)
+    # @show expr
+    # @show params
+    env = Dict(params)
+
+    function rec(ex)
+        if ex isa Symbol
+            return get(env, ex, ex)
+        elseif ex isa Expr
+            return Expr(ex.head, (rec.(ex.args))...)
+        else
+            return ex
+        end
+    end
+
+    return rec(expr)
+end
+
 function ThermoFunction(
     symexpr::Num,
     params=Pair[];
     vars=[:T, :P, :t, :x, :y, :z],
     ref=[],
 )
+    # @show symexpr
     varofexpr = Num.(get_variables(symexpr))
     dictallvars = OrderedDict(Symbol(v) => v for v in varofexpr)
     dictparams = OrderedDict(dictallvars[k] => v for (k, v) in params if haskey(dictallvars, k))
@@ -60,7 +79,7 @@ function ThermoFunction(
                     OrderedDict(:T => 298.15, :P => 100000., :t => 0.)
     givenref = OrderedDict(ref)
     vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
-    pos = Dict(v => i for (i, v) in enumerate(vars))  # ordre de référence
+    pos = Dict(v => i for (i, v) in enumerate(vars))
     sort!(vecvars, by = x -> pos[Symbol(x)])
     dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
@@ -71,32 +90,32 @@ function ThermoFunction(
         veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
     end
     symexpr = substitute(symexpr, [k => 0 for k in veczeros])
-    nounitfunc = vec([
-        f(var) => 1 for f in [
-            log,
-            log10,
-            log2,
-            sin,
-            cos,
-            tan,
-            asin,
-            acos,
-            atan,
-            sinh,
-            cosh,
-            tanh,
-            asinh,
-            acosh,
-            atanh,
-            exp,
-        ],
-        var in vecvars
-    ])
     unit = if with_units
-        Quantity(
-        1,
-        dimension(substitute(symexpr, [nounitfunc; collect(dictparams); collect(dictvarref)])),
-    )
+        nounitfunc = vec([
+            f(var) => 0.15 for f in [
+                log,
+                log10,
+                log2,
+                sin,
+                cos,
+                tan,
+                asin,
+                acos,
+                atan,
+                sinh,
+                cosh,
+                tanh,
+                asinh,
+                acosh,
+                atanh,
+                exp,
+            ], var in vecvars
+        ])
+        # @show symexpr
+        # @show substitute(symexpr, nounitfunc)
+        # @show Symbolics.toexpr(substitute(symexpr, nounitfunc))
+        common_dim = dimension(eval(substitute_with_units(Symbolics.toexpr(substitute(symexpr, nounitfunc)), union(params, dictref))))
+        Quantity(1, common_dim)
     else
         1
     end
@@ -122,7 +141,7 @@ Construct a ThermoFunction from an expression, parameters, variables, and refere
 
 # Examples
 
-```julia
+```jldoctest
 julia> expr = :(α + β * T + γ * log(T))
 :(α + β * T + γ * log(T))
 
@@ -183,7 +202,7 @@ Arguments
 
 Examples
 
-```julia
+```jldoctest
 julia> ΔfH⁰ = ThermoFunction(-2.72e6u"J/mol"; ref=[:T => 298.15u"K", :P => 1u"bar"])
 -2.72e6 ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
@@ -204,7 +223,7 @@ julia> ℓ(Quantity(0))
 ```
 """
 function ThermoFunction(x::Number; ref=[])
-    return ThermoFunction(:(c), [:c => x]; ref=ref)
+    return ThermoFunction(:(c), [:c => x]; vars=[], ref=ref)
 end
 
 """
@@ -224,7 +243,7 @@ Behavior
     symbol/value pair is displayed when showing the ThermoFunction.
 
 Examples
-```julia
+```jldoctest
 julia> f = ThermoFunction(:c => 2.5)
 2.5 ♢ unit=[] ♢ ref=[]
 
@@ -242,7 +261,7 @@ julia> g(Quantity(0))
 ```
 """
 function ThermoFunction(x::Pair{Symbol,V}; ref=[]) where {V}
-    return ThermoFunction(x.first, [x]; ref=ref)
+    return ThermoFunction(x.first, [x]; vars=[], ref=ref)
 end
 
 """
@@ -520,7 +539,7 @@ Compute the partial derivative of a thermodynamic function.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
@@ -565,7 +584,7 @@ Compute the integral of a thermodynamic function.
 
 # Examples
 
-```julia
+```jldoctest
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
@@ -632,7 +651,7 @@ Apply a function to a thermodynamic function's expression.
 
 # Examples
 
-```julia
+```jldoctest
 julia> f = ThermoFunction(:(a+b*x), [:a=>3, :b=>2])
 3 + 2x ♢ unit=[] ♢ ref=[x=0]
 
@@ -692,7 +711,7 @@ for fn in MATH_FUNCTIONS
     - New ThermoFunction with $($fn) applied to the expression and unit
 
     # Examples
-    ```julia
+    ```jldoctest
     julia> f = ThermoFunction(:(a+b*x), [:a=>2.3, :b=>4.6])
     2.3 + 4.6x ♢ unit=[] ♢ ref=[x=0]
 
@@ -718,7 +737,7 @@ Calculate the molar mass from an atomic composition dictionary.
 
 # Examples
 
-```julia
+```jldoctest
 julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
 0.0180149999937744 kg mol⁻¹
 ```

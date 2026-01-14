@@ -9,7 +9,7 @@ Let's imagine that we want to form the stoichiometric matrix of a list of solid 
 ```julia
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
 
@@ -38,7 +38,7 @@ And construct the stoichiometric matrix
     # using Serialization
     using PrettyTables
     # df_substances, df_reactions = deserialize("../../../data/cemdata18.jls")
-    df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
+    df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 
     given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances) #hide
@@ -64,7 +64,7 @@ using PrettyTables #hide
 ```julia
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
 

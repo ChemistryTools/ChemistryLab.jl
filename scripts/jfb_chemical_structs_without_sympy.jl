@@ -2,7 +2,6 @@ using Revise
 using ChemistryLab, Unicode
 using DynamicQuantities
 using ModelingToolkit
-using Serialization
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -48,24 +47,13 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun input
-function extract_database(json_file)
-    jls_file = splitext(json_file)[1] * ".jls"
-    df_substances, df_reactions = nothing, nothing
-    try
-        df_substances, df_reactions = deserialize(jls_file)
-    catch
-        # df_elements, df_substances, df_reactions = read_thermofun(json_file; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false)
-        df_substances = read_thermofun_substances(json_file; with_units=true, add_species=true, all_properties=true, debug=false)
-        df_reactions = read_thermofun_reactions(json_file, df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
-        serialize(jls_file, (df_substances, df_reactions))
-    end
-    dict_species = Dict(zip(df_substances.symbol, df_substances.species))
-    dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
-    return df_substances, df_reactions, dict_species, dict_reactions
+println("LOADING DATABASES...")
+@time begin
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("data/cemdata18-merged")
+df_elements_psi, df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = read_thermofun("data/psinagra-12-07-thermofun")
+df_elements_aq17, df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = read_thermofun("data/aq17-thermofun")
+df_elements_orga, df_substances_orga, df_reactions_orga, dict_species_orga, dict_reactions_orga = read_thermofun("data/slop98-organic-thermofun")
 end
-df_substances, df_reactions, dict_species, dict_reactions = extract_database("data/cemdata18-merged.json")
-df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = extract_database("data/psinagra-12-07-thermofun.json")
-df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = extract_database("data/aq17-thermofun.json")
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -162,7 +150,7 @@ H₂O = Species("H₂O")
 CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(substitute, r, n=>vn))) end
-for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn))) end
+for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(Symbolics.symbolic_to_float∘stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn))) end
 
 # Example from https://github.com/thermohub/chemicalfun
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
@@ -218,7 +206,7 @@ end
 coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
 Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs)
 
-rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
+rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0u"min^2", :c₂ => 2.0u"s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
 rate(1u"s")
 
 r = dict_reactions["Cal"]
