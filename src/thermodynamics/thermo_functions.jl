@@ -122,7 +122,7 @@ Construct a ThermoFunction from an expression, parameters, variables, and refere
 
 # Examples
 
-```jldoctest
+```julia
 julia> expr = :(α + β * T + γ * log(T))
 :(α + β * T + γ * log(T))
 
@@ -183,7 +183,7 @@ Arguments
 
 Examples
 
-```jldoctest
+```julia
 julia> ΔfH⁰ = ThermoFunction(-2.72e6u"J/mol"; ref=[:T => 298.15u"K", :P => 1u"bar"])
 -2.72e6 ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
@@ -224,7 +224,7 @@ Behavior
     symbol/value pair is displayed when showing the ThermoFunction.
 
 Examples
-```jldoctest
+```julia
 julia> f = ThermoFunction(:c => 2.5)
 2.5 ♢ unit=[] ♢ ref=[]
 
@@ -520,7 +520,7 @@ Compute the partial derivative of a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
@@ -565,7 +565,7 @@ Compute the integral of a thermodynamic function.
 
 # Examples
 
-```jldoctest
+```julia
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
@@ -632,7 +632,7 @@ Apply a function to a thermodynamic function's expression.
 
 # Examples
 
-```jldoctest
+```julia
 julia> f = ThermoFunction(:(a+b*x), [:a=>3, :b=>2])
 3 + 2x ♢ unit=[] ♢ ref=[x=0]
 
@@ -692,7 +692,7 @@ for fn in MATH_FUNCTIONS
     - New ThermoFunction with $($fn) applied to the expression and unit
 
     # Examples
-    ```jldoctest
+    ```julia
     julia> f = ThermoFunction(:(a+b*x), [:a=>2.3, :b=>4.6])
     2.3 + 4.6x ♢ unit=[] ♢ ref=[x=0]
 
@@ -718,7 +718,7 @@ Calculate the molar mass from an atomic composition dictionary.
 
 # Examples
 
-```jldoctest
+```julia
 julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
 0.0180149999937744 kg mol⁻¹
 ```
