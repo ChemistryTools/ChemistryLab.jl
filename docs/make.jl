@@ -24,7 +24,4 @@ makedocs(;
     warnonly=[:missing_docs, :docs_block],
 )
 
-deploydocs(; repo="github.com/jfbarthelemy/ChemistryLab.jl", devbranch="main",
-    target = "build",
-    branch = "gh-pages",
-    versions = ["stable" => "v^", "v#.#", "dev" => "dev"],)
+deploydocs(; repo="github.com/jfbarthelemy/ChemistryLab.jl", devbranch="main")
