@@ -146,19 +146,19 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    T = ThermoFunction(:T; vars=vars, ref=ref)
     with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
     H = ThermoFunction(dict_cp_ft_equation[:H], params; vars=vars, ref=ref)
-    ΔfH⁰ = H - H(Tref) + dict_values0[:ΔfH⁰]
+    ΔfH⁰ = H + (dict_values0[:ΔfH⁰] - H(Tref))
 
     S = ThermoFunction(dict_cp_ft_equation[:S], params; vars=vars, ref=ref)
-    S⁰ = S - S(Tref) + dict_values0[:S⁰]
+    S⁰ = S + (dict_values0[:S⁰] - S(Tref))
 
+    T = ThermoFunction(:T; vars=vars, ref=ref)
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔfG⁰ = G - G(Tref) + dict_values0[:ΔfG⁰] + (S(Tref) - dict_values0[:S⁰]) * (T - Tref)
+    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * (T - Tref) + (dict_values0[:ΔfG⁰] - G(Tref))
 
     V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
 
@@ -225,7 +225,6 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    T = ThermoFunction(:T; vars=vars, ref=ref)
     with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     symCpexpr = Num(parse_expr_to_symbolic(Cpexpr, @__MODULE__))
@@ -234,10 +233,11 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     H = ∫(Cp⁰, :T)
     ΔfH⁰ = H - H(Tref) + dict_values0[:ΔfH⁰]
 
-    CpoverT = ThermoFunction(sum(terms(symCpexpr)/Cp⁰.vars[:T]), params; vars=vars, ref=ref)
+    CpoverT = ThermoFunction(sum(terms(symCpexpr) ./ Cp⁰.vars[:T]), params; vars=vars, ref=ref)
     S = ∫(CpoverT, :T)
     S⁰ = S - S(Tref) + dict_values0[:S⁰]
 
+    T = ThermoFunction(:T; vars=vars, ref=ref)
     G = -∫(S, :T)
     ΔfG⁰ = G - G(Tref) + dict_values0[:ΔfG⁰] + (S(Tref) - dict_values0[:S⁰]) * (T - Tref)
 

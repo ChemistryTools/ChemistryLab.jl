@@ -102,6 +102,7 @@ using PeriodicTable
 using PrettyTables
 using ProgressMeter
 using SciMLBase
+using Serialization
 using SymbolicNumericIntegration
 using Unicode
 
@@ -121,6 +122,9 @@ include("chemical_structs/stoich_matrices.jl")
 include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
+
+include("equilibrium/equilibrium_problems.jl")
+include("equilibrium/states.jl")
 
 export safe_ustrip, safe_uconvert
 
@@ -178,8 +182,10 @@ export StoichMatrix,
 export extract_primary_species
 
 export read_thermofun_substances,
-    read_thermofun_reactions, read_thermofun_elements, read_thermofun
+    read_thermofun_reactions, read_thermofun_elements, read_thermofun_json, read_thermofun
 
 export merge_json
+
+export EquilibriumProblem
 
 end

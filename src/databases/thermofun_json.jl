@@ -774,7 +774,7 @@ function read_thermofun_elements(filename::AbstractString)
 end
 
 """
-    read_thermofun(filename::AbstractString; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) -> Tuple{DataFrame, DataFrame, DataFrame}
+    read_thermofun_json(filename::AbstractString; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false) -> Tuple{DataFrame, DataFrame, DataFrame}
 
 Read a complete ThermoFun database file and parse all sections.
 
@@ -791,7 +791,7 @@ Read a complete ThermoFun database file and parse all sections.
 
   - Tuple of three DataFrames: `(df_elements, df_substances, df_reactions)`.
 """
-function read_thermofun(
+function read_thermofun_json(
     filename;
     with_units=true,
     add_species=true,
@@ -817,4 +817,73 @@ function read_thermofun(
         debug=debug,
     )
     return df_elements, df_substances, df_reactions
+end
+
+"""
+        read_thermofun(filename::AbstractString; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false, update_serialize=false) -> Tuple{DataFrame, DataFrame, Dict, Dict}
+
+Read a ThermoFun database with a lightweight on-disk cache.
+
+# Arguments
+
+    - `filename`: path to a ThermoFun JSON database file (e.g. `"database.json"`).
+    - `with_units`: attach DynamicQuantities units to numeric properties (default: `true`).
+    - `add_species`: construct `Species` objects for each substance (default: `true`).
+    - `add_reactions`: construct `Reaction` objects for each reaction (default: `true`).
+    - `all_properties`: compute temperature-dependent `ThermoFunction`s when available (default: `true`).
+    - `debug`: enable verbose debug output (default: `false`).
+    - `update_serialize`: remove previous jls file if any (default: `false`).
+
+# Returns
+
+    - Tuple `(df_substances, df_reactions, dict_species, dict_reactions)` where:
+        - `df_substances` and `df_reactions` are `DataFrame`s produced from the ThermoFun
+            file, optionally augmented with `Species` / `Reaction` objects when requested.
+        - `dict_species` is a `Dict` mapping substance `symbol` → `Species`.
+        - `dict_reactions` is a `Dict` mapping reaction `symbol` → `Reaction`.
+
+# Behavior
+
+    - The function first attempts to load a serialized cache file with the same
+        basename and a `.jls` extension (e.g. `basename.jls`). If that file is not
+        found or deserialization fails, the function falls back to parsing the JSON
+        representation and will serialize the resulting tables to the `.jls` cache
+        for subsequent calls.
+
+# Examples
+
+```julia
+df_elements, df_substances, df_reactions, dict_species, dict_reactions =
+        read_thermofun("thermofun_database.json")
+```
+"""
+function read_thermofun(
+    filename;
+    with_units=true,
+    add_species=true,
+    add_reactions=true,
+    all_properties=true,
+    debug=false,
+    update_serialize=false
+)
+    jls_file = splitext(filename)[1] * ".jls"
+    if update_serialize
+        rm(jls_file)
+    end
+    df_elements, df_substances, df_reactions = nothing, nothing, nothing
+    try
+        df_elements, df_substances, df_reactions = deserialize(jls_file)
+    catch
+        json_file = splitext(filename)[1] * ".json"
+        df_elements, df_substances, df_reactions = read_thermofun_json(json_file;
+                                           with_units=with_units,
+                                           add_species=add_species,
+                                           add_reactions=add_reactions,
+                                           all_properties=all_properties,
+                                           debug=debug)
+        serialize(jls_file, (df_elements, df_substances, df_reactions))
+    end
+    dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+    dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
+    return df_elements, df_substances, df_reactions, dict_species, dict_reactions
 end

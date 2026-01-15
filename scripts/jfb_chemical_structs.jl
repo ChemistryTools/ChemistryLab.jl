@@ -2,7 +2,6 @@ using Revise
 using ChemistryLab, Unicode
 using DynamicQuantities
 using ModelingToolkit
-using Serialization
 import SymPy: symbols, Sym, N, subs, factor, simplify
 
 # Formula
@@ -49,24 +48,13 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun input
-function extract_database(json_file)
-    jls_file = splitext(json_file)[1] * ".jls"
-    df_substances, df_reactions = nothing, nothing
-    try
-        df_substances, df_reactions = deserialize(jls_file)
-    catch
-        # df_elements, df_substances, df_reactions = read_thermofun(json_file; with_units=true, add_species=true, add_reactions=true, all_properties=true, debug=false)
-        df_substances = read_thermofun_substances(json_file; with_units=true, add_species=true, all_properties=true, debug=false)
-        df_reactions = read_thermofun_reactions(json_file, df_substances; with_units=true, add_reactions=true, all_properties=true, debug=false)
-        serialize(jls_file, (df_substances, df_reactions))
-    end
-    dict_species = Dict(zip(df_substances.symbol, df_substances.species))
-    dict_reactions = Dict(zip(df_reactions.symbol, df_reactions.reaction))
-    return df_substances, df_reactions, dict_species, dict_reactions
+println("LOADING DATABASES...")
+@time begin
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("data/cemdata18-merged")
+df_elements_psi, df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = read_thermofun("data/psinagra-12-07-thermofun")
+df_elements_aq17, df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = read_thermofun("data/aq17-thermofun")
+df_elements_orga, df_substances_orga, df_reactions_orga, dict_species_orga, dict_reactions_orga = read_thermofun("data/slop98-organic-thermofun")
 end
-df_substances, df_reactions, dict_species, dict_reactions = extract_database("data/cemdata18-merged.json")
-df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = extract_database("data/psinagra-12-07-thermofun.json")
-df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = extract_database("data/aq17-thermofun.json")
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")

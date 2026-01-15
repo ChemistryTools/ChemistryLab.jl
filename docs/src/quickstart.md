@@ -55,10 +55,10 @@ list_reactions = reactions(SM)
 pprint(list_reactions)
 ```
 
-- Read ThermoFun / Cemdata JSON or .dat files (data directory expected)
+- Read ThermoFun JSON files (data directory expected)
 
 ```julia
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-thermofun.json")
+df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("data/cemdata18-thermofun")
 ```
 
 ## Notes and next steps
