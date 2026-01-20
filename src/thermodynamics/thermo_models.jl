@@ -34,19 +34,6 @@ const dict_cp_ft_equation = Dict(
         a₉ * √T +
         a₁₀ * log(T)
     ),
-    :CpoverT => :(
-        a₀ / T +
-        a₁ +
-        a₂ / T^3 +
-        a₃ / T^(3 / 2) +
-        a₄ * T +
-        a₅ * T^2 +
-        a₆ * T^3 +
-        a₇ / T^4 +
-        a₈ / T^2 +
-        a₉ / √T +
-        a₁₀ * log(T) / T
-    ),
     :S => :(
         a₀ * log(T) +
         a₁ * T +
@@ -156,7 +143,7 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * (T - Tref) + (dict_values0[:ΔfG⁰] - G(Tref))
+    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + (dict_values0[:S⁰] - S(Tref)) * Tref)
 
     # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
     # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
@@ -228,15 +215,15 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
 
     H = ∫(Cp⁰, :T)
-    ΔfH⁰ = H - H(Tref) + dict_values0[:ΔfH⁰]
+    ΔfH⁰ = H + (dict_values0[:ΔfH⁰] - H(Tref))
 
     CpoverT = ThermoFunction(sum(terms(symCpexpr) ./ Cp⁰.vars[:T]), params; vars=vars, ref=ref)
     S = ∫(CpoverT, :T)
-    S⁰ = S - S(Tref) + dict_values0[:S⁰]
+    S⁰ = S + (dict_values0[:S⁰] - S(Tref))
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = -∫(S, :T)
-    ΔfG⁰ = G - G(Tref) + dict_values0[:ΔfG⁰] + (S(Tref) - dict_values0[:S⁰]) * (T - Tref)
+    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + (dict_values0[:S⁰] - S(Tref)) * Tref)
 
     # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
     # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)

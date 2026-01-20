@@ -886,11 +886,18 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
                     for i in 1:min(length(vals), length(units))
                 ]
                 dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => Tref, :P => Pref])
-                for (k,v) in dtf
-                    species[k] = v
-                end
+                for (k,v) in dtf species[k] = v end
             elseif method_type == "mv_constant"
-                species[:V⁰] = last(values0[5])
+                species[:V⁰] = ThermoFunction(last(values0[5]); ref=[:T => Tref, :P => Pref])
+            end
+        end
+    end
+    if !haskey(species, :Cp⁰) && !ismissing(last(values0[1]))
+        params = [:a₀ => last(values0[1])]
+        dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => Tref, :P => Pref])
+        for (k,v) in dtf
+            if !haskey(species, k)
+                species[k] = v
             end
         end
     end
@@ -969,7 +976,7 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
             elseif method_type == "dr_volume_constant"
                 ΔrV⁰ = last(values0[5])
                 if !ismissing(ΔrV⁰)
-                    reaction[:ΔrV⁰] = last(values0[5])
+                    reaction[:ΔrV⁰] = ThermoFunction(last(values0[5]); ref=[:T => Tref, :P => Pref])
                 end
             end
         end
