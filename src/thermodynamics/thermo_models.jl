@@ -50,15 +50,15 @@ const dict_cp_ft_equation = Dict(
     :S => :(
         a₀ * log(T) +
         a₁ * T +
-        -a₂ / (2 * T^2) +
+        -(a₂ / 2) / T^2 +
         -2 * a₃ / √T +
         (a₄ / 2) * T^2 +
         (a₅ / 3) * T^3 +
         (a₆ / 4) * T^4 +
-        -(a₇ /3) / T^3 +
+        -(a₇ / 3) / T^3 +
         -a₈ / T +
         2 * a₉ * √T +
-        a₁₀ * (log(T))^2 / 2
+        (a₁₀ / 2) * (log(T))^2
     ),
     :H => :(
         a₀ * T +
@@ -68,7 +68,7 @@ const dict_cp_ft_equation = Dict(
         (a₄ / 3) * T^3 +
         (a₅ / 4) * T^4 +
         (a₆ / 5) * T^5 +
-        - (a₇ /2) / T^2 +
+        - (a₇ / 2) / T^2 +
         a₈ * log(T) +
         (2 / 3) * a₉ * T^(3 / 2) +
         a₁₀ * T * log(T) - a₁₀ * T
@@ -84,7 +84,7 @@ const dict_cp_ft_equation = Dict(
         - (a₇ / 6) / T^2 +
         a₈ * log(T) +
         - (4 / 3) * a₉ * T^(3 / 2) +
-        - a₁₀ * T * (log(T))^2 / 2 + a₁₀ * T * log(T) - a₁₀ * T
+        - (a₁₀ / 2) * T * (log(T))^2  + a₁₀ * T * log(T) - a₁₀ * T
     ),
 )
 
@@ -101,7 +101,7 @@ Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coef
 
 # Returns
 
-  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰`, `:V⁰` containing `ThermoFunction` objects.
+  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰` containing `ThermoFunction` objects.
 
 # Equations
 
@@ -130,13 +130,11 @@ julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S
  :ΔfH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
    :S⁰ => 140.0 m² kg s⁻² K⁻¹ mol⁻¹
  :ΔfG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
-   :V⁰ => 7.840000000000001e-5 m³
 
 julia> dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
 Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedCollections.OrderedDict{Symbol, Quantity{Float64, Dimensions{FRInt32}}}} where F} with 5 entries:
   :ΔfH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :S⁰   => -1109.54 + 0.12T + 210.0log(T) + 3.07e6 / (2(T^2)) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
-  :V⁰   => 7.84e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K]
   :ΔfG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :Cp⁰  => 210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 ```
@@ -146,7 +144,7 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    with_units = promote_type(typeof.(last.(params))...) <: Quantity
+    # with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
@@ -160,9 +158,10 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
     ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * (T - Tref) + (dict_values0[:ΔfG⁰] - G(Tref))
 
-    V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
+    # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
+    # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
+    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
 end
 
 """
@@ -179,7 +178,7 @@ Construct thermodynamic `ThermoFunction`s from a generic Cp expression.
 
 # Returns
 
-  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰`, `:V⁰` where `:Cp⁰` is built from `Cpexpr` and the others are computed by integration
+  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰` where `:Cp⁰` is built from `Cpexpr` and the others are computed by integration
     (with shifts to match `values0` at the reference temperature).
 
 # Equations
@@ -206,7 +205,6 @@ julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S
  :ΔfH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
    :S⁰ => 140.0 m² kg s⁻² K⁻¹ mol⁻¹
  :ΔfG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
-   :V⁰ => 7.840000000000001e-5 m³
 
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
@@ -215,7 +213,6 @@ julia> dtf = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 
 Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedCollections.OrderedDict{Symbol, Quantity{Float64, Dimensions{FRInt32}}}} where F} with 5 entries:
   :ΔfH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :S⁰   => -1109.54 + 0.12T + 210.0log(T) + 1.535e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
-  :V⁰   => 7.84e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K]
   :ΔfG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :Cp⁰  => 210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 ```
@@ -225,7 +222,7 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    with_units = promote_type(typeof.(last.(params))...) <: Quantity
+    # with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     symCpexpr = Num(parse_expr_to_symbolic(Cpexpr, @__MODULE__))
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
@@ -241,7 +238,8 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     G = -∫(S, :T)
     ΔfG⁰ = G - G(Tref) + dict_values0[:ΔfG⁰] + (S(Tref) - dict_values0[:S⁰]) * (T - Tref)
 
-    V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
+    # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
+    # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
+    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
 end

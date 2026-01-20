@@ -444,8 +444,7 @@ function complete_thermo_functions(r::Reaction)
         end
         if all(x -> haskey(x, :ΔfG⁰), species_list)
             r.ΔrG⁰ = sum(ν * s.ΔfG⁰ for (s, ν) in r)
-            r.logK⁰ = ThermoFunction(-r.ΔrG⁰.symexpr/(ustrip(Constants.R)*log(10)*r.ΔrG⁰.vars[:T]),
-                r.ΔrG⁰.vars, dimension(1.), r.ΔrG⁰.ref)
+            r.logK⁰ = -r.ΔrG⁰/((Constants.R*log(10))*ThermoFunction(:T; vars=[:T]))
         end
         if all(x -> haskey(x, :V⁰), species_list)
             r.ΔrV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
@@ -488,6 +487,9 @@ function Reaction(
     species_list=nothing,
 )
     reactants, products, equal_sign = parse_equation(equation)
+    if !isnothing(species_list)
+        species_list = collect(values(species_list))
+    end
     reacdict = ordered_dict_with_default(
         (
             find_species(k, species_list, S) => stoich_coef_round(v) for

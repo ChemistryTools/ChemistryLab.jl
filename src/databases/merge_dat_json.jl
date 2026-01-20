@@ -206,7 +206,7 @@ function write_reaction(f, reaction)
 
     write(f, "      \"drsm_heat_capacity_p\": {\n")
     write(f, "        \"values\": [$(reaction["drsm_heat_capacity_p"]["values"][1])],\n")
-    write(f, "        \"units\": [\"$(reaction["drsm_heat_capacity_p"]["values"][1])\"]\n")
+    write(f, "        \"units\": [\"$(reaction["drsm_heat_capacity_p"]["units"][1])\"]\n")
     write(f, "      },\n")
 
     write(f, "      \"drsm_gibbs_energy\": {\n")

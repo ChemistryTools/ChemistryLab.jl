@@ -2,6 +2,7 @@ using Revise
 using ChemistryLab, Unicode
 using DynamicQuantities
 using ModelingToolkit
+using Plots
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -48,23 +49,30 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 
 # Thermofun input
 println("LOADING DATABASES...")
-@time begin
-df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("data/cemdata18-merged")
-df_elements_psi, df_substances_psi, df_reactions_psi, dict_species_psi, dict_reactions_psi = read_thermofun("data/psinagra-12-07-thermofun")
-df_elements_aq17, df_substances_aq17, df_reactions_aq17, dict_species_aq17, dict_reactions_aq17 = read_thermofun("data/aq17-thermofun")
-df_elements_orga, df_substances_orga, df_reactions_orga, dict_species_orga, dict_reactions_orga = read_thermofun("data/slop98-organic-thermofun")
-end
+df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
+dict_species = extract_species(df_substances)
+dict_reactions = extract_reactions(df_reactions, dict_species)
+
+df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database("data/psinagra-12-07-thermofun.json")
+dict_species_psi = extract_species(df_substances_psi)
+dict_reactions_psi = extract_reactions(df_reactions_psi, dict_species_psi)
+
+df_elements_aq17, df_substances_aq17, df_reactions_aq17 = read_thermofun_database("data/aq17-thermofun.json")
+dict_species_aq17 = extract_species(df_substances_aq17)
+dict_reactions_aq17 = extract_reactions(df_reactions_aq17, dict_species_aq17)
+
+df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
+dict_species_orga = extract_species(df_substances_orga)
+dict_reactions_orga = extract_reactions(df_reactions_orga, dict_species_orga)
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
-given_species = filter(row->row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
-secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS"
-                          && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
-                          && row.symbol ∉ split("H2@ O2@"),
-                          df_substances)
-species = unique(vcat(given_species, secondaries), :symbol).species
+given_species = collect(values(extract_species(df_substances, split("C2S Portlandite Jennite H2O@"))))
+secondaries = get_secondaries(dict_species, given_species, [AS_AQUEOUS], [dict_species["H2@"], dict_species["O2@"]])
+species = unique([given_species; secondaries])
+
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 SM = StoichMatrix(species, candidate_primaries)
 pprint(SM)
@@ -72,8 +80,8 @@ list_reactions = reactions(SM)
 pprint(list_reactions)
 
 # Construction of stoich matrix with aqueous species from database
-aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
-species = aqueous_species.species
+aqueous_species = filter(x->last(x).aggregate_state == AS_AQUEOUS, dict_species)
+species = collect(values(aqueous_species))
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 SM = StoichMatrix(species, candidate_primaries)
 pprint(SM)
@@ -83,14 +91,9 @@ pprint(list_reactions)
 # Conversion to cement notation with species from database
 CemSpecies(H₂O)
 CemSpecies(vapour)
-df_Jennite = filter(row->row.symbol == "Jennite", df_substances)
-Jennite = Species(df_Jennite.formula[1]; name=df_Jennite.name[1], symbol=df_Jennite.symbol[1], aggregate_state=eval(Meta.parse(df_Jennite.aggregate_state[1])), class=eval(Meta.parse(df_Jennite.class[1])))
+Jennite = dict_species["Jennite"]
 cemJennite = CemSpecies(Jennite)
 Jennite == cemJennite
-
-# Extraction of properties
-cemJennite.ΔfG⁰ = df_Jennite.ΔfG⁰[1].values*uparse(df_Jennite.ΔfG⁰[1].units)
-cemJennite
 
 # Equation parsing
 equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
@@ -161,7 +164,6 @@ pprint(SM)
 list_reactions = reactions(SM)
 pprint(list_reactions)
 
-
 # Callable
  # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
 coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
@@ -175,31 +177,20 @@ cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], ustrip.(coeffs); ref=[:
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
 
-using Plots
 lT = ((0:1:100) .+ 273.15).*u"K"
 @time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH⁰.(lT)))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
-for row in eachrow(df_reactions)
-    re = row.reaction
+for re in values(dict_reactions)
     for s in keys(re.reactants)
         if !haskey(s, :Cp⁰)
-            println(colored(s), "  ∙  ", row.symbol)
-        end
-    end
-end
-
-for row in eachrow(df_reactions)
-    re = row.reaction
-    for s in keys(re.products)
-        if !haskey(s, :Cp⁰)
-            println(colored(s), "  ∙  ", row.symbol)
+            println(colored(s), "  ∙  ", re.symbol)
         end
     end
 end
 
 # Check consistency of logKr at Tref and logKr_Tref of the database
-for r in df_reactions.reaction
+for r in values(dict_reactions)
     println(colored(r), " → ", r.logKr(), " == ", r.logKr_Tref)
 end
 
@@ -227,7 +218,7 @@ for (s, ν) in r
     println(s, " ΔfG⁰=", s.ΔfG⁰(Tref))
 end
 
-for r in df_reactions.reaction
+for r in values(dict_reactions)
     if true # abs((r.logKr_Tref -r.logKr())/r.logKr_Tref)>0.01
         println(collect(keys(r))[1].symbol)
         println(colored(r))
@@ -242,7 +233,7 @@ for r in df_reactions.reaction
 end
 
 # Construction of a Reaction from a string and a list of species (possibly with thermodynamic properties from a database)
-r = Reaction("NaOH → Na+ + OH-"; species_list = df_substances.species)
+r = Reaction("NaOH → Na+ + OH-"; species_list = dict_species)
 for re in keys(r.reactants)
     display(re)
 end
@@ -263,6 +254,18 @@ for sp in (:H₂O, :H⁺, :OH⁻, :CO₂, :HCO₃⁻, :CO₃²⁻)
 end
 CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(CSM)
 SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(SM)
+
+params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
+values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+@time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
+Cpexpr = dict_cp_ft_equation[:Cp]
+@time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15u"K"])
+
+params = [:a₀ => 210.0, :a₁ => 0.12, :a₂ => -3.07e6, :a₃ => 0.0]
+values0 = [:Cp⁰ => 210.0, :ΔfH⁰ => -2723484.33, :S⁰ => 140, :ΔfG⁰ => -2480808.197, :V⁰ => 7.84]
+@time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15])
+Cpexpr = dict_cp_ft_equation[:Cp]
+@time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15])
 
 # Example from Miron et al. 2023, https://doi.org/10.21105/joss.04624
 p1 = plot(xlabel="Temperature [°C]", ylabel="Cp⁰ [J K⁻¹]", xticks=0:50:250, yticks=-2000:200:2000)

@@ -70,7 +70,6 @@ function ThermoFunction(
     vars=[:T, :P, :t, :x, :y, :z],
     ref=[],
 )
-    # @show symexpr
     varofexpr = Num.(get_variables(symexpr))
     dictallvars = OrderedDict(Symbol(v) => v for v in varofexpr)
     dictparams = OrderedDict(dictallvars[k] => v for (k, v) in params if haskey(dictallvars, k))
@@ -83,7 +82,6 @@ function ThermoFunction(
     sort!(vecvars, by = x -> pos[Symbol(x)])
     dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
-    dictvarref = OrderedDict(dictvars[v]=>get(givenref, v, get(default_ref, v, 0)) for v in keys(dictvars))
     vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
     veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
     if length(veczeros)==length(vecparams)
@@ -111,9 +109,6 @@ function ThermoFunction(
                 exp,
             ], var in vecvars
         ])
-        # @show symexpr
-        # @show substitute(symexpr, nounitfunc)
-        # @show Symbolics.toexpr(substitute(symexpr, nounitfunc))
         common_dim = dimension(eval(substitute_with_units(Symbolics.toexpr(substitute(symexpr, nounitfunc)), union(params, dictref))))
         Quantity(1, common_dim)
     else
@@ -191,6 +186,7 @@ ThermoFunction(
 
 """
     ThermoFunction(x::Number; ref=[]) -> ThermoFunction
+    ThermoFunction(x::Quantity; ref=[]) -> ThermoFunction
 
 Create a constant ThermoFunction that returns the numeric value `x` for its
 single internal variable `:c`. The `ref` keyword is forwarded as reference
@@ -223,7 +219,11 @@ julia> ℓ(Quantity(0))
 ```
 """
 function ThermoFunction(x::Number; ref=[])
-    return ThermoFunction(:(c), [:c => x]; vars=[], ref=ref)
+    return ThermoFunction(Num(x), OrderedDict{Symbol,Num}(), Quantity(1), OrderedDict(ref))
+end
+
+function ThermoFunction(x::Quantity; ref=[])
+    return ThermoFunction(Num(x.value), OrderedDict{Symbol,Num}(), Quantity(1, dimension(x)), OrderedDict(ref))
 end
 
 """

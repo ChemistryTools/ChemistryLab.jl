@@ -120,7 +120,7 @@ function Base.show(::IO, ::MIME"text/plain", SM::StoichMatrix)
     (; A, primaries, species) = SM
     column_labels = try symbol.(species) catch; species end
     row_labels = try symbol.(primaries) catch; primaries end
-    formatters = [(v, i, j) -> iszero(v) ? "" : v]
+    formatters = [(v, i, j) -> iszero(v) ? "" : AnsiTextCell(string(v))]
     pretty_table(
         A;
         column_labels=column_labels,
@@ -146,7 +146,7 @@ Print a stoichiometric matrix with colored formatting.
 
 Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
 """
-function pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector; row_label = :symbol, col_label = :symbol, label = :identity, colored = false)
+function pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector; row_label = :symbol, col_label = :symbol, label = :identity)
     if label != :identity
         row_label = label
         col_label = label
@@ -155,35 +155,21 @@ function pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vec
     row_labels = try eval(col_label).(indep_comp_names) catch; indep_comp_names end
     hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
     hl_n = TextHighlighter((data, i, j) -> (data[i, j] < 0), crayon"bold light_blue")
-    formatters = [(v, i, j) -> iszero(v) ? "" : v]
-    if colored
-        try
-            pretty_table(
-                A;
-                column_labels=column_labels,
-                row_labels=row_labels,
-                formatters=formatters,
-                highlighters=[hl_p, hl_n],
-                style=TextTableStyle(;
-                    row_label=crayon"magenta bold",
-                    first_line_column_label=crayon"cyan bold",
-                    table_border=crayon"green bold",
-                ),
-            )
-        catch
-            pretty_table(
-                A;
-                column_labels=column_labels,
-                row_labels=row_labels,
-                formatters=formatters,
-                style=TextTableStyle(;
-                    row_label=crayon"magenta bold",
-                    first_line_column_label=crayon"cyan bold",
-                    table_border=crayon"green bold",
-                ),
-            )
-        end
-    else
+    formatters = [(v, i, j) -> iszero(v) ? "" : AnsiTextCell(string(v))]
+    try
+        pretty_table(
+            A;
+            column_labels=column_labels,
+            row_labels=row_labels,
+            formatters=formatters,
+            highlighters=[hl_p, hl_n],
+            style=TextTableStyle(;
+                row_label=crayon"magenta bold",
+                first_line_column_label=crayon"cyan bold",
+                table_border=crayon"green bold",
+            ),
+        )
+    catch
         pretty_table(
             A;
             column_labels=column_labels,

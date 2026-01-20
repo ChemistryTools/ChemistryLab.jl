@@ -93,7 +93,6 @@ using CSV
 using DataFrames
 using DynamicQuantities
 using JSON
-using JSON3
 using LinearAlgebra
 using ModelingToolkit
 using Optimization
@@ -102,7 +101,6 @@ using PeriodicTable
 using PrettyTables
 using ProgressMeter
 using SciMLBase
-using Serialization
 using SymbolicNumericIntegration
 using Unicode
 
@@ -166,7 +164,8 @@ export AbstractSpecies,
     components,
     aggregate_state,
     class,
-    properties
+    properties,
+    get_secondaries
 
 export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
@@ -181,9 +180,7 @@ export StoichMatrix,
 
 export extract_primary_species
 
-export read_thermofun_substances,
-    read_thermofun_reactions, read_thermofun_elements, read_thermofun_json, read_thermofun
-
+export read_thermofun_database, extract_species, extract_reactions
 export merge_json
 
 export EquilibriumProblem
