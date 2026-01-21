@@ -72,12 +72,29 @@ df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 given_species = collect(values(extract_species(df_substances, split("C2S Portlandite Jennite H2O@"))))
 secondaries = get_secondaries(dict_species, given_species, [AS_AQUEOUS], [dict_species["H2@"], dict_species["O2@"]])
 species = unique([given_species; secondaries])
-
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
 SM = StoichMatrix(species, candidate_primaries)
 pprint(SM)
 list_reactions = reactions(SM)
 pprint(list_reactions)
+
+# Same calculation with filtered databases
+df_given_species = filter(row -> row.symbol in split("C2S Portlandite Jennite H2O@"), df_substances)
+involved_atoms = union_atoms(parse_formula.(df_given_species.formula))
+df_secondaries = filter(row -> last(only(row.aggregate_state)) == "AS_AQUEOUS"
+                        && all(in.(union_atoms([parse_formula(row.formula)]), Ref(involved_atoms)))
+                        && row.symbol ∉ split("H2@ O2@")
+                        , df_substances)
+df_union = unique(vcat(df_given_species, df_secondaries))
+dict_all_species = extract_species(df_union)
+candidate_primaries = [dict_all_species[s] for s in df_primaries.symbol if s in keys(dict_all_species)]
+SM = StoichMatrix(collect(values(dict_all_species)), candidate_primaries)
+pprint(SM)
+list_reactions = reactions(SM)
+pprint(list_reactions)
+# Filtering reactions with involved species from database
+df_involved_reactions = filter(row -> all(in.([x.symbol for x in row.reactants], Ref(expr.(values(dict_all_species))))), df_reactions)
+dict_involved_reactions = extract_reactions(df_involved_reactions, dict_all_species)
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(x->last(x).aggregate_state == AS_AQUEOUS, dict_species)
