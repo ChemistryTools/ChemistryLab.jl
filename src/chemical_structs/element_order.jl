@@ -107,3 +107,33 @@ julia> print(OXIDE_ORDER)
 ```
 """
 const OXIDE_ORDER = collect(first.(CEMENT_TO_MENDELEEV))
+
+"""
+    CEMDATA_PRIMARIES :: Vector{String}
+
+List of primaries chosen in CEMDATA.
+
+# Examples
+
+```julia
+julia> print(CEMDATA_PRIMARIES)
+["AlO2-", "Ca+2", "Cl-", "CO3-2", "FeO2-", "H2O@", "H+", "K+", "Mg+2", "Na+", "NO3-", "SiO2@", "SO4-2", "Sr+2", "Zz"]
+```
+"""
+const CEMDATA_PRIMARIES = [
+    "AlO2-",
+    "Ca+2",
+    "Cl-",
+    "CO3-2",
+    "FeO2-",
+    "H2O@",
+    "H+",
+    "K+",
+    "Mg+2",
+    "Na+",
+    "NO3-",
+    "SiO2@",
+    "SO4-2",
+    "Sr+2",
+    "Zz",
+]

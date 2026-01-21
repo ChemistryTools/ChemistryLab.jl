@@ -35,15 +35,15 @@ row = eachrow(df_reactions)[4]
 
 filename = "data/cemdata18-merged.json"
 df_elements, df_substances, df_reactions = read_thermofun_database(filename)
-dict_species = extract_species(df_substances)
-dict_reactions = extract_reactions(df_reactions, dict_species)
+dict_species = build_species_from_database(df_substances)
+dict_reactions = build_reactions_from_database(df_reactions, dict_species)
 
 filename = "data/psinagra-12-07-thermofun.json"
 df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database(filename)
-dict_species_psi = extract_species(df_substances_psi; verbose = false)
-dict_reactions_psi = extract_reactions(df_reactions_psi, dict_species_psi)
+dict_species_psi = build_species_from_database(df_substances_psi; verbose = false)
+dict_reactions_psi = build_reactions_from_database(df_reactions_psi, dict_species_psi)
 
 filename = "data/aq17-thermofun.json"
 df_elements_aq, df_substances_aq, df_reactions_aq = read_thermofun_database(filename)
-dict_species_aq = extract_species(df_substances_aq; verbose = false)
-dict_reactions_aq = extract_reactions(df_reactions_aq, dict_species_aq)
+dict_species_aq = build_species_from_database(df_substances_aq; verbose = false)
+dict_reactions_aq = build_reactions_from_database(df_reactions_aq, dict_species_aq)

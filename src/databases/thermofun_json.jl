@@ -909,7 +909,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
     return species
 end
 
-function extract_species(df_substances::AbstractDataFrame, list_symbols = nothing; verbose=false)
+function build_species_from_database(df_substances::AbstractDataFrame, list_symbols = nothing; verbose=false)
     local_df_substances = isnothing(list_symbols) ? df_substances :
         filter(row -> row.symbol ∈ list_symbols, df_substances)
     keylist = String[]
@@ -990,7 +990,7 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
     return reaction
 end
 
-function extract_reactions(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols = nothing; verbose=false)
+function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols = nothing; verbose=false)
     local_df_reactions = isnothing(list_symbols) ? df_reactions :
         filter(row -> row.symbol ∈ list_symbols, df_reactions)
     keylist = String[]
@@ -1030,4 +1030,24 @@ function extract_reactions(df_reactions::AbstractDataFrame, dict_species=Dict(),
         push!(pairs, key => reaction)
     end
     return Dict(pairs)
+end
+
+function get_compatible_species(
+    species_list,
+    df_substances::AbstractDataFrame
+    ;
+    aggregate_states=[AS_AQUEOUS],
+    exclude_species=[],
+    union=false
+)
+    df_given_species = filter(row -> row.symbol ∈ species_list, df_substances)
+    involved_atoms = union_atoms(parse_formula.(df_given_species.formula))
+    df_compat = filter(row -> last(only(row.aggregate_state)) ∈ string.(aggregate_states)
+                        && all(in.(union_atoms([parse_formula(row.formula)]), Ref(involved_atoms)))
+                        && row.symbol ∉ exclude_species , df_substances)
+    if union
+        return unique(vcat(df_given_species, df_compat))
+    else
+        return df_compat
+    end
 end

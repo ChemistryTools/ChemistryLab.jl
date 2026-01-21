@@ -126,7 +126,10 @@ include("equilibrium/states.jl")
 
 export safe_ustrip, safe_uconvert
 
-export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER
+export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
+export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
+
+export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER, CEMDATA_PRIMARIES
 
 export stoich_coef_round,
     phreeqc_to_unicode,
@@ -138,10 +141,6 @@ export stoich_coef_round,
     parse_equation,
     colored_equation,
     format_equation
-
-export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
-
-export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
 
 export AtomGroup,
     Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, stoichtype, pprint
@@ -164,8 +163,7 @@ export AbstractSpecies,
     components,
     aggregate_state,
     class,
-    properties,
-    get_secondaries
+    properties
 
 export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
@@ -180,7 +178,7 @@ export StoichMatrix,
 
 export extract_primary_species
 
-export read_thermofun_database, extract_species, extract_reactions
+export read_thermofun_database, build_species_from_database, build_reactions_from_database, get_compatible_species
 export merge_json
 
 export EquilibriumProblem

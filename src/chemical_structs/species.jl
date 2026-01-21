@@ -1497,14 +1497,3 @@ function find_species(
         return S(s)
     end
 end
-
-function get_secondaries(all_species, atomlist::AbstractVector{<: Symbol}, aggregate_states=[AS_AQUEOUS], excluded_species=[])
-    return filter(x -> x.aggregate_state ∈ aggregate_states
-                     && all(in.(keys(atoms(x)), Ref(atomlist)))
-                     && x ∉ excluded_species,
-                     collect(values(all_species)))
-end
-
-function get_secondaries(all_species, species_list, aggregate_states=[AS_AQUEOUS], excluded_species=[])
-    return get_secondaries(all_species, union_atoms(atoms.(collect(values(species_list)))), aggregate_states, excluded_species)
-end

@@ -134,7 +134,7 @@ apply(f::Function, SM::StoichMatrix,  args...; kwargs...) =
     StoichMatrix(f(SM.A, args...; kwargs...), SM.primaries, SM.species)
 
 """
-    pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
+    pprint(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector)
 
 Print a stoichiometric matrix with colored formatting.
 
@@ -146,7 +146,7 @@ Print a stoichiometric matrix with colored formatting.
 
 Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
 """
-function pprint(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector; row_label = :symbol, col_label = :symbol, label = :identity)
+function pprint(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; row_label = :symbol, col_label = :symbol, label = :identity)
     if label != :identity
         row_label = label
         col_label = label
@@ -408,6 +408,25 @@ function StoichMatrix(
     indep_comp = indep_comp[.!zero_rows]
 
     return StoichMatrix(A, indep_comp, dep_comp)
+end
+
+function StoichMatrix(species::AbstractDict, candidate_primaries=species;
+    involve_all_atoms=true,
+    optimize_primaries=false
+)
+    gather_species(d::AbstractDict{T, S} where {T,S<:AbstractSpecies}) = collect(values(d))
+    gather_species(d::AbstractDict{S, T} where {S<:AbstractSpecies,T}) = collect(keys(d))
+    gather_species(d) = d
+    return StoichMatrix(gather_species(species), gather_species(candidate_primaries);
+     involve_all_atoms=involve_all_atoms, optimize_primaries=optimize_primaries)
+end
+
+function StoichMatrix(species, candidate_primaries=species;
+    involve_all_atoms=true,
+    optimize_primaries=false
+)
+    return StoichMatrix(collect(species), collect(candidate_primaries);
+     involve_all_atoms=involve_all_atoms, optimize_primaries=optimize_primaries)
 end
 
 """

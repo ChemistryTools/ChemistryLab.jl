@@ -50,26 +50,35 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # Thermofun input
 println("LOADING DATABASES...")
 df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
-dict_species = extract_species(df_substances)
-dict_reactions = extract_reactions(df_reactions, dict_species)
+dict_species = build_species_from_database(df_substances)
+dict_reactions = build_reactions_from_database(df_reactions, dict_species)
 
 df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database("data/psinagra-12-07-thermofun.json")
-dict_species_psi = extract_species(df_substances_psi)
-dict_reactions_psi = extract_reactions(df_reactions_psi, dict_species_psi)
+dict_species_psi = build_species_from_database(df_substances_psi)
+dict_reactions_psi = build_reactions_from_database(df_reactions_psi, dict_species_psi)
 
 df_elements_aq17, df_substances_aq17, df_reactions_aq17 = read_thermofun_database("data/aq17-thermofun.json")
-dict_species_aq17 = extract_species(df_substances_aq17)
-dict_reactions_aq17 = extract_reactions(df_reactions_aq17, dict_species_aq17)
+dict_species_aq17 = build_species_from_database(df_substances_aq17)
+dict_reactions_aq17 = build_reactions_from_database(df_reactions_aq17, dict_species_aq17)
 
 df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
-dict_species_orga = extract_species(df_substances_orga)
-dict_reactions_orga = extract_reactions(df_reactions_orga, dict_species_orga)
+dict_species_orga = build_species_from_database(df_substances_orga)
+dict_reactions_orga = build_reactions_from_database(df_reactions_orga, dict_species_orga)
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
-given_species = collect(values(extract_species(df_substances, split("C2S Portlandite Jennite H2O@"))))
+function get_secondaries(all_species, atomlist::AbstractVector{<: Symbol}, aggregate_states=[AS_AQUEOUS], excluded_species=[])
+    return filter(x -> x.aggregate_state ∈ aggregate_states
+                     && all(in.(keys(atoms(x)), Ref(atomlist)))
+                     && x ∉ excluded_species,
+                     collect(values(all_species)))
+end
+function get_secondaries(all_species, species_list, aggregate_states=[AS_AQUEOUS], excluded_species=[])
+    return get_secondaries(all_species, union_atoms(atoms.(collect(values(species_list)))), aggregate_states, excluded_species)
+end
+given_species = collect(values(build_species_from_database(df_substances, split("C2S Portlandite Jennite H2O@"))))
 secondaries = get_secondaries(dict_species, given_species, [AS_AQUEOUS], [dict_species["H2@"], dict_species["O2@"]])
 species = unique([given_species; secondaries])
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
@@ -83,18 +92,27 @@ df_given_species = filter(row -> row.symbol in split("C2S Portlandite Jennite H2
 involved_atoms = union_atoms(parse_formula.(df_given_species.formula))
 df_secondaries = filter(row -> last(only(row.aggregate_state)) == "AS_AQUEOUS"
                         && all(in.(union_atoms([parse_formula(row.formula)]), Ref(involved_atoms)))
-                        && row.symbol ∉ split("H2@ O2@")
-                        , df_substances)
+                        && row.symbol ∉ split("H2@ O2@") , df_substances)
 df_union = unique(vcat(df_given_species, df_secondaries))
-dict_all_species = extract_species(df_union)
-candidate_primaries = [dict_all_species[s] for s in df_primaries.symbol if s in keys(dict_all_species)]
-SM = StoichMatrix(collect(values(dict_all_species)), candidate_primaries)
+# Same as above in one command
+df_union = get_compatible_species(split("C2S Portlandite Jennite H2O@"), df_substances;
+               aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
+dict_all_species = build_species_from_database(df_union)
+candidate_primaries = collect(skipmissing(get.(Ref(dict_all_species), CEMDATA_PRIMARIES, missing)))
+candidate_primaries = get.(Ref(dict_all_species), intersect(keys(dict_all_species), CEMDATA_PRIMARIES), missing)
+candidate_primaries = [dict_all_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_all_species, s)]
+
+SM = StoichMatrix(dict_all_species, candidate_primaries)
 pprint(SM)
 list_reactions = reactions(SM)
 pprint(list_reactions)
 # Filtering reactions with involved species from database
 df_involved_reactions = filter(row -> all(in.([x.symbol for x in row.reactants], Ref(expr.(values(dict_all_species))))), df_reactions)
-dict_involved_reactions = extract_reactions(df_involved_reactions, dict_all_species)
+dict_involved_reactions = build_reactions_from_database(df_involved_reactions, dict_all_species)
+
+
+df_hydrates_clinker = get_compatible_species(split("C3S C2S C3A C4AF Gp H2O@"), df_substances; aggregate_states=[AS_CRYSTAL])
+
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(x->last(x).aggregate_state == AS_AQUEOUS, dict_species)
@@ -312,3 +330,9 @@ lθ = 0:1:200
 plot(xlabel="T [°C]", ylabel="ln(P/P0)")
 plot!(θ -> Rankine(273.15+θ), lθ, label="Rankine")
 plot!(θ -> lnP((273.15+θ)u"K"), lθ, label = "ΔHₗᵥ/Constants.R*(1/T0-1/T)")
+
+using JSON
+json_str = JSON.json(df_substances)           # DataFrame → chaîne JSON
+open("data/test.json", "w") do f        # écriture dans un fichier
+    JSON.print(f, json_str, 4)
+end
