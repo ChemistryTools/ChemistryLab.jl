@@ -6,7 +6,6 @@ Dictionary of predefined thermodynamic function expressions.
 # Contents
 
   - `:Cp`: Heat capacity expression ``C_p(T)=a_0 + a_1 T + a_2 T^{-2} + a_3 T^{-1/2} + a_4 T^2 + a_5 T^3 + a_6 T^4 + a_7 T^{-3} + a_8 T^{-1} + a_9 T^{1/2} + a_{10}\\ln T``
-  - `:CpoverT`: Heat capacity divided by temperature
   - `:H`: Enthalpy expression ``H(T)=\\int C_p(T)\\,\\mathrm{d}T = a_0 T + \\frac{a_1}{2}T^2 - a_2 T^{-1} + 2a_3 T^{1/2} + \\frac{a_4}{3}T^3 + \\frac{a_5}{4}T^4 + \\frac{a_6}{5}T^5 - \\frac{a_7}{2}T^{-2} + a_8\\ln T + \\frac{2}{3}a_9 T^{3/2} + a_{10}T\\ln T - a_{10}T``
   - `:S`: Entropy expression ``S(T)=\\int \\frac{C_p(T)}{T}\\,\\mathrm{d}T = a_0\\ln T + a_1 T - \\frac{a_2}{2}T^{-2} - 2a_3 T^{-1/2} + \\frac{a_4}{2}T^2 + \\frac{a_5}{3}T^3 + \\frac{a_6}{4}T^4 - \\frac{a_7}{3}T^{-3} - a_8 T^{-1} + 2a_9 T^{1/2} + \\frac{a_{10}}{2}(\\ln T)^2``
 
@@ -16,8 +15,8 @@ Dictionary of predefined thermodynamic function expressions.
 julia> dict_cp_ft_equation[:Cp]
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
-julia> dict_cp_ft_equation[:CpoverT]
-:(a₀ / T + a₁ + a₂ / T ^ 3 + a₃ / T ^ (3 / 2) + a₄ * T + a₅ * T ^ 2 + a₆ * T ^ 3 + a₇ / T ^ 4 + a₈ / T ^ 2 + a₉ / √T + (a₁₀ * log(T)) / T)
+julia> dict_cp_ft_equation[:G]
+:((-a₀ * T * log(T) + a₀ * T + -(a₁ / 2) * T ^ 2 + -(a₂ / 2) / T + 4 * a₃ * √T + -(a₄ / 6) * T ^ 3 + -(a₅ / 12) * T ^ 4 + -(a₆ / 20) * T ^ 5 + -(a₇ / 6) / T ^ 2 + a₈ * log(T) + -(4 / 3) * a₉ * T ^ (3 / 2) + -(a₁₀ / 2) * T * log(T) ^ 2 + a₁₀ * T * log(T)) - a₁₀ * T)
 ```
 """
 const dict_cp_ft_equation = Dict(
@@ -131,7 +130,6 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    # with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
@@ -139,14 +137,12 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     ΔfH⁰ = H + (dict_values0[:ΔfH⁰] - H(Tref))
 
     S = ThermoFunction(dict_cp_ft_equation[:S], params; vars=vars, ref=ref)
-    S⁰ = S + (dict_values0[:S⁰] - S(Tref))
+    δS⁰ = dict_values0[:S⁰] - S(Tref)
+    S⁰ = S + δS⁰
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + (dict_values0[:S⁰] - S(Tref)) * Tref)
-
-    # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
-    # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
+    ΔfG⁰ = G - δS⁰ * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + δS⁰ * Tref)
 
     return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
 end
@@ -209,7 +205,6 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
-    # with_units = promote_type(typeof.(last.(params))...) <: Quantity
 
     symCpexpr = Num(parse_expr_to_symbolic(Cpexpr, @__MODULE__))
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
@@ -219,14 +214,12 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
 
     CpoverT = ThermoFunction(sum(terms(symCpexpr) ./ Cp⁰.vars[:T]), params; vars=vars, ref=ref)
     S = ∫(CpoverT, :T)
-    S⁰ = S + (dict_values0[:S⁰] - S(Tref))
+    δS⁰ = dict_values0[:S⁰] - S(Tref)
+    S⁰ = S + δS⁰
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = -∫(S, :T)
-    ΔfG⁰ = G + (S(Tref) - dict_values0[:S⁰]) * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + (dict_values0[:S⁰] - S(Tref)) * Tref)
-
-    # V⁰ = ThermoFunction(:cst => (with_units ? dict_values0[:V⁰] / u"mol" : ustrip(dict_values0[:V⁰])); ref=ref)
-    # return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰)
+    ΔfG⁰ = G - δS⁰ * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + δS⁰ * Tref)
 
     return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
 end

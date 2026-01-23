@@ -1,5 +1,5 @@
 
-# Species
+# [Species](@id sec-species)
 
 `Species` is a composite type (introduced by the keyword `struct`) and is defined by a human-readable name, a chemical symbol/notation, an underlying `Formula` object holding composition, charge, and string representations, a physical state `aggregate_state`, a species `class`, as well as an extensible map of custom properties (molar mass, thermodynamic data, etc.)
 

@@ -68,58 +68,62 @@ using PrettyTables #hide
 
 ## Construct stoichiometric matrix from database
 
-In chemistryLab, it is possible to construct a stoichiometric matrix of species as a function of primary species given a database. Primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
+In chemistryLab, it is possible to construct a stoichiometric matrix of species as a function of primary species given a database. First the database is loaded by
 
 ```julia
 using ChemistryLab
-df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged")
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
-dict_species = Dict(zip(df_substances.symbol, df_substances.species))
-candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
+df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json")
 ```
 
-For a given number of species (eg. Portlandite and water), all ionic species which could appear during chemical reactions have to be identified:
+For a given number of species (eg. Portlandite and water), all ionic species which could appear during chemical reactions have to be identified. Here all species of the database entirely composed of atoms involved in the given species under provided aggregate states and possibly excluding a selection of species are gathered in a `DataFrame` obtained from `get_compatible_species` as
 
 ```julia
-given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances)
-secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
-                          && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
-                          && row.symbol ∉ split("H2@ O2@"),
-                          df_substances)
+df_given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances)
+df_added_species = get_compatible_species(split("Portlandite H2O@"), df_substances;
+               aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"))
 ```
 
-Primary species concerning by the reactions can then be deduced.
+The given and added species can be grouped in a unique `DataFrame` by
 
 ```julia
-species = unique(vcat(given_species, secondaries), :symbol).species
-candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
+df_union = unique(vcat(df_given_species, df_added_species))
+```
+
+Or in one line with the keyword argument `union=true`
+
+```julia
+df_union = get_compatible_species(split("Portlandite H2O@"), df_substances;
+               aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2"), union=true)
+```
+
+A dictionary of `Species` objects can then be built from a `DataFrame` thanks to:
+
+```julia
+dict_species = build_species_from_database(df_union)
+```
+
+!!! warning "Calculation of Molar Mass"
+    The function `build_species_from_database` is rather time costly due to the construction of `ThermoFunction`s so that it can be long on large databases.
+
+Primary species candidates can be found in a database. Those from Cemdata18 can be listed with the following command:
+
+```julia
+candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)]
 ```
 
 Finally, the stoichiometric matrix can be calculated:
 
 ```@setup example1
     using ChemistryLab #hide
-    # using Serialization
-    using PrettyTables
-    # df_substances, df_reactions = deserialize("../../../data/cemdata18.jls")
-    df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged") #hide
-    df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
-
-    given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances) #hide
-    secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
-                            && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
-                            && row.symbol ∉ split("H2@ O2@"),
-                            df_substances)
-
-
-    species = unique(vcat(given_species, secondaries), :symbol).species #hide
-    candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol] #hide
+    df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json") #hide
+    df_union = get_compatible_species(split("Portlandite H2O@"), df_substances;
+                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2"), union=true) #hide
+    dict_species = build_species_from_database(df_union) #hide
+    candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)] #hide
 ```
 
 ```@example example1
-SM = StoichMatrix(species, candidate_primaries)
-
-using PrettyTables #hide
+SM = StoichMatrix(dict_species, candidate_primaries)
 ```
 
 ---
