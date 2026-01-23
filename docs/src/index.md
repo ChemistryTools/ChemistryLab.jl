@@ -2,9 +2,7 @@
 CurrentModule = ChemistryLab
 ```
 
-# ChemistryLab documentation
-
-Documentation for [ChemistryLab](https://github.com/jfbarthelemy/ChemistryLab.jl).
+# ChemistryLab
 
 Welcome to the ChemistryLab documentation. This set of pages guides you through the core features of ChemistryLab — a Julia toolkit for parsing and manipulating chemical formulas, creating species, building stoichiometric matrices and reactions, and importing thermodynamic data (ThermoFun / Cemdata).
 
@@ -12,15 +10,51 @@ Welcome to the ChemistryLab documentation. This set of pages guides you through 
 
 This documentation is intended for scientists, engineers and scientific programmers who want programmatic control over chemical species and simple thermodynamic workflows in Julia. It suits chemists, geochemists, civil-materials researchers (cement chemistry), and anyone who needs precise, scriptable handling of formulas, reactions and databases.
 
-## What you will learn
+## Installation
 
-- How to parse and manipulate chemical formulas (supporting charges, subscripts/superscripts and rational stoichiometry).
-- How to create and inspect `Species` and `CemSpecies` objects and attach thermodynamic or auxiliary properties.
-- How to build canonical stoichiometric matrices and convert them to `Reaction` objects.
-- How to read, merge and write ThermoFun / Cemdata sources and extract species and reactions programmatically.
-- How to combine, simplify and transform reactions using the `Reaction` API.
+To install ChemistryLab.jl, use the Julia package manager:
 
-## Tutorial structure
+- From the Julia REPL, type `]` to enter the Pkg REPL mode and run:
+
+```julia
+pkg> add ChemistryLab
+```
+
+- Or, equivalently, via the `Pkg` API:
+
+```julia
+julia> import Pkg; Pkg.add("ChemistryLab")
+```
+
+## Citation
+
+If you use ChemistryLab in your work, please cite the following:
+
+```
+@software{barthelemy_2026_18216605,
+  author       = {Barthélemy, Jean-François and
+                  Soive, Anthony},
+  title        = {ChemistryLab.jl: Numerical laboratory for
+                   computational chemistry
+                  },
+  month        = jan,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.1.5},
+  doi          = {10.5281/zenodo.18216605},
+  url          = {https://doi.org/10.5281/zenodo.18216605},
+}
+```
+
+## Feature
+
+- Parse and manipulate chemical formulas (supporting charges, subscripts/superscripts and rational stoichiometry).
+- Create and inspect `Species` and `CemSpecies` objects and attach thermodynamic or auxiliary properties.
+- Build canonical stoichiometric matrices and convert them to `Reaction` objects.
+- Read, merge and write ThermoFun / Cemdata sources and extract species and reactions programmatically.
+- Combine, simplify and transform reactions using the `Reaction` API.
+
+## Documentation structure
 
 - `introduction` — this page: goals, audience, and how to run the examples.
 - `quickstart` — minimal examples to get you started quickly.

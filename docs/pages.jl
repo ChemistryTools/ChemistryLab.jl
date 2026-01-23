@@ -1,6 +1,6 @@
 pages = [
     "Home" => "index.md",
-    "Quickstart" => "quickstart.md",
+    "Getting Started" => "quickstart.md",
     "Tutorial" => [
         "man/formula_manipulation.md",
         "man/species.md",
