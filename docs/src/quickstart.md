@@ -16,7 +16,7 @@ where $\Delta_r G^°$ is deduced from the Gibbs energies of formation ($\Delta_f
 
 $\Delta_r G^° = \sum_i \nu_i \Delta_f {G_i}^°$
 
-The first step, therefore, is to construct each of the species present in the reaction. This can be done with the [`Species`](@ref sec-species) function. Its simplest use is as follows:
+The first step, therefore, is to construct each of the species present in the reaction. This can be done with the [`Species`](@ref) function. Its simplest use is as follows:
 
 ```julia
 using ChemistryLab
@@ -26,7 +26,7 @@ ca_ion = Species("Ca2+")
 CO3_ion = Species("CO32-")
 ```
 
-The created object contains a certain amount of information that can be entered *a posteriori* (or during the construction of the [`Species`](@ref sec-species)).
+The created object contains a certain amount of information that can be entered *a posteriori* (or during the construction of the [`Species`](@ref)).
 
 ```@example quickstart
 using ChemistryLab #hide
@@ -41,7 +41,7 @@ CO3_ion
     It can be noted that during the construction of the species, a calculation of the molar mass is systematically performed.
 
 For each species, it is possible to assign thermodynamic properties, such as the Gibbs energy of formation or the heat capacity. This data can be found in databases (e.g. [thermoddem database](https://thermoddem.brgm.fr)). For calcite, the properties are described in the following figure:
-![Figure](./assets/calcite_properties_thermoddem.png)
+![Figure](./assets/co3_properties_thermoddem.png)
 
 To enter data into ChemistrLab, several steps are required. The first involves associating the values ​​of the thermodynamic properties of formation for each species.
 
@@ -109,7 +109,17 @@ dtf
 
 
 
-De façon similaire, nous pouvons renseigner la capacité thermique des espèces. Cette nouvelle propriétés peut être une fonction de la température:
+Similarly, we can provide information on the thermodynamic properties and thermal capacity of species $Ca^{2+}$ and ${CO_3}^{-2}$.
+
+```julia
+th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
+
+th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
+
+```
+
+
+ Cette nouvelle propriétés peut être une fonction de la température:
 
 
 
