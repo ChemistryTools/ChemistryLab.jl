@@ -213,7 +213,7 @@ cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], ustrip.(coeffs); ref=[:
 @show cemJennite.Cp() ; # application by default on Tref
 
 lT = ((0:1:100) .+ 273.15).*u"K"
-@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔfH⁰.(lT)))
+@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔₐH⁰.(lT)))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for re in values(dict_reactions)
@@ -237,20 +237,20 @@ rate(1u"s")
 
 r = dict_reactions["Cal"]
 Tref = 298.15u"K"
-ΔrG⁰(T) = sum(ν*s.ΔfG⁰(T) for (s,ν) in r)
-logK = -ΔrG⁰(Tref)/(Constants.R*Tref)/log(10)
-K(T) = 10^(-ΔrG⁰(T)/(Constants.R*T)/log(10))
-pK(T) = ΔrG⁰(T)/(Constants.R*T)/log(10)
+ΔᵣG⁰(T) = sum(ν*s.ΔₐG⁰(T) for (s,ν) in r)
+logK = -ΔᵣG⁰(Tref)/(Constants.R*Tref)/log(10)
+K(T) = 10^(-ΔᵣG⁰(T)/(Constants.R*T)/log(10))
+pK(T) = ΔᵣG⁰(T)/(Constants.R*T)/log(10)
 r.logKr()
-plot(ustrip.(lT), ustrip.(ΔrG⁰.(lT)))
+plot(ustrip.(lT), ustrip.(ΔᵣG⁰.(lT)))
 for (re,ν) in r.reactants
-    println(re, " ΔfG⁰=", re.ΔfG⁰(Tref))
+    println(re, " ΔₐG⁰=", re.ΔₐG⁰(Tref))
 end
 for (pr,ν) in r.products
-    println(pr, " ΔfG⁰=", pr.ΔfG⁰(Tref))
+    println(pr, " ΔₐG⁰=", pr.ΔₐG⁰(Tref))
 end
 for (s, ν) in r
-    println(s, " ΔfG⁰=", s.ΔfG⁰(Tref))
+    println(s, " ΔₐG⁰=", s.ΔₐG⁰(Tref))
 end
 
 for r in values(dict_reactions)
@@ -260,9 +260,9 @@ for r in values(dict_reactions)
         println("     → logKr given at $(Tref) = ", r.logKr_Tref)
         println("     → logKr calculated at $(Tref) = ", r.logKr())
         try
-            println("     → logKr=-ΔrG⁰(Tref)/(R Tref ln(10)) = ", -r.ΔrG⁰(Tref)/(Constants.R*Tref)/log(10))
+            println("     → logKr=-ΔᵣG⁰(Tref)/(R Tref ln(10)) = ", -r.ΔᵣG⁰(Tref)/(Constants.R*Tref)/log(10))
         catch
-            println("     → logKr=-ΔrG⁰(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
+            println("     → logKr=-ΔᵣG⁰(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
         end
     end
 end
@@ -291,13 +291,13 @@ CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]);
 SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(SM)
 
 params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔₐH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔₐG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
 @time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
 Cpexpr = dict_cp_ft_equation[:Cp]
 @time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15u"K"])
 
 params = [:a₀ => 210.0, :a₁ => 0.12, :a₂ => -3.07e6, :a₃ => 0.0]
-values0 = [:Cp⁰ => 210.0, :ΔfH⁰ => -2723484.33, :S⁰ => 140, :ΔfG⁰ => -2480808.197, :V⁰ => 7.84]
+values0 = [:Cp⁰ => 210.0, :ΔₐH⁰ => -2723484.33, :S⁰ => 140, :ΔₐG⁰ => -2480808.197, :V⁰ => 7.84]
 @time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15])
 Cpexpr = dict_cp_ft_equation[:Cp]
 @time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15])
@@ -323,7 +323,7 @@ plot(p1, p2, layout = (1, 2))
 l = dict_species_aq17["H2O@"]
 v = dict_species_aq17["H2O"]
 T0 = 373.15u"K"
-ΔHₗᵥ = v.ΔfH⁰(T0)-l.ΔfH⁰(T0)
+ΔHₗᵥ = v.ΔₐH⁰(T0)-l.ΔₐH⁰(T0)
 Rankine(T) = 13.7-5120/T
 lnP(T) = ΔHₗᵥ/Constants.R*(1/T0-1/T)
 lθ = 0:1:200

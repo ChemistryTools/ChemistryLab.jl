@@ -199,13 +199,13 @@ Arguments
 Examples
 
 ```jldoctest
-julia> ΔfH⁰ = ThermoFunction(-2.72e6u"J/mol"; ref=[:T => 298.15u"K", :P => 1u"bar"])
+julia> ΔₐH⁰ = ThermoFunction(-2.72e6u"J/mol"; ref=[:T => 298.15u"K", :P => 1u"bar"])
 -2.72e6 ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
-julia> ΔfH⁰()
+julia> ΔₐH⁰()
 -2.72e6
 
-julia> ΔfH⁰(300u"K")
+julia> ΔₐH⁰(300u"K")
 -2.72e6 m² kg s⁻² mol⁻¹
 
 julia> ℓ = ThermoFunction(5.0u"m")
@@ -594,10 +594,10 @@ julia> Cp = ThermoFunction(Cpexpr, [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/m
 julia> ∫Cp = ∫(Cp)
 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 
-julia> ΔfH⁰_Tref = -2.72e6u"J/mol"
+julia> ΔₐH⁰_Tref = -2.72e6u"J/mol"
 -2.72e6 m² kg s⁻² mol⁻¹
 
-julia> ΔfH⁰ = (ΔfH⁰_Tref -∫Cp()) + ∫Cp
+julia> ΔₐH⁰ = (ΔₐH⁰_Tref -∫Cp()) + ∫Cp
 -2.798241935804469e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
 ```
 """

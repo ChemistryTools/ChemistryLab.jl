@@ -28,9 +28,9 @@ function potentials_dilute(species::AbstractVector{<:AbstractSpecies})
         RT = R * T
         _n = max.(n, pp.ϵ)
         # 55.5 only for water solvent
-        ΔfGpoverRT = pp.ΔfG⁰/RT + log(55.5)*[i == idxsolvent ? 0 : 1 for i in eachindex(n)]
+        ΔₐGpoverRT = pp.ΔₐG⁰/RT + log(55.5)*[i == idxsolvent ? 0 : 1 for i in eachindex(n)]
         ntot = sum(_n)
-        return ΔfGpoverRT + log.(_n ./ ntot)
+        return ΔₐGpoverRT + log.(_n ./ ntot)
     end
     return μ
 end
