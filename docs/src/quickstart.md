@@ -48,11 +48,11 @@ To enter data into ChemistrLab, several steps are required. The first involves a
 ```julia
 using DynamicQuantities
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
+th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
+th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
 ```
 
 !!! note "Unity"
@@ -93,11 +93,11 @@ $\Delta_f G^° = \int_{T_{ref}}^T C_p(\tau) d\tau - T * \int_{T_{ref}}^T \frac{C
 
 using ChemistryLab, DynamicQuantities #hide
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
+th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
+th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
 
 cp_coeffs_calcite = [:a => 99.72u"J/K/mol", :b => 26.92e3u"J/mol/K^2", :c => -21.58e-5u"J*K/mol"] #hide
 Cp_expr_calcite = :(a + b * T + c / T^2) #hide

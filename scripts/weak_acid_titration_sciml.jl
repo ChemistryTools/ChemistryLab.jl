@@ -15,7 +15,7 @@ function μ(n, p)
     ntot = sum(n)
     nᵋ = max.(n, pp.ϵ)
     δ = log(55.5)
-    return pp.ΔfG⁰/RT + [i == pp.idxsolvent ? 0 : δ for i in eachindex(n)] + log.(nᵋ ./ ntot)
+    return pp.ΔₐG⁰/RT + [i == pp.idxsolvent ? 0 : δ for i in eachindex(n)] + log.(nᵋ ./ ntot)
 end
 
 function _n0(p)
@@ -44,12 +44,12 @@ A = [
 ]
 
 lsp = [:H₂O, :H⁺, :OH⁻, :AH, :A⁻, :BOH, :B⁺]
-ΔfG⁰ = [-237.18e3, 0.e3, -157.27e3, -396.46e3, -369.31e3, -379.5e3, -261.9e3]
-for (sp, g) in zip(lsp, ΔfG⁰)
+ΔₐG⁰ = [-237.18e3, 0.e3, -157.27e3, -396.46e3, -369.31e3, -379.5e3, -261.9e3]
+for (sp, g) in zip(lsp, ΔₐG⁰)
     symsp = String(sp)
     @eval begin
         $sp = Species($symsp; aggregate_state = AS_AQUEOUS, class = $symsp == "H₂O" ? SC_AQSOLVENT : SC_AQSOLUTE)
-        $sp.ΔfG⁰ = $g
+        $sp.ΔₐG⁰ = $g
     end
 end
 species = eval.(lsp)
@@ -74,13 +74,13 @@ function _ub(p)
 end
 
 # Data acide acétique CH₃COOH et soude NaOH
-Ka = exp(-(A⁻.ΔfG⁰+H⁺.ΔfG⁰-AH.ΔfG⁰)/RT)
+Ka = exp(-(A⁻.ΔₐG⁰+H⁺.ΔₐG⁰-AH.ΔₐG⁰)/RT)
 pKa = -log10(Ka)
-Kb = exp(-(B⁺.ΔfG⁰+OH⁻.ΔfG⁰-BOH.ΔfG⁰)/RT)
+Kb = exp(-(B⁺.ΔₐG⁰+OH⁻.ΔₐG⁰-BOH.ΔₐG⁰)/RT)
 pKb = -log10(Kb)
 
 
-p = [:ΔfG⁰ => getproperty.(dep_comp, :ΔfG⁰),
+p = [:ΔₐG⁰ => getproperty.(dep_comp, :ΔₐG⁰),
      :idxsolvent => findfirst(x->x.class == SC_AQSOLVENT, dep_comp),
      :ϵ => 1.e-16, :ca => 0.1, :Va => 0.1, :cb => 0.1, :Vb => 0.]
 

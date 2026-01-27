@@ -93,7 +93,7 @@ Imagine, for example, that we wanted to construct the $CO_2$ molecule with some 
 
 ```@example CO2
 using DynamicQuantities, ModelingToolkit
-CO₂.ΔfG⁰ = -394.39u"kJ/mol"
+CO₂.ΔₐG⁰ = -394.39u"kJ/mol"
 ```
 
 Heat capacity, on the other hand, is introduced in the following way: 

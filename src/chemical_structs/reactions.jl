@@ -273,7 +273,7 @@ Set a property value for the reaction.
 # Examples
 
 ```jldoctest
-julia> Reaction("H2 + O2 = H2O")[:ΔrH⁰] = -241.8
+julia> Reaction("H2 + O2 = H2O")[:ΔᵣH⁰] = -241.8
 -241.8
 ```
 """
@@ -312,7 +312,7 @@ Set a property value, preventing direct modification of structural fields.
 # Examples
 
 ```julia
-julia> setproperty!(Reaction("H2 + O2 = H2O"), :ΔrH⁰, -241.8)
+julia> setproperty!(Reaction("H2 + O2 = H2O"), :ΔᵣH⁰, -241.8)
 ```
 """
 function Base.setproperty!(r::Reaction, sym::Symbol, value)
@@ -428,26 +428,26 @@ end
     complete_thermo_functions(r::Reaction)
 
 Compute reaction thermodynamic properties from species properties.
-Calculates ΔrCp⁰, ΔrS⁰, ΔrH⁰, ΔrG⁰, and ΔrV⁰ if all species have the required properties.
+Calculates ΔᵣCp⁰, ΔᵣS⁰, ΔᵣH⁰, ΔᵣG⁰, and ΔᵣV⁰ if all species have the required properties.
 """
 function complete_thermo_functions(r::Reaction)
     species_list = keys(r)
     if !isempty(species_list)
         if all(x -> haskey(x, :Cp⁰), species_list)
-            r.ΔrCp⁰ = sum(ν * s.Cp⁰ for (s, ν) in r)
+            r.ΔᵣCp⁰ = sum(ν * s.Cp⁰ for (s, ν) in r)
         end
         if all(x -> haskey(x, :S⁰), species_list)
-            r.ΔrS⁰ = sum(ν * s.S⁰ for (s, ν) in r)
+            r.ΔᵣS⁰ = sum(ν * s.S⁰ for (s, ν) in r)
         end
-        if all(x -> haskey(x, :ΔfH⁰), species_list)
-            r.ΔrH⁰ = sum(ν * s.ΔfH⁰ for (s, ν) in r)
+        if all(x -> haskey(x, :ΔₐH⁰), species_list)
+            r.ΔᵣH⁰ = sum(ν * s.ΔₐH⁰ for (s, ν) in r)
         end
-        if all(x -> haskey(x, :ΔfG⁰), species_list)
-            r.ΔrG⁰ = sum(ν * s.ΔfG⁰ for (s, ν) in r)
-            r.logK⁰ = -r.ΔrG⁰/((Constants.R*log(10))*ThermoFunction(:T; vars=[:T]))
+        if all(x -> haskey(x, :ΔₐG⁰), species_list)
+            r.ΔᵣG⁰ = sum(ν * s.ΔₐG⁰ for (s, ν) in r)
+            r.logK⁰ = -r.ΔᵣG⁰/((Constants.R*log(10))*ThermoFunction(:T; vars=[:T]))
         end
         if all(x -> haskey(x, :V⁰), species_list)
-            r.ΔrV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
+            r.ΔᵣV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
         end
     #     r.charge = sum(ν * charge(s) for (s, ν) in r)
     # else

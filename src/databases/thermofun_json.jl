@@ -266,14 +266,14 @@
 #   - `df_substances`: DataFrame with ThermoFun substance data.
 #   - `with_units`: attach DynamicQuantities units to properties.
 #   - `debug`: enable debug output.
-#   - `all_properties`: if true, compute temperature-dependent functions (Cp⁰, ΔfH⁰, S⁰, ΔfG⁰).
+#   - `all_properties`: if true, compute temperature-dependent functions (Cp⁰, ΔₐH⁰, S⁰, ΔₐG⁰).
 
 # # Returns
 
 #   - Modified DataFrame with added `:species` and `:cemspecies` columns.
 
 # Constructs `Species` objects from formula and properties, builds `ThermoFunction`
-# instances for Cp⁰(T), ΔfH⁰(T), S⁰(T), ΔfG⁰(T) when `all_properties=true`.
+# instances for Cp⁰(T), ΔₐH⁰(T), S⁰(T), ΔₐG⁰(T) when `all_properties=true`.
 # """
 # function complete_species_database!(
 #     df_substances::DataFrame; with_units=true, debug=false, all_properties=false
@@ -329,9 +329,9 @@
 
 #             if !ismissing(coeffa)
 
-#                 ΔfH⁰ = get_value(
+#                 ΔₐH⁰ = get_value(
 #                     row,
-#                     :ΔfH⁰;
+#                     :ΔₐH⁰;
 #                     debug=debug,
 #                     crayon=crayon"red",
 #                     with_units=with_units,
@@ -347,9 +347,9 @@
 #                     default_unit=u"J/(mol*K)",
 #                 )
 
-#                 ΔfG⁰ = get_value(
+#                 ΔₐG⁰ = get_value(
 #                     row,
-#                     :ΔfG⁰;
+#                     :ΔₐG⁰;
 #                     debug=debug,
 #                     crayon=crayon"blue",
 #                     with_units=with_units,
@@ -360,13 +360,13 @@
 #                     row, :V⁰; crayon=crayon"blue", with_units=true, default_unit=u"J/bar"
 #                 )
 
-#                 values0 = [:ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰, :V⁰ => V⁰]
+#                 values0 = [:ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰, :V⁰ => V⁰]
 #                 dict_tf = thermo_functions_cp_ft_equation(coeffa, values0; ref=[:T => Tref, :P => Pref])
 
 #                 s.Cp⁰ = dict_tf[:Cp⁰]
-#                 s.ΔfH⁰ = dict_tf[:ΔfH⁰]
+#                 s.ΔₐH⁰ = dict_tf[:ΔₐH⁰]
 #                 s.S⁰ = dict_tf[:S⁰]
-#                 s.ΔfG⁰ = dict_tf[:ΔfG⁰]
+#                 s.ΔₐG⁰ = dict_tf[:ΔₐG⁰]
 #                 s.V⁰ = dict_tf[:V⁰]
 
 #             end
@@ -492,33 +492,33 @@
 #                 r.logKr = ThermoFunction(logKrexpr, coefflogKr; ref=[:T => Tref, :P => Pref])
 #             end
 
-#             r.ΔrCp⁰_Tref = get_value(
+#             r.ΔᵣCp⁰_Tref = get_value(
 #                 row,
-#                 :ΔrCp⁰;
+#                 :ΔᵣCp⁰;
 #                 debug=debug,
 #                 crayon=crayon"red",
 #                 with_units=with_units,
 #                 default_unit=u"J/(mol*K)",
 #             )
-#             r.ΔrH⁰_Tref = get_value(
+#             r.ΔᵣH⁰_Tref = get_value(
 #                 row,
-#                 :ΔrH⁰;
+#                 :ΔᵣH⁰;
 #                 debug=debug,
 #                 crayon=crayon"red",
 #                 with_units=with_units,
 #                 default_unit=u"J/mol",
 #             )
-#             r.ΔrG⁰_Tref = get_value(
+#             r.ΔᵣG⁰_Tref = get_value(
 #                 row,
-#                 :ΔrG⁰;
+#                 :ΔᵣG⁰;
 #                 debug=debug,
 #                 crayon=crayon"red",
 #                 with_units=with_units,
 #                 default_unit=u"J/mol",
 #             )
-#             r.ΔrS⁰_Tref = get_value(
+#             r.ΔᵣS⁰_Tref = get_value(
 #                 row,
-#                 :ΔrS⁰;
+#                 :ΔᵣS⁰;
 #                 debug=debug,
 #                 crayon=crayon"red",
 #                 with_units=with_units,
@@ -526,13 +526,13 @@
 #             )
 #             ΔV⁰ = get_value(
 #                 row,
-#                 :ΔrV⁰;
+#                 :ΔᵣV⁰;
 #                 debug=debug,
 #                 crayon=crayon"red",
 #                 with_units=true,
 #                 default_unit=u"J/bar",
 #             )
-#             r.ΔrV⁰_Tref = with_units ? ΔV⁰ / u"mol" : ustrip(ΔV⁰)
+#             r.ΔᵣV⁰_Tref = with_units ? ΔV⁰ / u"mol" : ustrip(ΔV⁰)
 #             r.logKr_Tref = get_value(
 #                 row,
 #                 :logKr;
@@ -616,8 +616,8 @@
 # #             [parse_TPMethod(m) for m in get(s, "TPMethods", [])] for s in substances
 # #         ],
 # #         Cp⁰=[extract_field_with_units(s, "sm_heat_capacity_p") for s in substances],
-# #         ΔfG⁰=[extract_field_with_units(s, "sm_gibbs_energy") for s in substances],
-# #         ΔfH⁰=[extract_field_with_units(s, "sm_enthalpy") for s in substances],
+# #         ΔₐG⁰=[extract_field_with_units(s, "sm_gibbs_energy") for s in substances],
+# #         ΔₐH⁰=[extract_field_with_units(s, "sm_enthalpy") for s in substances],
 # #         S⁰=[extract_field_with_units(s, "sm_entropy_abs") for s in substances],
 # #         V⁰=[extract_field_with_units(s, "sm_volume") for s in substances],
 # #         datasources=[get(s, "datasources", missing) for s in substances],
@@ -669,11 +669,11 @@
 # #         Pst=[get(r, "Pst", missing) for r in reactions],
 # #         TPMethods=[[parse_TPMethod(m) for m in get(r, "TPMethods", [])] for r in reactions],
 # #         logKr=[extract_field_with_units(r, "logKr") for r in reactions],
-# #         ΔrCp⁰=[extract_field_with_units(r, "drsm_heat_capacity_p") for r in reactions],
-# #         ΔrG⁰=[extract_field_with_units(r, "drsm_gibbs_energy") for r in reactions],
-# #         ΔrH⁰=[extract_field_with_units(r, "drsm_enthalpy") for r in reactions],
-# #         ΔrS⁰=[extract_field_with_units(r, "drsm_entropy") for r in reactions],
-# #         ΔrV⁰=[extract_field_with_units(r, "drsm_volume") for r in reactions],
+# #         ΔᵣCp⁰=[extract_field_with_units(r, "drsm_heat_capacity_p") for r in reactions],
+# #         ΔᵣG⁰=[extract_field_with_units(r, "drsm_gibbs_energy") for r in reactions],
+# #         ΔᵣH⁰=[extract_field_with_units(r, "drsm_enthalpy") for r in reactions],
+# #         ΔᵣS⁰=[extract_field_with_units(r, "drsm_entropy") for r in reactions],
+# #         ΔᵣV⁰=[extract_field_with_units(r, "drsm_volume") for r in reactions],
 # #         datasources=[get(r, "datasources", missing) for r in reactions],
 # #     )
 # #     # if add_reactions
@@ -868,9 +868,9 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
     species.Pref = Pref
     values0 = [
         :Cp⁰ => extract_value(row, :sm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔfH⁰ => extract_value(row, :sm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔₐH⁰ => extract_value(row, :sm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
         :S⁰ => extract_value(row, :sm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔfG⁰ => extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔₐG⁰ => extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
         :V⁰ => extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar"),
     ]
     TPMethods = row.TPMethods
@@ -951,11 +951,11 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
     reaction.Tref = Tref
     reaction.Pref = Pref
     values0 = [
-        :ΔrCp⁰ => extract_value(row, :drsm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔrH⁰ => extract_value(row, :drsm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
-        :ΔrS⁰ => extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔrG⁰ => extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
-        :ΔrV⁰ => extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar"),
+        :ΔᵣCp⁰ => extract_value(row, :drsm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"),
+        :ΔᵣH⁰ => extract_value(row, :drsm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔᵣS⁰ => extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
+        :ΔᵣG⁰ => extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔᵣV⁰ => extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar"),
         :logKr => extract_value(row, :logKr; verbose=verbose, default_unit=u"1"),
     ]
     TPMethods = row.TPMethods
@@ -974,9 +974,9 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
                 logKrexpr = :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T)
                 reaction.logKr = ThermoFunction(logKrexpr, params; ref=[:T => Tref, :P => Pref])
             elseif method_type == "dr_volume_constant"
-                ΔrV⁰ = last(values0[5])
-                if !ismissing(ΔrV⁰)
-                    reaction[:ΔrV⁰] = ThermoFunction(last(values0[5]); ref=[:T => Tref, :P => Pref])
+                ΔᵣV⁰ = last(values0[5])
+                if !ismissing(ΔᵣV⁰)
+                    reaction[:ΔᵣV⁰] = ThermoFunction(last(values0[5]); ref=[:T => Tref, :P => Pref])
                 end
             end
         end

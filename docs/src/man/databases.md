@@ -41,7 +41,7 @@ df_substances = read_thermofun_substances("data/cemdata18-merged.json"; with_uni
 ## Species properties construction during database parsing
 Species properties can be constructed while reading the database with `all_properties=true` as an argument. These properties are values ​​or functions that generally depend on temperature. This is the default option. However, the construction process can be time-consuming. Therefore, it's wise to call this type of function sparingly.
 
-Currently, species properties are: molar mass (`molar_mass`), a reference temperature `Tref`, heat capacity `Cp` (see [here](./species.md) to express `Cp` as a function of the temperature), enthalpy change of formation `ΔfH`, entropy of formation `S`, Gibbs energy of formation `ΔfG`, and molar volume `V⁰`. Values and functions are described in [Cemdata18 paper](https://www.empa.ch/web/s308/thermodynamic-data).
+Currently, species properties are: molar mass (`molar_mass`), a reference temperature `Tref`, heat capacity `Cp` (see [here](./species.md) to express `Cp` as a function of the temperature), enthalpy change of formation `ΔₐH`, entropy of formation `S`, Gibbs energy of formation `ΔₐG`, and molar volume `V⁰`. Values and functions are described in [Cemdata18 paper](https://www.empa.ch/web/s308/thermodynamic-data).
 
 ```julia
 df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun("../../../data/cemdata18-merged"; with_units=true, all_properties=true)

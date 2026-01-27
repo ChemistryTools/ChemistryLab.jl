@@ -82,12 +82,12 @@ Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coef
 # Arguments
 
   - `params`: Coefficient parameters for the Cp polynomial (usually a tuple/array of `a₀..a₁₀`).
-  - `values0`: A collection (pairs) of reference values (e.g. `:ΔfH⁰`, `:ΔfG⁰`, `:S⁰`, `:V⁰`).
+  - `values0`: A collection (pairs) of reference values (e.g. `:ΔₐH⁰`, `:ΔₐG⁰`, `:S⁰`, `:V⁰`).
   - `ref`: Optional reference dictionary specifying reference `:T` and `:P` (for example `[:T => 298.15u"K"]`).
 
 # Returns
 
-  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰` containing `ThermoFunction` objects.
+  - `Dict` with keys `:Cp⁰`, `:ΔₐH⁰`, `:S⁰`, `:ΔₐG⁰` containing `ThermoFunction` objects.
 
 # Equations
 
@@ -98,7 +98,7 @@ Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coef
   - Entropy (S) obtained by integrating Cp/T:
       ``S(T)=\\int \\frac{C_p(T)}{T}\\,\\mathrm{d}T = a_0\\ln T + a_1 T - \\frac{a_2}{2}T^{-2} - 2a_3 T^{-1/2} + \\frac{a_4}{2}T^2 + \\frac{a_5}{3}T^3 + \\frac{a_6}{4}T^4 - \\frac{a_7}{3}T^{-3} - a_8 T^{-1} + 2a_9 T^{1/2} + \\frac{a_{10}}{2}(\\ln T)^2``
 
-# The returned formation properties (`ΔfH⁰`, `ΔfG⁰`, `S⁰`) are shifted so they match the provided `values0` at the reference temperature.
+# The returned formation properties (`ΔₐH⁰`, `ΔₐG⁰`, `S⁰`) are shifted so they match the provided `values0` at the reference temperature.
 
 Examples
 
@@ -110,18 +110,18 @@ julia> params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -
  :a₂ => -3.07e6 m² kg s⁻² K mol⁻¹
  :a₃ => 0.0 m² kg s⁻² K⁻¹ᐟ² mol⁻¹
 
-julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔₐH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔₐG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
 5-element Vector{Pair{Symbol, Quantity{Float64, Dimensions{FRInt32}}}}:
   :Cp⁰ => 210.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔfH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
+ :ΔₐH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
    :S⁰ => 140.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔfG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
+ :ΔₐG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
 
 julia> dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
 Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedCollections.OrderedDict{Symbol, Quantity{Float64, Dimensions{FRInt32}}}} where F} with 5 entries:
-  :ΔfH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
+  :ΔₐH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :S⁰   => -1109.54 + 0.12T + 210.0log(T) + 3.07e6 / (2(T^2)) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
-  :ΔfG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
+  :ΔₐG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :Cp⁰  => 210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 ```
 """
@@ -134,7 +134,7 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
     H = ThermoFunction(dict_cp_ft_equation[:H], params; vars=vars, ref=ref)
-    ΔfH⁰ = H + (dict_values0[:ΔfH⁰] - H(Tref))
+    ΔₐH⁰ = H + (dict_values0[:ΔₐH⁰] - H(Tref))
 
     S = ThermoFunction(dict_cp_ft_equation[:S], params; vars=vars, ref=ref)
     δS⁰ = dict_values0[:S⁰] - S(Tref)
@@ -142,9 +142,9 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔfG⁰ = G - δS⁰ * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + δS⁰ * Tref)
+    ΔₐG⁰ = G - δS⁰ * T + ((dict_values0[:ΔₐG⁰] - G(Tref)) + δS⁰ * Tref)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
+    return Dict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end
 
 """
@@ -156,12 +156,12 @@ Construct thermodynamic `ThermoFunction`s from a generic Cp expression.
 
   - `Cpexpr`: An expression (or string) representing the heat capacity functional form in `T`.
   - `params`: Coefficient parameters matching symbols in `Cpexpr`.
-  - `values0`: Reference values (pairs) such as `:ΔfH⁰`, `:ΔfG⁰`, `:S⁰`, `:V⁰`.
+  - `values0`: Reference values (pairs) such as `:ΔₐH⁰`, `:ΔₐG⁰`, `:S⁰`, `:V⁰`.
   - `ref`: Optional reference dictionary specifying `:T` and `:P`.
 
 # Returns
 
-  - `Dict` with keys `:Cp⁰`, `:ΔfH⁰`, `:S⁰`, `:ΔfG⁰` where `:Cp⁰` is built from `Cpexpr` and the others are computed by integration
+  - `Dict` with keys `:Cp⁰`, `:ΔₐH⁰`, `:S⁰`, `:ΔₐG⁰` where `:Cp⁰` is built from `Cpexpr` and the others are computed by integration
     (with shifts to match `values0` at the reference temperature).
 
 # Equations
@@ -182,21 +182,21 @@ julia> params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -
  :a₂ => -3.07e6 m² kg s⁻² K mol⁻¹
  :a₃ => 0.0 m² kg s⁻² K⁻¹ᐟ² mol⁻¹
 
-julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔₐH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔₐG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
 5-element Vector{Pair{Symbol, Quantity{Float64, Dimensions{FRInt32}}}}:
   :Cp⁰ => 210.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔfH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
+ :ΔₐH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
    :S⁰ => 140.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔfG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
+ :ΔₐG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
 
 julia> Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / √T + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * √T + a₁₀ * log(T))
 
 julia> dtf = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15u"K"])
 Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedCollections.OrderedDict{Symbol, Quantity{Float64, Dimensions{FRInt32}}}} where F} with 5 entries:
-  :ΔfH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
+  :ΔₐH⁰ => -2.80173e6 + 210.0T + 3.07e6 / T + 0.06(T^2) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :S⁰   => -1109.54 + 0.12T + 210.0log(T) + 1.535e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
-  :ΔfG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
+  :ΔₐG⁰ => -2.51731e6 + 1319.54T + 1.535e6 / T - 0.06(T^2) - 210.0T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K]
   :Cp⁰  => 210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 ```
 """
@@ -210,7 +210,7 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
 
     H = ∫(Cp⁰, :T)
-    ΔfH⁰ = H + (dict_values0[:ΔfH⁰] - H(Tref))
+    ΔₐH⁰ = H + (dict_values0[:ΔₐH⁰] - H(Tref))
 
     CpoverT = ThermoFunction(sum(terms(symCpexpr) ./ Cp⁰.vars[:T]), params; vars=vars, ref=ref)
     S = ∫(CpoverT, :T)
@@ -219,7 +219,7 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = -∫(S, :T)
-    ΔfG⁰ = G - δS⁰ * T + ((dict_values0[:ΔfG⁰] - G(Tref)) + δS⁰ * Tref)
+    ΔₐG⁰ = G - δS⁰ * T + ((dict_values0[:ΔₐG⁰] - G(Tref)) + δS⁰ * Tref)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔfH⁰ => ΔfH⁰, :S⁰ => S⁰, :ΔfG⁰ => ΔfG⁰)
+    return Dict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end
