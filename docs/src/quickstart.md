@@ -48,11 +48,11 @@ To enter data into ChemistrLab, several steps are required. The first involves a
 ```julia
 using DynamicQuantities
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
+th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
+th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
 ```
 
 !!! note "Unity"
@@ -78,35 +78,50 @@ dtf = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop
 
     Because this expression is implemented in ChemistryLab, another choice could therefore have been the following:
     ```julia
-    dtf = thermo_functions_cp_ft_equation(cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"])
+    dtf_calcite = thermo_functions_cp_ft_equation(cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"])
     ```
 
 Calling the `thermo_functions` (here `thermo_functions_generic_cp_ft`) allows the calculation of the expressions for the different thermodynamic properties as a function of temperature, according to the following expressions:
 
-$\Delta_f H^° = \int_{T_{ref}}^T C_p(\tau) d\tau + \Delta_f {H^°}_{T_{ref}}$
+$\Delta_a {H^°}_T = \int_{T_{ref}}^T C_p(\tau) d\tau + \Delta_f {H^°}_{T_{ref}}$
 
 $S^° = \int_{T_{ref}}^T \frac{C_p(\tau)}{\tau} d\tau + {S^°}_{T_{ref}}$
 
-$\Delta_f G^° = \int_{T_{ref}}^T C_p(\tau) d\tau - T * \int_{T_{ref}}^T \frac{C_p(\tau)}{\tau} d\tau - (T - T_{ref}){S^°}_{T_{ref}} + \Delta_f G^°_{T_{ref}}$
+$\Delta_a {G^°}_T = \int_{T_{ref}}^T C_p(\tau) d\tau - T * \int_{T_{ref}}^T \frac{C_p(\tau)}{\tau} d\tau - (T - T_{ref}){S^°}_{T_{ref}} + \Delta_f G^°_{T_{ref}}$
+
+where $\Delta_a {H^°}_T$ and $\Delta_a {G^°}_T$ are the apparent enthalpy and free energy (Gibbs) at T.
+
+The expressions for the thermodynamic properties of calcite as a function of temperature appear as follows:
 
 ```@example example1
 
 using ChemistryLab, DynamicQuantities #hide
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
+th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
+th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
 
 cp_coeffs_calcite = [:a => 99.72u"J/K/mol", :b => 26.92e3u"J/mol/K^2", :c => -21.58e-5u"J*K/mol"] #hide
 Cp_expr_calcite = :(a + b * T + c / T^2) #hide
 
-dtf = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"]) #hide
+dtf_calcite = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"]) #hide
 
-dtf
+dtf_calcite
 ```
 
+```@example example1
+using Plots
+
+lT = ((0:1:100) .+ 273.15).*u"K"
+p1 = plot(xlabel="Temperature [°C]", ylabel="ΔfH⁰ [J mol⁻¹]", title="Enthalpy of calcite as a function of temperature")
+plot!(p1, ustrip.(lT), ustrip.(dtf_calcite[:ΔfH⁰].(lT)))
+
+savefig("pcoplot.png"); nothing # hide
+```
+
+![pcoa plot](pcoplot.png)
 
 
 Similarly, we can provide information on the thermodynamic properties and thermal capacity of species $Ca^{2+}$ and ${CO_3}^{-2}$.
@@ -119,8 +134,20 @@ th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰
 ```
 
 
- Cette nouvelle propriétés peut être une fonction de la température:
+These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers equation. This equation is not yet implemented in ChemistryLab (see note below).
 
+One solution is to define a generic function that expresses that *Cp* is constant.
+
+```@example example1
+
+cp_coeffs_ca = [:a => th_prop_0_ca[1]]
+Cp_expr_ca = :(a)
+
+
+```
+
+!!! warning "Implementation of Helgeson-Kirkham-Flowers equation"
+    Although the Helgeson-Kirkham-Flowers equation is not implemented, the expressions for enthalpies and free energies are temperature-dependent due to the integration performed on Cp. Furthermore, within the temperature and pressure ranges currently tested in ChemistryLab, assuming a constant temperature for Cp has little impact on the solubility product of a reaction.
 
 
 <!-- 
