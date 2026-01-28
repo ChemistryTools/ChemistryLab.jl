@@ -131,20 +131,25 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
 
+    STref = dict_values0[:S⁰]
+    HTref = dict_values0[:ΔₐH⁰]
+    GTref = dict_values0[:ΔₐG⁰]
+
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
     H = ThermoFunction(dict_cp_ft_equation[:H], params; vars=vars, ref=ref)
-    ΔₐH⁰ = H + (dict_values0[:ΔₐH⁰] - H(Tref))
+    ΔₐH⁰ = H + (HTref - H(Tref))
 
     S = ThermoFunction(dict_cp_ft_equation[:S], params; vars=vars, ref=ref)
-    δS⁰ = dict_values0[:S⁰] - S(Tref)
+    δS⁰ = STref - S(Tref)
     S⁰ = S + δS⁰
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
     G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔₐG⁰ = G - δS⁰ * T + ((dict_values0[:ΔₐG⁰] - G(Tref)) + δS⁰ * Tref)
+    ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(Tref) + Tref*δS⁰)
+    # ΔₐG⁰ = (H - T*S⁰) + (GTref - H(Tref) + Tref*STref)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
+    return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end
 
 """
@@ -206,20 +211,22 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     dict_ref = Dict(ref)
     Tref = dict_ref[:T]
 
+    STref = dict_values0[:S⁰]
+    HTref = dict_values0[:ΔₐH⁰]
+    GTref = dict_values0[:ΔₐG⁰]
+
     symCpexpr = Num(parse_expr_to_symbolic(Cpexpr, @__MODULE__))
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
 
     H = ∫(Cp⁰, :T)
-    ΔₐH⁰ = H + (dict_values0[:ΔₐH⁰] - H(Tref))
+    ΔₐH⁰ = H + (HTref - H(Tref))
 
     CpoverT = ThermoFunction(sum(terms(symCpexpr) ./ Cp⁰.vars[:T]), params; vars=vars, ref=ref)
     S = ∫(CpoverT, :T)
-    δS⁰ = dict_values0[:S⁰] - S(Tref)
-    S⁰ = S + δS⁰
+    S⁰ = S + (STref - S(Tref))
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
-    G = -∫(S, :T)
-    ΔₐG⁰ = G - δS⁰ * T + ((dict_values0[:ΔₐG⁰] - G(Tref)) + δS⁰ * Tref)
+    ΔₐG⁰ = (H - T*S⁰) + (GTref - H(Tref) + Tref*STref)
 
-    return Dict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
+    return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end

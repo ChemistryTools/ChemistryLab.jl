@@ -615,7 +615,10 @@ true
 ```
 """
 function check_mendeleev(f::Formula)
-    nonatoms = filter(x -> x ∉ keys(elements.bysymbol) && x != :Zz, keys(composition(f)))
+    # nonatoms = filter(x -> x ∉ keys(elements.bysymbol) && x != :Zz, keys(composition(f)))
+    keys_comp = collect(keys(composition(f)))
+    mask = .!in.(keys_comp, Ref(keys(elements.bysymbol))) .&& (keys_comp .!= :Zz)
+    nonatoms = keys_comp[mask]
     # isempty(nonatoms) ? true : error("Invalid atoms $(join(nonatoms," ")) in $f")
     return isempty(nonatoms)
 end

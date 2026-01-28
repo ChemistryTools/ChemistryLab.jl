@@ -10,7 +10,7 @@
     dep_components::Vector{S} = String[]
     function EquilibriumProblem(A, μ, u0; p=SciMLBase.NullParameters(),
                                 lb=zero(u0),
-                                ub=maximum(abs.(A))/minimum(abs.(filter(x -> !iszero(x), A)))*sum(u0)*one.(u0),
+                                ub=maximum(abs.(A))/minimum(abs.(A[.!iszero.(A)]))*sum(u0)*one.(u0),
                                 indep_components=fill("", length(b)),
                                 dep_components=fill("", length(u0)),
                                 )

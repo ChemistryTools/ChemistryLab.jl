@@ -910,8 +910,10 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
 end
 
 function build_species_from_database(df_substances::AbstractDataFrame, list_symbols = nothing; verbose=false)
+    # local_df_substances = isnothing(list_symbols) ? df_substances :
+    #     filter(row -> row.symbol ∈ list_symbols, df_substances)
     local_df_substances = isnothing(list_symbols) ? df_substances :
-        filter(row -> row.symbol ∈ list_symbols, df_substances)
+        @view df_substances[df_substances.symbol .∈ Ref(list_symbols), :]
     keylist = String[]
     pairs = Pair{String, Species}[]
     print_title(
@@ -991,8 +993,10 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
 end
 
 function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols = nothing; verbose=false)
+    # local_df_reactions = isnothing(list_symbols) ? df_reactions :
+    #     filter(row -> row.symbol ∈ list_symbols, df_reactions)
     local_df_reactions = isnothing(list_symbols) ? df_reactions :
-        filter(row -> row.symbol ∈ list_symbols, df_reactions)
+        @view df_reactions[df_reactions.symbol .∈ Ref(list_symbols), :]
     keylist = String[]
     pairs = Pair{String, Reaction}[]
     print_title(
@@ -1040,11 +1044,16 @@ function get_compatible_species(
     exclude_species=[],
     union=false
 )
-    df_given_species = filter(row -> row.symbol ∈ species_list, df_substances)
+    # df_given_species = filter(row -> row.symbol ∈ species_list, df_substances)
+    df_given_species = @view df_substances[df_substances.symbol .∈ Ref(species_list), :]
     involved_atoms = union_atoms(parse_formula.(df_given_species.formula))
-    df_compat = filter(row -> last(only(row.aggregate_state)) ∈ string.(aggregate_states)
-                        && all(in.(union_atoms([parse_formula(row.formula)]), Ref(involved_atoms)))
-                        && row.symbol ∉ exclude_species , df_substances)
+    # df_compat = filter(row -> last(only(row.aggregate_state)) ∈ string.(aggregate_states)
+    #                     && all(in.(union_atoms([parse_formula(row.formula)]), Ref(involved_atoms)))
+    #                     && row.symbol ∉ exclude_species , df_substances)
+    mask1 = last.(only.(df_substances.aggregate_state)) .∈ Ref(string.(aggregate_states))
+    mask2 = issubset.(keys.(parse_formula.(df_substances.formula)), Ref(involved_atoms))
+    mask3 = .!(df_substances.symbol .∈ Ref(exclude_species))
+    df_compat = @view df_substances[mask1 .&& mask2 .&& mask3, :]
     if union
         return unique(vcat(df_given_species, df_compat))
     else

@@ -17,3 +17,9 @@ candidate_primaries = [dict_hydrates[s] for s in CEMDATA_PRIMARIES if haskey(dic
 
 dict_species = build_species_from_database(df_substances)
 dict_reactions = build_reactions_from_database(df_reactions, dict_species)
+
+# for (k,s) in dict_species
+#     println(s)
+#     row = row = only(filter(row -> row.symbol == k, df_substances))
+#     ChemistryLab.complete_species_with_thermo_model!(s, row)
+# end

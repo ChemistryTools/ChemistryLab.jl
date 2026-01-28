@@ -77,15 +77,20 @@ function ThermoFunction(
     default_ref = with_units ? OrderedDict(:T => 298.15u"K", :P => 1u"bar", :t => 0u"s") :
                     OrderedDict(:T => 298.15, :P => 100000., :t => 0.)
     givenref = OrderedDict(ref)
-    vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
+    # vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
+    maskvecvars = Symbol.(varofexpr) .∈ Ref(vars)
+    vecvars = varofexpr[maskvecvars]
+    vecparams = varofexpr[.!maskvecvars]
     pos = Dict(v => i for (i, v) in enumerate(vars))
     sort!(vecvars, by = x -> pos[Symbol(x)])
     dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
-    vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
-    veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
+    # vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
+    # veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
+    veczeros = vecparams[.!(vecparams .∈ Ref(keys(dictparams))) .|| iszero.(get.(Ref(dictparams), vecparams, 0))]
     if length(veczeros)==length(vecparams)
-        veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
+        # veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
+        veczeros = isempty(params) ? Num[] : vecparams[.!isequal.(vecparams, Ref(dictallvars[first(params[1])]))]
     end
     symexpr = substitute(symexpr, [k => 0 for k in veczeros])
     unit = if with_units

@@ -357,7 +357,8 @@ function StoichMatrix(
     end
 
     cols_candidates = [findfirst(y -> y == x, newspecies) for x in candidate_primaries]
-    filter!(x -> !isnothing(x), cols_candidates)
+    # filter!(x -> !isnothing(x), cols_candidates)
+    cols_candidates = cols_candidates[.!isnothing.(cols_candidates)]
     M_subset = M[:, cols_candidates]
 
     r = Int(safe_rank(M_subset))
@@ -669,7 +670,8 @@ function reactions(SM::StoichMatrix)
         return [Reaction(OrderedDict(zip(pSM.species, V)); symbol=symbol(pSM.species[j])) for (j, V) in enumerate(eachcol(pSM.N))]
     else
         lr = unique!([Reaction(merge(+, OrderedDict(SM.species[j]=>1), OrderedDict(zip(SM.primaries, -V))); symbol=symbol(SM.species[j])) for (j, V) in enumerate(eachcol(SM.A))])
-        return filter(x->!isempty(x), lr)
+        # return filter(x->!isempty(x), lr)
+        return lr[.!isempty.(lr)]
     end
 end
 

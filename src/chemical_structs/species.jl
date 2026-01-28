@@ -458,7 +458,7 @@ function Species(;
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -499,7 +499,7 @@ function Species(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -540,7 +540,7 @@ function Species(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -574,7 +574,7 @@ function Species(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -607,7 +607,7 @@ function Base.convert(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -631,7 +631,7 @@ function Species{T}(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -654,7 +654,7 @@ function Species(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -896,7 +896,7 @@ function CemSpecies(;
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -930,7 +930,7 @@ function CemSpecies(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -971,7 +971,7 @@ function CemSpecies(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1005,7 +1005,7 @@ function CemSpecies(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1061,7 +1061,7 @@ function CemSpecies(
             symbol=symbol,
             aggregate_state=aggregate_state,
             class=class,
-            properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+            properties=properties,
         )
     else
         SM = StoichMatrix([s], oxides_as_species; pprint=false)
@@ -1139,7 +1139,7 @@ function Base.convert(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1163,7 +1163,7 @@ function Base.convert(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1187,7 +1187,7 @@ function CemSpecies{S}(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1211,7 +1211,7 @@ function CemSpecies{S,T}(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1234,7 +1234,7 @@ function CemSpecies(
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
-        properties=OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+        properties=properties,
     )
 end
 
@@ -1443,19 +1443,25 @@ function find_species(
         return S(s)
     else
         for crit in (symbol, phreeqc, unicode, expr ∘ mainformula, name)
-            fil = filter(
-                x ->
-                    !isnothing(x) &&
-                    !ismissing(x) &&
-                    (
-                        s == crit(x) ||
-                        phreeqc_to_unicode(s) == crit(x) ||
-                        unicode_to_phreeqc(s) == crit(x)
-                    ) &&
-                    (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
-                    (class == SC_UNDEF || class == x.class),
-                species_list,
-            )
+            # fil = filter(
+            #     x ->
+            #         !isnothing(x) &&
+            #         !ismissing(x) &&
+            #         (
+            #             s == crit(x) ||
+            #             phreeqc_to_unicode(s) == crit(x) ||
+            #             unicode_to_phreeqc(s) == crit(x)
+            #         ) &&
+            #         (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
+            #         (class == SC_UNDEF || class == x.class),
+            #     species_list,
+            # )
+            crit_vals = crit.(species_list)
+            fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
+                            ((s .== crit_vals) .|| (phreeqc_to_unicode(s) .== crit_vals) .||
+                                (unicode_to_phreeqc(s) .== crit_vals)) .&&
+                            (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x->x.aggregate_state).(species_list)) .&&
+                            (class .== SC_UNDEF) .|| (class .== (x->x.class).(species_list))]
             if length(fil) > 1
                 println(crayon"red bold"("Several species correspond to $s:"))
                 for x in fil
@@ -1471,15 +1477,20 @@ function find_species(
                 return fil[1]
             end
         end
-        fil = filter(
-            x ->
-                !isnothing(x) &&
-                !ismissing(x) &&
-                composition(mainformula(x)) == parse_formula(s) &&
-                (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
-                (class == SC_UNDEF || class == x.class),
-            species_list,
-        )
+        # fil = filter(
+        #     x ->
+        #         !isnothing(x) &&
+        #         !ismissing(x) &&
+        #         composition(mainformula(x)) == parse_formula(s) &&
+        #         (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
+        #         (class == SC_UNDEF || class == x.class),
+        #     species_list,
+        # )
+        comp_vals = composition.(mainformula.(species_list))
+        fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
+                        (comp_vals .== Ref(parse_formula(s))) .&&
+                        (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x->x.aggregate_state).(species_list)) .&&
+                        (class .== SC_UNDEF) .|| (class .== (x->x.class).(species_list))]
         if length(fil) > 1
             println(crayon"red bold"("Several species correspond to $s:"))
             for x in fil
