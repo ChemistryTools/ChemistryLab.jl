@@ -132,8 +132,8 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     Tref = dict_ref[:T]
 
     STref = dict_values0[:S⁰]
-    HTref = dict_values0[:ΔₐH⁰]
-    GTref = dict_values0[:ΔₐG⁰]
+    HTref = get(dict_values0, :ΔfH⁰, get(dict_values0, :ΔₐH⁰, get(dict_values0, :ΔaH⁰, missing)))
+    GTref = get(dict_values0, :ΔfG⁰, get(dict_values0, :ΔₐG⁰, get(dict_values0, :ΔaG⁰, missing)))
 
     Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
 
@@ -212,8 +212,8 @@ function thermo_functions_generic_cp_ft(Cpexpr, params, values0 ; ref=[])
     Tref = dict_ref[:T]
 
     STref = dict_values0[:S⁰]
-    HTref = dict_values0[:ΔₐH⁰]
-    GTref = dict_values0[:ΔₐG⁰]
+    HTref = get(dict_values0, :ΔfH⁰, get(dict_values0, :ΔₐH⁰, get(dict_values0, :ΔaH⁰, missing)))
+    GTref = get(dict_values0, :ΔfG⁰, get(dict_values0, :ΔₐG⁰, get(dict_values0, :ΔaG⁰, missing)))
 
     symCpexpr = Num(parse_expr_to_symbolic(Cpexpr, @__MODULE__))
     Cp⁰ = ThermoFunction(symCpexpr, params; vars=vars, ref=ref)
