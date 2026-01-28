@@ -16,47 +16,57 @@ where $\Delta_r G^°$ is deduced from the Gibbs energies of formation ($\Delta_f
 
 $\Delta_r G^° = \sum_i \nu_i \Delta_f {G_i}^°$
 
+### First step: species declaration
+
 The first step, therefore, is to construct each of the species present in the reaction. This can be done with the [`Species`](@ref) function. Its simplest use is as follows:
 
 ```julia
 using ChemistryLab
 
 calcite = Species("CaCO3")
-ca_ion = Species("Ca2+")
-CO3_ion = Species("CO32-")
+Ca²⁺ = Species("Ca2+")
+CO₃²⁻ = Species("CO32-")
 ```
 
 The created object contains a certain amount of information that can be entered *a posteriori* (or during the construction of the [`Species`](@ref)).
 
-```@example quickstart
+```@example example1
 using ChemistryLab #hide
 
 calcite = Species("CaCO3") #hide
-ca_ion = Species("Ca2+") #hide
-CO3_ion = Species("CO32-") #hide
-CO3_ion
+Ca²⁺ = Species("Ca2+") #hide
+CO₃²⁻ = Species("CO32-") #hide
+CO₃²⁻
 ```
 
 !!! note "Calculation of Molar Mass"
     It can be noted that during the construction of the species, a calculation of the molar mass is systematically performed.
 
-For each species, it is possible to assign thermodynamic properties, such as the Gibbs energy of formation or the heat capacity. This data can be found in databases (e.g. [thermoddem database](https://thermoddem.brgm.fr)). For calcite, the properties are described in the following figure:
-![Figure](./assets/co3_properties_thermoddem.png)
+### Second step: calculation of the thermodynamic properties of each species
 
-To enter data into ChemistrLab, several steps are required. The first involves associating the values ​​of the thermodynamic properties of formation for each species.
+For each species, it is possible to assign thermodynamic properties, such as the Gibbs energy of formation or the heat capacity. This data can be found in databases (e.g. [thermoddem database](https://thermoddem.brgm.fr)). For calcite, the properties are described in the following figure:
+![Figure](./assets/calcite_properties_thermoddem.png)
+
+To enter data into ChemistrLab, several steps are required.
+
+#### Thermodynamic properties of formation
+
+The first involves associating the values ​​of the thermodynamic properties of formation for each species.
 
 ```julia
 using DynamicQuantities
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"]
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
+th_prop_0_Ca²⁺ = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
+th_prop_0_CO₃²⁻ = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
 ```
 
 !!! note "Unity"
     ChemistryLab uses the **DynamicQuantities** library to specify the units for each parameter or property to ensure the consistency of the expressions.
+
+#### Heat capacity, enthalpy and free energy as a function of temperature
 
 The second objective is to describe the evolution of heat capacity as a function of temperature for each species. For calcite, this can be done as follows:
 
@@ -64,7 +74,7 @@ The second objective is to describe the evolution of heat capacity as a function
 cp_coeffs_calcite = [:a => 99.72u"J/K/mol", :b => 26.92e3u"J/mol/K^2", :c => -21.58e-5u"J*K/mol"]
 Cp_expr_calcite = :(a + b * T + c / T^2)
 
-dtf = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"])
+calcite.properties = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"])
 ```
 
 !!! tip "Expression of Cp as a function of temperature"
@@ -97,26 +107,29 @@ The expressions for the thermodynamic properties of calcite as a function of tem
 
 using ChemistryLab, DynamicQuantities #hide
 
-th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔfH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔfG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
+th_prop_0_calcite = [:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/(mol*K)", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934u"J/bar"] #hide
 
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
+th_prop_0_Ca²⁺ = [:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"] #hide
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
+th_prop_0_CO₃²⁻ = [:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"] #hide
 
 cp_coeffs_calcite = [:a => 99.72u"J/K/mol", :b => 26.92e3u"J/mol/K^2", :c => -21.58e-5u"J*K/mol"] #hide
 Cp_expr_calcite = :(a + b * T + c / T^2) #hide
 
 dtf_calcite = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"]) #hide
 
-dtf_calcite
+calcite.Cp⁰ = dtf_calcite[:Cp⁰]
+calcite.ΔₐH⁰ = dtf_calcite[:ΔₐH⁰]
+calcite.S⁰ = dtf_calcite[:S⁰]
+calcite.ΔₐG⁰ = dtf_calcite[:ΔₐG⁰]
 ```
 
 ```@example example1
 using Plots
 
 lT = ((0:1:100) .+ 273.15).*u"K"
-p1 = plot(xlabel="Temperature [°C]", ylabel="ΔfH⁰ [J mol⁻¹]", title="Enthalpy of calcite as a function of temperature")
-plot!(p1, ustrip.(lT), ustrip.(dtf_calcite[:ΔfH⁰].(lT)))
+p1 = plot(xlabel="Temperature [°C]", ylabel="ΔₐH⁰ [J mol⁻¹]", title="Enthalpy of calcite as a function of temperature")
+plot!(p1, ustrip.(lT), ustrip.(calcite.properties[:ΔₐH⁰].(lT)))
 
 savefig("pcoplot.png"); nothing # hide
 ```
@@ -124,30 +137,31 @@ savefig("pcoplot.png"); nothing # hide
 ![pcoa plot](pcoplot.png)
 
 
-Similarly, we can provide information on the thermodynamic properties and thermal capacity of species $Ca^{2+}$ and ${CO_3}^{-2}$.
+Similarly, we can provide information on the thermal capacity of species $Ca^{2+}$ and ${CO_3}^{-2}$, as proposed in the thermoddem database:
 
-```julia
-th_prop_0_ca = [:Cp⁰ => -26.38u"J/K/mol", :ΔfH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/(mol*K)", :ΔfG⁰ => -552806u"J/mol", :V⁰ => -18.154u"J/bar"]
+![Figure](./assets/ca_properties_thermoddem.png)
 
-th_prop_0_co3 = [:Cp⁰ => -276.88u"J/K/mol", :ΔfH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/(mol*K)", :ΔfG⁰ => -527900u"J/mol", :V⁰ => -5.275u"J/bar"]
-
-```
+![Figure](./assets/co3_properties_thermoddem.png)
 
 
-These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers equation. This equation is not yet implemented in ChemistryLab (see note below).
+These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers equation. This equation is not yet implemented in ChemistryLab (see note below). We therefore take the values ​​at 25°C given in Thermoddem, that is -26.38 and -276.88, respectively.
 
-One solution is to define a generic function that expresses that *Cp* is constant.
 
 ```@example example1
+#Ca2+
+cp_coeffs_Ca²⁺ = [:a₀ => -26.38u"J/K/mol"]
+properties(Ca²⁺) = thermo_functions_cp_ft_equation(cp_coeffs_Ca²⁺, th_prop_0_Ca²⁺; ref=[:T => 298.15u"K"])
 
-cp_coeffs_ca = [:a => th_prop_0_ca[1]]
-Cp_expr_ca = :(a)
-
-
+#CO32-
+cp_coeffs_CO₃²⁻ = [:a₀ => -276.88u"J/K/mol"]
+properties(CO₃²⁻) = thermo_functions_cp_ft_equation(cp_coeffs_CO₃²⁻, th_prop_0_CO₃²⁻; ref=[:T => 298.15u"K"])
 ```
 
 !!! warning "Implementation of Helgeson-Kirkham-Flowers equation"
     Although the Helgeson-Kirkham-Flowers equation is not implemented, the expressions for enthalpies and free energies are temperature-dependent due to the integration performed on Cp. Furthermore, within the temperature and pressure ranges currently tested in ChemistryLab, assuming a constant temperature for Cp has little impact on the solubility product of a reaction.
+
+### Third step: writing the reaction
+
 
 
 <!-- 
