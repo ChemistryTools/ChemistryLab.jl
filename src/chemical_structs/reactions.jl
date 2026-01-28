@@ -805,30 +805,30 @@ function Reaction{U,T}(s::S) where {U<:AbstractSpecies,T<:Number,S<:AbstractSpec
     Reaction(OrderedDict(s => 1))
 end
 
-# """
-#     Reaction(r::R; symbol, equal_sign, properties, side) where {R<:Reaction} -> Reaction
+"""
+    Reaction(r::R; symbol, equal_sign, properties, side) where {R<:Reaction} -> Reaction
 
-# Copy constructor for Reaction with optional field overrides.
+Copy constructor for Reaction with optional field overrides.
 
-# # Arguments
+# Arguments
 
-#   - `r`: source Reaction.
-#   - `equal_sign`: override equality operator (default: keep original).
-#   - `properties`: override properties (default: keep original).
-#   - `side`: reorganization criterion (default: :none).
-# """
-# function Reaction(
-#     r::R; symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none
-# ) where {R<:Reaction}
-#     Reaction(
-#         reactants(r),
-#         products(r);
-#         symbol=symbol,
-#         equal_sign=equal_sign,
-#         side=side,
-#         properties=properties,
-#     )
-# end
+  - `r`: source Reaction.
+  - `equal_sign`: override equality operator (default: keep original).
+  - `properties`: override properties (default: keep original).
+  - `side`: reorganization criterion (default: :none).
+"""
+function Reaction(
+    r::R; symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none
+) where {R<:Reaction}
+    Reaction(
+        reactants(r),
+        products(r);
+        symbol=symbol,
+        equal_sign=equal_sign,
+        side=side,
+        properties=properties,
+    )
+end
 
 """
     simplify_reaction(r::Reaction) -> Reaction
