@@ -199,7 +199,7 @@ function atoms_charge(s::AbstractSpecies)
     if iszero(z)
         return atoms(s)
     else
-        ac = deepcopy(atoms(s))
+        ac = copy(atoms(s))
         ac[:Zz] = z
         return ac
     end
@@ -329,6 +329,19 @@ struct Species{T<:Number} <: AbstractSpecies
     aggregate_state::AggregateState
     class::Class
     properties::OrderedDict{Symbol,PropertyType}
+    # function Species{T}(
+    #     name,
+    #     symbol,
+    #     formula,
+    #     aggregate_state,
+    #     class,
+    #     properties,
+    # ) where {T}
+    #     s = new{T}(name, symbol, formula, aggregate_state, class, properties)
+    #     @info "Call implicit constructor of Species!"
+    #     println(s)
+    #     return s
+    # end
 end
 
 """
@@ -579,21 +592,11 @@ function Species(
 end
 
 """
-    Base.convert(::Type{Species{T}}, s::Species; kwargs...) where {T} -> Species{T}
+    Species{T}(s::Species; kwargs...) where {T} -> Species{T}
 
-Convert a Species to a different stoichiometric coefficient type.
-
-# Arguments
-
-  - `s`: source Species.
-  - `name`: override name (default: keep original).
-  - `symbol`: override symbol (default: keep original).
-  - `aggregate_state`: override state (default: keep original).
-  - `class`: override class (default: keep original).
-  - `properties`: override properties (default: keep original).
+Construct a Species with a specific coefficient type from another Species.
 """
-function Base.convert(
-    ::Type{Species{T}},
+function Species{T}(
     s::Species;
     name=name(s),
     symbol=symbol(s),
@@ -611,29 +614,23 @@ function Base.convert(
     )
 end
 
-"""
-    Species{T}(s::Species; kwargs...) where {T} -> Species{T}
-
-Construct a Species with a specific coefficient type from another Species.
-"""
 function Species{T}(
-    s::Species;
-    name=name(s),
-    symbol=symbol(s),
-    aggregate_state=aggregate_state(s),
-    class=class(s),
-    properties=properties(s),
+    s::Species{T}; kwargs...
 ) where {T}
-    return convert(
-        Species{T},
-        s;
-        name=name,
-        symbol=symbol,
-        aggregate_state=aggregate_state,
-        class=class,
-        properties=properties,
+    if isempty(kwargs)
+        return s
+    end
+    return Species(
+        convert(T, formula(s));
+        name=name(s),
+        symbol=symbol(s),
+        aggregate_state=aggregate_state(s),
+        class=class(s),
+        properties=properties(s),
+        kwargs...
     )
 end
+
 
 """
     Species(s::Species; kwargs...) -> Species
@@ -641,20 +638,19 @@ end
 Copy constructor for Species with optional field overrides.
 """
 function Species(
-    s::Species;
-    name=name(s),
-    symbol=symbol(s),
-    aggregate_state=aggregate_state(s),
-    class=class(s),
-    properties=properties(s),
+    s::Species; kwargs...
 )
+    if isempty(kwargs)
+        return s
+    end
     return Species(
         formula(s);
-        name=name,
-        symbol=symbol,
-        aggregate_state=aggregate_state,
-        class=class,
-        properties=properties,
+        name=name(s),
+        symbol=symbol(s),
+        aggregate_state=aggregate_state(s),
+        class=class(s),
+        properties=properties(s),
+        kwargs...
     )
 end
 
@@ -771,6 +767,18 @@ struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
     aggregate_state::AggregateState
     class::Class
     properties::OrderedDict{Symbol,PropertyType}
+    # function CemSpecies{T,S}(
+    #     name,
+    #     symbol,
+    #     formula,
+    #     cemformula,
+    #     aggregate_state,
+    #     class,
+    #     properties,
+    # ) where {T,S}
+    #     @info "Call implicit constructor of CemSpecies!"
+    #     return new{T,S}(name, symbol, formula, cemformula, aggregate_state, class, properties)
+    # end
 end
 
 """
@@ -832,7 +840,7 @@ function oxides_charge(s::CemSpecies)
     if iszero(z)
         return oxides(s)
     else
-        ac = deepcopy(oxides(s))
+        ac = copy(oxides(s))
         ac[:Zz] = z
         return ac
     end
@@ -1119,37 +1127,60 @@ function Species(
     )
 end
 
-"""
-    Base.convert(::Type{<:Species}, s::CemSpecies; kwargs...) -> Species
+# """
+#     Base.convert(::Type{<:Species}, s::CemSpecies; kwargs...) -> Species
 
-Convert a CemSpecies to Species type.
-"""
-function Base.convert(
-    ::Type{<:Species},
-    s::CemSpecies;
-    name=name(s),
-    symbol=symbol(s),
-    aggregate_state=aggregate_state(s),
-    class=class(s),
-    properties=properties(s),
-)
-    Species(
-        s;
-        name=name,
-        symbol=symbol,
-        aggregate_state=aggregate_state,
-        class=class,
-        properties=properties,
-    )
-end
+# Convert a CemSpecies to Species type.
+# """
+# function Base.convert(
+#     ::Type{<:Species},
+#     s::CemSpecies;
+#     name=name(s),
+#     symbol=symbol(s),
+#     aggregate_state=aggregate_state(s),
+#     class=class(s),
+#     properties=properties(s),
+# )
+#     Species(
+#         s;
+#         name=name,
+#         symbol=symbol,
+#         aggregate_state=aggregate_state,
+#         class=class,
+#         properties=properties,
+#     )
+# end
+
+# """
+#     Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
+
+# Convert a CemSpecies to a different stoichiometric coefficient type.
+# """
+# function Base.convert(
+#     ::Type{CemSpecies{S}},
+#     s::CemSpecies;
+#     name=name(s),
+#     symbol=symbol(s),
+#     aggregate_state=aggregate_state(s),
+#     class=class(s),
+#     properties=properties(s),
+# ) where {S}
+#     return CemSpecies(
+#         convert(S, cemformula(s));
+#         name=name,
+#         symbol=symbol,
+#         aggregate_state=aggregate_state,
+#         class=class,
+#         properties=properties,
+#     )
+# end
 
 """
-    Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
+    CemSpecies{S}(s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
 
-Convert a CemSpecies to a different stoichiometric coefficient type.
+Construct a CemSpecies with a specific coefficient type from another CemSpecies.
 """
-function Base.convert(
-    ::Type{CemSpecies{S}},
+function CemSpecies{S}(
     s::CemSpecies;
     name=name(s),
     symbol=symbol(s),
@@ -1167,27 +1198,20 @@ function Base.convert(
     )
 end
 
-"""
-    CemSpecies{S}(s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
-
-Construct a CemSpecies with a specific coefficient type from another CemSpecies.
-"""
 function CemSpecies{S}(
-    s::CemSpecies;
-    name=name(s),
-    symbol=symbol(s),
-    aggregate_state=aggregate_state(s),
-    class=class(s),
-    properties=properties(s),
+    s::CemSpecies{S}; kwargs...
 ) where {S}
-    return convert(
-        CemSpecies{S},
-        s;
-        name=name,
-        symbol=symbol,
-        aggregate_state=aggregate_state,
-        class=class,
-        properties=properties,
+    if isempty(kwargs)
+        return s
+    end
+    return CemSpecies(
+        convert(S, cemformula(s));
+        name=name(s),
+        symbol=symbol(s),
+        aggregate_state=aggregate_state(s),
+        class=class(s),
+        properties=properties(s),
+        kwargs...
     )
 end
 
@@ -1204,14 +1228,30 @@ function CemSpecies{S,T}(
     class=class(s),
     properties=properties(s),
 ) where {S,T}
-    return convert(
-        CemSpecies{S},
-        s;
+    return CemSpecies(
+        convert(S, cemformula(s));
         name=name,
         symbol=symbol,
         aggregate_state=aggregate_state,
         class=class,
         properties=properties,
+    )
+end
+
+function CemSpecies{S,T}(
+    s::CemSpecies{S,T}; kwargs...
+) where {S,T}
+    if isempty(kwargs)
+        return s
+    end
+    return CemSpecies(
+        convert(S, cemformula(s));
+        name=name(s),
+        symbol=symbol(s),
+        aggregate_state=aggregate_state(s),
+        class=class(s),
+        properties=properties(s),
+        kwargs...
     )
 end
 
@@ -1221,20 +1261,19 @@ end
 Copy constructor for CemSpecies with optional field overrides.
 """
 function CemSpecies(
-    s::CemSpecies;
-    name=name(s),
-    symbol=symbol(s),
-    aggregate_state=aggregate_state(s),
-    class=class(s),
-    properties=properties(s),
+    s::CemSpecies; kwargs...
 )
+    if isempty(kwargs)
+        return s
+    end
     return CemSpecies(
         cemformula(s);
-        name=name,
-        symbol=symbol,
-        aggregate_state=aggregate_state,
-        class=class,
-        properties=properties,
+        name=name(s),
+        symbol=symbol(s),
+        aggregate_state=aggregate_state(s),
+        class=class(s),
+        properties=properties(s),
+        kwargs...
     )
 end
 

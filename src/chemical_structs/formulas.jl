@@ -556,6 +556,10 @@ function Base.convert(T::Type{<:Number}, f::Formula)
     )
 end
 
+function Base.convert(::Type{T}, f::Formula{T}) where {T}
+    return f
+end
+
 """
     apply(func::Function, f::Formula, args...; kwargs...) -> Formula
 

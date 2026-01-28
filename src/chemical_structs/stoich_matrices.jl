@@ -322,7 +322,7 @@ function StoichMatrix(
     else
         union_atoms(vec_components.(newspecies), item_order(newspecies))
     end
-    candidate_primaries = deepcopy(candidate_primaries)
+    candidate_primaries = copy(candidate_primaries)
 
     SpType(::Vector) = Species
     SpType(::Vector{<:CemSpecies}) = CemSpecies

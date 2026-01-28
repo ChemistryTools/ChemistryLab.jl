@@ -75,7 +75,7 @@ const dict_cp_ft_equation = Dict(
 )
 
 """
-    thermo_functions_cp_ft_equation(params, values0; ref=[])
+    thermo_functions_cp_ft_equation(params, values0; ref=[], dict_expr=dict_cp_ft_equation)
 
 Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coefficients.
 
@@ -84,6 +84,7 @@ Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coef
   - `params`: Coefficient parameters for the Cp polynomial (usually a tuple/array of `a₀..a₁₀`).
   - `values0`: A collection (pairs) of reference values (e.g. `:ΔₐH⁰`, `:ΔₐG⁰`, `:S⁰`, `:V⁰`).
   - `ref`: Optional reference dictionary specifying reference `:T` and `:P` (for example `[:T => 298.15u"K"]`).
+  - `dict_expr`: Optional dictionary of expressions (default: `dict_cp_ft_equation``).
 
 # Returns
 
@@ -110,12 +111,12 @@ julia> params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -
  :a₂ => -3.07e6 m² kg s⁻² K mol⁻¹
  :a₃ => 0.0 m² kg s⁻² K⁻¹ᐟ² mol⁻¹
 
-julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔₐH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔₐG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
+julia> values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔfH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔfG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
 5-element Vector{Pair{Symbol, Quantity{Float64, Dimensions{FRInt32}}}}:
   :Cp⁰ => 210.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔₐH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
+ :ΔfH⁰ => -2.72348433e6 m² kg s⁻² mol⁻¹
    :S⁰ => 140.0 m² kg s⁻² K⁻¹ mol⁻¹
- :ΔₐG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
+ :ΔfG⁰ => -2.480808197e6 m² kg s⁻² mol⁻¹
 
 julia> dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
 Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedCollections.OrderedDict{Symbol, Quantity{Float64, Dimensions{FRInt32}}}} where F} with 5 entries:
@@ -125,7 +126,7 @@ Dict{Symbol, ThermoFunction{Quantity{Int64, Dimensions{FRInt32}}, F, OrderedColl
   :Cp⁰  => 210.0 + 0.12T + -3.07e6 / (T^2) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K]
 ```
 """
-function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
+function thermo_functions_cp_ft_equation(params, values0 ; ref=[], dict_expr=dict_cp_ft_equation)
     vars = [:T, :P]
     dict_values0 = Dict(values0)
     dict_ref = Dict(ref)
@@ -135,19 +136,22 @@ function thermo_functions_cp_ft_equation(params, values0 ; ref=[])
     HTref = get(dict_values0, :ΔfH⁰, get(dict_values0, :ΔₐH⁰, get(dict_values0, :ΔaH⁰, missing)))
     GTref = get(dict_values0, :ΔfG⁰, get(dict_values0, :ΔₐG⁰, get(dict_values0, :ΔaG⁰, missing)))
 
-    Cp⁰ = ThermoFunction(dict_cp_ft_equation[:Cp], params; vars=vars, ref=ref)
+    Cp⁰ = ThermoFunction(dict_expr[:Cp], params; vars=vars, ref=ref)
 
-    H = ThermoFunction(dict_cp_ft_equation[:H], params; vars=vars, ref=ref)
+    H = ThermoFunction(dict_expr[:H], params; vars=vars, ref=ref)
     ΔₐH⁰ = H + (HTref - H(Tref))
 
-    S = ThermoFunction(dict_cp_ft_equation[:S], params; vars=vars, ref=ref)
+    S = ThermoFunction(dict_expr[:S], params; vars=vars, ref=ref)
     δS⁰ = STref - S(Tref)
     S⁰ = S + δS⁰
 
     T = ThermoFunction(:T; vars=vars, ref=ref)
-    G = ThermoFunction(dict_cp_ft_equation[:G], params; vars=vars, ref=ref)
-    ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(Tref) + Tref*δS⁰)
-    # ΔₐG⁰ = (H - T*S⁰) + (GTref - H(Tref) + Tref*STref)
+    if haskey(dict_expr, :G)
+        G = ThermoFunction(dict_expr[:G], params; vars=vars, ref=ref)
+        ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(Tref) + Tref*δS⁰)
+    else
+        ΔₐG⁰ = (H - T*S⁰) + (GTref - H(Tref) + Tref*STref)
+    end
 
     return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end

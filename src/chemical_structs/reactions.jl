@@ -416,12 +416,7 @@ end
 Remove all entries with zero values from a dictionary.
 """
 function remove_zeros(d::AbstractDict)
-    for (k, v) in d
-        if iszero(v)
-            delete!(d, k)
-        end
-    end
-    return d
+    return typeof(d)(k => v for (k, v) in d if !iszero(v))
 end
 
 """
@@ -818,15 +813,19 @@ Copy constructor for Reaction with optional field overrides.
   - `side`: reorganization criterion (default: :none).
 """
 function Reaction(
-    r::R; symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none
+    r::R; kwargs...
 ) where {R<:Reaction}
-    Reaction(
+    if isempty(kwargs)
+        return r
+    end
+    return Reaction(
         reactants(r),
         products(r);
-        symbol=symbol,
-        equal_sign=equal_sign,
-        side=side,
-        properties=properties,
+        symbol=r.symbol,
+        equal_sign=r.equal_sign,
+        side=:none,
+        properties=r.properties,
+        kwargs...
     )
 end
 
@@ -846,8 +845,8 @@ julia> simplify_reaction(Reaction("2H2 + O2 + H2O = 3H2O"))
 ```
 """
 function simplify_reaction(r::Reaction)
-    reac = remove_zeros(deepcopy(reactants(r)))
-    prod = remove_zeros(deepcopy(products(r)))
+    reac = remove_zeros(copy(reactants(r)))
+    prod = remove_zeros(copy(products(r)))
     common_species = intersect(keys(reac), keys(prod))
     for species in common_species
         coef = prod[species] - reac[species]
