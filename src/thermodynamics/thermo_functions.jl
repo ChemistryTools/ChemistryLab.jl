@@ -77,7 +77,6 @@ function ThermoFunction(
     default_ref = with_units ? OrderedDict(:T => 298.15u"K", :P => 1u"bar", :t => 0u"s") :
                     OrderedDict(:T => 298.15, :P => 100000., :t => 0.)
     givenref = OrderedDict(ref)
-    # vecvars = filter(x -> Symbol(x) ∈ vars, varofexpr)
     maskvecvars = Symbol.(varofexpr) .∈ Ref(vars)
     vecvars = varofexpr[maskvecvars]
     vecparams = varofexpr[.!maskvecvars]
@@ -85,11 +84,8 @@ function ThermoFunction(
     sort!(vecvars, by = x -> pos[Symbol(x)])
     dictvars = OrderedDict{Symbol,Num}(zip(Symbol.(vecvars), vecvars))
     dictref = OrderedDict(v=>get(givenref, v, get(default_ref, v, 0)) for v in union(keys(dictvars), keys(givenref)))
-    # vecparams = filter(x -> Symbol(x) ∉ vars, varofexpr)
-    # veczeros = filter(x -> x ∉ keys(dictparams) || iszero(dictparams[x]), vecparams)
     veczeros = vecparams[.!(vecparams .∈ Ref(keys(dictparams))) .|| iszero.(get.(Ref(dictparams), vecparams, 0))]
     if length(veczeros)==length(vecparams)
-        # veczeros = filter(x -> !isequal(x,dictallvars[first(params[1])]), vecparams)
         veczeros = isempty(params) ? Num[] : vecparams[.!isequal.(vecparams, Ref(dictallvars[first(params[1])]))]
     end
     symexpr = substitute(symexpr, [k => 0 for k in veczeros])
@@ -463,11 +459,9 @@ Check if one dictionary is contained within another.
   - The containing dictionary if one contains the other, nothing otherwise
 """
 function contained_dict(d1, d2)
-    c1 = all(k -> haskey(d2, k) && isequal(d2[k], d1[k]), keys(d1))
-    c2 = all(k -> haskey(d1, k) && isequal(d1[k], d2[k]), keys(d2))
-    if c1
+    if all(k -> haskey(d2, k) && isequal(d2[k], d1[k]), keys(d1))
         return d2
-    elseif c2
+    elseif all(k -> haskey(d1, k) && isequal(d1[k], d2[k]), keys(d2))
         return d1
     else
         return nothing

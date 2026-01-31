@@ -30,3 +30,17 @@ s = Species("H₂O")
 d = Dict(s => 1)
 od = OrderedDict(s => 1)
 collect(keys(od))[1] === s
+
+params = [:a₀ => 186.69999694824, :a₁ => - 0.02191000059247, :a₃ => -1600.0, :Tref => 298.15, :T => 298.15]
+Gfactory = ThermoFactory(dict_cp_ft_equation[:G], [:T])
+G = Gfactory(; params...)
+Sfactory = ThermoFactory(dict_cp_ft_equation[:S], [:T])
+S = Sfactory(; params...)
+S = S - S(T = 298.15) + dict_species["Portlandite"].S⁰(298.15)
+T = ThermoFunction(:T)
+
+Sexpr = dict_cp_ft_equation[:S]
+Sexpr = Expr(:call, :-, Sexpr, substitute_symbols(Sexpr, Dict(:T => :Tref)))
+Sexpr = Expr(:call, :+, Sexpr, dict_species["Portlandite"].S⁰(298.15))
+Sfactory = ThermoFactory(Sexpr, [:T])
+S2 = Sfactory(; params...)

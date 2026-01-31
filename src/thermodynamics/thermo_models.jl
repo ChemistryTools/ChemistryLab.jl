@@ -101,7 +101,7 @@ Create a set of standard thermodynamic `ThermoFunction`s from Cp polynomial coef
 
 # The returned formation properties (`ΔₐH⁰`, `ΔₐG⁰`, `S⁰`) are shifted so they match the provided `values0` at the reference temperature.
 
-Examples
+# Examples
 
 ```julia
 julia> params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]

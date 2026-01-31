@@ -1127,54 +1127,6 @@ function Species(
     )
 end
 
-# """
-#     Base.convert(::Type{<:Species}, s::CemSpecies; kwargs...) -> Species
-
-# Convert a CemSpecies to Species type.
-# """
-# function Base.convert(
-#     ::Type{<:Species},
-#     s::CemSpecies;
-#     name=name(s),
-#     symbol=symbol(s),
-#     aggregate_state=aggregate_state(s),
-#     class=class(s),
-#     properties=properties(s),
-# )
-#     Species(
-#         s;
-#         name=name,
-#         symbol=symbol,
-#         aggregate_state=aggregate_state,
-#         class=class,
-#         properties=properties,
-#     )
-# end
-
-# """
-#     Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
-
-# Convert a CemSpecies to a different stoichiometric coefficient type.
-# """
-# function Base.convert(
-#     ::Type{CemSpecies{S}},
-#     s::CemSpecies;
-#     name=name(s),
-#     symbol=symbol(s),
-#     aggregate_state=aggregate_state(s),
-#     class=class(s),
-#     properties=properties(s),
-# ) where {S}
-#     return CemSpecies(
-#         convert(S, cemformula(s));
-#         name=name,
-#         symbol=symbol,
-#         aggregate_state=aggregate_state,
-#         class=class,
-#         properties=properties,
-#     )
-# end
-
 """
     CemSpecies{S}(s::CemSpecies; kwargs...) where {S} -> CemSpecies{S}
 
@@ -1482,19 +1434,6 @@ function find_species(
         return S(s)
     else
         for crit in (symbol, phreeqc, unicode, expr ∘ mainformula, name)
-            # fil = filter(
-            #     x ->
-            #         !isnothing(x) &&
-            #         !ismissing(x) &&
-            #         (
-            #             s == crit(x) ||
-            #             phreeqc_to_unicode(s) == crit(x) ||
-            #             unicode_to_phreeqc(s) == crit(x)
-            #         ) &&
-            #         (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
-            #         (class == SC_UNDEF || class == x.class),
-            #     species_list,
-            # )
             crit_vals = crit.(species_list)
             fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
                             ((s .== crit_vals) .|| (phreeqc_to_unicode(s) .== crit_vals) .||
@@ -1516,15 +1455,6 @@ function find_species(
                 return fil[1]
             end
         end
-        # fil = filter(
-        #     x ->
-        #         !isnothing(x) &&
-        #         !ismissing(x) &&
-        #         composition(mainformula(x)) == parse_formula(s) &&
-        #         (aggregate_state == AS_UNDEF || aggregate_state == x.aggregate_state) &&
-        #         (class == SC_UNDEF || class == x.class),
-        #     species_list,
-        # )
         comp_vals = composition.(mainformula.(species_list))
         fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
                         (comp_vals .== Ref(parse_formula(s))) .&&
