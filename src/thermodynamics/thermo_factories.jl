@@ -1,7 +1,32 @@
-using DynamicQuantities, ModelingToolkit, OrderedCollections
-using RuntimeGeneratedFunctions
-RuntimeGeneratedFunctions.init(@__MODULE__)
-import Base: ==, +, -, *, /, //, ^
+"""
+    calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} -> Quantity
+
+Calculate the molar mass from an atomic composition dictionary.
+
+# Arguments
+
+  - `atoms`: dictionary mapping element symbols to stoichiometric coefficients.
+
+# Returns
+
+  - Molar mass as a Quantity in g/mol units.
+
+# Examples
+
+```jldoctest
+julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
+0.0180149999937744 kg mol⁻¹
+```
+"""
+function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
+    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
+    # return uconvert(u"g/mol", sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
+    molar_masses = [
+        cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for
+        (element, cnt) in atoms if haskey(elements, element)
+    ]
+    return length(molar_masses) > 0 ? sum(molar_masses) * Constants.N_A : 0u"g/mol"
+end
 
 const ADIM_MATH_FUNCTIONS = [:log, :log10, :log2, :log1p,
                         :exp, :expm1, :exp2, :exp10,
@@ -289,6 +314,8 @@ for op in (:(+), :(-), :(*), :(/), :(^))
     end
     eval(ex)
 end
+
+Base.:(-)(tf::AbstractThermoFunction) = CompositeThermoFunction((; kwargs...) -> -tf(; kwargs...), tf.vars, tf.refs)
 
 for op in (:(+), :(-), :(*), :(/), :(^))
     ex = quote
@@ -658,7 +685,7 @@ function format_refs(refs::NamedTuple)
     end
 
     pairs_str = join(["$k=$v" for (k, v) in pairs(refs)], ", ")
-    return " <|> $pairs_str"
+    return " ◆ $pairs_str"
 end
 
 """
@@ -670,9 +697,9 @@ Display a ThermoFunction showing:
 
 Examples:
 ```
-210.0 + -3.07e6*log(T) <|> T=298.15
-T + P <|> T=300.0, P=101325.0
-215.0 - 3.07e6*log(T) <|> T=298.15
+210.0 + -3.07e6*log(T) ◆ T=298.15
+T + P ◆ T=300.0, P=101325.0
+215.0 - 3.07e6*log(T) ◆ T=298.15
 ```
 """
 function Base.show(io::IO, tf::AbstractThermoFunction)
@@ -720,11 +747,8 @@ end
 check_dimensions(dict_expr, units = dict_expr[:units]) =
      Dict(k => infer_unit(v, units) for (k, v) in dict_expr if k != :units)
 
-build_thermo_factories(dict_expr) =
-     Dict(k => ThermoFactory(v, [:T, :P]) for (k, v) in dict_expr if k != :units)
-
-function build_thermo_functions(thermo_model, params)
-    dict_factories = THERMO_FACTORIES[thermo_model]
+function build_thermo_functions(thermo_model_name, params)
+    dict_factories = THERMO_FACTORIES[thermo_model_name]
     dict_params = Dict(params)
 
     STref = dict_params[:S⁰]
@@ -823,6 +847,29 @@ const THERMO_MODELS = Dict(
             :T => "K",
         ],
     ),
+    :logk_fpt_function => Dict(
+        :logKr => :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T),
+        :units => [
+            :A₀ => "1",
+            :A₁ => "1/K",
+            :A₂ => "K",
+            :A₃ => "1",
+            :A₄ => "K^2",
+            :A₅ => "1/K^2",
+            :A₆ => "1/√K",
+            :T => "K",
+        ],
+    ),
 )
 
-const THERMO_FACTORIES = Dict(k => build_thermo_factories(v) for (k, v) in THERMO_MODELS)
+function build_thermo_factories(dict_expr)
+    check_dimensions(dict_expr)
+    return Dict(k => ThermoFactory(v, [:T, :P]) for (k, v) in dict_expr if k != :units)
+end
+
+function add_thermo_model(name, dict_model)
+    THERMO_MODELS[name] = dict_model
+    THERMO_FACTORIES[name] = build_thermo_factories(dict_model)
+end
+
+const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()

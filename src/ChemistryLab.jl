@@ -100,15 +100,19 @@ using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using ProgressMeter
+using RuntimeGeneratedFunctions
 using SciMLBase
 using SymbolicNumericIntegration
 using Unicode
 
+RuntimeGeneratedFunctions.init(@__MODULE__)
+
 include("utils/misc.jl")
 include("utils/subsuperscripts.jl")
 
-include("thermodynamics/thermo_functions.jl")
-include("thermodynamics/thermo_models.jl")
+# include("thermodynamics/thermo_functions.jl")
+# include("thermodynamics/thermo_models.jl")
+include("thermodynamics/thermo_factories.jl")
 
 include("chemical_structs/element_order.jl")
 include("chemical_structs/parsing_tools.jl")
@@ -126,8 +130,10 @@ include("equilibrium/states.jl")
 
 export safe_ustrip, safe_uconvert
 
-export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
-export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
+# export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
+# export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
+
+export ThermoFunction, ThermoFactory, add_thermo_model, THERMO_MODELS, THERMO_FACTORIES, build_thermo_functions, check_dimensions
 
 export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER, CEMDATA_PRIMARIES
 
@@ -163,7 +169,8 @@ export AbstractSpecies,
     components,
     aggregate_state,
     class,
-    properties
+    properties,
+    apply
 
 export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
@@ -182,5 +189,11 @@ export read_thermofun_database, build_species_from_database, build_reactions_fro
 export merge_json
 
 export EquilibriumProblem
+
+function __init__()
+    for (k, v) in THERMO_MODELS
+        THERMO_FACTORIES[k] = build_thermo_factories(v)
+    end
+end
 
 end
