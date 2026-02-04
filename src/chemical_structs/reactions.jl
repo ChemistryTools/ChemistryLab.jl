@@ -286,6 +286,7 @@ Access reaction fields or registered properties.
 Throws an error if the symbol is neither a field nor a property.
 """
 function Base.getproperty(r::Reaction, sym::Symbol)
+    if sym in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logK⁰, :logKr] complete_thermo_functions!(r) end
     if sym in fieldnames(typeof(r))
         return getfield(r, sym)
     elseif sym in keys(properties(r))
@@ -420,13 +421,14 @@ function remove_zeros(d::AbstractDict)
 end
 
 """
-    complete_thermo_functions(r::Reaction)
+    complete_thermo_functions!(r::Reaction)
 
 Compute reaction thermodynamic properties from species properties.
 Calculates ΔᵣCp⁰, ΔᵣS⁰, ΔᵣH⁰, ΔᵣG⁰, and ΔᵣV⁰ if all species have the required properties.
 """
-function complete_thermo_functions(r::Reaction)
+function complete_thermo_functions!(r::Reaction)
     species_list = keys(r)
+    complete_thermo_functions!.(species_list)
     if !isempty(species_list)
         if all(x -> haskey(x, :Cp⁰), species_list)
             r.ΔᵣCp⁰ = sum(ν * s.Cp⁰ for (s, ν) in r)
@@ -438,16 +440,34 @@ function complete_thermo_functions(r::Reaction)
             r.ΔᵣH⁰ = sum(ν * s.ΔₐH⁰ for (s, ν) in r)
         end
         if all(x -> haskey(x, :ΔₐG⁰), species_list)
-            r.ΔᵣG⁰ = sum(ν * s.ΔₐG⁰ for (s, ν) in r)
-            r.logK⁰ = -r.ΔᵣG⁰/((ustrip(Constants.R)*log(10))*ThermoFunction(:T))
+            g = sum(ν * s.ΔₐG⁰ for (s, ν) in r)
+            r.ΔᵣG⁰ = g
+            r.logK⁰ = -g/((ustrip(Constants.R)*log(10))*ThermoFunction(:T))
         end
         if all(x -> haskey(x, :V⁰), species_list)
             r.ΔᵣV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
         end
-    #     r.charge = sum(ν * charge(s) for (s, ν) in r)
-    # else
-    #     r.charge = 0
     end
+    if haskey(r, :thermo_params)
+        params = r[:thermo_params]
+        dict_params = Dict(params)
+        if !haskey(r, :Tref) r.Tref = dict_params[:T] end
+        if !haskey(r, :Pref) r.Pref = dict_params[:P] end
+        if haskey(r, :logk_method)
+            r.logKr = THERMO_FACTORIES[Symbol(r[:logk_method])][:logKr](; params..., T=r.Tref, P=r.Pref)
+            delete!(r.properties, :logk_method)
+        end
+        for k in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logKr]
+            if haskey(dict_params, k) && !ismissing(dict_params[k])
+                r[Symbol(k, "_Tref")] = dict_params[k]
+                if !haskey(r, k)
+                    r[k] = ThermoFunction(dict_params[k])
+                end
+            end
+        end
+        delete!(r.properties, :thermo_params)
+    end
+    return r
 end
 
 """
@@ -527,7 +547,7 @@ function Reaction(
         equal_sign,
         OrderedDict{Symbol,PropertyType}(properties),
     )
-    complete_thermo_functions(r)
+    # complete_thermo_functions!(r)
     if side == :none
         return r
     else
@@ -730,7 +750,7 @@ function Reaction(
         equal_sign,
         OrderedDict{Symbol,PropertyType}(properties),
     )
-    complete_thermo_functions(r)
+    # complete_thermo_functions!(r)
     return r
 end
 
@@ -1420,6 +1440,7 @@ Display a reaction in a detailed form.
   - `r`: reaction to display
 """
 function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
+    complete_thermo_functions!(r)
     pad = 10
     if length(symbol(r)) > 0
         println(

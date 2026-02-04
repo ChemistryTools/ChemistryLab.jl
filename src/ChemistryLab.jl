@@ -1,3 +1,5 @@
+__precompile__(true)
+
 """
     ChemistryLab
 
@@ -94,7 +96,6 @@ using DataFrames
 using DynamicQuantities
 using JSON
 using LinearAlgebra
-using ModelingToolkit
 using Optimization
 using OrderedCollections
 using PeriodicTable
@@ -102,7 +103,6 @@ using PrettyTables
 using ProgressMeter
 using RuntimeGeneratedFunctions
 using SciMLBase
-using SymbolicNumericIntegration
 using Unicode
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
@@ -110,9 +110,8 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 include("utils/misc.jl")
 include("utils/subsuperscripts.jl")
 
-# include("thermodynamics/thermo_functions.jl")
-# include("thermodynamics/thermo_models.jl")
 include("thermodynamics/thermo_factories.jl")
+include("thermodynamics/thermo_models.jl")
 
 include("chemical_structs/element_order.jl")
 include("chemical_structs/parsing_tools.jl")
@@ -133,7 +132,9 @@ export safe_ustrip, safe_uconvert
 # export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
 # export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
 
-export ThermoFunction, ThermoFactory, add_thermo_model, THERMO_MODELS, THERMO_FACTORIES, build_thermo_functions, check_dimensions
+export ThermoFunction, ThermoFactory
+
+export THERMO_MODELS, THERMO_FACTORIES, add_thermo_model, build_thermo_functions, check_dimensions
 
 export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER, CEMDATA_PRIMARIES
 
@@ -186,6 +187,7 @@ export StoichMatrix,
 export extract_primary_species
 
 export read_thermofun_database, build_species_from_database, build_reactions_from_database, get_compatible_species
+
 export merge_json
 
 export EquilibriumProblem

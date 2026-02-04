@@ -57,6 +57,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
         :ΔₐG⁰ => extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
         :V⁰ => extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar"),
     ]
+    species[:thermo_params] = [values0; :T => Tref; :P => Pref]
     TPMethods = row.TPMethods
     if !ismissing(TPMethods)
         for method in TPMethods
@@ -69,19 +70,10 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
                 params = [
                     Symbol("a", subscriptnumber(i - 1)) => float(vals[i]) for i in eachindex(vals)
                 ]
-                dtf = build_thermo_functions(Symbol(method_type), [params; values0; :T => Tref])
-                for (k,v) in dtf species[k] = v end
+                species[:thermo_params] = [params; species[:thermo_params]]
+
             elseif method_type == "mv_constant"
                 species[:V_method] = "mv_constant"
-                species[:V⁰] = ThermoFunction(last(values0[5]))
-            end
-        end
-    end
-    if !haskey(species, :Cp⁰) && !ismissing(last(values0[1]))
-        for p in values0
-            k, v = p
-            if !haskey(species, k)
-                species[k] = ThermoFunction(v)
             end
         end
     end
@@ -139,12 +131,13 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
         :ΔᵣV⁰ => extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar"),
         :logKr => extract_value(row, :logKr; verbose=verbose, default_unit=u"1"),
     ]
+    reaction[:thermo_params] = [values0; :T => Tref; :P => Pref]
     TPMethods = row.TPMethods
     if !ismissing(TPMethods)
         for method in TPMethods
             method_type = only(values(method.method))
             if method_type == "logk_fpt_function" && haskey(method, :logk_ft_coeffs)
-                reaction[:logk_method] = "cp_ft_equation"
+                reaction[:logk_method] = "logk_fpt_function"
                 coeffs = method.logk_ft_coeffs
                 vals = coeffs.values
                 # units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
@@ -152,22 +145,23 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
                     Symbol("A", subscriptnumber(i - 1)) => float(vals[i]) for i in eachindex(vals)
                 ]
                 # logKrexpr = :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T)
-                reaction.logKr = THERMO_FACTORIES[:logk_fpt_function][:logKr](; params..., T=Tref, P=Pref)
+                reaction[:thermo_params] = [params; reaction[:thermo_params]]
+                # reaction.logKr = THERMO_FACTORIES[:logk_fpt_function][:logKr](; params..., T=Tref, P=Pref)
             elseif method_type == "dr_volume_constant"
                 reaction[:V_method] = "dr_volume_constant"
-                ΔᵣV⁰ = last(values0[5])
-                if !ismissing(ΔᵣV⁰)
-                    reaction[:ΔᵣV⁰] = ThermoFunction(ΔᵣV⁰)
-                end
+                # ΔᵣV⁰ = last(values0[5])
+                # if !ismissing(ΔᵣV⁰)
+                #     reaction[:ΔᵣV⁰] = ThermoFunction(ΔᵣV⁰)
+                # end
             end
         end
     end
-    for (k,v) in values0
-        if !ismissing(v)
-            reaction[Symbol(k, "_Tref")] = v
-            if !haskey(reaction, k) reaction[k] = ThermoFunction(v) end
-        end
-    end
+    # for (k,v) in values0
+    #     if !ismissing(v)
+    #         reaction[Symbol(k, "_Tref")] = v
+    #         if !haskey(reaction, k) reaction[k] = ThermoFunction(v) end
+    #     end
+    # end
     return reaction
 end
 

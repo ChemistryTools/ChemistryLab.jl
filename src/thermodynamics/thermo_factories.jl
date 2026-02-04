@@ -232,121 +232,17 @@ Abstract base type for all callable thermodynamic functions.
 """
 abstract type Callable end
 
-# OPTIMIZATION: Split AbstractThermoFunction into two types
-abstract type AbstractThermoFunction <: Callable end
-
 """
-    FastThermoFunction: Direct RGF wrapper, minimal overhead
+    ThermoFunction
 
-Used for functions created directly from ThermoFactory.
-Optimized for speed - nearly as fast as native functions.
+A compiled thermodynamic function with optimized performance.
+All operations (arithmetic, mathematical functions) return new ThermoFunctions
+with freshly compiled RuntimeGeneratedFunctions.
 """
-struct FastThermoFunction{F<:RuntimeGeneratedFunction, N, R<:NamedTuple} <: AbstractThermoFunction
-    compiled_func::F
-    vars::NTuple{N, Symbol}  # Use NTuple for type stability
-    refs::R
-end
-
-"""
-    CompositeThermoFunction: Closure-based, handles operations
-
-Used for results of arithmetic operations between AbstractThermoFunctions.
-Slightly slower but handles variable unions correctly.
-"""
-struct CompositeThermoFunction{F, N, R<:NamedTuple} <: AbstractThermoFunction
+struct ThermoFunction{F<:RuntimeGeneratedFunction, N, R<:NamedTuple} <: Callable
     compiled_func::F
     vars::NTuple{N, Symbol}
     refs::R
-end
-
-function AbstractThermoFunction(sym::Symbol; kwargs...)
-    factory = ThermoFactory(sym)
-    return factory(; kwargs...)
-end
-
-# ULTRA-OPTIMIZED callable for FastThermoFunction
-# Single variable - zero overhead path
-@inline function (tf::FastThermoFunction{F, 1})(; kwargs...) where F
-    v = tf.vars[1]
-    val = get(kwargs, v, get(tf.refs, v, nothing))
-    return tf.compiled_func(val)
-end
-
-# Two variables - optimized path
-@inline function (tf::FastThermoFunction{F, 2})(; kwargs...) where F
-    v1, v2 = tf.vars
-    val1 = get(kwargs, v1, get(tf.refs, v1, nothing))
-    val2 = get(kwargs, v2, get(tf.refs, v2, nothing))
-    return tf.compiled_func(val1, val2)
-end
-
-# Three or more variables - general path
-@inline function (tf::FastThermoFunction{F, N})(; kwargs...) where {F, N}
-    # Avoid merge allocation when possible
-    if isempty(kwargs)
-        # Use refs directly
-        var_values = ntuple(i -> tf.refs[tf.vars[i]], N)
-    else
-        merged = merge(tf.refs, kwargs)
-        var_values = ntuple(i -> merged[tf.vars[i]], N)
-    end
-    return tf.compiled_func(var_values...)
-end
-
-# CompositeThermoFunction uses closure (slower but flexible)
-@inline function (tf::CompositeThermoFunction)(; kwargs...)
-    merged = merge(tf.refs, kwargs)
-    return tf.compiled_func(; merged...)
-end
-
-# Arithmetic operations return CompositeThermoFunction
-for op in (:(+), :(-), :(*), :(/), :(^))
-    ex = quote
-        function Base.$op(tf::AbstractThermoFunction, x::Number)
-            compiled_func = (; kwargs...) -> $op(tf(; kwargs...), x)
-            return CompositeThermoFunction(compiled_func, tf.vars, tf.refs)
-        end
-
-        function Base.$op(x::Number, tf::AbstractThermoFunction)
-            compiled_func = (; kwargs...) -> $op(x, tf(; kwargs...))
-            return CompositeThermoFunction(compiled_func, tf.vars, tf.refs)
-        end
-    end
-    eval(ex)
-end
-
-Base.:(-)(tf::AbstractThermoFunction) = CompositeThermoFunction((; kwargs...) -> -tf(; kwargs...), tf.vars, tf.refs)
-
-for op in (:(+), :(-), :(*), :(/), :(^))
-    ex = quote
-        function Base.$op(tf1::AbstractThermoFunction, tf2::AbstractThermoFunction)
-            all_vars = Tuple(union(tf1.vars, tf2.vars))
-            refs = merge(tf1.refs, tf2.refs)
-
-            let refs = refs, tf1 = tf1, tf2 = tf2
-                compiled_func = (; kwargs...) -> begin
-                    merged_kwargs = merge(refs, kwargs)
-                    val1 = tf1(; merged_kwargs...)
-                    val2 = tf2(; merged_kwargs...)
-                    $op(val1, val2)
-                end
-
-                return CompositeThermoFunction(compiled_func, all_vars, refs)
-            end
-        end
-    end
-    eval(ex)
-end
-
-for f in [ADIM_MATH_FUNCTIONS ; [:sqrt, :abs]]
-    if isdefined(Base, f)
-        @eval begin
-            function Base.$f(tf::AbstractThermoFunction)
-                compiled_func = (; kwargs...) -> $f(tf(; kwargs...))
-                return CompositeThermoFunction(compiled_func, tf.vars, tf.refs)
-            end
-        end
-    end
 end
 
 """
@@ -360,42 +256,34 @@ models from symbolic expressions and state variables.
 - expr::Expr: Symbolic model expression (e.g., :(α + β * T + γ * log(T)))
 - vars::AbstractVector{Symbol}: State variables (e.g., [:T], [:T, :P])
 
-# Returns: Callable ThermoFactory struct producing AbstractThermoFunction{F} instances.
+# Returns: Callable ThermoFactory struct producing ThermoFunction instances.
 
 # Internal workflow:
 1. Stores expr, vars, params
-2. On factory(p1=v1,...): substitutes → compiles JIT (cached) → returns AbstractThermoFunction
+2. On factory(p1=v1,...): substitutes → compiles JIT (cached) → returns ThermoFunction
 
 # Benefits:
 - 50-100× faster than eval-per-call approach (with cache)
 - Reusable: 1 factory → unlimited models
-- Type-stable & Serializable
+- Type-stable & generic: works with Float64, Quantity, Symbolics.Num
 - Inspectable: factory.expr, factory.params, factory.vars
 
-Examples
+# Examples
 ```julia
 julia> tfactory = ThermoFactory(:(α + β * T + γ * log(T)), [:T])
-ThermoFactory(:(α + β * T + γ * log(T)), [:T], [:α, :β, :γ])
-
 julia> tf = tfactory(α = 210.0, β = 0.0, γ = -3.07e6, T = 298.15)
-AbstractThermoFunction{...}(...)
-
-julia> tf()      # -1.749e7
-julia> tf(T=300) # override
-julia> tf.refs   # (T = 298.15,)
+julia> tf()      # Evaluate at reference T=298.15
+julia> tf(T=300) # Override reference value
 ```
 """
 struct ThermoFactory{E}
     expr::E
     vars::Vector{Symbol}
     params::Vector{Symbol}
-    cache::Dict{UInt64,RuntimeGeneratedFunction}
+    cache::Dict{UInt64, RuntimeGeneratedFunction}
 
-    # Inner constructor to initialize cache
-    function ThermoFactory{E}(
-        expr::E, vars::Vector{Symbol}, params::Vector{Symbol}
-    ) where {E}
-        return new{E}(expr, vars, params, Dict{UInt64,RuntimeGeneratedFunction}())
+    function ThermoFactory{E}(expr::E, vars::Vector{Symbol}, params::Vector{Symbol}) where E
+        new{E}(expr, vars, params, Dict{UInt64, RuntimeGeneratedFunction}())
     end
 end
 
@@ -406,30 +294,10 @@ end
 
 ThermoFactory(sym::Symbol) = ThermoFactory{Symbol}(sym, [sym], Symbol[])
 
-function ThermoFunction(sym::Symbol; kwargs...)
-    factory = ThermoFactory(sym)
-    return factory(; kwargs...)
-end
-
-function ThermoFunction(expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...)
-    factory = ThermoFactory(expr, vars)
-    return factory(; kwargs...)
-end
-
-"""
-    (factory::ThermoFactory)(; kwargs...)
-
-Create a AbstractThermoFunction with compiled expression for given parameters.
-
-# OPTIMIZATIONS:
-- Caches compiled functions based on parameter values (50-100× speedup on cache hit)
-- Uses RuntimeGeneratedFunctions instead of eval (more robust, faster)
-- Preserves exact same API and functionality
-"""
 function (factory::ThermoFactory)(; kwargs...)
-    param_vals = Dict(p => get(kwargs, p, 0.0) for p in factory.params)
+    param_vals = Dict{Symbol, Any}(p => get(kwargs, p, 0.0) for p in factory.params)
     refs = NamedTuple([v => kwargs[v] for v in factory.vars if haskey(kwargs, v)])
-    cache_key = hash(tuple(sort(collect(pairs(param_vals)), by=x->x.first)...))
+    cache_key = hash(tuple(sort(collect(pairs(param_vals)))...))
 
     rgf = get!(factory.cache, cache_key) do
         modified_expr = substitute_symbols(factory.expr, param_vals)
@@ -442,22 +310,36 @@ function (factory::ThermoFactory)(; kwargs...)
         @RuntimeGeneratedFunction(func_expr)
     end
 
-    return FastThermoFunction(rgf, Tuple(factory.vars), refs)
+    return ThermoFunction(rgf, Tuple(factory.vars), refs)
 end
 
+function ThermoFunction(sym::Symbol; kwargs...)
+    factory = ThermoFactory(sym)
+    return factory(; kwargs...)
+end
+
+function ThermoFunction(expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...)
+    factory = ThermoFactory(expr, vars)
+    return factory(; kwargs...)
+end
+
+# Callable interface
+@inline function (tf::ThermoFunction)(; kwargs...)
+    merged = merge(tf.refs, kwargs)
+    var_values = ntuple(i -> merged[tf.vars[i]], length(tf.vars))
+    return tf.compiled_func(var_values...)
+end
 
 """
-    reconstruct_expr(tf::FastThermoFunction)
+    reconstruct_expr(tf::ThermoFunction)
 
-Reconstruct the analytical expression from a FastThermoFunction by examining its RGF.
+Reconstruct the analytical expression from a ThermoFunction.
+Works by examining the RuntimeGeneratedFunction body.
 """
-function reconstruct_expr(tf::FastThermoFunction)
-    # Get the expression from the RuntimeGeneratedFunction
+function reconstruct_expr(tf::ThermoFunction)
     rgf_expr = tf.compiled_func.body
 
-    # The RGF wraps the actual expression in a quote block
     if rgf_expr isa Expr && rgf_expr.head == :block
-        # Find the actual expression (skip line number nodes)
         for arg in rgf_expr.args
             if !(arg isa LineNumberNode)
                 return arg
@@ -469,186 +351,314 @@ function reconstruct_expr(tf::FastThermoFunction)
 end
 
 """
-    reconstruct_expr(tf::CompositeThermoFunction)
+    simplify_expr(expr)
 
-For composite functions, reconstruct the expression by evaluating with symbolic variables.
-Returns a Symbolics.Num for pretty printing.
+Aggressively simplify expressions with multiple passes.
 """
-function reconstruct_expr(tf::CompositeThermoFunction)
-    try
-        # Create symbolic variables
-        if length(tf.vars) == 1
-            var_sym = tf.vars[1]
-            sym_var = only(Symbolics.@variables $var_sym)
-            symbolic_kwargs = NamedTuple{(var_sym,)}((sym_var,))
-        else
-            vars_tuple = Expr(:tuple, tf.vars...)
-            sym_vars = eval(:(Symbolics.@variables $vars_tuple))
-            symbolic_kwargs = NamedTuple{tf.vars}(sym_vars)
-        end
+function simplify_expr(expr)
+    prev = nothing
+    current = expr
+    max_iterations = 10
+    iteration = 0
 
-        # Evaluate the function with symbolic inputs
-        result = tf.compiled_func(; symbolic_kwargs...)
-
-        # Return the Num directly (don't convert to Expr)
-        return result
-    catch e
-        # If symbolic evaluation fails, return placeholder
-        return Symbol("<composite>")
+    # Iterate until no more changes or max iterations
+    while prev != current && iteration < max_iterations
+        prev = current
+        current = eval_constants(current)
+        current = simplify_algebraic(current)
+        current = normalize_negations(current)
+        current = flatten_operations(current)
+        iteration += 1
     end
+
+    return current
 end
 
 """
-    simplify_expr(expr)
+    eval_constants(expr)
 
-Simplify an expression by removing zero terms and simplifying arithmetic.
-Works with both Expr and Symbolics.Num.
-
-Rules:
-- 0 * x → 0
-- x * 0 → 0
-- 0 + x → x
-- x + 0 → x
-- x - 0 → x
-- 1 * x → x
-- x * 1 → x
-- x / 1 → x
+Evaluate all numeric sub-expressions immediately.
 """
-function simplify_expr(expr)
-    # If it's a Symbolics.Num, use Symbolics.simplify
-    if expr isa Symbolics.Num
-        return Symbolics.simplify(expr)
-    end
+function eval_constants(expr)
+    if expr isa Number
+        return expr
+    elseif expr isa Symbol
+        return expr
+    elseif expr isa Expr && expr.head == :call
+        func = expr.args[1]
+        args = [eval_constants(arg) for arg in expr.args[2:end]]
 
-    # Otherwise use our custom simplification for Expr
-    if expr isa Expr
-        if expr.head == :call
-            func = expr.args[1]
-            args = expr.args[2:end]
-
-            # Recursively simplify arguments first
-            simplified_args = [simplify_expr(arg) for arg in args]
-
-            # Apply simplification rules
-            if func == :*
-                # Remove all zero factors
-                non_zero_args = filter(!iszero_value, simplified_args)
-
-                # If any factor is zero, result is zero
-                if length(non_zero_args) < length(simplified_args)
-                    return 0
-                end
-
-                # Remove all one factors
-                non_one_args = filter(!isone_value, non_zero_args)
-
-                # If nothing left, return 1
-                if isempty(non_one_args)
-                    return 1
-                end
-
-                # If only one arg left, return it directly
-                if length(non_one_args) == 1
-                    return non_one_args[1]
-                end
-
-                return Expr(:call, :*, non_one_args...)
-
-            elseif func == :+
-                # Remove all zero terms
-                non_zero_args = filter(!iszero_value, simplified_args)
-
-                # If nothing left, return 0
-                if isempty(non_zero_args)
-                    return 0
-                end
-
-                # If only one arg left, return it directly
-                if length(non_zero_args) == 1
-                    return non_zero_args[1]
-                end
-
-                return Expr(:call, :+, non_zero_args...)
-
-            elseif func == :-
-                if length(simplified_args) == 1
-                    # Unary minus
-                    arg = simplified_args[1]
-                    if iszero_value(arg)
-                        return 0
+        # If all arguments are numbers, evaluate immediately
+        if all(arg -> arg isa Number, args)
+            try
+                result = eval(Expr(:call, func, args...))
+                # Clean up floating point errors
+                if result isa AbstractFloat
+                    if abs(result) < 1e-14
+                        return 0.0
+                    elseif abs(result - round(result)) < 1e-10
+                        return round(result)
                     end
-                    return Expr(:call, :-, arg)
-                else
-                    # Binary minus
-                    if iszero_value(simplified_args[2])
-                        return simplified_args[1]
-                    end
-                    if iszero_value(simplified_args[1])
-                        return Expr(:call, :-, simplified_args[2])
-                    end
-                    return Expr(:call, :-, simplified_args...)
                 end
-
-            elseif func == :/
-                if iszero_value(simplified_args[1])
-                    return 0
-                end
-                if isone_value(simplified_args[2])
-                    return simplified_args[1]
-                end
-                return Expr(:call, :/, simplified_args...)
-
-            elseif func == :^
-                base = simplified_args[1]
-                exp = simplified_args[2]
-
-                if iszero_value(exp)
-                    return 1
-                end
-                if isone_value(exp)
-                    return base
-                end
-                if iszero_value(base)
-                    return 0
-                end
-                if isone_value(base)
-                    return 1
-                end
-
-                return Expr(:call, :^, simplified_args...)
-            else
-                # Other functions: just simplify arguments
-                return Expr(:call, func, simplified_args...)
+                return result
+            catch
+                return Expr(:call, func, args...)
             end
         else
-            # Other expression types: recursively simplify
-            return Expr(expr.head, [simplify_expr(arg) for arg in expr.args]...)
+            return Expr(:call, func, args...)
         end
     else
-        # Leaf node (symbol, number, etc.)
         return expr
     end
 end
 
 """
-    iszero_value(x)
+    normalize_negations(expr)
 
-Check if a value represents zero (including Quantity types).
+Normalize all negations: turn subtractions and negative multiplications into additions.
+- (a - b) → (a + (-1)*b)
+- (-1)*x → -x
+- -(-x) → x
+- a - (-b) → a + b
 """
+function normalize_negations(expr)
+    if expr isa Expr && expr.head == :call
+        func = expr.args[1]
+        args = [normalize_negations(arg) for arg in expr.args[2:end]]
+
+        if func == :-
+            if length(args) == 1
+                # Unary minus: -x
+                arg = args[1]
+
+                # -(-x) → x
+                if arg isa Expr && arg.head == :call && arg.args[1] == :- && length(arg.args) == 2
+                    return arg.args[2]
+                end
+
+                # -(a * b) where a is -1 → a * b with -1 removed
+                if arg isa Expr && arg.head == :call && arg.args[1] == :*
+                    mul_args = arg.args[2:end]
+                    # Count negatives
+                    neg_count = count(a -> (a isa Number && a == -1) || (a == -1.0), mul_args)
+                    if neg_count > 0
+                        # Remove -1s and add one more negation
+                        filtered = filter(a -> !((a isa Number && a == -1) || (a == -1.0)), mul_args)
+                        if isempty(filtered)
+                            return -1
+                        elseif length(filtered) == 1
+                            return Expr(:call, :-, filtered[1])
+                        else
+                            return Expr(:call, :-, Expr(:call, :*, filtered...))
+                        end
+                    end
+                end
+
+                # -number → evaluate
+                if arg isa Number
+                    return -arg
+                end
+
+                return Expr(:call, :-, arg)
+            else
+                # Binary minus: a - b → a + (-b)
+                left = args[1]
+                right = args[2]
+
+                # a - (-b) → a + b
+                if right isa Expr && right.head == :call && right.args[1] == :- && length(right.args) == 2
+                    return normalize_negations(Expr(:call, :+, left, right.args[2]))
+                end
+
+                # Convert to addition
+                neg_right = normalize_negations(Expr(:call, :-, right))
+                return normalize_negations(Expr(:call, :+, left, neg_right))
+            end
+
+        elseif func == :*
+            # Remove -1 factors and count them
+            neg_count = 0
+            result_args = []
+
+            for arg in args
+                if (arg isa Number && arg == -1) || (arg isa Number && arg == -1.0)
+                    neg_count += 1
+                elseif arg isa Number && arg < 0
+                    neg_count += 1
+                    push!(result_args, -arg)
+                else
+                    push!(result_args, arg)
+                end
+            end
+
+            # Apply negations
+            if isempty(result_args)
+                return (-1)^neg_count
+            end
+
+            result = length(result_args) == 1 ? result_args[1] : Expr(:call, :*, result_args...)
+
+            if neg_count % 2 == 1
+                return Expr(:call, :-, result)
+            else
+                return result
+            end
+        else
+            return Expr(:call, func, args...)
+        end
+    else
+        return expr
+    end
+end
+
+"""
+    flatten_operations(expr)
+
+Flatten nested + and * operations and simplify.
+(a + b) + c → a + b + c
+(a * b) * c → a * b * c
+"""
+function flatten_operations(expr)
+    if expr isa Expr && expr.head == :call
+        func = expr.args[1]
+        args = [flatten_operations(arg) for arg in expr.args[2:end]]
+
+        if func == :+
+            # Flatten nested additions
+            flattened = []
+            for arg in args
+                if arg isa Expr && arg.head == :call && arg.args[1] == :+
+                    append!(flattened, arg.args[2:end])
+                else
+                    push!(flattened, arg)
+                end
+            end
+
+            # Remove zeros
+            flattened = filter(!iszero_value, flattened)
+
+            # Combine numeric terms
+            numbers = filter(x -> x isa Number, flattened)
+            non_numbers = filter(x -> !(x isa Number), flattened)
+
+            result_args = non_numbers
+            if !isempty(numbers)
+                sum_num = sum(numbers)
+                if !iszero_value(sum_num)
+                    push!(result_args, sum_num)
+                end
+            end
+
+            if isempty(result_args)
+                return 0
+            elseif length(result_args) == 1
+                return result_args[1]
+            else
+                return Expr(:call, :+, result_args...)
+            end
+
+        elseif func == :*
+            # Flatten nested multiplications
+            flattened = []
+            for arg in args
+                if arg isa Expr && arg.head == :call && arg.args[1] == :*
+                    append!(flattened, arg.args[2:end])
+                else
+                    push!(flattened, arg)
+                end
+            end
+
+            # Check for zeros
+            if any(iszero_value, flattened)
+                return 0
+            end
+
+            # Remove ones
+            flattened = filter(!isone_value, flattened)
+
+            # Combine numeric terms
+            numbers = filter(x -> x isa Number, flattened)
+            non_numbers = filter(x -> !(x isa Number), flattened)
+
+            result_args = non_numbers
+            if !isempty(numbers)
+                prod_num = prod(numbers)
+                if iszero_value(prod_num)
+                    return 0
+                elseif !isone_value(prod_num)
+                    push!(result_args, prod_num)
+                end
+            end
+
+            if isempty(result_args)
+                return 1
+            elseif length(result_args) == 1
+                return result_args[1]
+            else
+                return Expr(:call, :*, result_args...)
+            end
+
+        elseif func == :^
+            base = args[1]
+            exp = args[2]
+
+            if iszero_value(exp)
+                return 1
+            elseif isone_value(exp)
+                return base
+            elseif iszero_value(base)
+                return 0
+            elseif isone_value(base)
+                return 1
+            elseif base isa Number && exp isa Number
+                return base ^ exp
+            else
+                return Expr(:call, :^, base, exp)
+            end
+
+        elseif func == :/
+            num = args[1]
+            den = args[2]
+
+            if iszero_value(num)
+                return 0
+            elseif isone_value(den)
+                return num
+            elseif num isa Number && den isa Number
+                return num / den
+            else
+                return Expr(:call, :/, num, den)
+            end
+        else
+            return Expr(:call, func, args...)
+        end
+    else
+        return expr
+    end
+end
+
+"""
+    simplify_algebraic(expr)
+
+Apply algebraic identities.
+"""
+function simplify_algebraic(expr)
+    if expr isa Expr && expr.head == :call
+        func = expr.args[1]
+        args = [simplify_algebraic(arg) for arg in expr.args[2:end]]
+
+        # T * log(T) - T can sometimes be factored, etc.
+        # For now, just recursively simplify
+        return Expr(:call, func, args...)
+    else
+        return expr
+    end
+end
+
 function iszero_value(x)
     if x isa Number
-        return iszero(x)
-    elseif x isa Expr
-        # Check if it's a literal zero or a Quantity constructor with zero
-        if x.head == :call
-            # Handle Quantity(0, ...) or similar
-            if length(x.args) >= 2 && iszero_value(x.args[2])
-                return true
-            end
-        end
-        return false
+        return abs(x) < 1e-14
     else
-        # Try generic iszero for other types (like Quantity)
         try
             return iszero(x)
         catch
@@ -657,14 +667,9 @@ function iszero_value(x)
     end
 end
 
-"""
-    isone_value(x)
-
-Check if a value represents one.
-"""
 function isone_value(x)
     if x isa Number
-        return isone(x)
+        return abs(x - 1) < 1e-14
     else
         try
             return isone(x)
@@ -675,201 +680,137 @@ function isone_value(x)
 end
 
 """
-    format_refs(refs::NamedTuple)
+    combine_rgf(op::Symbol, tf::ThermoFunction)
 
-Format reference values for display.
+Apply a unary operator or function to a ThermoFunction, returning a new
+ThermoFunction with a compiled RGF for maximum performance.
 """
-function format_refs(refs::NamedTuple)
-    if isempty(refs)
-        return ""
+function combine_rgf(op::Symbol, tf::ThermoFunction)
+    expr = reconstruct_expr(tf)
+    simplified = simplify_expr(expr)
+    combined_expr = Expr(:call, op, simplified)
+
+    if length(tf.vars) == 1
+        func_expr = :($(tf.vars[1]) -> $combined_expr)
+    else
+        func_expr = :(($(tf.vars...),) -> $combined_expr)
     end
 
-    pairs_str = join(["$k=$v" for (k, v) in pairs(refs)], ", ")
-    return " ◆ $pairs_str"
+    rgf = @RuntimeGeneratedFunction(func_expr)
+    return ThermoFunction(rgf, tf.vars, tf.refs)
 end
 
 """
-    Base.show(io::IO, tf::AbstractThermoFunction)
+    combine_rgf(op::Symbol, tf1::ThermoFunction, tf2::ThermoFunction)
 
-Display a ThermoFunction showing:
-1. The simplified analytical expression
-2. Reference values (if any) after a separator
-
-Examples:
-```
-210.0 + -3.07e6*log(T) ◆ T=298.15
-T + P ◆ T=300.0, P=101325.0
-215.0 - 3.07e6*log(T) ◆ T=298.15
-```
+Combine two ThermoFunctions with a binary operator, returning a new ThermoFunction.
 """
-function Base.show(io::IO, tf::AbstractThermoFunction)
-    # Reconstruct and simplify the expression (dispatch on type)
+function combine_rgf(op::Symbol, tf1::ThermoFunction, tf2::ThermoFunction)
+    all_vars = Tuple(union(tf1.vars, tf2.vars))
+    refs = merge(tf1.refs, tf2.refs)
+
+    expr1 = reconstruct_expr(tf1)
+    expr2 = reconstruct_expr(tf2)
+    simplified1 = simplify_expr(expr1)
+    simplified2 = simplify_expr(expr2)
+    combined_expr = Expr(:call, op, simplified1, simplified2)
+
+    if length(all_vars) == 1
+        func_expr = :($(all_vars[1]) -> $combined_expr)
+    else
+        func_expr = :(($(all_vars...),) -> $combined_expr)
+    end
+
+    rgf = @RuntimeGeneratedFunction(func_expr)
+    return ThermoFunction(rgf, all_vars, refs)
+end
+
+"""
+    combine_rgf(op::Symbol, tf::ThermoFunction, x::Number)
+
+Combine a ThermoFunction with a scalar.
+"""
+function combine_rgf(op::Symbol, tf::ThermoFunction, x::Number)
     expr = reconstruct_expr(tf)
     simplified = simplify_expr(expr)
+    combined_expr = Expr(:call, op, simplified, x)
 
-    # Format the expression
-    expr_str = string(simplified)
+    if length(tf.vars) == 1
+        func_expr = :($(tf.vars[1]) -> $combined_expr)
+    else
+        func_expr = :(($(tf.vars...),) -> $combined_expr)
+    end
 
-    # Format the references
-    refs_str = format_refs(tf.refs)
-
-    # Print
-    print(io, expr_str, refs_str)
+    rgf = @RuntimeGeneratedFunction(func_expr)
+    return ThermoFunction(rgf, tf.vars, tf.refs)
 end
 
 """
-    Base.show(io::IO, ::MIME"text/plain", tf::AbstractThermoFunction)
+    combine_rgf(op::Symbol, x::Number, tf::ThermoFunction)
 
-Detailed display for REPL (multi-line format).
+Combine a scalar with a ThermoFunction.
 """
-function Base.show(io::IO, ::MIME"text/plain", tf::AbstractThermoFunction)
-    # Get type name
-    type_name = typeof(tf).name.name
+function combine_rgf(op::Symbol, x::Number, tf::ThermoFunction)
+    expr = reconstruct_expr(tf)
+    simplified = simplify_expr(expr)
+    combined_expr = Expr(:call, op, x, simplified)
 
-    println(io, type_name, ":")
+    if length(tf.vars) == 1
+        func_expr = :($(tf.vars[1]) -> $combined_expr)
+    else
+        func_expr = :(($(tf.vars...),) -> $combined_expr)
+    end
+
+    rgf = @RuntimeGeneratedFunction(func_expr)
+    return ThermoFunction(rgf, tf.vars, tf.refs)
+end
+
+# Binary operations between ThermoFunctions
+for op in (:+, :-, :*, :/, :^)
+    @eval Base.$op(tf1::ThermoFunction, tf2::ThermoFunction) = combine_rgf($(QuoteNode(op)), tf1, tf2)
+end
+
+# Binary operations with scalars
+for op in (:+, :-, :*, :/, :^)
+    @eval begin
+        Base.$op(tf::ThermoFunction, x::Number) = combine_rgf($(QuoteNode(op)), tf, x)
+        Base.$op(x::Number, tf::ThermoFunction) = combine_rgf($(QuoteNode(op)), x, tf)
+    end
+end
+
+# Unary minus
+Base.:-(tf::ThermoFunction) = combine_rgf(:-, tf)
+
+# Mathematical functions
+for f in [ADIM_MATH_FUNCTIONS ; :sqrt]
+    if isdefined(Base, f)
+        @eval Base.$f(tf::ThermoFunction) = combine_rgf($(QuoteNode(f)), tf)
+    end
+end
+
+# Display functions
+function format_refs(refs::NamedTuple)
+    isempty(refs) ? "" : " ◆ " * join(["$k=$v" for (k, v) in pairs(refs)], ", ")
+end
+
+function Base.show(io::IO, tf::ThermoFunction)
+    expr = reconstruct_expr(tf)
+    simplified = simplify_expr(expr)
+    print(io, string(simplified), format_refs(tf.refs))
+end
+
+function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
+    println(io, "ThermoFunction:")
     print(io, "  Expression: ")
-
     expr = reconstruct_expr(tf)
     simplified = simplify_expr(expr)
+    println(io, simplified)
 
     if !isempty(tf.refs)
-        println(io, simplified)
         print(io, "  References: ")
-        print(io, tf.refs)
-    else
-        print(io, simplified)
+        println(io, tf.refs)
     end
 
-    # print(io, "  Variables: ")
-    # print(io, tf.vars)
+    print(io, "  Variables: ")
+    print(io, tf.vars)
 end
-
-check_dimensions(dict_expr, units = dict_expr[:units]) =
-     Dict(k => infer_unit(v, units) for (k, v) in dict_expr if k != :units)
-
-function build_thermo_functions(thermo_model_name, params)
-    dict_factories = THERMO_FACTORIES[thermo_model_name]
-    dict_params = Dict(params)
-
-    STref = dict_params[:S⁰]
-    HTref = get(dict_params, :ΔfH⁰, get(dict_params, :ΔₐH⁰, get(dict_params, :ΔaH⁰, missing)))
-    GTref = get(dict_params, :ΔfG⁰, get(dict_params, :ΔₐG⁰, get(dict_params, :ΔaG⁰, missing)))
-    Tref = dict_params[:T]
-
-    Cp⁰ = dict_factories[:Cp](; params...)
-
-    H = dict_factories[:H](; params...)
-    ΔₐH⁰ = H + (HTref - H(T = Tref))
-
-    S = dict_factories[:S](; params...)
-    δS⁰ = STref - S(T = Tref)
-    S⁰ = S + δS⁰
-
-    T = ThermoFunction(:T)
-    if haskey(dict_factories, :G)
-        G = dict_factories[:G](; params...)
-        ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(T = Tref) + Tref*δS⁰)
-    else
-        ΔₐG⁰ = (H - T*S⁰) + (GTref - H(T = Tref) + Tref*STref)
-    end
-
-    return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
-end
-
-const THERMO_MODELS = Dict(
-    :cp_ft_equation => Dict(
-        :Cp => :(
-            a₀ +
-            a₁ * T +
-            a₂ / T^2 +
-            a₃ / √T +
-            a₄ * T^2 +
-            a₅ * T^3 +
-            a₆ * T^4 +
-            a₇ / T^3 +
-            a₈ / T +
-            a₉ * √T +
-            a₁₀ * log(T)
-        ),
-        :S => :(
-            a₀ * log(T) +
-            a₁ * T +
-            -(a₂ / 2) / T^2 +
-            -2 * a₃ / √T +
-            (a₄ / 2) * T^2 +
-            (a₅ / 3) * T^3 +
-            (a₆ / 4) * T^4 +
-            -(a₇ / 3) / T^3 +
-            -a₈ / T +
-            2 * a₉ * √T +
-            (a₁₀ / 2) * (log(T))^2
-        ),
-        :H => :(
-            a₀ * T +
-            a₁ * T^2 / 2 +
-            -a₂ / T +
-            2 * a₃ * √T +
-            (a₄ / 3) * T^3 +
-            (a₅ / 4) * T^4 +
-            (a₆ / 5) * T^5 +
-            -(a₇ / 2) / T^2 +
-            a₈ * log(T) +
-            (2 / 3) * a₉ * T^(3 / 2) +
-            a₁₀ * T * log(T) - a₁₀ * T
-        ),
-        :G => :(
-            -a₀ * T * log(T) +
-            a₀ * T +
-            -(a₁ / 2) * T^2 +
-            -(a₂ / 2) / T +
-            4 * a₃ * √T +
-            -(a₄ / 6) * T^3 +
-            -(a₅ / 12) * T^4 +
-            -(a₆ / 20) * T^5 +
-            -(a₇ / 6) / T^2 +
-            a₈ * log(T) +
-            -(4 / 3) * a₉ * T^(3 / 2) +
-            -(a₁₀ / 2) * T * (log(T))^2 +
-            a₁₀ * T * log(T) - a₁₀ * T
-        ),
-        :units => [
-            :a₀ => "J/(mol*K)",
-            :a₁ => "J/(mol*K^2)",
-            :a₂ => "(J*K)/mol",
-            :a₃ => "J/(mol*K^0.5)",
-            :a₄ => "J/(mol*K^3)",
-            :a₅ => "J/(mol*K^4)",
-            :a₆ => "J/(mol*K^5)",
-            :a₇ => "(J*K^2)/mol",
-            :a₈ => "J/mol",
-            :a₉ => "J/(mol*K^1.5)",
-            :a₁₀ => "J/(mol*K)",
-            :T => "K",
-        ],
-    ),
-    :logk_fpt_function => Dict(
-        :logKr => :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T),
-        :units => [
-            :A₀ => "1",
-            :A₁ => "1/K",
-            :A₂ => "K",
-            :A₃ => "1",
-            :A₄ => "K^2",
-            :A₅ => "1/K^2",
-            :A₆ => "1/√K",
-            :T => "K",
-        ],
-    ),
-)
-
-function build_thermo_factories(dict_expr)
-    check_dimensions(dict_expr)
-    return Dict(k => ThermoFactory(v, [:T, :P]) for (k, v) in dict_expr if k != :units)
-end
-
-function add_thermo_model(name, dict_model)
-    THERMO_MODELS[name] = dict_model
-    THERMO_FACTORIES[name] = build_thermo_factories(dict_model)
-end
-
-const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()

@@ -253,6 +253,7 @@ for (s, ν) in r
     println(s, " ΔₐG⁰=", s.ΔₐG⁰(Tref))
 end
 
+Tref=298.15
 for r in values(dict_reactions)
     if true # abs((r.logKr_Tref -r.logKr())/r.logKr_Tref)>0.01
         println(collect(keys(r))[1].symbol)
@@ -260,7 +261,7 @@ for r in values(dict_reactions)
         println("     → logKr given at $(Tref) = ", r.logKr_Tref)
         println("     → logKr calculated at $(Tref) = ", r.logKr())
         try
-            println("     → logKr=-ΔᵣG⁰(Tref)/(R Tref ln(10)) = ", -r.ΔᵣG⁰(Tref)/(Constants.R*Tref)/log(10))
+            println("     → logKr=-ΔᵣG⁰(Tref)/(R Tref ln(10)) = ", -r.ΔᵣG⁰(T=Tref)/ustrip(Constants.R*Tref)/log(10))
         catch
             println("     → logKr=-ΔᵣG⁰(Tref)/(R Tref ln(10)) = XXXXXXXXXXXXXXXXXXXXX")
         end
@@ -305,7 +306,7 @@ Cpexpr = dict_cp_ft_equation[:Cp]
 # Example from Miron et al. 2023, https://doi.org/10.21105/joss.04624
 p1 = plot(xlabel="Temperature [°C]", ylabel="Cp⁰ [J K⁻¹]", xticks=0:50:250, yticks=-2000:200:2000)
 for sp ∈ getindex.(Ref(dict_species_aq17), split("Na+ Ca+2 SiO2@ CO3-2 OH-"))
-    plot!(p1, θ->sp.Cp⁰(273.15+θ), 0:0.1:250, label=unicode(sp))
+    plot!(p1, θ->sp.Cp⁰(T = 273.15+θ), 0:0.1:250, label=unicode(sp))
 end
 p2 = plot(xlabel="Temperature [°C]", ylabel="log₁₀K⁰", xticks=0:50:250, yticks=-20:2:10)
 for lsp ∈ [
@@ -315,7 +316,7 @@ for lsp ∈ [
             "Al+3 H2O@ AlOH+2 H+",
           ]
     rr = Reaction(getindex.(Ref(dict_species_aq17), split(lsp)))
-    plot!(p2, θ->rr.logK⁰(273.15+θ), 0:0.1:250, label=rr.equation)
+    plot!(p2, θ->rr.logK⁰(T = 273.15+θ), 0:0.1:250, label=rr.equation)
 end
 plot(p1, p2, layout = (1, 2))
 

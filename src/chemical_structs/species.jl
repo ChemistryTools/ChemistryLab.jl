@@ -37,7 +37,13 @@ All concrete species types (`Species`, `CemSpecies`) inherit from this type.
 abstract type AbstractSpecies end
 
 const PropertyType = Union{
-    Number,AbstractVector{<:Number},Function,Callable,AbstractString,Missing
+    Number,
+    AbstractVector{<:Number},
+    AbstractVector{<:Pair{Symbol}},
+    Function,
+    Callable,
+    AbstractString,
+    Missing
 }
 
 """
@@ -225,6 +231,7 @@ julia> s[:N]
 ```
 """
 function Base.getindex(s::AbstractSpecies, i::Symbol)
+    if i in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰, :V⁰] complete_thermo_functions!(s) end
     coef = get(components(s), i, get(atoms(s), i, get(properties(s), i, nothing)))
     if isnothing(coef)
         # println("$(i) not found in $(root_type(typeof(s))) $(colored(s))")
@@ -248,6 +255,7 @@ Access species fields or registered properties.
 Throws an error if the symbol is neither a field nor a property.
 """
 function Base.getproperty(s::AbstractSpecies, sym::Symbol)
+    if sym in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰, :V⁰] complete_thermo_functions!(s) end
     if sym in fieldnames(typeof(s))
         return getfield(s, sym)
     elseif sym in keys(properties(s))
@@ -669,6 +677,7 @@ end
 Detailed multi-line REPL display for Species.
 """
 function Base.show(io::IO, ::MIME"text/plain", s::Species)
+    complete_thermo_functions!(s)
     pad = 15
     println(io, typeof(s))
     if name(s) != formula(s) && length(name(s)) > 0
@@ -1244,6 +1253,7 @@ end
 Detailed multi-line REPL display for CemSpecies.
 """
 function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
+    complete_thermo_functions!(s)
     pad = 15
     println(io, typeof(s))
     if name(s) != expr(s) && length(name(s)) > 0
@@ -1476,4 +1486,40 @@ function find_species(
         end
         return S(s)
     end
+end
+
+function complete_thermo_functions!(s::AbstractSpecies)
+    if haskey(s, :thermo_params)
+        params = s[:thermo_params]
+        dict_params = Dict(params)
+        s.Tref = dict_params[:T]
+        s.Pref = dict_params[:P]
+        if haskey(s, :Cp_method)
+            dtf = build_thermo_functions(Symbol(s[:Cp_method]), params)
+            for (k,v) in dtf s[k] = v end
+            delete!(s.properties, :Cp_method)
+        else
+            if !haskey(s, :Cp⁰) && haskey(dict_params, :Cp⁰) && !ismissing(dict_params[:Cp⁰])
+                dtf = build_thermo_functions(:cp_ft_equation, [:a₀ => dict_params[:Cp⁰]; params])
+                for (k,v) in dtf s[k] = v end
+            end
+            for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
+                if !haskey(s, k) && haskey(dict_params, k) && !ismissing(dict_params[k])
+                    s[k] = ThermoFunction(dict_params[k])
+                end
+            end
+        end
+        if haskey(s, :V_method)
+            s[:V⁰] = ThermoFunction(dict_params[:V⁰])
+            delete!(s.properties, :V_method)
+        else
+            for k in [:V⁰]
+                if !haskey(s, k) && haskey(dict_params, k) && !ismissing(dict_params[k])
+                    s[k] = ThermoFunction(dict_params[k])
+                end
+            end
+        end
+        delete!(s.properties, :thermo_params)
+    end
+    return s
 end
