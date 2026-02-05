@@ -286,13 +286,13 @@ Access reaction fields or registered properties.
 Throws an error if the symbol is neither a field nor a property.
 """
 function Base.getproperty(r::Reaction, sym::Symbol)
-    if sym in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logK⁰, :logKr] complete_thermo_functions!(r) end
     if sym in fieldnames(typeof(r))
         return getfield(r, sym)
-    elseif sym in keys(properties(r))
-        return properties(r)[sym]
     else
-        error("Symbol '$sym' is neither a field nor a registered property.")
+        if !haskey(properties(r), sym) && sym in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logK⁰, :logKr]
+            complete_thermo_functions!(r)
+        end
+        return properties(r)[sym]
     end
 end
 
@@ -302,7 +302,16 @@ end
 Check if a property key exists in the reaction properties dictionary.
 """
 function Base.haskey(r::Reaction, sym::Symbol)
-    return haskey(properties(r), sym)
+    if haskey(properties(r), sym)
+        return true
+    else
+        if sym in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logK⁰, :logKr]
+            complete_thermo_functions!(r)
+            return haskey(properties(r), sym)
+        else
+            return false
+        end
+    end
 end
 
 """
@@ -448,19 +457,19 @@ function complete_thermo_functions!(r::Reaction)
             r.ΔᵣV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
         end
     end
-    if haskey(r, :thermo_params)
+    if haskey(properties(r), :thermo_params)
         params = r[:thermo_params]
         dict_params = Dict(params)
-        if !haskey(r, :Tref) r.Tref = dict_params[:T] end
-        if !haskey(r, :Pref) r.Pref = dict_params[:P] end
-        if haskey(r, :logk_method)
+        if !haskey(properties(r), :Tref) r.Tref = dict_params[:T] end
+        if !haskey(properties(r), :Pref) r.Pref = dict_params[:P] end
+        if haskey(properties(r), :logk_method)
             r.logKr = THERMO_FACTORIES[Symbol(r[:logk_method])][:logKr](; params..., T=r.Tref, P=r.Pref)
             delete!(r.properties, :logk_method)
         end
         for k in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logKr]
             if haskey(dict_params, k) && !ismissing(dict_params[k])
                 r[Symbol(k, "_Tref")] = dict_params[k]
-                if !haskey(r, k)
+                if !haskey(properties(r), k)
                     r[k] = ThermoFunction(dict_params[k])
                 end
             end

@@ -1,7 +1,7 @@
 using Revise
+using ModelingToolkit
 using ChemistryLab, Unicode
 using DynamicQuantities
-using ModelingToolkit
 using Plots
 
 # Formula
@@ -199,21 +199,8 @@ pprint(SM)
 list_reactions = reactions(SM)
 pprint(list_reactions)
 
-# Callable
- # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
-coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
-@show cemJennite.Cp ;
-@show cemJennite.Cp(298.15u"K") ;
-@show cemJennite.Cp() ; # application by default on Tref
- # same without units
-cemJennite.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], ustrip.(coeffs); ref=[:T=>298.15u"K", :P=>1u"bar"])
-@show cemJennite.Cp ;
-@show cemJennite.Cp(298.15) ;
-@show cemJennite.Cp() ; # application by default on Tref
-
-lT = ((0:1:100) .+ 273.15).*u"K"
-@time plot(ustrip.(lT), ustrip.(dict_species["Jennite"].ΔₐH⁰.(lT)))
+lT = ((0:1:100) .+ 273.15)
+@time plot(lT, dict_species["Jennite"].ΔₐH⁰.(lT))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for re in values(dict_reactions)
@@ -291,18 +278,6 @@ end
 CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(CSM)
 SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]); pprint(SM)
 
-params = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-values0 = [:Cp⁰ => 210.0u"J/K/mol", :ΔₐH⁰ => -2723484.33u"J/mol", :S⁰ => 140u"J/(mol*K)", :ΔₐG⁰ => -2480808.197u"J/mol", :V⁰ => 7.84u"J/bar"]
-@time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15u"K"])
-Cpexpr = dict_cp_ft_equation[:Cp]
-@time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15u"K"])
-
-params = [:a₀ => 210.0, :a₁ => 0.12, :a₂ => -3.07e6, :a₃ => 0.0]
-values0 = [:Cp⁰ => 210.0, :ΔₐH⁰ => -2723484.33, :S⁰ => 140, :ΔₐG⁰ => -2480808.197, :V⁰ => 7.84]
-@time dtf = thermo_functions_cp_ft_equation(params, values0; ref=[:T => 298.15])
-Cpexpr = dict_cp_ft_equation[:Cp]
-@time dtf2 = thermo_functions_generic_cp_ft(Cpexpr, params, values0; ref=[:T => 298.15])
-
 # Example from Miron et al. 2023, https://doi.org/10.21105/joss.04624
 p1 = plot(xlabel="Temperature [°C]", ylabel="Cp⁰ [J K⁻¹]", xticks=0:50:250, yticks=-2000:200:2000)
 for sp ∈ getindex.(Ref(dict_species_aq17), split("Na+ Ca+2 SiO2@ CO3-2 OH-"))
@@ -323,14 +298,14 @@ plot(p1, p2, layout = (1, 2))
 # Vapour pressure of water
 l = dict_species_aq17["H2O@"]
 v = dict_species_aq17["H2O"]
-T0 = 373.15u"K"
-ΔHₗᵥ = v.ΔₐH⁰(T0)-l.ΔₐH⁰(T0)
+T0 = 373.15
+ΔHₗᵥ = v.ΔₐH⁰(T = T0)-l.ΔₐH⁰(T = T0)
 Rankine(T) = 13.7-5120/T
-lnP(T) = ΔHₗᵥ/Constants.R*(1/T0-1/T)
+lnP(T) = ΔHₗᵥ/ustrip(Constants.R)*(1/T0-1/T)
 lθ = 0:1:200
 plot(xlabel="T [°C]", ylabel="ln(P/P0)")
 plot!(θ -> Rankine(273.15+θ), lθ, label="Rankine")
-plot!(θ -> lnP((273.15+θ)u"K"), lθ, label = "ΔHₗᵥ/Constants.R*(1/T0-1/T)")
+plot!(θ -> lnP(273.15+θ), lθ, label = "ΔHₗᵥ/Constants.R*(1/T0-1/T)")
 
 using JSON
 json_str = JSON.json(df_substances)           # DataFrame → chaîne JSON

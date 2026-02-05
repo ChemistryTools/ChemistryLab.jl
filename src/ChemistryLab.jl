@@ -96,6 +96,7 @@ using DataFrames
 using DynamicQuantities
 using JSON
 using LinearAlgebra
+using ModelingToolkit
 using Optimization
 using OrderedCollections
 using PeriodicTable
