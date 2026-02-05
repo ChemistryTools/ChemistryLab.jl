@@ -381,11 +381,11 @@ function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
 
     if !isempty(tf.refs)
         print(io, "  References: ")
-        println(io, tf.refs)
+        println(io, join(["$k=$v" for (k, v) in pairs(tf.refs)], ", "))
     end
 
     print(io, "  Variables: ")
-    print(io, tf.vars)
+    print(io, join(tf.vars, ", "))
 end
 
 function Base.show(io::IO, factory::ThermoFactory)
