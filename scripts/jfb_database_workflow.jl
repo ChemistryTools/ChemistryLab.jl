@@ -19,3 +19,12 @@ candidate_primaries = [dict_hydrates[s] for s in CEMDATA_PRIMARIES if haskey(dic
 
 dict_species = build_species_from_database(df_substances)
 dict_reactions = build_reactions_from_database(df_reactions, dict_species)
+
+df_calcite = get_compatible_species(split("Cal H2O@ CO2"), df_substances;
+                        aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
+dict_species_calcite = build_species_from_database(df_calcite)
+primaries = [dict_species_calcite[s] for s in split("H2O@ H+ CO2@ Ca+2")]
+SM = StoichMatrix(values(dict_species_calcite), primaries); pprint(SM)
+list_reactions = reactions(SM) ; pprint(list_reactions)
+for r in list_reactions display(r); println() end
+dict_reactions_calcite = Dict(r.symbol => r for r in list_reactions)
