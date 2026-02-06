@@ -152,7 +152,7 @@ export stoich_coef_round,
     format_equation
 
 export AtomGroup,
-    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, stoichtype, pprint
+    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, calculate_molar_mass, stoichtype, pprint
 
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 

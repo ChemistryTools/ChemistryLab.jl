@@ -2,36 +2,6 @@ using ModelingToolkit
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-"""
-    calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} -> Quantity
-
-Calculate the molar mass from an atomic composition dictionary.
-
-# Arguments
-
-  - `atoms`: dictionary mapping element symbols to stoichiometric coefficients.
-
-# Returns
-
-  - Molar mass as a Quantity in g/mol units.
-
-# Examples
-
-```jldoctest
-julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
-0.0180149999937744 kg mol⁻¹
-```
-"""
-function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
-    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
-    # return uconvert(u"g/mol", sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
-    molar_masses = [
-        cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for
-        (element, cnt) in atoms if haskey(elements, element)
-    ]
-    return length(molar_masses) > 0 ? sum(molar_masses) * Constants.N_A : 0u"g/mol"
-end
-
 const ADIM_MATH_FUNCTIONS = [:log, :log10, :log2, :log1p,
                         :exp, :expm1, :exp2, :exp10,
                         :sin, :cos, :tan, :csc, :sec, :cot,
