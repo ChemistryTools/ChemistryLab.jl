@@ -550,7 +550,7 @@ function push_primaries(SM::StoichMatrix)
     else
         indices_out = setdiff(eachindex(species), indices_in)
         indices = [indices_out; indices_in]
-        return StoichMatrix(A[:, indices], primaries, species[indices], [I; -A[:, indices_out]])
+        return StoichMatrix(A[:, indices], primaries, species[indices], typeof(A)([I; -A[:, indices_out]]))
     end
 end
 
