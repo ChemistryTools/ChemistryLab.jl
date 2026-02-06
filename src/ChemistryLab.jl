@@ -104,6 +104,7 @@ using PrettyTables
 using ProgressMeter
 using RuntimeGeneratedFunctions
 using SciMLBase
+using SymbolicNumericIntegration
 using Unicode
 
 RuntimeGeneratedFunctions.init(@__MODULE__)

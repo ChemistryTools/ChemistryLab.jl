@@ -24,8 +24,11 @@ H = integrate(Cp⁰.symbolic, only(@variables T); symbolic = true, detailed = fa
 fH = ThermoFunction(H; T=298.15)
 
 dtf = build_thermo_functions(:cp_ft_equation, params)
-for (k, v) in dtf
-    println(k)
-    display(v)
-    println()
-end
+display(dtf)
+
+Cpexpr = :(α + β * T + γ * T * log(T))
+units = [:α => "J/mol/K", :β => "J/mol/K^2", :γ => "J/mol/K^2", :T => "K"]
+add_thermo_model(:mymodel, Cpexpr, units)
+params = [:α => 210.0, :γ => -3.07e6, :T => 298.15, :Cp⁰ => 210.0, :ΔfH⁰ => -2723484.33, :S⁰ => 140, :ΔfG⁰ => -2480808.197, :V⁰ => 7.84]
+dtf = build_thermo_functions(:mymodel, params)
+display(dtf)

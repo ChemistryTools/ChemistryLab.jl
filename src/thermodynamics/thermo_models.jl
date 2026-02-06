@@ -92,21 +92,37 @@ const THERMO_MODELS = Dict(
 
 const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()
 
-function check_dimensions(dict_expr, units = dict_expr[:units])
-    dict_units = Dict(units)
-    unit_result = Dict(k => infer_unit(v, units) for (k, v) in dict_expr if k != :units)
-    for (k, v) in unit_result
-        if haskey(dict_units, k)
-            # println("k: ", dimension(uparse(dict_units[k])))
-            # println("k: ", dimension(v))
-            @assert dimension(v) === dimension(uparse(dict_units[k]))
-        end
+function check_dimensions(expr::Expr, target_unit, units=nothing)
+    if isnothing(units)
+        @warn "Check dimension of $expr failed: no units provided"
+        return nothing
+    else
+        unit_result = infer_unit(expr, units)
+        @assert dimension(unit_result) === dimension(uparse(target_unit))
+        return unit_result
     end
-    return unit_result
 end
 
-function build_thermo_functions(thermo_model_name, params)
-    dict_factories = THERMO_FACTORIES[thermo_model_name]
+function check_dimensions(dict_expr::AbstractDict, units=get(dict_expr, :units, nothing))
+    if isnothing(units)
+        @warn "Check dimensions failed: no units provided"
+        return nothing
+    else
+        dict_units = Dict(units)
+        unit_result = Dict(k => infer_unit(v, units) for (k, v) in dict_expr if k != :units)
+        for (k, v) in unit_result
+            if haskey(dict_units, k)
+                # println("$k objective: ", dimension(uparse(dict_units[k])))
+                # println("$k calculated: ", dimension(v))
+                @assert dimension(v) === dimension(uparse(dict_units[k]))
+            end
+        end
+        return unit_result
+    end
+end
+
+function build_thermo_functions(model_name, params)
+    dict_factories = THERMO_FACTORIES[model_name]
     dict_params = Dict(params)
 
     STref = dict_params[:S⁰]
@@ -135,11 +151,43 @@ function build_thermo_functions(thermo_model_name, params)
 end
 
 function build_thermo_factories(dict_expr)
-    check_dimensions(dict_expr)
     return Dict(k => ThermoFactory(v, [:T, :P]) for (k, v) in dict_expr if k != :units)
 end
 
-function add_thermo_model(name, dict_model)
-    THERMO_MODELS[name] = dict_model
-    THERMO_FACTORIES[name] = build_thermo_factories(dict_model)
+function add_thermo_model(model_name, dict_model::AbstractDict)
+    check_dimensions(dict_model)
+    THERMO_MODELS[model_name] = dict_model
+    THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
+end
+
+function add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
+    check_dimensions(Cpexpr, "J/mol/K", units)
+    vars, params = extract_vars_params(Cpexpr, [:T])
+    var_sym_dict = Dict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
+    param_sym_dict = Dict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
+    all_symbols = merge(var_sym_dict, param_sym_dict)
+    T = var_sym_dict[:T]
+
+    Cp = Symbolics.simplify(Symbolics.expand(Symbolics.parse_expr_to_symbolic(Cpexpr, all_symbols)))
+    H = integrate(Cp, T; symbolic = true, detailed = false)
+
+    integS = sum(terms(Cp)./T)
+    S = integrate(integS, T; symbolic = true, detailed = false)
+
+    G = integrate(-S, T; symbolic = true, detailed = false)
+
+    if !isnothing(units)
+        dict_units = Dict(units)
+        if !haskey(dict_units, :Cp) push!(units, :Cp => "J/mol/K") end
+        if !haskey(dict_units, :S) push!(units, :S => "J/mol/K") end
+        if !haskey(dict_units, :H) push!(units, :H => "J/mol") end
+        if !haskey(dict_units, :G) push!(units, :G => "J/mol") end
+    end
+
+    dict_model = isnothing(units) ?
+                Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G)) :
+                Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G), :units => units)
+
+    THERMO_MODELS[model_name] = dict_model
+    THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end

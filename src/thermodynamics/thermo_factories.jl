@@ -46,9 +46,6 @@ for f in ADIM_MATH_FUNCTIONS
     end
 end
 
-safe_uparse(x::AbstractString) = uparse(x)
-safe_uparse(x::AbstractQuantity) = x
-
 """
     infer_unit(expr::Expr, params::Vector)
 

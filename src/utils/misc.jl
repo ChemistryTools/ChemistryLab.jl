@@ -115,3 +115,6 @@ julia> safe_uconvert(us"m", 3.0)
 safe_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q::UnionAbstractQuantity{<:Any, <:Dimensions}) = uconvert(qout, q)
 
 safe_uconvert(::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q) = q
+
+safe_uparse(x::AbstractString) = uparse(x)
+safe_uparse(x::AbstractQuantity) = x
