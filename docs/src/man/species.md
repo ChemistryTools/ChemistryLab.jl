@@ -98,7 +98,8 @@ CO₂.ΔₐG⁰ = -394.39u"kJ/mol"
 
 Heat capacity, on the other hand, is introduced in the following way: 
 
-```@example CO2
+<!-- @example CO2 -->
+```julia
 coeffs = [:a₀ => 44.22u"J/K/mol", :a₁ => 0.0088u"J/mol/K^2", :a₂ => -861.904e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
 CO₂.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
 ```
@@ -111,7 +112,8 @@ CO₂.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K",
 
 Other functions can be added to species. For example, we can add a `rate` to the CO2 species:
 
-```@example CO2
+<!-- @example CO2 -->
+```julia
 CO₂.rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
 CO₂.rate(1u"s")
 ```
