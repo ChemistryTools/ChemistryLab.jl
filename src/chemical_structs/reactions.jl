@@ -217,7 +217,7 @@ Return the properties dictionary of the reaction.
 
 ```jldoctest
 julia> properties(Reaction("H2 + O2 = H2O"))
-OrderedDict{Symbol, Union{Missing, Callable, AbstractString, Function, Number, AbstractVector{<:Number}}}()
+OrderedDict{Symbol, Union{Missing, ChemistryLab.Callable, AbstractString, Function, Number, AbstractVector{<:Number}, AbstractVector{<:Pair{Symbol}}}}()
 ```
 """
 properties(r::Reaction) = r.properties
