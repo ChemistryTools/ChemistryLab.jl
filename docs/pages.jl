@@ -10,7 +10,8 @@ pages = [
         "man/reactions.md",
     ],
     "Examples" => ["examples/bogue_calculation.md",
-                   "examples/example_stoich_matrix.md"],
+                   "examples/example_stoich_matrix.md",
+                   "examples/from_scratch.md"],
     "API" => Any[
     "Thermodynamical functions" => "api/thermo_functions.md",
     "Thermodynamical models" => "api/thermo_models.md",
