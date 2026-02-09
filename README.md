@@ -20,174 +20,79 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 - **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
 
-## Examples
+## Example
 
-- Reaction defined from a string
+Let's imagine we want to study the equilibrium of calcite in water.
 
-```julia
-julia> using ChemistryLab
+$CaCO_3 \rightleftharpoons Ca^{2+} + {CO_3}^{2-}$
 
-julia> equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
-"13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
+To do this, we can create a list of chemical species, retrieve the thermodynamic properties of these species from one of the databases integrated into ChemistryLab. We can then deduce the chemical species likely to appear in the reaction and calculate the associated stoichiometric matrix.
 
-julia> r = Reaction(equation)
-13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@
- reactants: H⁺ => 13, NO₃⁻ => 1, CO₃²⁻ => 1
-  products: H₂O@ => 6, HCN@ => 1
-    charge: -10
+In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermodynamic-data). The `.json` file is included in ChemistryLab but is a copy of a file which can be found in [ThermoHub]("https://github.com/thermohub").
+
+```@example readme
+using ChemistryLab
+
+filebasename = "cemdata18-thermofun.json"
+df_elements, df_substances, df_reactions = read_thermofun_database("data/" * filebasename)
 ```
 
-- Stoichiometric matrix construction
+The chemical species likely to appear during calcite equilibrium in water are obtained in the following way:
 
-```julia
-julia> H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split("H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻"))
-6-element Vector{Species{Int64}}:
- H₂O {H₂O} [H₂O ◆ H2O]
- H⁺ {H⁺} [H⁺ ◆ H+]
- OH⁻ {OH⁻} [OH⁻ ◆ OH-]
- CO₂ {CO₂} [CO₂ ◆ CO2]
- HCO₃⁻ {HCO₃⁻} [HCO₃⁻ ◆ HCO3-]
- CO₃²⁻ {CO₃²⁻} [CO₃²⁻ ◆ CO3-2]
-
-julia> CSM = CanonicalStoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻])
-┌────┬─────┬────┬─────┬─────┬───────┬───────┐
-│    │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
-├────┼─────┼────┼─────┼─────┼───────┼───────┤
-│  C │     │    │     │   1 │     1 │     1 │
-│  H │   2 │  1 │   1 │     │     1 │       │
-│  O │   1 │    │   1 │   2 │     3 │     3 │
-│ Zz │     │  1 │  -1 │     │    -1 │    -2 │
-└────┴─────┴────┴─────┴─────┴───────┴───────┘
-
-julia> SM = StoichMatrix([H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻]) # selection of a basis of independent primaries
-┌─────┬─────┬────┬─────┬─────┬───────┬───────┐
-│     │ H₂O │ H⁺ │ OH⁻ │ CO₂ │ HCO₃⁻ │ CO₃²⁻ │
-├─────┼─────┼────┼─────┼─────┼───────┼───────┤
-│ H₂O │   1 │    │   1 │     │     1 │     1 │
-│  H⁺ │     │  1 │  -1 │     │    -1 │    -2 │
-│ CO₂ │     │    │     │   1 │     1 │     1 │
-└─────┴─────┴────┴─────┴─────┴───────┴───────┘
-
-julia> reactions(SM) # construction of independent reactions
-3-element Vector{Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}}:
- H₂O = OH⁻ + H⁺
- H₂O + CO₂ = HCO₃⁻ + H⁺
- H₂O + CO₂ = CO₃²⁻ + 2H⁺
+```@example readme
+df_calcite = get_compatible_species(split("Cal H2O@ CO2"), df_substances;
+                        aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
+dict_species_calcite = build_species_from_database(df_calcite)
 ```
 
-- Self-balancing of a chemical reaction: symbolic example of alkane combustion
+During species creation, ChemistryLab calculates the molar mass of the species. It also constructs thermodynamic functions (heat capacity, entropy, enthalpy, and Gibbs free energy of formation) as a function of temperature. The evolution of thermodynamic properties as a function of temperature, such as heat capacity, can thus be easily plotted.
 
-```julia
-julia> using SymPy
-
-julia> n = symbols("n", real=true) ;
-
-julia> CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2) ;
-
-julia> O₂, H₂O, CO₂ = Species.(split("O₂ H₂O CO₂")) ;
-
-julia> r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
-CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
- reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
-  products: H₂O => n + 1, CO₂ => n
-    charge: 0
-
-julia> pprint(r)
-CₙH₂ₙ₊₂ + (3n/2+1/2)O₂ = (n+1)H₂O + nCO₂
- reactants: CₙH₂ₙ₊₂ => 1, O₂ => 3*n/2 + 1/2
-  products: H₂O => n + 1, CO₂ => n
-    charge: 0
-
-julia> pprint(2r)
-2CₙH₂ₙ₊₂ + (3n+1)O₂ = (2n+2)H₂O + 2nCO₂
- reactants: CₙH₂ₙ₊₂ => 2, O₂ => 3*n + 1
-  products: H₂O => 2*n + 2, CO₂ => 2*n
-    charge: 0
-
-julia> for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(subs, r, n=>vn))) end
-n=1 ⇒ CH₄ + 2O₂ = 2H₂O + CO₂
-n=2 ⇒ C₂H₆ + 7/2O₂ = 3H₂O + 2CO₂
-n=3 ⇒ C₃H₈ + 5O₂ = 4H₂O + 3CO₂
-n=4 ⇒ C₄H₁₀ + 13/2O₂ = 5H₂O + 4CO₂
-n=5 ⇒ C₅H₁₂ + 8O₂ = 6H₂O + 5CO₂
-n=6 ⇒ C₆H₁₄ + 19/2O₂ = 7H₂O + 6CO₂
-n=7 ⇒ C₇H₁₆ + 11O₂ = 8H₂O + 7CO₂
-n=8 ⇒ C₈H₁₈ + 25/2O₂ = 9H₂O + 8CO₂
-n=9 ⇒ C₉H₂₀ + 14O₂ = 10H₂O + 9CO₂
+```@example readme
+dict_species_calcite["Cal"]
 ```
 
-- Extraction from database ([ThermoHub]("https://github.com/thermohub") `.json` file) and reconstruction of thermodynamical functions
+```@example readme
+using Plots
 
-```julia
-julia> filebasename = "psinagra-12-07-thermofun"
+p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite as a function of temperature")
+plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
 
-julia> df_elements, df_substances, df_reactions, dict_species, dict_reactions = read_thermofun(filebasename);
-
-julia> CaSO₄ = dict_species["Ca(SO4)@"]
-Species{Int64}
-           name: CaSO4  aq
-         symbol: Ca(SO4)@
-        formula: CaSO4@ ◆ CaSO₄@
-          atoms: Ca => 1, S => 1, O => 4
-         charge: 0
-aggregate_state: AS_AQUEOUS
-          class: SC_AQSOLUTE
-     properties: M = 0.136133999952955 kg mol⁻¹
-                 Tref = 298.15 K
-                 Pref = 100000.0 m⁻¹ kg s⁻²
-                 Cp⁰ = -104.60063934326 ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐH⁰ = -1.417243319379807e6 - 104.60063934326T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 S⁰ = 616.8922592448816 - 104.60063934326log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐG⁰ = -1.27295402135706e6 - 721.4928985881417T + 104.60063934326T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 V⁰ = 4.700633883476301e-6 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-
-julia> Ca²⁺ = dict_species["Ca+2"]
-Species{Int64}
-           name: Ca+2
-         symbol: Ca+2
-        formula: Ca+2 ◆ Ca²⁺
-          atoms: Ca => 1
-         charge: 2
-aggregate_state: AS_AQUEOUS
-          class: SC_AQSOLUTE
-     properties: M = 0.04007799998614991 kg mol⁻¹
-                 Tref = 298.15 K
-                 Pref = 100000.0 m⁻¹ kg s⁻²
-                 Cp⁰ = -30.922515869141 ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐH⁰ = -533849.4518936157 - 30.922515869141T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 S⁰ = 119.70002369348362 - 30.922515869141log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐG⁰ = -560411.1568393706 - 150.6225395626246T + 30.922515869141T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 V⁰ = -1.8438742160797e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-
-julia> SO₄²⁻ = dict_species["SO4-2"]
-Species{Int64}
-           name: SO4-2
-         symbol: SO4-2
-        formula: S|6|O4-2 ◆ SO₄²⁻
-          atoms: S => 1, O => 4
-         charge: -2
-aggregate_state: AS_AQUEOUS
-          class: SC_AQSOLUTE
-     properties: M = 0.09605599996680511 kg mol⁻¹
-                 Tref = 298.15 K
-                 Pref = 100000.0 m⁻¹ kg s⁻²
-                 Cp⁰ = -266.09072875977 ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐH⁰ = -830362.0492202746 - 266.09072875977T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 S⁰ = 1534.9056613400478 - 266.09072875977log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 ΔₐG⁰ = -659510.4812841403 - 1800.9963900998177T + 266.09072875977T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-                 V⁰ = 1.2917655706406e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-
-julia> r = Reaction([CaSO₄, Ca²⁺, SO₄²⁻])
-  equation: CaSO₄@ = Ca²⁺ + SO₄²⁻
- reactants: CaSO₄@ => 1
-  products: Ca²⁺ => 1, SO₄²⁻ => 1
-    charge: 0
-properties: ΔᵣCp⁰ = -192.412605285651 ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-            ΔᵣS⁰ = 1037.7134257886498 - 192.412605285651log(T) ♢ unit=[m² kg s⁻² K⁻¹ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-            ΔᵣH⁰ = 53031.81826591678 - 192.412605285651T ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-            ΔᵣG⁰ = 53032.38323354907 - 1230.1260310743007T + 192.412605285651T*log(T) ♢ unit=[m² kg s⁻² mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
-            ΔᵣV⁰ = -1.02217203378673e-5 ♢ unit=[m³ mol⁻¹] ♢ ref=[T=298.15 K, P=100000.0 m⁻¹ kg s⁻²]
+savefig("heat_capacity_calcite.png"); nothing # hide
 ```
+
+![pcoa plot](heat_capacity_calcite.png)
+
+
+Obtaining stoichiometric matrices requires the choice of a species-independent basis.
+
+```@example readme
+primaries = [dict_species_calcite[s] for s in split("H2O@ H+ CO3-2 Ca+2")]
+SM = StoichMatrix(values(dict_species_calcite), primaries); pprint(SM)
+```
+
+These stoichiometric matrices thus allow us to write the chemical reactions at work.
+
+```@example readme
+list_reactions = reactions(SM) ; pprint(list_reactions)
+for r in list_reactions display(r); println() end
+dict_reactions_calcite = Dict(r.symbol => r for r in list_reactions)
+```
+
+Again, when constructing the reactions, the thermodynamic properties of the reactions as a function of temperature are deduced. It is thus possible to see, for example, the expression for the solubility product of calcite for the reaction under study and to plot its evolution.
+
+```@example readme
+dict_reactions_calcite["Cal"].logK⁰
+```
+
+```@example readme
+p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite as a function of temperature")
+plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="ln(K)")
+
+savefig("solubility_product_calcite.png"); nothing # hide
+```
+
+![pcoa plot](heat_capacity_calcite.png)
+
 
 ## Installation
 
