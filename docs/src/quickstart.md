@@ -76,11 +76,9 @@ dict_reactions_calcite["Cal"].logK⁰
 ```
 
 ```julia
-p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
-plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
+p2 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
+plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
-
-![pcoa plot](./assets/solubility_product_calcite.png)
 
 ## Notes and next steps
 
