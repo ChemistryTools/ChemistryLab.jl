@@ -145,11 +145,9 @@ Dict{String, Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}} with
 ```julia
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite as a function of temperature")
 plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="ln(K)")
-
-savefig("solubility_product_calcite.png"); nothing # hide
 ```
 
-![pcoa plot](heat_capacity_calcite.png)
+![pcoa plot](solubility_product_calcite.png)
 
 
 ## Installation
