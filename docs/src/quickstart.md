@@ -52,12 +52,7 @@ using Plots
 
 p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite \nas a function of temperature")
 plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
-
-savefig("heat_capacity_calcite.png"); nothing # hide
 ```
-
-![pcoa plot](./assets/heat_capacity_calcite.png)
-
 
 Obtaining stoichiometric matrices requires the choice of a species-independent basis.
 
@@ -82,9 +77,7 @@ dict_reactions_calcite["Cal"].logK⁰
 
 ```julia
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
-plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="ln(K)")
-
-savefig("solubility_product_calcite.png"); nothing # hide
+plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
 
 ![pcoa plot](./assets/solubility_product_calcite.png)
@@ -95,17 +88,3 @@ savefig("solubility_product_calcite.png"); nothing # hide
 - For cement-specific workflows, use `CemSpecies` and the `databases` utilities to convert between oxide- and atom-based representations.
 
 Now try the `quickstart` examples interactively in the REPL and then follow the next pages of the tutorial for deeper coverage.
-
-
-
-
-
-cp_coeffs_calcite = [:a => 99.72u"J/K/mol", :b => 26.92e3u"J/mol/K^2", :c => -21.58e-5u"J*K/mol"]
-Cp_expr_calcite = :(a + b * T + c / T^2)
-
-calcite.properties = thermo_functions_generic_cp_ft(Cp_expr_calcite, cp_coeffs_calcite, th_prop_0_calcite; ref=[:T => 298.15u"K"])
-
-Cp_expr_calcite = :(α + β * T + γ / T^2)
-factory = ThermoFactory(Cp_expr_calcite, [:T])
-params = (α=210.0, β=0.0, γ=-3.07e6, T=298.15)
-calcite.Cp⁰ = factory(; params...)

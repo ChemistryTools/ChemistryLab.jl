@@ -24,7 +24,9 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 
 Let's imagine we want to study the equilibrium of calcite in water.
 
-$CaCO_3 \rightleftharpoons Ca^{2+} + {CO_3}^{2-}$
+<p style="text-align:center;">
+CaCO<sub>3</sub> &rlarr; 2H<sub>2</sub>O + Ca<sup>2+</sup> + CO<sub>3</sub><sup>2-</sup>
+</p>
 
 To do this, we can create a list of chemical species, retrieve the thermodynamic properties of these species from one of the databases integrated into ChemistryLab. We can then deduce the chemical species likely to appear in the reaction and calculate the associated stoichiometric matrix.
 
@@ -62,7 +64,7 @@ Dict{String, Species} with 12 entries:
   "Ca(CO3)@"  => Ca(CO3)@ {CaCO3  aq} [CaCO3@ ◆ CaCO₃@]
 ```
 
-During species creation, ChemistryLab calculates the molar mass of the species. It also constructs thermodynamic functions (heat capacity, entropy, enthalpy, and Gibbs free energy of formation) as a function of temperature. The evolution of thermodynamic properties as a function of temperature, such as heat capacity, can thus be easily plotted.
+During species creation, ChemistryLab calculates the molar mass of the species. It also constructs thermodynamic functions (heat capacity, entropy, enthalpy, and Gibbs free energy of formation) as a function of temperature.
 
 ```julia
 dict_species_calcite["Cal"]
@@ -88,10 +90,12 @@ aggregate_state: AS_CRYSTAL
 
 ```
 
+The evolution of thermodynamic properties as a function of temperature, such as heat capacity, can thus be easily plotted.
+
 ```julia
 using Plots
 
-p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite as a function of temperature")
+p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite \nas a function of temperature")
 plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
 ```
 
@@ -102,7 +106,7 @@ Obtaining stoichiometric matrices requires the choice of a species-independent b
 
 ```julia
 primaries = [dict_species_calcite[s] for s in split("H2O@ H+ CO3-2 Ca+2")]
-SM = StoichMatrix(values(dict_species_calcite), primaries); pprint(SM)
+SM = StoichMatrix(values(dict_species_calcite), primaries)
 ```
 ```
 ┌───────┬────┬─────┬─────┬───────────┬─────┬───────┬──────┬──────┬──────┬───────┬───────┬──────────┐
@@ -118,8 +122,7 @@ SM = StoichMatrix(values(dict_species_calcite), primaries); pprint(SM)
 These stoichiometric matrices thus allow us to write the chemical reactions at work.
 
 ```julia
-list_reactions = reactions(SM) ; pprint(list_reactions)
-for r in list_reactions display(r); println() end
+list_reactions = reactions(SM)
 dict_reactions_calcite = Dict(r.symbol => r for r in list_reactions)
 ```
 
@@ -143,8 +146,8 @@ Dict{String, Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}} with
 ```
 
 ```julia
-p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite as a function of temperature")
-plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="ln(K)")
+p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
+plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
 
 ![pcoa plot](solubility_product_calcite.png)

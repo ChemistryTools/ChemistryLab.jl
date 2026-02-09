@@ -4,7 +4,9 @@ This example is equivalent to quickstart except that no database is needed.
 
 Let us recall the example which consisted of studying the dissolution of calcite in water.
 
-$CaCO_3 \rightleftharpoons Ca^{2+} + {CO_3}^{2-}$
+<p style="text-align:center;">
+CaCO<sub>3</sub> &rlarr; 2H<sub>2</sub>O + Ca<sup>2+</sup> + CO<sub>3</sub><sup>2-</sup>
+</p>
 
 It is possible to calculate the thermodynamic properties of the reaction, in particular the solubility constant of the reaction ($\ln K$) which is related to the Gibbs free energy of the reaction ($\Delta_r G^°$). This solubility constant is a function of temperature and the calculation is performed at a reference temperature of 298 K and at a pressure of 1 Atm using the following equation:
 
@@ -22,8 +24,8 @@ The first step, therefore, is to construct each of the species present in the re
 using ChemistryLab
 
 calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL)
-Ca²⁺ = Species("Ca2+", aggregate_state=AS_AQUEOUS)
-CO₃²⁻ = Species("CO32-", aggregate_state=AS_AQUEOUS)
+Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS)
+CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS)
 ```
 
 The created object contains a certain amount of information wheose properties can be entered *a posteriori* (or during the construction of the [`Species`](@ref)).
@@ -31,9 +33,9 @@ The created object contains a certain amount of information wheose properties ca
 ```@example example1
 using ChemistryLab #hide
 
-calcite = Species("CaCO3") #hide
-Ca²⁺ = Species("Ca2+") #hide
-CO₃²⁻ = Species("CO3-2") #hide !!!!!!!!!Ajouter as_crystal...
+calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL) #hide
+Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS) #hide
+CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS) #hide
 CO₃²⁻
 ```
 
@@ -88,7 +90,6 @@ where $\Delta_a {H^°}_T$ and $\Delta_a {G^°}_T$ are the apparent enthalpy and 
 The expressions for the thermodynamic properties of calcite can be added to the species `calcite` as follows:
 
 ```julia
-
 calcite.Cp⁰ = dtf_calcite[:Cp⁰]
 calcite.ΔₐH⁰ = dtf_calcite[:ΔₐH⁰]
 calcite.S⁰ = dtf_calcite[:S⁰]
@@ -101,8 +102,8 @@ The symbolic expression is computed for each property and writes as follows for 
 
 using ChemistryLab #hide
 
-th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78, :ΔₐG⁰ => -1129109, :V⁰ => 36.934)
-params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e3, :a₂ => -21.58e-5)
+th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78, :ΔₐG⁰ => -1129109, :V⁰ => 36.934) #hide
+params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e3, :a₂ => -21.58e-5) #hide
 T_ref = Dict(:T => 298.15)
 params = merge(th_prop_0_calcite, params_Cp_calcite, T_ref)
 dtf_calcite = build_thermo_functions(:cp_ft_equation, params)
@@ -112,13 +113,11 @@ calcite.S⁰ = dtf_calcite[:S⁰] #hide
 calcite.ΔₐG⁰ = dtf_calcite[:ΔₐG⁰]
 ```
 
-```@example example1
+```julia
 using Plots
 
-p1 = plot(xlabel="Temperature [°C]", ylabel="ΔₐG⁰ [J mol⁻¹]", title="Gibbs energy of calcite \nas a function of temperature")
+p1 = plot(xlabel="Temperature [°C]", ylabel="ΔₐG⁰ [J.mol⁻¹]", title="Gibbs energy of calcite \nas a function of temperature")
 plot!(p1, θ -> calcite.ΔₐG⁰(T = 273.15+θ), 0:0.1:100, label="ΔₐG⁰ of calcite")
-
-savefig("../assets/pcoplot.png"); nothing # hide
 ```
 
 ![pcoa plot](../assets/pcoplot.png)
@@ -157,10 +156,10 @@ CO₃²⁻.ΔₐG⁰ = dtf_CO₃²⁻[:ΔₐG⁰]
 Now we can write the dissolution/precipitation reaction of calcite.
 
 ```@example example1
-r = calcite ↔ Ca²⁺ + CO₃²⁻
+r = Reaction([calcite, Ca²⁺, CO₃²⁻]; equal_sign='↔')
 ```
 
-and deduce the solubility product as a function of temperature as expressed below:
+During the construction of this reaction, the thermodynamic properties of the reaction are calculated.
 
 $RT \; ln(K) = - \Delta_r G^° = - \sum_i \nu_i  \Delta_f {G^°}_i$
 
@@ -168,16 +167,15 @@ $RT \; ln(K) = - \Delta_r G^° = - \sum_i \nu_i  \Delta_f {G^°}_i$
 ```@example example1
 T = ThermoFunction(:T)
 R = 8.314411 #"J/K/mol"
-pKs = -(Ca²⁺.ΔₐG⁰ + CO₃²⁻.ΔₐG⁰ - calcite.ΔₐG⁰) / (R*T)
+pKs = (Ca²⁺.ΔₐG⁰ + CO₃²⁻.ΔₐG⁰ - calcite.ΔₐG⁰) / (R*T) / log(10)
 ```
 
-```@example example1
+```julia
 using Plots
 
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
-plot!(p1, θ -> pKs(T = 273.15+θ), 0:0.1:100, label="ln(K)")
-
-savefig("../assets/solubility_calcite.png"); nothing # hide
+plot!(p1, θ ->pKs(T = 273.15+θ), 0:0.1:100, label="pKs")
+plot!(p1, θ -> r.ΔᵣG⁰(T = 273.15+θ) / 8.31 / (273.15+θ) / log(10), 0:0.1:100, label="pKs")
 ```
 
 ![pcoa plot](../assets/solubility_calcite.png)
