@@ -77,7 +77,7 @@ jennite = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.666667, ĝ => 2
 Convert species to cement notation and Unicode. Conversion can be done on simple species:
 
 ```@example example_cemspecies
-H2O = Species("H₂O")
+H2O = Species("H₂O", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 cemH2O = CemSpecies(H2O)
 ```
 

@@ -29,21 +29,21 @@ end
 ```@example
 using ChemistryLab #hide
 fH2O = Formula("H2O")
-H2O = Species(fH2O)
+H2O = Species(fH2O, aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 ```
 
 - a string
 
 ```@example
 using ChemistryLab #hide
-HSO4⁻ = Species("HSO₄⁻")
+HSO4⁻ = Species("HSO₄⁻", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT)
 ```
 
 - a dictionary
 
 ```@example
 using ChemistryLab #hide
-CO2 = Species(Dict(:C => 1, :O => 2))
+CO2 = Species(Dict(:C => 1, :O => 2), aggregate_state=AS_GAS, class=SC_GASFLUID)
 ```
 
 !!! note "Adding charge"
@@ -51,7 +51,7 @@ CO2 = Species(Dict(:C => 1, :O => 2))
 
 ```@example
 using ChemistryLab #hide
-CO2 = Species(Dict(:Si => 1, :O => 3), -2)
+SiO₃²⁻ = Species(Dict(:Si => 1, :O => 3), -2, aggregate_state=AS_AQUEOUS, class=SC_COMPONENT)
 ```
 
 Keyword arguments such as `name`, `symbol`, `aggregate_state`, `class` can be added during construction.
@@ -101,8 +101,8 @@ Furthermore, as explained above, heat capacity is a function of temperature. The
 
 ```julia
 using DynamicQuantities, ModelingToolkit
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14, :ΔₐH⁰ => -393510, :S⁰ => 213.785, :ΔₐG⁰ => -394373, :V⁰ => 25.3)
-coeffs = Dict(:a₀ => 33.98, :a₁ => 23.88e-3, :a₂ => 0.0, :a₃ => 0.0)
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3)
+coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K")
 ```
 
 !!! note "Heat capacity function"
@@ -121,9 +121,9 @@ Reference thermodynamical properties and temperature being defined, a simple cal
 
 ```@example CO2
 using DynamicQuantities, ModelingToolkit #hide
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14, :ΔₐH⁰ => -393510, :S⁰ => 213.785, :ΔₐG⁰ => -394373, :V⁰ => 25.3) #hide
-coeffs = Dict(:a₀ => 33.98, :a₁ => 23.88e-3, :a₂ => 0.0, :a₃ => 0.0) #hide
-T_ref = Dict(:T => 298.15) #hide
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3) #hide
+coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K") #hide
+T_ref = Dict(:T => 298.15u"K") #hide
 params_Cp_CO2 = merge(th_prop_0_CO2, coeffs, T_ref)
 dtf_CO2 = build_thermo_functions(:cp_ft_equation, params_Cp_CO2)
 ```

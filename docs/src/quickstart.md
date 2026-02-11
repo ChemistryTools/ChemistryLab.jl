@@ -36,7 +36,7 @@ using ChemistryLab #hide
 
 filebasename = "cemdata18-thermofun.json" #hide
 df_elements, df_substances, df_reactions = read_thermofun_database("../../data/" * filebasename) #hide
-df_calcite = get_compatible_species(split("Cal H2O@ CO2"), df_substances;
+df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
 dict_species_calcite = build_species_from_database(df_calcite)
 ```
@@ -58,14 +58,13 @@ Obtaining stoichiometric matrices requires the choice of a species-independent b
 
 ```@example from_scratch
 primaries = [dict_species_calcite[s] for s in split("H2O@ H+ CO3-2 Ca+2")]
-SM = StoichMatrix(values(dict_species_calcite), primaries); pprint(SM)
+SM = StoichMatrix(values(dict_species_calcite), primaries)
 ```
 
 These stoichiometric matrices thus allow us to write the chemical reactions at work.
 
 ```@example from_scratch
-list_reactions = reactions(SM) ; pprint(list_reactions)
-for r in list_reactions display(r); println() end
+list_reactions = reactions(SM)
 dict_reactions_calcite = Dict(r.symbol => r for r in list_reactions)
 ```
 

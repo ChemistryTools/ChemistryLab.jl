@@ -20,6 +20,21 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 - **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
 
+## Installation
+
+The package can be installed with the Julia package manager.
+From the Julia REPL, type `]` to enter the Pkg REPL mode and run:
+
+```julia
+pkg> add ChemistryLab
+```
+
+Or, equivalently, via the `Pkg` API:
+
+```julia
+julia> import Pkg; Pkg.add("ChemistryLab")
+```
+
 ## Example
 
 Let's imagine we want to study the equilibrium of calcite in water.
@@ -42,7 +57,7 @@ df_elements, df_substances, df_reactions = read_thermofun_database("data/" * fil
 The chemical species likely to appear during calcite equilibrium in water are obtained in the following way:
 
 ```julia
-df_calcite = get_compatible_species(split("Cal H2O@ CO2"), df_substances;
+df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
 dict_species_calcite = build_species_from_database(df_calcite)
 ```
@@ -99,7 +114,7 @@ p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of 
 plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
 ```
 
-![pcoa plot](heat_capacity_calcite.png)
+![pcoa plot](assets/heat_capacity_calcite.png)
 
 
 Obtaining stoichiometric matrices requires the choice of a species-independent basis.
@@ -150,23 +165,7 @@ p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs
 plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
 
-![pcoa plot](solubility_product_calcite.png)
-
-
-## Installation
-
-The package can be installed with the Julia package manager.
-From the Julia REPL, type `]` to enter the Pkg REPL mode and run:
-
-```julia
-pkg> add ChemistryLab
-```
-
-Or, equivalently, via the `Pkg` API:
-
-```julia
-julia> import Pkg; Pkg.add("ChemistryLab")
-```
+![pcoa plot](assets/solubility_product_calcite.png)
 
 ## Usage
 

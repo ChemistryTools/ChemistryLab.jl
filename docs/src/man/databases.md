@@ -31,7 +31,7 @@ All species in the database could be constructed from Dataframes obtained by rea
 Let's take a subset representing the dissolution of calcite in pure water. `get_compatible_species` allows us to construct the subset of species that can be present during the reaction of calcite in water.
 
 ```julia
-df_calcite = get_compatible_species(split("Cal H2O@"), df_substances;
+df_calcite = get_compatible_species(df_substances, split("Cal H2O@");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
 ```
 
@@ -44,7 +44,7 @@ dict_species_calcite = build_species_from_database(df_calcite)
 For example, $\text{Ca}(\text{HCO}_3)^+$ properties can be read as follows:
 
 ```@example database
-df_calcite = get_compatible_species(split("Cal H2O@"), df_substances;
+df_calcite = get_compatible_species(df_substances, split("Cal H2O@");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true) #hide
 dict_species_calcite = build_species_from_database(df_calcite) #hide
 dict_species_calcite["Ca(HCO3)+"]

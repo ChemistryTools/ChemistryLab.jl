@@ -13,9 +13,9 @@ Any species can be described as a linear combination of chemical elements. A spe
 
 ```@example
 using ChemistryLab #hide
-H2O = Species("H₂O")
-HSO4 = Species("HSO₄⁻")
-CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
+H2O = Species("H₂O", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+HSO4 = Species("HSO₄⁻", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT)
+CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂", aggregate_state=AS_GAS, class=SC_GASFLUID)
 species = [H2O, HSO4, CO2]
 CSM = CanonicalStoichMatrix(species)
 
@@ -28,10 +28,10 @@ A cement species vector can also be expressed in terms of other species on which
 
 ```@example stoich
 using ChemistryLab #hide
-C3S = CemSpecies("C3S")
-C2S = CemSpecies("C2S")
-C3A = CemSpecies("C3A")
-C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
+C3S = CemSpecies("C3S", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C2S = CemSpecies("C2S", symbol="C₂S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C3A = CemSpecies("C3A", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF", symbol="C₄AF", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 cemspecies = [C3S, C2S, C3A, C4AF]
 CSM = CanonicalStoichMatrix(cemspecies)
 
@@ -79,7 +79,7 @@ For a given number of species (eg. Portlandite and water), all ionic species whi
 
 ```julia
 df_given_species = filter(row -> row.symbol ∈ split("Portlandite H2O@"), df_substances)
-df_added_species = get_compatible_species(split("Portlandite H2O@"), df_substances;
+df_added_species = get_compatible_species(df_substances, split("Portlandite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"))
 ```
 
@@ -92,7 +92,7 @@ df_union = unique(vcat(df_given_species, df_added_species))
 Or in one line with the keyword argument `union=true`
 
 ```julia
-df_union = get_compatible_species(split("Portlandite H2O@"), df_substances;
+df_union = get_compatible_species(df_substances, split("Portlandite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2"), union=true)
 ```
 
@@ -116,7 +116,7 @@ Finally, the stoichiometric matrix can be calculated:
 ```@setup example1
     using ChemistryLab #hide
     df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json") #hide
-    df_union = get_compatible_species(split("Portlandite H2O@"), df_substances;
+    df_union = get_compatible_species(df_substances, split("Portlandite H2O@");
                 aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2"), union=true) #hide
     dict_species = build_species_from_database(df_union) #hide
     candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)] #hide

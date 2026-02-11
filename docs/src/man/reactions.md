@@ -35,10 +35,10 @@ rC3S = CemReaction(eqC3S)
 
 ```@example
 using ChemistryLab
-C3S = CemSpecies("C3S")
-H = CemSpecies("H")
-CH = CemSpecies("CH")
-CSH = CemSpecies("C1.7SH4")
+C3S = CemSpecies("C3S", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+H = CemSpecies("H", symbol="H₂O@", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+CH = CemSpecies("CH", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+CSH = CemSpecies("C1.7SH4", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 r = C3S + 5.3H ↔ 1.3CH + CSH
 typeof(r)
 ```
@@ -57,23 +57,22 @@ pprint(r)
 
 - a balance calculation with symbolic numbers
 
-```julia
+```@example
 using ChemistryLab
-using SymPy
-a, b, g = symbols("a b g", real=true)
-CSH = CemSpecies(Dict(:C => a, :S => one(Sym), :H => g))
+@variables a b g
+CSH = CemSpecies(Dict(:C => a, :S => one(Num), :H => g))
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
 ```
 
-```julia
+```@example
 using ChemistryLab
-C3S = CemSpecies("C3S")
+@variables a b g
+CSH = CemSpecies(Dict(:C => a, :S => one(Num), :H => g))C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
-CSH = CemSpecies("C1.7SH4")
 r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 SM = StoichMatrix([C3S], [CSH, H, CH])
 ```
