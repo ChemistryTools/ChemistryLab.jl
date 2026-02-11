@@ -70,7 +70,7 @@ unchanged.
 
 # Examples
 
-```jldoctest
+```julia
 julia> safe_ustrip(u"m", 5u"m")
 5.0
 
@@ -104,7 +104,7 @@ return `q` unchanged.
 
 # Examples
 
-```jldoctest
+```julia
 julia> safe_uconvert(us"m", 5u"cm")
 0.05 m
 

@@ -24,9 +24,9 @@ The first step, therefore, is to construct each of the species present in the re
 ```julia
 using ChemistryLab
 
-calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL)
-Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS)
-CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS)
+calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT)
+CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT)
 ```
 
 The created object contains a certain amount of information wheose properties can be entered *a posteriori* (or during the construction of the [`Species`](@ref)).
@@ -34,9 +34,9 @@ The created object contains a certain amount of information wheose properties ca
 ```@example example1
 using ChemistryLab #hide
 
-calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL) #hide
-Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS) #hide
-CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS) #hide
+calcite = Species("CaCO3", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT) #hide
+Ca²⁺ = Species("Ca+2", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT) #hide
+CO₃²⁻ = Species("CO3-2", aggregate_state=AS_AQUEOUS, class=SC_COMPONENT) #hide
 CO₃²⁻
 ```
 
@@ -53,7 +53,7 @@ For each species, it is possible to assign thermodynamic properties, such as the
 The first step involves associating the values ​​of the thermodynamic properties of formation for each species. For calcite, this can be done as follows:
 
 ```julia
-th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78, :ΔₐG⁰ => -1129109, :V⁰ => 36.934)
+th_prop_0_calcite = Dict(:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/K/mol", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934)
 ```
 
 #### Heat capacity, enthalpy and free energy as a function of temperature
@@ -61,8 +61,9 @@ th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78
 The second step is to describe the evolution of heat capacity as a function of temperature for each species. As exposed in the previous figure, heat capacity is expressed as a function of temperature: $C_p = a + bT + cT^2$. A reference temperature can then be defined in order to construct thermodynamic functions, such as heat capacity, entropy, enthalpy and free enthalpy. For calcite, this can be done as follows:
 
 ```julia
-params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e-3, :a₂ => -21.58e5)
-T_ref = Dict(:T => 298.15)
+using DynamicQuantities
+params_Cp_calcite = Dict(:a₀ => 99.72u"J/K/mol", :a₁ => 26.92e-3u"J/mol/K^2", :a₂ => -21.58e5u"J*K/mol")
+T_ref = Dict(:T => 298.15u"K")
 params_calcite = merge(th_prop_0_calcite, params_Cp_calcite, T_ref)
 dtf_calcite = build_thermo_functions(:cp_ft_equation, params_calcite)
 ```
@@ -102,10 +103,11 @@ The symbolic expression is computed for each property and writes as follows for 
 ```@example example1
 
 using ChemistryLab #hide
+using DynamicQuantities #hide
 
-th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78, :ΔₐG⁰ => -1129109, :V⁰ => 36.934) #hide
-params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e3, :a₂ => -21.58e-5) #hide
-T_ref = Dict(:T => 298.15)
+th_prop_0_calcite = Dict(:Cp⁰ => 83.47u"J/K/mol", :ΔₐH⁰ => -1207605u"J/mol", :S⁰ => 91.78u"J/K/mol", :ΔₐG⁰ => -1129109u"J/mol", :V⁰ => 36.934) #hide
+params_Cp_calcite = Dict(:a₀ => 99.72u"J/K/mol", :a₁ => 26.92e-3u"J/mol/K^2", :a₂ => -21.58e5u"J*K/mol") #hide
+T_ref = Dict(:T => 298.15u"K")
 params = merge(th_prop_0_calcite, params_Cp_calcite, T_ref)
 dtf_calcite = build_thermo_functions(:cp_ft_equation, params)
 calcite.Cp⁰ = dtf_calcite[:Cp⁰]  #hide
@@ -135,15 +137,14 @@ These new properties are also functions of temperature. However, unlike calcite,
 
 
 ```@example example1
-
-th_prop_0_Ca²⁺ = Dict(:Cp⁰ => -26.38, :ΔₐH⁰ => -543000, :S⁰ => -56.2, :ΔₐG⁰ => -552806, :V⁰ => -18.154) #hide
-params_Cp_Ca²⁺ = Dict(:a₀ => -26.38)
+th_prop_0_Ca²⁺ = Dict(:Cp⁰ => -26.38u"J/K/mol", :ΔₐH⁰ => -543000u"J/mol", :S⁰ => -56.2u"J/K/mol", :ΔₐG⁰ => -552806u"J/mol", :V⁰ => -18.154) #hide
+params_Cp_Ca²⁺ = Dict(:a₀ => -26.38u"J/K/mol") #hide
 params_Ca²⁺ = merge(th_prop_0_Ca²⁺, params_Cp_Ca²⁺, T_ref)
 dtf_Ca²⁺ = build_thermo_functions(:cp_ft_equation, params_Ca²⁺)
 Ca²⁺.ΔₐG⁰ = dtf_Ca²⁺[:ΔₐG⁰]
 
-th_prop_0_CO₃²⁻ = Dict(:Cp⁰ => -276.88, :ΔₐH⁰ => -675230, :S⁰ => -50.00, :ΔₐG⁰ => -527900, :V⁰ => -5.275) #hide
-params_Cp_CO₃²⁻ = Dict(:a₀ => -276.88)
+th_prop_0_CO₃²⁻ = Dict(:Cp⁰ => -276.88u"J/K/mol", :ΔₐH⁰ => -675230u"J/mol", :S⁰ => -50.00u"J/K/mol", :ΔₐG⁰ => -527900u"J/mol", :V⁰ => -5.275) #hide
+params_Cp_CO₃²⁻ = Dict(:a₀ => -276.88u"J/K/mol")
 params_CO₃²⁻ = merge(th_prop_0_CO₃²⁻, params_Cp_CO₃²⁻, T_ref)
 dtf_CO₃²⁻ = build_thermo_functions(:cp_ft_equation, params_CO₃²⁻)
 CO₃²⁻.ΔₐG⁰ = dtf_CO₃²⁻[:ΔₐG⁰]
@@ -169,7 +170,6 @@ using Plots
 
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
 plot!(p1, θ -> r.ΔᵣG⁰(T = 273.15+θ) / 8.31 / (273.15+θ) / log(10), 0:0.1:100, label="pKs")
-savefig("solubility_calcite.png")
 ```
 
 ![pcoa plot](../assets/solubility_calcite.png)

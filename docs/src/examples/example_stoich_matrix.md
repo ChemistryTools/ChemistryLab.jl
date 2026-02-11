@@ -15,7 +15,7 @@ df_elements, df_substances, df_reactions = read_thermofun_database("../../../dat
 It is then necessary to identify the list of secondary species likely to appear during the reactions.
 
 ```julia
-df_species = get_compatible_species(split("C3S Portlandite Jennite H2O@"), df_substances;
+df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
 dict_species = build_species_from_database(df_species)
 ```
@@ -32,7 +32,7 @@ And construct the stoichiometric matrix
     using ChemistryLab #hide
     df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json") #hide
 
-    df_species = get_compatible_species(split("C3S Portlandite Jennite H2O@"), df_substances;
+    df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
                 aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true) #hide
     dict_species = build_species_from_database(df_species) #hide
 
@@ -55,13 +55,13 @@ df_elements, df_substances, df_reactions = read_thermofun_database("../../../dat
 df_aqueous_species = filter(row -> only(row.aggregate_state).second == "AS_AQUEOUS", df_substances)
 dict_aqueous_species = build_species_from_database(df_aqueous_species)
 candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
-SM = StoichMatrix(dict_aqueous_species, candidate_primaries) ; pprint(SM)
+SM = StoichMatrix(dict_aqueous_species, candidate_primaries)
 ```
 
 All the independent reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
 
 ```@example example1
-lr = reactions(SM) ; pprint(lr)
+lr = reactions(SM)
 ```
 
 ---
