@@ -197,8 +197,8 @@ function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_spe
 end
 
 function get_compatible_species(
-    species_list,
-    df_substances::AbstractDataFrame
+    df_substances::AbstractDataFrame,
+    species_list
     ;
     aggregate_states=[AS_AQUEOUS],
     exclude_species=[],

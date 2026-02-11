@@ -95,7 +95,7 @@ df_secondaries = filter(row -> last(only(row.aggregate_state)) == "AS_AQUEOUS"
                         && row.symbol ∉ split("H2@ O2@") , df_substances)
 df_union = unique(vcat(df_given_species, df_secondaries))
 # Same as above in one command
-df_union = get_compatible_species(split("C2S Portlandite Jennite H2O@"), df_substances;
+df_union = get_compatible_species(df_substances, split("C2S Portlandite Jennite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
 dict_all_species = build_species_from_database(df_union)
 candidate_primaries = collect(skipmissing(get.(Ref(dict_all_species), CEMDATA_PRIMARIES, missing)))
@@ -111,7 +111,7 @@ df_involved_reactions = filter(row -> all(in.([x.symbol for x in row.reactants],
 dict_involved_reactions = build_reactions_from_database(df_involved_reactions, dict_all_species)
 
 
-df_hydrates_clinker = get_compatible_species(split("C3S C2S C3A C4AF Gp H2O@"), df_substances; aggregate_states=[AS_CRYSTAL])
+df_hydrates_clinker = get_compatible_species(df_substances, split("C3S C2S C3A C4AF Gp H2O@"); aggregate_states=[AS_CRYSTAL])
 
 
 # Construction of stoich matrix with aqueous species from database
