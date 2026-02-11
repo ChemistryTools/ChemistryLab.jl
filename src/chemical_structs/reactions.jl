@@ -476,6 +476,9 @@ function complete_thermo_functions!(r::Reaction)
         end
         delete!(r.properties, :thermo_params)
     end
+    if haskey(properties(r), :V_method) && r[:V_method] == "dr_volume_constant"
+        delete!(r.properties, :V_method)
+    end
     return r
 end
 

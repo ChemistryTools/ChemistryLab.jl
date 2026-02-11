@@ -1511,11 +1511,11 @@ function complete_thermo_functions!(s::AbstractSpecies)
                 dtf = build_thermo_functions(:cp_ft_equation, [:a₀ => dict_params[:Cp⁰]; params])
                 for (k,v) in dtf s[k] = v end
             end
-            for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
-                if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
-                    s[k] = ThermoFunction(dict_params[k])
-                end
-            end
+            # for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
+            #     if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
+            #         s[k] = ThermoFunction(dict_params[k])
+            #     end
+            # end
         end
         if haskey(properties(s), :V_method)
             s[:V⁰] = ThermoFunction(dict_params[:V⁰])
@@ -1523,6 +1523,14 @@ function complete_thermo_functions!(s::AbstractSpecies)
         else
             for k in [:V⁰]
                 if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
+                    s[k] = ThermoFunction(dict_params[k])
+                end
+            end
+        end
+        for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰, :V⁰]
+            if haskey(dict_params, k) && !ismissing(dict_params[k])
+                s[Symbol(k, "_Tref")] = dict_params[k]
+                if !haskey(properties(s), k)
                     s[k] = ThermoFunction(dict_params[k])
                 end
             end
