@@ -39,9 +39,7 @@ julia> import Pkg; Pkg.add("ChemistryLab")
 
 Let's imagine we want to study the equilibrium of calcite in water.
 
-<p style="text-align:center;">
-CaCO<sub>3</sub> &rlarr; 2H<sub>2</sub>O + Ca<sup>2+</sup> + CO<sub>3</sub><sup>2-</sup>
-</p>
+$\text{CaCO}_3 \rightleftharpoons \text{Ca}^{2+} + {\text{CO}_3}^{2-}$
 
 To do this, we can create a list of chemical species, retrieve the thermodynamic properties of these species from one of the databases integrated into ChemistryLab. We can then deduce the chemical species likely to appear in the reaction and calculate the associated stoichiometric matrix.
 
