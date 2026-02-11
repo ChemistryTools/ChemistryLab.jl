@@ -183,7 +183,7 @@ See [CITATION.cff](CITATION.cff) for citation details.
 
 ```bibtex
 @software{chemistrylab_jl,
-  authors = {Barthélemy, Jean-François and Soive, Anthony},
+  authors = {Barthélémy, Jean-François and Soive, Anthony},
   title = {ChemistryLab.jl: Numerical laboratory for computational chemistry},
   doi = {10.5281/zenodo.17756074},
   url = {https://github.com/jfbarthelemy/ChemistryLab.jl}
