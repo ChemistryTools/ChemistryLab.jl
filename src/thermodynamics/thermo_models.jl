@@ -5,33 +5,33 @@ const THERMO_MODELS = Dict(
             a₀ +
             a₁ * T +
             a₂ / T^2 +
-            a₃ / √T +
+            a₃ / sqrt(T) +
             a₄ * T^2 +
             a₅ * T^3 +
             a₆ * T^4 +
             a₇ / T^3 +
             a₈ / T +
-            a₉ * √T +
+            a₉ * sqrt(T) +
             a₁₀ * log(T)
         ),
         :S => :(
             a₀ * log(T) +
             a₁ * T +
             -(a₂ / 2) / T^2 +
-            -2 * a₃ / √T +
+            -2 * a₃ / sqrt(T) +
             (a₄ / 2) * T^2 +
             (a₅ / 3) * T^3 +
             (a₆ / 4) * T^4 +
             -(a₇ / 3) / T^3 +
             -a₈ / T +
-            2 * a₉ * √T +
+            2 * a₉ * sqrt(T) +
             (a₁₀ / 2) * (log(T))^2
         ),
         :H => :(
             a₀ * T +
             a₁ * T^2 / 2 +
             -a₂ / T +
-            2 * a₃ * √T +
+            2 * a₃ * sqrt(T) +
             (a₄ / 3) * T^3 +
             (a₅ / 4) * T^4 +
             (a₆ / 5) * T^5 +
@@ -45,7 +45,7 @@ const THERMO_MODELS = Dict(
             a₀ * T +
             -(a₁ / 2) * T^2 +
             -(a₂ / 2) / T +
-            4 * a₃ * √T +
+            4 * a₃ * sqrt(T) +
             -(a₄ / 6) * T^3 +
             -(a₅ / 12) * T^4 +
             -(a₆ / 20) * T^5 +
@@ -68,14 +68,14 @@ const THERMO_MODELS = Dict(
             :a₉ => "J/(mol*K^1.5)",
             :a₁₀ => "J/(mol*K)",
             :T => "K",
-            :Cp => "J/(mol*K)",
-            :S => "J/(mol*K)",
-            :H => "J/mol",
-            :G => "J/mol",
+            # :Cp => "J/(mol*K)",
+            # :S => "J/(mol*K)",
+            # :H => "J/mol",
+            # :G => "J/mol",
         ],
     ),
     :logk_fpt_function => Dict(
-        :logKr => :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T),
+        :logKr => :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * sqrt(T)),
         :units => [
             :A₀ => "1",
             :A₁ => "1/K",
@@ -85,41 +85,12 @@ const THERMO_MODELS = Dict(
             :A₅ => "1/K^2",
             :A₆ => "1/√K",
             :T => "K",
-            :logKr => "1",
+            # :logKr => "1",
         ],
     ),
 )
 
 const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()
-
-function check_dimensions(expr::Expr, target_unit, units=nothing)
-    if isnothing(units)
-        @warn "Check dimension of $expr failed: no units provided"
-        return nothing
-    else
-        unit_result = infer_unit(expr, units)
-        @assert dimension(unit_result) === dimension(uparse(target_unit))
-        return unit_result
-    end
-end
-
-function check_dimensions(dict_expr::AbstractDict, units=get(dict_expr, :units, nothing))
-    if isnothing(units)
-        @warn "Check dimensions failed: no units provided"
-        return nothing
-    else
-        dict_units = Dict(units)
-        unit_result = Dict(k => infer_unit(v, units) for (k, v) in dict_expr if k != :units)
-        for (k, v) in unit_result
-            if haskey(dict_units, k)
-                # println("$k objective: ", dimension(uparse(dict_units[k])))
-                # println("$k calculated: ", dimension(v))
-                @assert dimension(v) === dimension(uparse(dict_units[k]))
-            end
-        end
-        return unit_result
-    end
-end
 
 function build_thermo_functions(model_name, params)
     dict_factories = THERMO_FACTORIES[model_name]
@@ -133,35 +104,33 @@ function build_thermo_functions(model_name, params)
     Cp⁰ = dict_factories[:Cp](; params...)
 
     H = dict_factories[:H](; params...)
-    ΔₐH⁰ = H + (HTref - H(T = Tref))
+    ΔₐH⁰ = H + (HTref - H(T = Tref; unit = true))
 
     S = dict_factories[:S](; params...)
-    δS⁰ = STref - S(T = Tref)
+    δS⁰ = STref - S(T = Tref; unit = true)
     S⁰ = S + δS⁰
 
-    T = ThermoFunction(:T)
+    T = ThermoFunction(:T, units = [:T => "K"])
     if haskey(dict_factories, :G)
         G = dict_factories[:G](; params...)
-        ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(T = Tref) + Tref*δS⁰)
+        ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(T = Tref; unit = true) + Tref*δS⁰)
     else
-        ΔₐG⁰ = (H - T*S⁰) + (GTref - H(T = Tref) + Tref*STref)
+        ΔₐG⁰ = (H - T*S⁰) + (GTref - H(T = Tref; unit = true) + Tref*STref)
     end
 
     return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end
 
 function build_thermo_factories(dict_expr)
-    return Dict(k => ThermoFactory(v, [:T, :P]) for (k, v) in dict_expr if k != :units)
+    return Dict(k => ThermoFactory(v, [:T, :P]; units=get(dict_expr, :units, nothing)) for (k, v) in dict_expr if k != :units)
 end
 
 function add_thermo_model(model_name, dict_model::AbstractDict)
-    check_dimensions(dict_model)
     THERMO_MODELS[model_name] = dict_model
     THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end
 
 function add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
-    check_dimensions(Cpexpr, "J/mol/K", units)
     vars, params = extract_vars_params(Cpexpr, [:T])
     var_sym_dict = Dict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
     param_sym_dict = Dict{Symbol, Num}(p => Symbolics.variable(p) for p in params)

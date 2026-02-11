@@ -19,7 +19,7 @@ function extract_unit(v, default_unit=u"1")
            end
 end
 
-function extract_value(row, field::Symbol; verbose=false, default_unit=u"1", with_units=false)
+function extract_value(row, field::Symbol; verbose=false, default_unit=u"1", with_units=true)
     if haskey(row, field) && !ismissing(row[field]) && haskey(row[field], :values)
         try
             val = only(row[field].values)
@@ -46,8 +46,8 @@ function extract_value(row, field::Symbol; verbose=false, default_unit=u"1", wit
 end
 
 function complete_species_with_thermo_model!(species, row; verbose=false)
-    Tref = row.Tst
-    Pref = row.Pst
+    Tref = row.Tst * u"K"
+    Pref = row.Pst * u"Pa"
     species.Tref = Tref
     species.Pref = Pref
     values0 = [
@@ -66,9 +66,10 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
                 species[:Cp_method] = "cp_ft_equation"
                 coeffs = method.m_heat_capacity_ft_coeffs
                 vals = coeffs.values
-                # units = extract_unit.(coeffs.units)
+                units = extract_unit.(coeffs.units)
                 params = [
-                    Symbol("a", subscriptnumber(i - 1)) => float(vals[i]) for i in eachindex(vals)
+                    Symbol("a", subscriptnumber(i - 1)) => float(vals[i] * units[i])
+                    for i in 1:min(length(vals), length(units))
                 ]
                 species[:thermo_params] = [params; species[:thermo_params]]
 
@@ -81,8 +82,6 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
 end
 
 function build_species_from_database(df_substances::AbstractDataFrame, list_symbols = nothing; verbose=false)
-    # local_df_substances = isnothing(list_symbols) ? df_substances :
-    #     filter(row -> row.symbol ∈ list_symbols, df_substances)
     local_df_substances = isnothing(list_symbols) ? df_substances :
         @view df_substances[df_substances.symbol .∈ Ref(list_symbols), :]
     keylist = String[]
@@ -119,8 +118,8 @@ function build_species_from_database(df_substances::AbstractDataFrame, list_symb
 end
 
 function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
-    Tref = row.Tst
-    Pref = row.Pst
+    Tref = row.Tst * u"K"
+    Pref = row.Pst * u"Pa"
     reaction.Tref = Tref
     reaction.Pref = Pref
     values0 = [
@@ -140,34 +139,22 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
                 reaction[:logk_method] = "logk_fpt_function"
                 coeffs = method.logk_ft_coeffs
                 vals = coeffs.values
-                # units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
+                units = dimension.([1, u"1/K", u"K", 1, u"K^2", u"1/K^2", u"1/√K"])
                 params = [
-                    Symbol("A", subscriptnumber(i - 1)) => float(vals[i]) for i in eachindex(vals)
+                    Symbol("A", subscriptnumber(i - 1)) =>
+                        float(Quantity(vals[i], units[i])) for
+                    i in 1:min(length(vals), length(units))
                 ]
-                # logKrexpr = :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * √T)
                 reaction[:thermo_params] = [params; reaction[:thermo_params]]
-                # reaction.logKr = THERMO_FACTORIES[:logk_fpt_function][:logKr](; params..., T=Tref, P=Pref)
             elseif method_type == "dr_volume_constant"
                 reaction[:V_method] = "dr_volume_constant"
-                # ΔᵣV⁰ = last(values0[5])
-                # if !ismissing(ΔᵣV⁰)
-                #     reaction[:ΔᵣV⁰] = ThermoFunction(ΔᵣV⁰)
-                # end
             end
         end
     end
-    # for (k,v) in values0
-    #     if !ismissing(v)
-    #         reaction[Symbol(k, "_Tref")] = v
-    #         if !haskey(reaction, k) reaction[k] = ThermoFunction(v) end
-    #     end
-    # end
     return reaction
 end
 
 function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols = nothing; verbose=false)
-    # local_df_reactions = isnothing(list_symbols) ? df_reactions :
-    #     filter(row -> row.symbol ∈ list_symbols, df_reactions)
     local_df_reactions = isnothing(list_symbols) ? df_reactions :
         @view df_reactions[df_reactions.symbol .∈ Ref(list_symbols), :]
     keylist = String[]

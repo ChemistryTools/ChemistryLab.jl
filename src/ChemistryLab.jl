@@ -129,11 +129,6 @@ include("databases/merge_dat_json.jl")
 include("equilibrium/equilibrium_problems.jl")
 include("equilibrium/states.jl")
 
-export safe_ustrip, safe_uconvert
-
-# export Callable, ThermoFunction, thermo_function_library, ∂, ∫, calculate_molar_mass, apply
-# export dict_cp_ft_equation, thermo_functions_cp_ft_equation, thermo_functions_generic_cp_ft
-
 export ThermoFunction, ThermoFactory, infer_unit
 
 export THERMO_MODELS, THERMO_FACTORIES, add_thermo_model, build_thermo_functions, check_dimensions
