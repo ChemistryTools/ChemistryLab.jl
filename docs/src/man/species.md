@@ -85,35 +85,45 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 
 The molar mass is systematically calculated and integrated into the species properties. The heat capacity function is also integrated as a predefined function of the `Species` structure. This function is expressed as follows:
 
-${C_p}^° = a_0 + a_1 T + a_2 T^{−2} + a_3 T^{−0.5}$
+$a_0 + a_1 * T + a_2 * T^{-2} + a_3 * T^{-0.5} + a_4 * T^2 + a_5 * T^3 + a_6 * T^4 + a_7 * T^{-3} + a_8 * T^{-1} + a_9 * T^{0.5} + a_{10} * log(T)$
 
 Other species properties are open and left to the discretion of users. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
 
-Imagine, for example, that we wanted to construct the $CO_2$ molecule with some of its thermodynamic properties. The Gibbs energy of formation of this species is equal to $-394.39\; KJ/mol$. This property, intrinsic to the species, can be added simply as follows:
+Imagine, for example, that we wanted to construct the $CO_2$ molecule in a gaseous state with some of its thermodynamic properties. The thermodynamic properties of the molecule, which can be found for example on the website [thermoddem](https://thermoddem.brgm.fr/), are as follows at 298 K and 1 atm:
 
-```@example CO2
-using DynamicQuantities, ModelingToolkit
-CO₂.ΔₐG⁰ = -394.39u"kJ/mol"
-```
+- heat capacity ${C_p}^°$: 37.14 $J.mol^{-1}.K^{-1}$
+- molar volume $V^°$: 25.3 $cm^3.mol^{-1}$
+- enthalpy of formation $\Delta_a {H^°}$: -393510 $J.mol^{-1}$
+- entropy $S^°$: 213.785 $J.mol^{-1}.K^{-1}$ 
+- Gibbs free energy of formation $\Delta_a {G^°}: -394373 $J.mol^{-1}$
 
-Heat capacity, on the other hand, is introduced in the following way: 
+Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For CO2, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
 
-<!-- @example CO2 -->
 ```julia
-coeffs = [:a₀ => 44.22u"J/K/mol", :a₁ => 0.0088u"J/mol/K^2", :a₂ => -861.904e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-CO₂.Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs; ref=[:T=>298.15u"K", :P=>1u"bar"])
+using DynamicQuantities, ModelingToolkit
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14, :ΔₐH⁰ => -393510, :S⁰ => 213.785, :ΔₐG⁰ => -394373, :V⁰ => 25.3)
+coeffs = Dict(:a₀ => 33.98, :a₁ => 23.88e-3, :a₂ => 0.0, :a₃ => 0.0)
 ```
 
-!!! note "Heat capacity value"
-    By default, the call of $C_p$ function return the value of the function for a temperature equal to $T_{ref}$.
+!!! note "Heat capacity function"
+    Although the function describing heat capacity has many parameters, it is of course possible to use only some of them. Here, only the parameters $a_0$ and $a_1$ are non-zero. The expression therefore becomes: $a_0 + a_1 * T$.
+
+
+!!! danger "Reference temperature"
+    It is important to define the reference temperature at which the thermodynamic properties are measured.
     ```julia
-    CO₂.Cp()
+    T_ref = Dict(:T => 298.15)
     ```
 
-Other functions can be added to species. For example, we can add a `rate` to the CO2 species:
+#### Heat capacity, enthalpy and free energy as a function of temperature
 
-<!-- @example CO2 -->
-```julia
-CO₂.rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0, :c₂ => 2.0u"1/s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
-CO₂.rate(1u"s")
+Reference thermodynamical properties and temperature being defined, a simple call to `build_thermo_functions` allows the thermodynamic functions, such as heat capacity, entropy, enthalpy, and free enthalpy to be built as a function of temperature.
+
+```@example CO2
+using DynamicQuantities, ModelingToolkit #hide
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14, :ΔₐH⁰ => -393510, :S⁰ => 213.785, :ΔₐG⁰ => -394373, :V⁰ => 25.3) #hide
+coeffs = Dict(:a₀ => 33.98, :a₁ => 23.88e-3, :a₂ => 0.0, :a₃ => 0.0) #hide
+T_ref = Dict(:T => 298.15) #hide
+params_Cp_CO2 = merge(th_prop_0_CO2, coeffs, T_ref)
+dtf_CO2 = build_thermo_functions(:cp_ft_equation, params_Cp_CO2)
 ```

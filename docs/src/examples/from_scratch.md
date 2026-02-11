@@ -1,12 +1,13 @@
-# From scratch
+# Calculation of thermodynamic properties of CaCO3 dissolution
 
 This example is equivalent to quickstart except that no database is needed.
 
 Let us recall the example which consisted of studying the dissolution of calcite in water.
 
-<p style="text-align:center;">
-CaCO<sub>3</sub> &rlarr; 2H<sub>2</sub>O + Ca<sup>2+</sup> + CO<sub>3</sub><sup>2-</sup>
-</p>
+$\text{CaCO}_3 \rightleftharpoons \text{Ca}^{2+} + {\text{CO}_3}^{2-}$
+
+
+
 
 It is possible to calculate the thermodynamic properties of the reaction, in particular the solubility constant of the reaction ($\ln K$) which is related to the Gibbs free energy of the reaction ($\Delta_r G^°$). This solubility constant is a function of temperature and the calculation is performed at a reference temperature of 298 K and at a pressure of 1 Atm using the following equation:
 
@@ -60,7 +61,7 @@ th_prop_0_calcite = Dict(:Cp⁰ => 83.47, :ΔₐH⁰ => -1207605, :S⁰ => 91.78
 The second step is to describe the evolution of heat capacity as a function of temperature for each species. As exposed in the previous figure, heat capacity is expressed as a function of temperature: $C_p = a + bT + cT^2$. A reference temperature can then be defined in order to construct thermodynamic functions, such as heat capacity, entropy, enthalpy and free enthalpy. For calcite, this can be done as follows:
 
 ```julia
-params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e3, :a₂ => -21.58e-5)
+params_Cp_calcite = Dict(:a₀ => 99.72, :a₁ => 26.92e-3, :a₂ => -21.58e5)
 T_ref = Dict(:T => 298.15)
 params_calcite = merge(th_prop_0_calcite, params_Cp_calcite, T_ref)
 dtf_calcite = build_thermo_functions(:cp_ft_equation, params_calcite)
@@ -123,7 +124,7 @@ plot!(p1, θ -> calcite.ΔₐG⁰(T = 273.15+θ), 0:0.1:100, label="ΔₐG⁰ of
 ![pcoa plot](../assets/pcoplot.png)
 
 
-Similarly, we can provide information on the thermal capacity of species $Ca^{2+}$ and ${CO_3}^{-2}$, as proposed in the thermoddem database:
+Similarly, we can provide information on the thermal capacity of species $Ca^{2+}$ and ${CO_3}^{2-}$, as proposed in the thermoddem database:
 
 ![Figure](../assets/ca_properties_thermoddem.png)
 
@@ -163,19 +164,12 @@ During the construction of this reaction, the thermodynamic properties of the re
 
 $RT \; ln(K) = - \Delta_r G^° = - \sum_i \nu_i  \Delta_f {G^°}_i$
 
-
-```@example example1
-T = ThermoFunction(:T)
-R = 8.314411 #"J/K/mol"
-pKs = (Ca²⁺.ΔₐG⁰ + CO₃²⁻.ΔₐG⁰ - calcite.ΔₐG⁰) / (R*T) / log(10)
-```
-
 ```julia
 using Plots
 
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
-plot!(p1, θ ->pKs(T = 273.15+θ), 0:0.1:100, label="pKs")
 plot!(p1, θ -> r.ΔᵣG⁰(T = 273.15+θ) / 8.31 / (273.15+θ) / log(10), 0:0.1:100, label="pKs")
+savefig("solubility_calcite.png")
 ```
 
 ![pcoa plot](../assets/solubility_calcite.png)

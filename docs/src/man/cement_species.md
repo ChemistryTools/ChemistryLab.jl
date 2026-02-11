@@ -1,5 +1,3 @@
-
-
 # Cement Species
 
 The manipulation of chemical formulas can also be done in cement notation. `CemSpecies` is a composite type similar to `Species`.
@@ -28,7 +26,7 @@ Here are several example of `CemSpecies` construction:
 C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 C2S = CemSpecies("C₂S"; name="Belite", symbol="C₂S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 C3A = CemSpecies("C3A"; name="Aluminate", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
-C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄AF")
+C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄AF", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 ```
 
 !!! warning "Warning"
@@ -47,7 +45,7 @@ The previous species were constructed from integer values ​​of the number of
 ```@example
 using ChemistryLab
 ox = Dict(:C => 1.666667, :S => 1, :H => 2.1)
-jennite = CemSpecies(ox)
+jennite = CemSpecies(ox, aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 ```
 
 Symbolic values are also allowed. In this case, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
@@ -92,7 +90,7 @@ Or more complex one:
 
 ```@example CSH
 using ChemistryLab #hide
-CSH = Species("(SiO2)1(CaO)1.666667(H2O)2.1")
+CSH = Species("(SiO2)1(CaO)1.666667(H2O)2.1", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 jennite = CemSpecies(CSH)
 ```
 

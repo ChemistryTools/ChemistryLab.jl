@@ -75,7 +75,7 @@ Again, when constructing the reactions, the thermodynamic properties of the reac
 dict_reactions_calcite["Cal"].logK⁰
 ```
 
-```julia
+```@example from_scratch
 p2 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
 plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
