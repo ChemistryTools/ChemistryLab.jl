@@ -24,6 +24,5 @@ pages = [
         "Stoichiometric Matrix" => "api/stoich_matrices.md",
         "Reactions" => "api/reactions.md",
         "Databases" => "api/databases.md",
-        "Equilibrium" => "api/equilibrium.md",
     ],
 ]
