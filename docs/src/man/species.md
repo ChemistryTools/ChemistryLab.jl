@@ -89,7 +89,7 @@ $a_0 + a_1 * T + a_2 * T^{-2} + a_3 * T^{-0.5} + a_4 * T^2 + a_5 * T^3 + a_6 * T
 
 Other species properties are open and left to the discretion of users. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
 
-Imagine, for example, that we wanted to construct the $CO_2$ molecule in a gaseous state with some of its thermodynamic properties. The thermodynamic properties of the molecule, which can be found for example on the website [thermoddem](https://thermoddem.brgm.fr/), are as follows at 298 K and 1 atm:
+Imagine, for example, that we wanted to construct the $\text{CO}_2$ molecule in a gaseous state with some of its thermodynamic properties. The thermodynamic properties of the molecule, which can be found for example on the website [thermoddem](https://thermoddem.brgm.fr/), are as follows at 298 K and 1 atm:
 
 - heat capacity ${C_p}^°$: 37.14 $J.mol^{-1}.K^{-1}$
 - molar volume $V^°$: 25.3 $cm^3.mol^{-1}$
@@ -97,11 +97,11 @@ Imagine, for example, that we wanted to construct the $CO_2$ molecule in a gaseo
 - entropy $S^°$: 213.785 $J.mol^{-1}.K^{-1}$ 
 - Gibbs free energy of formation $\Delta_a {G^°}$: -394373 $J.mol^{-1}$
 
-Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For CO2, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
+Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For $\text{CO}_2$, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
 
 ```julia
 using DynamicQuantities, ModelingToolkit
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m3/mol")
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m^3/mol")
 coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K")
 ```
 
@@ -121,7 +121,7 @@ Reference thermodynamical properties and temperature being defined, a simple cal
 
 ```@example CO2
 using DynamicQuantities, ModelingToolkit #hide
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m3/mol") #hide
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m^3/mol") #hide
 coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K") #hide
 T_ref = Dict(:T => 298.15u"K") #hide
 params_Cp_CO2 = merge(th_prop_0_CO2, coeffs, T_ref)

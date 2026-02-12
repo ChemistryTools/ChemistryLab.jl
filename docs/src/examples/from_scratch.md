@@ -1,12 +1,10 @@
-# Calculation of thermodynamic properties of CaCO3 dissolution
+# Calculation of thermodynamic properties of calcite dissolution
 
 This example is equivalent to quickstart except that no database is needed.
 
 Let us recall the example which consisted of studying the dissolution of calcite in water.
 
 $\text{CaCO}_3 \rightleftharpoons \text{Ca}^{2+} + {\text{CO}_3}^{2-}$
-
-
 
 
 It is possible to calculate the thermodynamic properties of the reaction, in particular the solubility constant of the reaction ($\ln K$) which is related to the Gibbs free energy of the reaction ($\Delta_r G^°$). This solubility constant is a function of temperature and the calculation is performed at a reference temperature of 298 K and at a pressure of 1 Atm using the following equation:
