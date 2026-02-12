@@ -95,13 +95,13 @@ Imagine, for example, that we wanted to construct the $CO_2$ molecule in a gaseo
 - molar volume $V^°$: 25.3 $cm^3.mol^{-1}$
 - enthalpy of formation $\Delta_a {H^°}$: -393510 $J.mol^{-1}$
 - entropy $S^°$: 213.785 $J.mol^{-1}.K^{-1}$ 
-- Gibbs free energy of formation $\Delta_a {G^°}: -394373 $J.mol^{-1}$
+- Gibbs free energy of formation $\Delta_a {G^°}$: -394373 $J.mol^{-1}$
 
 Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For CO2, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
 
 ```julia
 using DynamicQuantities, ModelingToolkit
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3)
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m3/mol")
 coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K")
 ```
 
@@ -112,7 +112,7 @@ coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 
 !!! danger "Reference temperature"
     It is important to define the reference temperature at which the thermodynamic properties are measured.
     ```julia
-    T_ref = Dict(:T => 298.15)
+    T_ref = Dict(:T => 298.15u$K$)
     ```
 
 #### Heat capacity, enthalpy and free energy as a function of temperature
@@ -121,7 +121,7 @@ Reference thermodynamical properties and temperature being defined, a simple cal
 
 ```@example CO2
 using DynamicQuantities, ModelingToolkit #hide
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3) #hide
+th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m3/mol") #hide
 coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K") #hide
 T_ref = Dict(:T => 298.15u"K") #hide
 params_Cp_CO2 = merge(th_prop_0_CO2, coeffs, T_ref)
