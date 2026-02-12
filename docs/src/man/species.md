@@ -91,11 +91,11 @@ Other species properties are open and left to the discretion of users. We can of
 
 Imagine, for example, that we wanted to construct the $\text{CO}_2$ molecule in a gaseous state with some of its thermodynamic properties. The thermodynamic properties of the molecule, which can be found for example on the website [thermoddem](https://thermoddem.brgm.fr/), are as follows at 298 K and 1 atm:
 
-- heat capacity ${C_p}^°$: 37.14 $J.mol^{-1}.K^{-1}$
-- molar volume $V^°$: 25.3 $cm^3.mol^{-1}$
-- enthalpy of formation $\Delta_a {H^°}$: -393510 $J.mol^{-1}$
-- entropy $S^°$: 213.785 $J.mol^{-1}.K^{-1}$ 
-- Gibbs free energy of formation $\Delta_a {G^°}$: -394373 $J.mol^{-1}$
+- heat capacity ${\text{C}_p}^°$: 37.14 $\text{J}.\text{mol}^{-1}.\text{K}^{-1}$
+- molar volume $\text{V}^°$: 25.3 $\text{m}^3.\text{mol}^{-1}$
+- enthalpy of formation $\Delta_a {\text{H}^°}$: -393510 $\text{J}.\text{mol}^{-1}$
+- entropy $\text{S}^°$: 213.785 $\text{J}.\text{mol}^{-1}.\text{K}^{-1}$ 
+- Gibbs free energy of formation $\Delta_a {\text{G}^°}$: -394373 $\text{J}.\text{mol}^{-1}$
 
 Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For $\text{CO}_2$, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
 
@@ -112,7 +112,7 @@ coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 
 !!! danger "Reference temperature"
     It is important to define the reference temperature at which the thermodynamic properties are measured.
     ```julia
-    T_ref = Dict(:T => 298.15u$K$)
+    T_ref = Dict(:T => 298.15u"K")
     ```
 
 #### Heat capacity, enthalpy and free energy as a function of temperature

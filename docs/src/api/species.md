@@ -25,5 +25,5 @@ aggregate_state(s::AbstractSpecies)
 class(s::AbstractSpecies)
 properties(s::AbstractSpecies)
 check_mendeleev(s::AbstractSpecies)
-apply
+apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}
 ```

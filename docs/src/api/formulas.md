@@ -18,6 +18,6 @@ composition(f::Formula)
 charge(f::Formula)
 check_mendeleev(f::Formula)
 calculate_molar_mass
-apply
+apply(func::Function, f::Formula, args...; kwargs...)
 pprint
 ```

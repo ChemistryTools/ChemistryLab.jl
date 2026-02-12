@@ -19,6 +19,8 @@ makedocs(;
         canonical="https://jfbarthelemy.github.io/ChemistryLab.jl",
         edit_link="main",
         assets=["assets/favicon.ico"],
+        prettyurls = get(ENV, "CI", nothing) == "true",
+        ansicolor = true,
     ),
     pages=pages,
     warnonly=[:missing_docs, :docs_block],
