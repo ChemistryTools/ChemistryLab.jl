@@ -5,16 +5,6 @@ Pages = ["thermo_functions.md"]
 ```
 
 ```@docs
-Callable
 ThermoFunction
-ThermoFunction(
-    expr::Union{Symbol,Expr},
-    params=Pair[],
-    vars=[:T, :P, :t];
-    ref=[:T => 298.15u"K", :P => 1u"bar", :t => 0u"s"],
-)
-∂
-∫
-calculate_molar_mass
-apply
+ThermoFactory
 ```

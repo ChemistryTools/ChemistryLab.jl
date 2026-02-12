@@ -43,7 +43,7 @@ const PropertyType = Union{
     Function,
     Callable,
     AbstractString,
-    Missing
+    Missing,
 }
 
 """
@@ -63,9 +63,9 @@ true
 ```
 """
 function Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies)
-    isequal(formula(s1), formula(s2)) &&
-        isequal(aggregate_state(s1), aggregate_state(s2)) &&
-        isequal(class(s1), class(s2))
+    return isequal(formula(s1), formula(s2)) &&
+               isequal(aggregate_state(s1), aggregate_state(s2)) &&
+               isequal(class(s1), class(s2))
 end
 ==(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(s1, s2)
 
@@ -75,7 +75,7 @@ end
 Compute hash for a species based on symbol, formula, aggregate state, and class.
 """
 function Base.hash(s::AbstractSpecies, h::UInt)
-    hash(symbol(s), hash(formula(s), hash(aggregate_state(s), hash(class(s), h))))
+    return hash(symbol(s), hash(formula(s), hash(aggregate_state(s), hash(class(s), h))))
 end
 
 """
@@ -450,13 +450,13 @@ function Species(
         properties[:M] = calculate_molar_mass(atoms)
     end
     return Species{valtype(atoms)}(
-            name,
-            symbol,
-            formula,
-            aggregate_state,
-            class,
-            OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
-        )
+        name,
+        symbol,
+        formula,
+        aggregate_state,
+        class,
+        OrderedDict{Symbol,PropertyType}(k => v for (k, v) in properties),
+    )
 end
 
 """
@@ -481,7 +481,7 @@ function Species(;
     class=SC_UNDEF,
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
 )
-    Species(
+    return Species(
         Formula(expr);
         name=name,
         symbol=symbol,
@@ -522,7 +522,7 @@ function Species(
     class=SC_UNDEF,
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
 )
-    Species(;
+    return Species(;
         expr=f,
         name=name,
         symbol=symbol,
@@ -630,9 +630,7 @@ function Species{T}(
     )
 end
 
-function Species{T}(
-    s::Species{T}; kwargs...
-) where {T}
+function Species{T}(s::Species{T}; kwargs...) where {T}
     if isempty(kwargs)
         return s
     end
@@ -643,19 +641,16 @@ function Species{T}(
         aggregate_state=aggregate_state(s),
         class=class(s),
         properties=properties(s),
-        kwargs...
+        kwargs...,
     )
 end
-
 
 """
     Species(s::Species; kwargs...) -> Species
 
 Copy constructor for Species with optional field overrides.
 """
-function Species(
-    s::Species; kwargs...
-)
+function Species(s::Species; kwargs...)
     if isempty(kwargs)
         return s
     end
@@ -666,7 +661,7 @@ function Species(
         aggregate_state=aggregate_state(s),
         class=class(s),
         properties=properties(s),
-        kwargs...
+        kwargs...,
     )
 end
 
@@ -676,7 +671,7 @@ end
 Compact single-line representation of a Species.
 """
 function Base.show(io::IO, s::Species)
-    print(io, symbol(s), " {", name(s), "} [", formula(s), "]")
+    return print(io, symbol(s), " {", name(s), "} [", formula(s), "]")
 end
 
 """
@@ -747,7 +742,7 @@ function pprint(s::Species)
             join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
         )
     end
-    println()
+    return println()
 end
 
 """
@@ -898,8 +893,8 @@ function CemSpecies(
         properties[:M] = calculate_molar_mass(atoms)
     end
     return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(
-            name, symbol, formula, cemformula, aggregate_state, class, properties
-        )
+        name, symbol, formula, cemformula, aggregate_state, class, properties
+    )
 end
 
 """
@@ -915,7 +910,7 @@ function CemSpecies(;
     class=SC_UNDEF,
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
 )
-    CemSpecies(
+    return CemSpecies(
         Formula(expr);
         name=name,
         symbol=symbol,
@@ -949,7 +944,7 @@ function CemSpecies(
     class=SC_UNDEF,
     properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
 )
-    CemSpecies(;
+    return CemSpecies(;
         expr=f,
         name=name,
         symbol=symbol,
@@ -1073,9 +1068,9 @@ function CemSpecies(
     bcalc = stoich_coef_round.(Aoxides * x)
     if try
         isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4)
-        catch
-            false
-        end
+    catch
+        false
+    end
         oxides = OrderedDict(
             OXIDE_ORDER[i] => vx for (i, vx) in enumerate(x) if !iszero(vx)
         )
@@ -1134,7 +1129,7 @@ function Species(
     class=class(s),
     properties=properties(s),
 )
-    Species{valtype(atoms(s))}(
+    return Species{valtype(atoms(s))}(
         name,
         symbol,
         formula(s),
@@ -1167,9 +1162,7 @@ function CemSpecies{S}(
     )
 end
 
-function CemSpecies{S}(
-    s::CemSpecies{S}; kwargs...
-) where {S}
+function CemSpecies{S}(s::CemSpecies{S}; kwargs...) where {S}
     if isempty(kwargs)
         return s
     end
@@ -1180,7 +1173,7 @@ function CemSpecies{S}(
         aggregate_state=aggregate_state(s),
         class=class(s),
         properties=properties(s),
-        kwargs...
+        kwargs...,
     )
 end
 
@@ -1207,9 +1200,7 @@ function CemSpecies{S,T}(
     )
 end
 
-function CemSpecies{S,T}(
-    s::CemSpecies{S,T}; kwargs...
-) where {S,T}
+function CemSpecies{S,T}(s::CemSpecies{S,T}; kwargs...) where {S,T}
     if isempty(kwargs)
         return s
     end
@@ -1220,7 +1211,7 @@ function CemSpecies{S,T}(
         aggregate_state=aggregate_state(s),
         class=class(s),
         properties=properties(s),
-        kwargs...
+        kwargs...,
     )
 end
 
@@ -1229,9 +1220,7 @@ end
 
 Copy constructor for CemSpecies with optional field overrides.
 """
-function CemSpecies(
-    s::CemSpecies; kwargs...
-)
+function CemSpecies(s::CemSpecies; kwargs...)
     if isempty(kwargs)
         return s
     end
@@ -1242,7 +1231,7 @@ function CemSpecies(
         aggregate_state=aggregate_state(s),
         class=class(s),
         properties=properties(s),
-        kwargs...
+        kwargs...,
     )
 end
 
@@ -1252,7 +1241,7 @@ end
 Compact single-line representation of a CemSpecies.
 """
 function Base.show(io::IO, s::CemSpecies)
-    print(io, symbol(s), " {", name(s), "} [", cemformula(s), "]")
+    return print(io, symbol(s), " {", name(s), "} [", cemformula(s), "]")
 end
 
 """
@@ -1334,7 +1323,7 @@ function pprint(s::CemSpecies)
             join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)),
         )
     end
-    println()
+    return println()
 end
 
 """
@@ -1370,7 +1359,7 @@ Apply a function element-wise to all numeric components and properties of a spec
 Handles Quantity types, attempting to preserve dimensions when possible.
 """
 function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}
-    tryfunc(v) =
+    function tryfunc(v)
         if v isa Quantity
             (
                 try
@@ -1393,6 +1382,7 @@ function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpeci
                 end
             )
         end
+    end
     newcomponents = OrderedDict(k => tryfunc(v) for (k, v) in components(s))
     newSpecies = root_type(typeof(s))(
         newcomponents,
@@ -1453,11 +1443,9 @@ function find_species(
     else
         for crit in (symbol, phreeqc, unicode, expr ∘ mainformula, name)
             crit_vals = crit.(species_list)
-            fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
-                            ((s .== crit_vals) .|| (phreeqc_to_unicode(s) .== crit_vals) .||
-                                (unicode_to_phreeqc(s) .== crit_vals)) .&&
-                            (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x->x.aggregate_state).(species_list)) .&&
-                            (class .== SC_UNDEF) .|| (class .== (x->x.class).(species_list))]
+            fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&& ((s .== crit_vals) .|| (phreeqc_to_unicode(s) .== crit_vals) .|| (unicode_to_phreeqc(s) .== crit_vals)) .&& (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x -> x.aggregate_state).(species_list)) .&& (class .== SC_UNDEF) .|| (class .== (x -> x.class).(
+                species_list
+            ))]
             if length(fil) > 1
                 println(crayon"red bold"("Several species correspond to $s:"))
                 for x in fil
@@ -1474,10 +1462,9 @@ function find_species(
             end
         end
         comp_vals = composition.(mainformula.(species_list))
-        fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&&
-                        (comp_vals .== Ref(parse_formula(s))) .&&
-                        (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x->x.aggregate_state).(species_list)) .&&
-                        (class .== SC_UNDEF) .|| (class .== (x->x.class).(species_list))]
+        fil = species_list[.!isnothing.(species_list) .&& .!ismissing.(species_list) .&& (comp_vals .== Ref(parse_formula(s))) .&& (aggregate_state .== AS_UNDEF) .|| (aggregate_state .== (x -> x.aggregate_state).(species_list)) .&& (class .== SC_UNDEF) .|| (class .== (x -> x.class).(
+            species_list
+        ))]
         if length(fil) > 1
             println(crayon"red bold"("Several species correspond to $s:"))
             for x in fil
@@ -1496,6 +1483,14 @@ function find_species(
     end
 end
 
+"""
+    complete_thermo_functions!(s::AbstractSpecies)
+
+Populate thermodynamic properties (`Cp⁰`, `ΔₐH⁰`, `S⁰`, `ΔₐG⁰`, `V⁰`) from parameters in `s.properties`.
+
+If `thermo_params` dictionary is present in `properties`, it initializes thermodynamic functions
+using specified methods (e.g., `:Cp_method`, `:V_method`) or defaults.
+"""
 function complete_thermo_functions!(s::AbstractSpecies)
     if haskey(properties(s), :thermo_params)
         params = s[:thermo_params]
@@ -1504,12 +1499,20 @@ function complete_thermo_functions!(s::AbstractSpecies)
         s.Pref = dict_params[:P]
         if haskey(properties(s), :Cp_method)
             dtf = build_thermo_functions(Symbol(s[:Cp_method]), params)
-            for (k,v) in dtf s[k] = v end
+            for (k, v) in dtf
+                s[k] = v
+            end
             delete!(s.properties, :Cp_method)
         else
-            if !haskey(properties(s), :Cp⁰) && haskey(dict_params, :Cp⁰) && !ismissing(dict_params[:Cp⁰])
-                dtf = build_thermo_functions(:cp_ft_equation, [:a₀ => dict_params[:Cp⁰]; params])
-                for (k,v) in dtf s[k] = v end
+            if !haskey(properties(s), :Cp⁰) &&
+                haskey(dict_params, :Cp⁰) &&
+                !ismissing(dict_params[:Cp⁰])
+                dtf = build_thermo_functions(
+                    :cp_ft_equation, [:a₀ => dict_params[:Cp⁰]; params]
+                )
+                for (k, v) in dtf
+                    s[k] = v
+                end
             end
             # for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
             #     if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
@@ -1522,7 +1525,9 @@ function complete_thermo_functions!(s::AbstractSpecies)
             delete!(s.properties, :V_method)
         else
             for k in [:V⁰]
-                if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
+                if !haskey(properties(s), k) &&
+                    haskey(dict_params, k) &&
+                    !ismissing(dict_params[k])
                     s[k] = ThermoFunction(dict_params[k])
                 end
             end

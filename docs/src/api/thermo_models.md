@@ -5,7 +5,8 @@ Pages = ["thermo_models.md"]
 ```
 
 ```@docs
-dict_cp_ft_equation
-thermo_functions_cp_ft_equation
-thermo_functions_generic_cp_ft
+THERMO_MODELS
+THERMO_FACTORIES
+add_thermo_model
+build_thermo_functions
 ```

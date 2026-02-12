@@ -1,4 +1,13 @@
 
+"""
+    THERMO_MODELS
+
+Dictionary storing raw thermodynamic model expressions and units.
+Keys are model names (symbols), values are dictionaries containing:
+
+  - Symbolic expressions for thermodynamic functions (Cp, H, S, G).
+  - Units for parameters and variables.
+"""
 const THERMO_MODELS = Dict(
     :cp_ft_equation => Dict(
         :Cp => :(
@@ -75,7 +84,8 @@ const THERMO_MODELS = Dict(
         ],
     ),
     :logk_fpt_function => Dict(
-        :logKr => :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * sqrt(T)),
+        :logKr =>
+            :(A₀ + A₁ * T + A₂ / T + A₃ * log(T) + A₄ / T^2 + A₅ * T^2 + A₆ * sqrt(T)),
         :units => [
             :A₀ => "1",
             :A₁ => "1/K",
@@ -90,73 +100,139 @@ const THERMO_MODELS = Dict(
     ),
 )
 
-const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()
+"""
+    THERMO_FACTORIES
 
+Dictionary storing compiled `ThermoFactory` objects for each model.
+Used to efficiently generate `ThermoFunction` instances.
+"""
+const THERMO_FACTORIES = Dict{Symbol,AbstractDict}()
+
+"""
+    build_thermo_functions(model_name, params) -> OrderedDict
+
+Build `ThermoFunction` objects for a specific model and parameters.
+
+# Arguments
+
+  - `model_name`: symbol identifying the thermodynamic model (e.g., `:cp_ft_equation`).
+  - `params`: dictionary or pair list of parameter values.
+
+# Returns
+
+  - `OrderedDict` containing the constructed thermodynamic functions (`Cp⁰`, `ΔₐH⁰`, `S⁰`, `ΔₐG⁰`).
+"""
 function build_thermo_functions(model_name, params)
     dict_factories = THERMO_FACTORIES[model_name]
     dict_params = Dict(params)
 
     STref = dict_params[:S⁰]
-    HTref = get(dict_params, :ΔfH⁰, get(dict_params, :ΔₐH⁰, get(dict_params, :ΔaH⁰, missing)))
-    GTref = get(dict_params, :ΔfG⁰, get(dict_params, :ΔₐG⁰, get(dict_params, :ΔaG⁰, missing)))
+    HTref = get(
+        dict_params, :ΔfH⁰, get(dict_params, :ΔₐH⁰, get(dict_params, :ΔaH⁰, missing))
+    )
+    GTref = get(
+        dict_params, :ΔfG⁰, get(dict_params, :ΔₐG⁰, get(dict_params, :ΔaG⁰, missing))
+    )
     Tref = dict_params[:T]
 
     Cp⁰ = dict_factories[:Cp](; params...)
 
     H = dict_factories[:H](; params...)
-    ΔₐH⁰ = H + (HTref - H(T = Tref; unit = true))
+    ΔₐH⁰ = H + (HTref - H(; T=Tref, unit=true))
 
     S = dict_factories[:S](; params...)
-    δS⁰ = STref - S(T = Tref; unit = true)
+    δS⁰ = STref - S(; T=Tref, unit=true)
     S⁰ = S + δS⁰
 
-    T = ThermoFunction(:T, units = [:T => "K"])
+    T = ThermoFunction(:T; units=[:T => "K"])
     if haskey(dict_factories, :G)
         G = dict_factories[:G](; params...)
-        ΔₐG⁰ = (G - T*δS⁰) + (GTref - G(T = Tref; unit = true) + Tref*δS⁰)
+        ΔₐG⁰ = (G - T * δS⁰) + (GTref - G(; T=Tref, unit=true) + Tref * δS⁰)
     else
-        ΔₐG⁰ = (H - T*S⁰) + (GTref - H(T = Tref; unit = true) + Tref*STref)
+        ΔₐG⁰ = (H - T * S⁰) + (GTref - H(; T=Tref, unit=true) + Tref * STref)
     end
 
     return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
 end
 
+"""
+    build_thermo_factories(dict_expr) -> Dict
+
+Helper function to build `ThermoFactory` objects from a model dictionary.
+"""
 function build_thermo_factories(dict_expr)
-    return Dict(k => ThermoFactory(v, [:T, :P]; units=get(dict_expr, :units, nothing)) for (k, v) in dict_expr if k != :units)
+    return Dict(
+        k => ThermoFactory(v, [:T, :P]; units=get(dict_expr, :units, nothing)) for
+        (k, v) in dict_expr if k != :units
+    )
 end
 
+"""
+    add_thermo_model(model_name, dict_model::AbstractDict)
+
+Add a new thermodynamic model to the registry using a dictionary of expressions.
+
+# Arguments
+
+  - `model_name`: unique symbol for the model.
+  - `dict_model`: dictionary containing symbolic expressions and units.
+"""
 function add_thermo_model(model_name, dict_model::AbstractDict)
     THERMO_MODELS[model_name] = dict_model
-    THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
+    return THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end
 
+"""
+    add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
+
+Add a new thermodynamic model derived from a heat capacity (Cp) expression.
+Automatically integrates Cp to find H, S, and G.
+
+# Arguments
+
+  - `model_name`: unique symbol for the model.
+  - `Cpexpr`: symbolic expression for heat capacity as a function of T.
+  - `units`: optional dictionary of units for parameters.
+"""
 function add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
     vars, params = extract_vars_params(Cpexpr, [:T])
-    var_sym_dict = Dict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
-    param_sym_dict = Dict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
+    var_sym_dict = Dict{Symbol,Num}(v => Symbolics.variable(v) for v in vars)
+    param_sym_dict = Dict{Symbol,Num}(p => Symbolics.variable(p) for p in params)
     all_symbols = merge(var_sym_dict, param_sym_dict)
     T = var_sym_dict[:T]
 
-    Cp = Symbolics.simplify(Symbolics.expand(Symbolics.parse_expr_to_symbolic(Cpexpr, all_symbols)))
-    H = integrate(Cp, T; symbolic = true, detailed = false)
+    Cp = Symbolics.simplify(
+        Symbolics.expand(Symbolics.parse_expr_to_symbolic(Cpexpr, all_symbols))
+    )
+    H = integrate(Cp, T; symbolic=true, detailed=false)
 
-    integS = sum(terms(Cp)./T)
-    S = integrate(integS, T; symbolic = true, detailed = false)
+    integS = sum(terms(Cp) ./ T)
+    S = integrate(integS, T; symbolic=true, detailed=false)
 
-    G = integrate(-S, T; symbolic = true, detailed = false)
+    G = integrate(-S, T; symbolic=true, detailed=false)
 
     if !isnothing(units)
         dict_units = Dict(units)
-        if !haskey(dict_units, :Cp) push!(units, :Cp => "J/mol/K") end
-        if !haskey(dict_units, :S) push!(units, :S => "J/mol/K") end
-        if !haskey(dict_units, :H) push!(units, :H => "J/mol") end
-        if !haskey(dict_units, :G) push!(units, :G => "J/mol") end
+        if !haskey(dict_units, :Cp)
+            push!(units, :Cp => "J/mol/K")
+        end
+        if !haskey(dict_units, :S)
+            push!(units, :S => "J/mol/K")
+        end
+        if !haskey(dict_units, :H)
+            push!(units, :H => "J/mol")
+        end
+        if !haskey(dict_units, :G)
+            push!(units, :G => "J/mol")
+        end
     end
 
-    dict_model = isnothing(units) ?
-                Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G)) :
-                Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G), :units => units)
+    dict_model = if isnothing(units)
+        Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G))
+    else
+        Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G), :units => units)
+    end
 
     THERMO_MODELS[model_name] = dict_model
-    THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
+    return THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end

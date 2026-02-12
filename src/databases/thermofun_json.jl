@@ -1,3 +1,18 @@
+"""
+    read_thermofun_database(filename::AbstractString) -> (DataFrame, DataFrame, DataFrame)
+
+Read a ThermoFun database from a JSON file.
+
+# Arguments
+
+  - `filename`: path to the JSON database file.
+
+# Returns
+
+  - `df_elements`: DataFrame of chemical elements.
+  - `df_substances`: DataFrame of chemical substances (species).
+  - `df_reactions`: DataFrame of chemical reactions.
+"""
 function read_thermofun_database(filename)
     print_title(
         "Loading database: $filename";
@@ -13,13 +28,16 @@ function read_thermofun_database(filename)
 end
 
 function extract_unit(v, default_unit=u"1")
-    return try uparse(v)
-           catch
-            default_unit
-           end
+    return try
+        uparse(v)
+    catch
+        default_unit
+    end
 end
 
-function extract_value(row, field::Symbol; verbose=false, default_unit=u"1", with_units=true)
+function extract_value(
+    row, field::Symbol; verbose=false, default_unit=u"1", with_units=true
+)
     if haskey(row, field) && !ismissing(row[field]) && haskey(row[field], :values)
         try
             val = only(row[field].values)
@@ -51,10 +69,14 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
     species.Tref = Tref
     species.Pref = Pref
     values0 = [
-        :Cp⁰ => extract_value(row, :sm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"),
+        :Cp⁰ => extract_value(
+            row, :sm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"
+        ),
         :ΔₐH⁰ => extract_value(row, :sm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
-        :S⁰ => extract_value(row, :sm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔₐG⁰ => extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
+        :S⁰ =>
+            extract_value(row, :sm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
+        :ΔₐG⁰ =>
+            extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
         :V⁰ => extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar"),
     ]
     species[:thermo_params] = [values0; :T => Tref; :P => Pref]
@@ -68,8 +90,8 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
                 vals = coeffs.values
                 units = extract_unit.(coeffs.units)
                 params = [
-                    Symbol("a", subscriptnumber(i - 1)) => float(vals[i] * units[i])
-                    for i in 1:min(length(vals), length(units))
+                    Symbol("a", subscriptnumber(i - 1)) => float(vals[i] * units[i]) for
+                    i in 1:min(length(vals), length(units))
                 ]
                 species[:thermo_params] = [params; species[:thermo_params]]
 
@@ -81,31 +103,53 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
     return species
 end
 
-function build_species_from_database(df_substances::AbstractDataFrame, list_symbols = nothing; verbose=false)
-    local_df_substances = isnothing(list_symbols) ? df_substances :
+"""
+    build_species_from_database(df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false) -> Dict{String, Species}
+
+Build Species objects from a substance DataFrame.
+
+# Arguments
+
+  - `df_substances`: DataFrame containing substance data.
+  - `list_symbols`: optional list of symbols to filter (default: nothing, process all).
+  - `verbose`: if true, print details during processing (default: false).
+
+# Returns
+
+  - Dictionary mapping species symbols to `Species` objects.
+"""
+function build_species_from_database(
+    df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false
+)
+    local_df_substances = if isnothing(list_symbols)
+        df_substances
+    else
         @view df_substances[df_substances.symbol .∈ Ref(list_symbols), :]
+    end
     keylist = String[]
-    pairs = Pair{String, Species}[]
+    pairs = Pair{String,Species}[]
     print_title(
-        "Building species";
-        crayon=Crayon(; foreground=:blue),
-        style=:box,
-        indent="",
+        "Building species"; crayon=Crayon(; foreground=:blue), style=:box, indent=""
     )
     @showprogress for row in eachrow(local_df_substances)
-        if verbose println(row[:symbol]) end
-        species = Species(row.formula; name=row.name, symbol=row.symbol,
-                    aggregate_state=try
-                        eval(Meta.parse(only(values(row.aggregate_state))))
-                    catch
-                        AS_UNDEF
-                    end,
-                    class=try
-                        eval(Meta.parse(only(values(row.class_))))
-                    catch
-                        SC_UNDEF
-                    end,
-                    )
+        if verbose
+            println(row[:symbol])
+        end
+        species = Species(
+            row.formula;
+            name=row.name,
+            symbol=row.symbol,
+            aggregate_state=try
+                eval(Meta.parse(only(values(row.aggregate_state))))
+            catch
+                AS_UNDEF
+            end,
+            class=try
+                eval(Meta.parse(only(values(row.class_))))
+            catch
+                SC_UNDEF
+            end,
+        )
         complete_species_with_thermo_model!(species, row; verbose=verbose)
         key = row.symbol
         if key in keylist
@@ -123,10 +167,14 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
     reaction.Tref = Tref
     reaction.Pref = Pref
     values0 = [
-        :ΔᵣCp⁰ => extract_value(row, :drsm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"),
+        :ΔᵣCp⁰ => extract_value(
+            row, :drsm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"
+        ),
         :ΔᵣH⁰ => extract_value(row, :drsm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
-        :ΔᵣS⁰ => extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
-        :ΔᵣG⁰ => extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔᵣS⁰ =>
+            extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
+        :ΔᵣG⁰ =>
+            extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
         :ΔᵣV⁰ => extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar"),
         :logKr => extract_value(row, :logKr; verbose=verbose, default_unit=u"1"),
     ]
@@ -154,16 +202,37 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
     return reaction
 end
 
-function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols = nothing; verbose=false)
-    local_df_reactions = isnothing(list_symbols) ? df_reactions :
+"""
+    build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols=nothing; verbose=false) -> Dict{String, Reaction}
+
+Build Reaction objects from a reaction DataFrame.
+
+# Arguments
+
+  - `df_reactions`: DataFrame containing reaction data.
+  - `dict_species`: dictionary of existing `Species` objects to use in reactions.
+  - `list_symbols`: optional list of reaction symbols to filter (default: nothing, process all).
+  - `verbose`: if true, print details during processing (default: false).
+
+# Returns
+
+  - Dictionary mapping reaction symbols to `Reaction` objects.
+"""
+function build_reactions_from_database(
+    df_reactions::AbstractDataFrame,
+    dict_species=Dict(),
+    list_symbols=nothing;
+    verbose=false,
+)
+    local_df_reactions = if isnothing(list_symbols)
+        df_reactions
+    else
         @view df_reactions[df_reactions.symbol .∈ Ref(list_symbols), :]
+    end
     keylist = String[]
-    pairs = Pair{String, Reaction}[]
+    pairs = Pair{String,Reaction}[]
     print_title(
-        "Building reactions";
-        crayon=Crayon(; foreground=:red),
-        style=:box,
-        indent="",
+        "Building reactions"; crayon=Crayon(; foreground=:red), style=:box, indent=""
     )
     function choose_species(k, rowsymbol, dict_species)
         if haskey(dict_species, k)
@@ -180,11 +249,16 @@ function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_spe
         end
     end
     @showprogress for row in eachrow(local_df_reactions)
-        if verbose println(row[:symbol]) end
+        if verbose
+            println(row[:symbol])
+        end
         reaction = Reaction(
-                        OrderedDict(choose_species(last(k), row.symbol, dict_species) => last(v) for (k, v) in row.reactants if last(k) != "e-");
-                        symbol=row.symbol
-                   )
+            OrderedDict(
+                choose_species(last(k), row.symbol, dict_species) => last(v) for
+                (k, v) in row.reactants if last(k) != "e-"
+            );
+            symbol=row.symbol,
+        )
         complete_reaction_with_thermo_model!(reaction, row; verbose=verbose)
         key = row.symbol
         if key in keylist
@@ -196,13 +270,29 @@ function build_reactions_from_database(df_reactions::AbstractDataFrame, dict_spe
     return Dict(pairs)
 end
 
+"""
+    get_compatible_species(df_substances::AbstractDataFrame, species_list; aggregate_states=[AS_AQUEOUS], exclude_species=[], union=false) -> DataFrame
+
+Find species in the database compatible with a given list of species (sharing atoms).
+
+# Arguments
+
+  - `df_substances`: substance DataFrame.
+  - `species_list`: list of target species symbols.
+  - `aggregate_states`: filter for specific aggregate states (default: `[AS_AQUEOUS]`).
+  - `exclude_species`: list of species symbols to exclude.
+  - `union`: if true, includes the original `species_list` in the result (default: false).
+
+# Returns
+
+  - DataFrame of compatible substances.
+"""
 function get_compatible_species(
     df_substances::AbstractDataFrame,
-    species_list
-    ;
+    species_list;
     aggregate_states=[AS_AQUEOUS],
     exclude_species=[],
-    union=false
+    union=false,
 )
     df_given_species = @view df_substances[df_substances.symbol .∈ Ref(species_list), :]
     involved_atoms = union_atoms(parse_formula.(df_given_species.formula))

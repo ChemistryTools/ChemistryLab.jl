@@ -17,4 +17,7 @@ colored(f::Formula)
 composition(f::Formula)
 charge(f::Formula)
 check_mendeleev(f::Formula)
+calculate_molar_mass
+apply
+pprint
 ```

@@ -5,6 +5,9 @@ Pages = ["species.md"]
 ```
 
 ```@docs
+AbstractSpecies
+AggregateState
+Class
 Species
 Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies)
 charge(s::AbstractSpecies)
@@ -22,4 +25,5 @@ aggregate_state(s::AbstractSpecies)
 class(s::AbstractSpecies)
 properties(s::AbstractSpecies)
 check_mendeleev(s::AbstractSpecies)
+apply
 ```

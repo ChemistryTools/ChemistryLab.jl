@@ -1,10 +1,46 @@
-const ADIM_MATH_FUNCTIONS = [:log, :log10, :log2, :log1p,
-                        :exp, :expm1, :exp2, :exp10,
-                        :sin, :cos, :tan, :csc, :sec, :cot,
-                        :asin, :acos, :atan, :acsc, :asec, :acot,
-                        :sinh, :cosh, :tanh, :csch, :sech, :coth,
-                        :asinh, :acosh, :atanh, :acsch, :asech, :acoth,
-                        :erf, :erfc, :gamma, :lgamma]
+"""
+    ADIM_MATH_FUNCTIONS
+
+List of dimensionless mathematical functions to be extended for `Quantity` arguments.
+"""
+const ADIM_MATH_FUNCTIONS = [
+    :log,
+    :log10,
+    :log2,
+    :log1p,
+    :exp,
+    :expm1,
+    :exp2,
+    :exp10,
+    :sin,
+    :cos,
+    :tan,
+    :csc,
+    :sec,
+    :cot,
+    :asin,
+    :acos,
+    :atan,
+    :acsc,
+    :asec,
+    :acot,
+    :sinh,
+    :cosh,
+    :tanh,
+    :csch,
+    :sech,
+    :coth,
+    :asinh,
+    :acosh,
+    :atanh,
+    :acsch,
+    :asech,
+    :acoth,
+    :erf,
+    :erfc,
+    :gamma,
+    :lgamma,
+]
 
 for f in ADIM_MATH_FUNCTIONS
     if isdefined(Base, f)
@@ -12,6 +48,11 @@ for f in ADIM_MATH_FUNCTIONS
     end
 end
 
+"""
+    Callable
+
+Abstract type for objects that can be called like functions.
+"""
 abstract type Callable end
 
 """
@@ -19,14 +60,28 @@ abstract type Callable end
 
 Thermodynamic function with symbolic expression and compiled evaluation.
 """
-struct ThermoFunction{N, R<:NamedTuple, T, D} <: Callable
+struct ThermoFunction{N,R<:NamedTuple,T,D} <: Callable
     symbolic::Num
-    vars::NTuple{N, Symbol}
+    vars::NTuple{N,Symbol}
     refs::R
     compiled::RuntimeGeneratedFunction
     unit::Quantity{T,D}
 end
 
+"""
+    extract_vars_params(expr, vars) -> (Vector{Symbol}, Vector{Symbol})
+
+Identify variables and parameters in an expression.
+
+# Arguments
+
+  - `expr`: symbolic expression to analyze.
+  - `vars`: list of symbols considered as variables (others are parameters).
+
+# Returns
+
+  - Tuple of (variables, parameters) found in the expression.
+"""
 function extract_vars_params(expr, vars)
     params = Symbol[]
     vars_set = Set(vars)
@@ -55,19 +110,36 @@ Factory for creating ThermoFunctions from expressions.
 """
 struct ThermoFactory
     symbolic::Num
-    vars::OrderedDict{Symbol, Num}
-    params::OrderedDict{Symbol, Num}
-    cache::Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}
+    vars::OrderedDict{Symbol,Num}
+    params::OrderedDict{Symbol,Num}
+    cache::Dict{UInt64,Tuple{Num,RuntimeGeneratedFunction}}
 
-    function ThermoFactory(symbolic::Union{SymbolicUtils.BasicSymbolic, Num}, vars::AbstractDict{Symbol, Num}, params::AbstractDict{Symbol, Num})
-        new(symbolic, vars, params, Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}())
+    function ThermoFactory(
+        symbolic::Union{SymbolicUtils.BasicSymbolic,Num},
+        vars::AbstractDict{Symbol,Num},
+        params::AbstractDict{Symbol,Num},
+    )
+        return new(
+            symbolic, vars, params, Dict{UInt64,Tuple{Num,RuntimeGeneratedFunction}}()
+        )
     end
 end
 
+"""
+    ThermoFactory(expr, vars=[:T, :P, :t, :x, :y, :z]; units=nothing) -> ThermoFactory
+
+Create a `ThermoFactory` from a symbolic expression.
+
+# Arguments
+
+  - `expr`: symbolic expression (Expr or Symbol).
+  - `vars`: list of variable symbols (default: T, P, t, x, y, z).
+  - `units`: dictionary mapping symbols to their units.
+"""
 function ThermoFactory(expr, vars=[:T, :P, :t, :x, :y, :z]; units=nothing)
     vars, params = extract_vars_params(expr, vars)
-    var_sym_dict = OrderedDict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
-    param_sym_dict = OrderedDict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
+    var_sym_dict = OrderedDict{Symbol,Num}(v => Symbolics.variable(v) for v in vars)
+    param_sym_dict = OrderedDict{Symbol,Num}(p => Symbolics.variable(p) for p in params)
     to_dict(nt::NamedTuple) = Dict(pairs(nt))
     to_dict(v::AbstractVector{<:Pair}) = Dict(v)
     to_unit(s::String) = uparse(s)
@@ -76,21 +148,35 @@ function ThermoFactory(expr, vars=[:T, :P, :t, :x, :y, :z]; units=nothing)
     if !isnothing(units)
         dict_units = to_dict(units)
         for p in keys(var_sym_dict)
-            var_sym_dict[p] = setmetadata(var_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p]))
+            var_sym_dict[p] = setmetadata(
+                var_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p])
+            )
         end
         for p in keys(param_sym_dict)
-            param_sym_dict[p] = setmetadata(param_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p]))
+            param_sym_dict[p] = setmetadata(
+                param_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p])
+            )
         end
     end
     all_symbols = merge(var_sym_dict, param_sym_dict)
     symbolic = Symbolics.parse_expr_to_symbolic(expr, all_symbols)
-    ThermoFactory(symbolic, var_sym_dict, param_sym_dict)
+    return ThermoFactory(symbolic, var_sym_dict, param_sym_dict)
 end
 
+"""
+    get_unit(factory::ThermoFactory) -> Unitful.Unit
+
+Get the unit of the expression managed by the factory.
+"""
 function get_unit(factory::ThermoFactory)
     return ModelingToolkitBase.get_unit(factory.symbolic)
 end
 
+"""
+    get_unit(factory::ThermoFactory, sym::Symbol) -> Unitful.Unit
+
+Get the unit of a specific variable or parameter in the factory.
+"""
 function get_unit(factory::ThermoFactory, sym::Symbol)
     vp = get(factory.vars, sym, get(factory.params, sym, nothing))
     return ModelingToolkitBase.get_unit(vp)
@@ -102,13 +188,19 @@ end
 Create a ThermoFunction with caching for optimal performance.
 """
 function (factory::ThermoFactory)(; kwargs...)
-    param_vals = Dict{Symbol, Any}(p => get(kwargs, p, 0.0) for p in keys(factory.params))
-    refs = NamedTuple([v => force_uconvert(get_unit(factory, v), kwargs[v]) for v in keys(factory.vars) if haskey(kwargs, v)])
-    cache_key = hash(tuple(sort(collect(pairs(param_vals)), by=x->x.first)...))
+    param_vals = Dict{Symbol,Any}(p => get(kwargs, p, 0.0) for p in keys(factory.params))
+    refs = NamedTuple([
+        v => force_uconvert(get_unit(factory, v), kwargs[v]) for
+        v in keys(factory.vars) if haskey(kwargs, v)
+    ])
+    cache_key = hash(tuple(sort(collect(pairs(param_vals)); by=x -> x.first)...))
     unit = get_unit(factory)
 
     simplified, compiled = get!(factory.cache, cache_key) do
-        substitutions = Dict(v => safe_ustrip(get_unit(factory, p), param_vals[p]) for (p,v) in factory.params)
+        substitutions = Dict(
+            v => safe_ustrip(get_unit(factory, p), param_vals[p]) for
+            (p, v) in factory.params
+        )
         substituted = Symbolics.substitute(factory.symbolic, substitutions)
         simplified = Symbolics.simplify(Symbolics.expand(substituted))
         compiled = compile_symbolic(simplified, collect(keys(factory.vars)))
@@ -124,26 +216,32 @@ end
 Compile a symbolic expression to RuntimeGeneratedFunction.
 """
 function compile_symbolic(symbolic_expr, var_symbols)
-    return length(var_symbols) == 1 ?
-        build_function(symbolic_expr, var_symbols[1]; expression=Val(false)) :
+    return if length(var_symbols) == 1
+        build_function(symbolic_expr, var_symbols[1]; expression=Val(false))
+    else
         build_function(symbolic_expr, var_symbols...; expression=Val(false))
+    end
 end
 
 @inline function (tf::ThermoFunction{1})(; kwargs...)
     v = tf.vars[1]
     val = haskey(kwargs, v) ? kwargs[v] : tf.refs[v]
-    return get(kwargs, :unit, false) ?
-                tf.compiled(ustrip(val)) * tf.unit :
-                tf.compiled(ustrip(val))
+    return if get(kwargs, :unit, false)
+        tf.compiled(ustrip(val)) * tf.unit
+    else
+        tf.compiled(ustrip(val))
+    end
 end
 
 @inline function (tf::ThermoFunction{2})(; kwargs...)
     v1, v2 = tf.vars
     val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
     val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
-    return get(kwargs, :unit, false) ?
-                tf.compiled(ustrip(val1), ustrip(val2)) * tf.unit :
-                tf.compiled(ustrip(val1), ustrip(val2))
+    return if get(kwargs, :unit, false)
+        tf.compiled(ustrip(val1), ustrip(val2)) * tf.unit
+    else
+        tf.compiled(ustrip(val1), ustrip(val2))
+    end
 end
 
 @inline function (tf::ThermoFunction{3})(; kwargs...)
@@ -151,21 +249,25 @@ end
     val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
     val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
     val3 = haskey(kwargs, v3) ? kwargs[v3] : get(tf.refs, v3, nothing)
-    return get(kwargs, :unit, false) ?
-                tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3)) * tf.unit :
-                tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
+    return if get(kwargs, :unit, false)
+        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3)) * tf.unit
+    else
+        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
+    end
 end
 
-@inline function (tf::ThermoFunction{N})(; kwargs...) where N
+@inline function (tf::ThermoFunction{N})(; kwargs...) where {N}
     if isempty(kwargs)
         var_values = ntuple(i -> ustrip(tf.refs[tf.vars[i]]), N)
         return tf.compiled(var_values...)
     else
         merged = merge(tf.refs, kwargs)
         var_values = ntuple(i -> ustrip(merged[tf.vars[i]]), N)
-        return get(kwargs, :unit, false) ?
-                    tf.compiled(var_values...) * tf.unit :
-                    tf.compiled(var_values...)
+        return if get(kwargs, :unit, false)
+            tf.compiled(var_values...) * tf.unit
+        else
+            tf.compiled(var_values...)
+        end
     end
 end
 
@@ -182,7 +284,9 @@ function combine_symbolic(op, tf1::ThermoFunction, tf2::ThermoFunction)
     simplified = Symbolics.simplify(Symbolics.expand(combined))
     compiled = compile_symbolic(simplified, all_vars)
 
-    return ThermoFunction(simplified, all_vars, refs, compiled, oneunit(op(tf1.unit, tf2.unit)))
+    return ThermoFunction(
+        simplified, all_vars, refs, compiled, oneunit(op(tf1.unit, tf2.unit))
+    )
 end
 
 """
@@ -235,12 +339,17 @@ end
 
 Base.:-(tf::ThermoFunction) = apply_symbolic(-, tf)
 
-for f in [ADIM_MATH_FUNCTIONS ; :sqrt; :abs]
+for f in [ADIM_MATH_FUNCTIONS; :sqrt; :abs]
     if isdefined(Base, f)
         @eval Base.$f(tf::ThermoFunction) = apply_symbolic($f, tf)
     end
 end
 
+"""
+    Base.show(io::IO, tf::ThermoFunction)
+
+Compact string representation of a ThermoFunction.
+"""
 function Base.show(io::IO, tf::ThermoFunction)
     print(io, tf.symbolic, " [", dimension(tf.unit), "]")
     if !isempty(tf.refs)
@@ -248,6 +357,11 @@ function Base.show(io::IO, tf::ThermoFunction)
     end
 end
 
+"""
+    Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
+
+Detailed string representation of a ThermoFunction.
+"""
 function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
     println(io, "ThermoFunction:")
     print(io, "  Expression: ")
@@ -259,9 +373,14 @@ function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
     end
 
     print(io, "  Variables: ")
-    print(io, join(tf.vars, ", "))
+    return print(io, join(tf.vars, ", "))
 end
 
+"""
+    Base.show(io::IO, factory::ThermoFactory)
+
+Compact string representation of a ThermoFactory.
+"""
 function Base.show(io::IO, factory::ThermoFactory)
     println(io, factory.symbolic, " [", dimension(get_unit(factory)), "]")
     if !isempty(factory.params)
@@ -272,6 +391,11 @@ function Base.show(io::IO, factory::ThermoFactory)
     end
 end
 
+"""
+    Base.show(io::IO, ::MIME"text/plain", factory::ThermoFactory)
+
+Detailed string representation of a ThermoFactory.
+"""
 function Base.show(io::IO, ::MIME"text/plain", factory::ThermoFactory)
     println(io, "ThermoFactory:")
     print(io, "  Expression: ")
@@ -283,29 +407,49 @@ function Base.show(io::IO, ::MIME"text/plain", factory::ThermoFactory)
     end
 
     print(io, "  Variables: ")
-    print(io, join(sort(collect(keys(factory.vars))), ", "))
+    return print(io, join(sort(collect(keys(factory.vars))), ", "))
 end
 
 # Constructors
+"""
+    ThermoFunction(sym::Symbol; kwargs...) -> ThermoFunction
+
+Create a `ThermoFunction` from a single symbol.
+"""
 function ThermoFunction(sym::Symbol; kwargs...)
     factory = ThermoFactory(sym, [sym]; kwargs...)
     return factory(; kwargs...)
 end
 
+"""
+    ThermoFunction(expr::Expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...) -> ThermoFunction
+
+Create a `ThermoFunction` from an expression.
+"""
 function ThermoFunction(expr::Expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...)
     factory = ThermoFactory(expr, vars; kwargs...)
     return factory(; kwargs...)
 end
 
+"""
+    ThermoFunction(x::Quantity) -> ThermoFunction
+
+Create a constant `ThermoFunction` from a quantity.
+"""
 function ThermoFunction(x::Quantity)
     x = uexpand(x)
-    factory = ThermoFactory(:c; units = [:c => oneunit(x)])
-    return factory(; c = x)
+    factory = ThermoFactory(:c; units=[:c => oneunit(x)])
+    return factory(; c=x)
 end
 
+"""
+    ThermoFunction(x::Number) -> ThermoFunction
+
+Create a constant `ThermoFunction` from a number (unitless).
+"""
 function ThermoFunction(x::Number)
     factory = ThermoFactory(:c)
-    return factory(; c = x)
+    return factory(; c=x)
 end
 
 # function ThermoFunction(symexpr::Union{SymbolicUtils.BasicSymbolic, Num}; kwargs...)

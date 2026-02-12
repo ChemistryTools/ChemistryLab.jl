@@ -1,7 +1,7 @@
 # Stoichiometric Matrix
 
 ```@index
-Pages = ["stoichio_matrix.md"]
+Pages = ["stoich_matrices.md"]
 ```
 
 ```@docs
