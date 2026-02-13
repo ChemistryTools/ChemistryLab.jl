@@ -12,6 +12,8 @@ DocMeta.setdocmeta!(
 )
 
 ENV["FORCE_COLOR"] = "true"
+ENV["COLUMNS"] = "200"
+ENV["LINES"] = "100"
 
 makedocs(;
     modules=[ChemistryLab],
