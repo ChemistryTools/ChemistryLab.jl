@@ -2,7 +2,7 @@
 
 The way in which species and cementitious species are constructed in ChemistryLab and expressed as a linear combination of reference species opens the door to equilibrium calculations. It also makes it quite natural to retrieve Bogue's formulas and use them simply.
 
-Bogue's formulas allow us to find the masses of C3S, C2S, C3A and C4AF as a function of the oxides (CaO, SiO2, Al2O3 and Fe2O3) that are regularly found in manufacturers' cement data sheets. However, using the `StoichMatrix` functions performs a molar decomposition of the species that we wish to decompose as a function of reference species. It is therefore possible to express the anhydrous of the cement as a function of the oxides in a cement data sheet.
+Bogue's formulas allow us to find the masses of $\text{C}_3\text{S}$, $\text{C}_2\text{S}$, $\text{C}_3\text{A}$ and C4AF as a function of the oxides ($\text{CaO}$, $\text{SiO}_2$, $\text{Al}_2\text{O}_3$ and $\text{Fe}_2\text{O}_3$) that are regularly found in manufacturers' cement data sheets. However, using the `StoichMatrix` functions performs a molar decomposition of the species that we wish to decompose as a function of reference species. It is therefore possible to express the anhydrous of the cement as a function of the oxides in a cement data sheet.
 
 ```@example Bogue
 using ChemistryLab #hide
@@ -27,7 +27,7 @@ Aoa = Mwo .* A .* inv.(Mw)'
 pprint(inv(Aoa), cemspecies, oxides; label=:name)
 ```
 
-By taking a cement sheet with a classic percentages of oxides (CaO=65.6%; SiO2=21.5%; Al2O3=5.2% and Fe2O3=2.8%), we then obtain the anhydrous masses of the cementitious material. 
+By taking a cement sheet with a classic percentages of oxides ($\text{CaO}$=65.6%, $\text{SiO}_2$=21.5%, $\text{Al}_2\text{O}_3$=5.2% and $\text{Fe}_2\text{O}_3$=2.8%), we then obtain the anhydrous masses of the cementitious material. 
 
 ```@example Bogue
 inv(Aoa) *  [65.6, 21.5, 5.2, 2.8]

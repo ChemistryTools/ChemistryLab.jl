@@ -8,8 +8,10 @@ DocMeta.setdocmeta!(
     ChemistryLab,
     :DocTestSetup,
     :(using ChemistryLab, DynamicQuantities, OrderedCollections, ModelingToolkit);
-    recursive=true
+    recursive=true,
 )
+
+ENV["FORCE_COLOR"] = "true"
 
 makedocs(;
     modules=[ChemistryLab],
@@ -18,9 +20,8 @@ makedocs(;
     format=Documenter.HTML(;
         canonical="https://jfbarthelemy.github.io/ChemistryLab.jl",
         edit_link="main",
-        assets=["assets/favicon.ico"],
-        prettyurls = get(ENV, "CI", nothing) == "true",
-        ansicolor = true,
+        assets=["assets/favicon.ico", "assets/custom.css"],
+        prettyurls=(get(ENV, "CI", nothing) == "true"),
     ),
     pages=pages,
     warnonly=[:missing_docs, :docs_block],
