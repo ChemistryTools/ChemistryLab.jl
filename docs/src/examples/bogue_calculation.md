@@ -2,7 +2,7 @@
 
 The way in which species and cementitious species are constructed in ChemistryLab and expressed as a linear combination of reference species opens the door to equilibrium calculations. It also makes it quite natural to retrieve Bogue's formulas and use them simply.
 
-Bogue's formulas allow us to find the masses of $\text{C}_3\text{S}$, $\text{C}_2\text{S}$, $\text{C}_3\text{A}$ and C4AF as a function of the oxides ($\text{CaO}$, $\text{SiO}_2$, $\text{Al}_2\text{O}_3$ and $\text{Fe}_2\text{O}_3$) that are regularly found in manufacturers' cement data sheets. However, using the `StoichMatrix` functions performs a molar decomposition of the species that we wish to decompose as a function of reference species. It is therefore possible to express the anhydrous of the cement as a function of the oxides in a cement data sheet.
+Bogue's formulas allow us to find the masses of $\text{C}_3\text{S}$, $\text{C}_2\text{S}$, $\text{C}_3\text{A}$ and $\text{C}_4\text{AF}$ as a function of the oxides ($\text{CaO}$, $\text{SiO}_2$, $\text{Al}_2\text{O}_3$ and $\text{Fe}_2\text{O}_3$) that are regularly found in manufacturers' cement data sheets. However, using the `StoichMatrix` functions performs a molar decomposition of the species that we wish to decompose as a function of reference species. It is therefore possible to express the anhydrous of the cement as a function of the oxides in a cement data sheet.
 
 ```@example Bogue
 using ChemistryLab #hide
