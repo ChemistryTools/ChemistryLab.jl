@@ -36,7 +36,7 @@ jobs:
       - name: Build and deploy
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            # DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+            DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
         run: julia --project=docs/ docs/make.jl
     #   - name: Run doctests
     #     shell: julia --project=docs --color=yes {0}
