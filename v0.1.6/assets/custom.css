@@ -1,0 +1,13 @@
+.output pre {
+    max-height: 400px;
+    /* limite la hauteur */
+    overflow-y: auto;
+    /* scroll vertical */
+    overflow-x: auto;
+    /* scroll horizontal */
+    white-space: pre;
+}
+
+.output table {
+    font-size: 0.9rem;
+}
