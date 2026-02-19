@@ -12,13 +12,11 @@ Definition of a chemical equilibrium problem.
   - `p`: coefficients for the potential function (default: NullParameters).
   - `lb`: lower bounds for species amounts.
   - `ub`: upper bounds for species amounts.
-  - `indep_components`: names/symbols of independent components.
-  - `dep_components`: names/symbols of dependent components (species).
 
 The problem solves for the species distribution that minimizes the Gibbs energy
 subject to mass conservation constraints `A * n = b`.
 """
-@kwdef struct EquilibriumProblem{μType<:Function,T<:Number,P,S}
+@kwdef struct EquilibriumProblem{μType<:Function,T<:Number,P}
     b::Vector{T}
     A::Matrix{T}
     μ::μType
@@ -26,8 +24,6 @@ subject to mass conservation constraints `A * n = b`.
     p::P = SciMLBase.NullParameters()
     lb::Vector{T}
     ub::Vector{T}
-    indep_components::Vector{S} = String[]
-    dep_components::Vector{S} = String[]
     function EquilibriumProblem(
         A,
         μ,
@@ -35,19 +31,17 @@ subject to mass conservation constraints `A * n = b`.
         p=SciMLBase.NullParameters(),
         lb=zero(u0),
         ub=maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
-        indep_components=fill("", length(b)),
-        dep_components=fill("", length(u0)),
     )
         ϵ = 1.e-16
-        return new{typeof(μ),eltype(u0),typeof(p),eltype(indep_components)}(
-            A * u0, A, μ, u0, p, max.(lb, ϵ), max.(ub, ϵ), indep_components, dep_components
+        return new{typeof(μ),eltype(u0),typeof(p)}(
+            A * u0, A, μ, u0, p, max.(lb, ϵ), max.(ub, ϵ)
         )
     end
 end
 
 function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:linear}; kwargs...)
     Gibbs_energy(x, p) = x ⋅ ep.μ(x, p)
-    diff_Gibbs_energy!(g, x, p) = g .= ep.μ(x, p)
+    # diff_Gibbs_energy!(g, x, p) = g .= ep.μ(x, p)
     cons(res, x, _) = res .= ep.A * x - ep.b
 
     optf = OptimizationFunction(
@@ -87,6 +81,6 @@ function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:log}; kwar
     )
 end
 
-function SciMLBase.solve(ep::EquilibriumProblem, vartype, solver; kwargs...)
+function SciMLBase.solve(ep::EquilibriumProblem, solver, vartype=Val(:linear); kwargs...)
     return solve(OptimizationProblem(ep, vartype), solver; kwargs...)
 end

@@ -127,7 +127,7 @@ include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
 include("equilibrium/equilibrium_problems.jl")
-include("equilibrium/states.jl")
+include("equilibrium/chemical_potentials.jl")
 
 export ThermoFunction, ThermoFactory, infer_unit
 
@@ -188,6 +188,8 @@ export read_thermofun_database, build_species_from_database, build_reactions_fro
 export merge_json
 
 export EquilibriumProblem
+
+export potentials_dilute_ideal
 
 function __init__()
     for (k, v) in THERMO_MODELS

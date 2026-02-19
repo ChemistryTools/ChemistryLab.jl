@@ -63,6 +63,10 @@ function extract_value(
     end
 end
 
+correct_volume_unit(v::AbstractQuantity) = uamount(v) != -1 ? v/1u"mol" : v
+
+correct_volume_unit(v) = v
+
 function complete_species_with_thermo_model!(species, row; verbose=false)
     Tref = row.Tst * u"K"
     Pref = row.Pst * u"Pa"
@@ -77,7 +81,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
             extract_value(row, :sm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
         :ΔₐG⁰ =>
             extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
-        :V⁰ => extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar"),
+        :V⁰ => correct_volume_unit(extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar")),
     ]
     species[:thermo_params] = [values0; :T => Tref; :P => Pref]
     TPMethods = row.TPMethods
@@ -175,7 +179,7 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
             extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
         :ΔᵣG⁰ =>
             extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
-        :ΔᵣV⁰ => extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar"),
+        :ΔᵣV⁰ => correct_volume_unit(extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar")),
         :logKr => extract_value(row, :logKr; verbose=verbose, default_unit=u"1"),
     ]
     reaction[:thermo_params] = [values0; :T => Tref; :P => Pref]

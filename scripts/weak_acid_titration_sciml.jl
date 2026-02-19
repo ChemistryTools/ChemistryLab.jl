@@ -44,7 +44,7 @@ A = [
 ]
 
 lsp = [:H₂O, :H⁺, :OH⁻, :AH, :A⁻, :BOH, :B⁺]
-ΔₐG⁰ = [-237.18e3, 0.e3, -157.27e3, -396.46e3, -369.31e3, -379.5e3, -261.9e3]
+ΔₐG⁰ = [-237.18e3, 0.e3, -157.27e3, -396.46e3, -369.31e3, -417.98e3, -261.9e3]
 for (sp, g) in zip(lsp, ΔₐG⁰)
     symsp = String(sp)
     @eval begin
@@ -84,7 +84,7 @@ p = [:ΔₐG⁰ => getproperty.(dep_comp, :ΔₐG⁰),
      :idxsolvent => findfirst(x->x.class == SC_AQSOLVENT, dep_comp),
      :ϵ => 1.e-16, :ca => 0.1, :Va => 0.1, :cb => 0.1, :Vb => 0.]
 
-prob = EquilibriumProblem(A, μ, _n0(p)[indices], ub=_ub(p), p=p, indep_components=indep_comp, dep_components=dep_comp)
+prob = EquilibriumProblem(A, μ, _n0(p)[indices], ub=_ub(p), p=p)
 opt = IpoptOptimizer(
     acceptable_tol = 1e-12,
     dual_inf_tol = 1e-12,
@@ -101,7 +101,7 @@ sol = solve(prob, Val(:linear), opt, verbose=5, abstol=1e-10, reltol=1e-10)
 function numpH(p, Vb)
     idx = findfirst(x -> first(x) === :Vb, p)
     if idx !== nothing p[idx] = :Vb => Vb end
-    prob = EquilibriumProblem(A, μ, _n0(p)[indices], p=p, indep_components=indep_comp, dep_components=dep_comp)
+    prob = EquilibriumProblem(A, μ, _n0(p)[indices], p=p)
     sol = solve(prob, Val(:linear), opt, verbose=0, abstol=1e-12, reltol=1e-12)
     pp = NamedTuple(p)
     Va, Vb = pp.Va, pp.Vb
@@ -141,27 +141,27 @@ pHVb = numpH.(Ref(p), lVb)
 scatter!(lVb, pHVb)
 
 
-function obj_ni(n, p)
-    pp = NamedTuple(p)
-    i = pp.i
-    return -n[i]
-end
+# function obj_ni(n, p)
+#     pp = NamedTuple(p)
+#     i = pp.i
+#     return -n[i]
+# end
 
-function cons!(res, n, p)
-    pp = NamedTuple(p)
-    res .= pp.A*n .- pp.b
-end
+# function cons!(res, n, p)
+#     pp = NamedTuple(p)
+#     res .= pp.A*n .- pp.b
+# end
 
-u0 = _n0(p)[indices]
-b = A*u0
+# u0 = _n0(p)[indices]
+# b = A*u0
 
-optf = OptimizationFunction(
-        obj_ni,
-        Optimization.AutoForwardDiff();
-        cons = cons!
-    )
+# optf = OptimizationFunction(
+#         obj_ni,
+#         Optimization.AutoForwardDiff();
+#         cons = cons!
+#     )
 
-prob = OptimizationProblem(optf, u0, [:A => A, :b => b, :i => 3];
-                           lcons = zeros(4), ucons = zeros(4),
-                           cons = cons!, lb = zeros(7), ub = fill(Inf, 7))
-sol = solve(prob, IpoptOptimizer(), print_level=0, abstol=1e-14, reltol=1e-18)
+# prob = OptimizationProblem(optf, u0, [:A => A, :b => b, :i => 3];
+#                            lcons = zeros(4), ucons = zeros(4),
+#                            cons = cons!, lb = zeros(7), ub = fill(Inf, 7))
+# sol = solve(prob, IpoptOptimizer(), print_level=0, abstol=1e-14, reltol=1e-18)

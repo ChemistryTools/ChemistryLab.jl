@@ -1,13 +1,12 @@
 using Revise
 using ChemistryLab
+using DynamicQuantities
 import SymPy: symbols, Sym, N, subs, factor, simplify
 
 ## construction of a Reaction by a balance calculation with symbolic numbers
-a, b, g = symbols("a b g", real=true)
+a, b, g = symbols("a b g", real=true) ;
+C3S, H, CH = [CemSpecies(s) for s in split("C3S H CH")] ;
 CSH = CemSpecies(Dict(:C => a, :S => one(a), :H => g))
-C3S = CemSpecies("C3S")
-H = CemSpecies("H")
-CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
  ## application of a function to stoichimetric coefficients (here simplify)
 r = apply(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
@@ -39,11 +38,8 @@ pprint(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
 pprint(subs.(inv(B), Ref(Dict(a=>1.8, b=>1, g=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
 # Alkane combustion with SymPy
-n = symbols("n", real=true) ;
-CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2) ;
-O₂ = Species("O₂") ;
-H₂O = Species("H₂O") ;
-CO₂ = Species("CO₂") ;
+n = symbols("n", real=true) ; CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2) ;
+O₂, H₂O, CO₂ = Species.(split("O₂ H₂O CO₂")) ;
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 apply(factor, r)
 pprint(2r)

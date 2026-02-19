@@ -65,6 +65,10 @@ df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_databas
 dict_species_orga = build_species_from_database(df_substances_orga)
 dict_reactions_orga = build_reactions_from_database(df_reactions_orga, dict_species_orga)
 
+df_elements_inorga, df_substances_inorga, df_reactions_inorga = read_thermofun_database("data/slop98-inorganic-thermofun.json")
+dict_species_inorga = build_species_from_database(df_substances_inorga)
+dict_reactions_inorga = build_reactions_from_database(df_reactions_inorga, dict_species_inorga)
+
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
@@ -183,9 +187,7 @@ pprint(substitute.(inv(B), Ref(Dict(a=>1.8, b=>1, g=>4))), "m_" .* symbol.(hydra
 # Alkane combustion with Symbolics
 @variables n
 CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2)
-O₂ = Species("O₂")
-H₂O = Species("H₂O")
-CO₂ = Species("CO₂")
+O₂, H₂O, CO₂ = Species.(split("O₂ H₂O CO₂")) ;
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(substitute, r, n=>vn))) end
 for vn in 1:9 print("n=$vn ⇒ "); println(colored(apply(Symbolics.symbolic_to_float∘stoich_coef_round∘(x->x isa Num ? x.val : x)∘substitute, r, n=>vn))) end
