@@ -38,7 +38,7 @@ filebasename = "cemdata18-thermofun.json" #hide
 df_elements, df_substances, df_reactions = read_thermofun_database("../../data/" * filebasename) #hide
 df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
-dict_species_calcite = build_species_from_database(df_calcite)
+dict_species_calcite = Dict(symbol(s) => s for s in build_species_from_database(df_calcite))
 ```
 
 During species creation, ChemistryLab calculates the molar mass of the species. It also constructs thermodynamic functions (heat capacity, entropy, enthalpy, and Gibbs free energy of formation) as a function of temperature. The evolution of thermodynamic properties as a function of temperature, such as heat capacity, can thus be easily plotted.

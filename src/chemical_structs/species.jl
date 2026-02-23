@@ -842,6 +842,8 @@ Return the oxide composition of the cement species.
 """
 oxides(s::CemSpecies) = composition(cemformula(s))
 
+oxides(s::Species) = oxides(CemSpecies(s))
+
 """
     oxides_charge(s::CemSpecies) -> OrderedDict{Symbol,Number}
 

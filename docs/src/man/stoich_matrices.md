@@ -99,7 +99,7 @@ df_union = get_compatible_species(df_substances, split("Portlandite H2O@");
 A dictionary of `Species` objects can then be built from a `DataFrame` thanks to:
 
 ```julia
-dict_species = build_species_from_database(df_union)
+dict_species = Dict(symbol(s) => s for s in build_species_from_database(df_union))
 ```
 
 !!! warning "Calculation of Molar Mass"
@@ -118,7 +118,7 @@ Finally, the stoichiometric matrix can be calculated:
     df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json") #hide
     df_union = get_compatible_species(df_substances, split("Portlandite H2O@");
                 aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2"), union=true) #hide
-    dict_species = build_species_from_database(df_union) #hide
+    dict_species = Dict(symbol(s) => s for s in build_species_from_database(df_union)) #hide
     candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)] #hide
 ```
 

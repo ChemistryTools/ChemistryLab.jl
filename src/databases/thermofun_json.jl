@@ -108,7 +108,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
 end
 
 """
-    build_species_from_database(df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false) -> Dict{String, Species}
+    build_species_from_database(df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false) -> Vector{Species}
 
 Build Species objects from a substance DataFrame.
 
@@ -120,7 +120,7 @@ Build Species objects from a substance DataFrame.
 
 # Returns
 
-  - Dictionary mapping species symbols to `Species` objects.
+  - Vector of `Species`.
 """
 function build_species_from_database(
     df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false
@@ -131,7 +131,7 @@ function build_species_from_database(
         @view df_substances[df_substances.symbol .∈ Ref(list_symbols), :]
     end
     keylist = String[]
-    pairs = Pair{String,Species}[]
+    species_list = Species[]
     print_title(
         "Building species"; crayon=Crayon(; foreground=:blue), style=:box, indent=""
     )
@@ -157,12 +157,12 @@ function build_species_from_database(
         complete_species_with_thermo_model!(species, row; verbose=verbose)
         key = row.symbol
         if key in keylist
-            @warn("Key $key is used for multiple species")
+            @warn("Symbol $key is used for multiple species")
         end
         push!(keylist, key)
-        push!(pairs, key => species)
+        push!(species_list,species)
     end
-    return Dict(pairs)
+    return species_list
 end
 
 function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
@@ -207,24 +207,24 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
 end
 
 """
-    build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols=nothing; verbose=false) -> Dict{String, Reaction}
+    build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols=nothing; verbose=false) -> Vector{Reaction}
 
 Build Reaction objects from a reaction DataFrame.
 
 # Arguments
 
   - `df_reactions`: DataFrame containing reaction data.
-  - `dict_species`: dictionary of existing `Species` objects to use in reactions.
+  - `species_list`: vector of existing `Species` objects to use in reactions.
   - `list_symbols`: optional list of reaction symbols to filter (default: nothing, process all).
   - `verbose`: if true, print details during processing (default: false).
 
 # Returns
 
-  - Dictionary mapping reaction symbols to `Reaction` objects.
+  - Vector of `Reaction` objects.
 """
 function build_reactions_from_database(
     df_reactions::AbstractDataFrame,
-    dict_species=Dict(),
+    species_list=[],
     list_symbols=nothing;
     verbose=false,
 )
@@ -233,8 +233,9 @@ function build_reactions_from_database(
     else
         @view df_reactions[df_reactions.symbol .∈ Ref(list_symbols), :]
     end
+    dict_species = Dict(symbol(s) => s for s in species_list)
     keylist = String[]
-    pairs = Pair{String,Reaction}[]
+    reactions_list = Reaction[]
     print_title(
         "Building reactions"; crayon=Crayon(; foreground=:red), style=:box, indent=""
     )
@@ -266,12 +267,12 @@ function build_reactions_from_database(
         complete_reaction_with_thermo_model!(reaction, row; verbose=verbose)
         key = row.symbol
         if key in keylist
-            @warn("Key $key is used for multiple reactions")
+            @warn("Symbol $key is used for multiple reactions")
         end
         push!(keylist, key)
-        push!(pairs, key => reaction)
+        push!(reactions_list, reaction)
     end
-    return Dict(pairs)
+    return reactions_list
 end
 
 """

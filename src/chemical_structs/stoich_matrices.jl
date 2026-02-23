@@ -1,60 +1,4 @@
 """
-    same_components(::Vector{<:AbstractSpecies}) -> Function
-
-Return the function to extract components from species vectors.
-
-Returns `atoms_charge` for Species vectors, `oxides_charge` for CemSpecies vectors.
-"""
-same_components(::Vector{<:AbstractSpecies}) = atoms_charge
-same_components(::Vector{<:CemSpecies}) = oxides_charge
-
-"""
-    item_order(::Vector{<:AbstractSpecies}) -> Vector{Symbol}
-
-Return the ordering vector for components.
-
-Returns `ATOMIC_ORDER` for Species vectors, `OXIDE_ORDER` for CemSpecies vectors.
-"""
-item_order(::Vector{<:AbstractSpecies}) = ATOMIC_ORDER
-item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
-
-"""
-    union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER) -> Vector{Symbol}
-
-Compute the union of all keys from dictionaries, sorted by a given order.
-
-# Arguments
-
-  - `atom_dicts`: vector of dictionaries (e.g., atomic compositions).
-  - `order_vec`: ordering vector for sorting keys (default: ATOMIC_ORDER).
-
-# Returns
-
-  - Sorted vector of unique symbols appearing in any dictionary.
-
-# Examples
-
-```jldoctest
-julia> d1 = OrderedDict(:H => 2, :O => 1);
-
-julia> d2 = OrderedDict(:C => 1, :O => 2);
-
-julia> union_atoms([d1, d2], ATOMIC_ORDER)
-3-element Vector{Symbol}:
- :C
- :H
- :O
-```
-"""
-function union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec=ATOMIC_ORDER)
-    function sortfunc(k)
-        idx = findfirst(==(k), order_vec)
-        return isnothing(idx) ? max(1, length(order_vec) - 1) : idx
-    end
-    return sort!(collect(union(keys.(atom_dicts)...)); by=sortfunc)
-end
-
-"""
         StoichMatrix{T,P}
 
 Container holding a stoichiometric matrix `A` together with the
@@ -90,7 +34,7 @@ struct StoichMatrix{
 } <: AbstractMatrix{T}
     A::M
     primaries::V
-    species::Vector{S}
+    species::AbstractVector{S}
     N::M
 end
 
@@ -99,7 +43,7 @@ Base.eltype(::StoichMatrix{T}) where {T} = T
 primtype(::StoichMatrix{T,P}) where {T,P} = P
 
 function StoichMatrix(
-    A::M, primaries::Union{Vector{Symbol},Vector{S}}, species::Vector{S}
+    A::M, primaries::Union{Vector{Symbol},Vector{S}}, species::AbstractVector{S}
 ) where {M<:AbstractMatrix,S<:AbstractSpecies}
     indices_in = [findfirst(x -> x == p, species) for p in primaries]
     if any(x -> isnothing(x), indices_in)
@@ -362,8 +306,8 @@ function StoichMatrix(
     end
     candidate_primaries = copy(candidate_primaries)
 
-    SpType(::Vector) = Species
-    SpType(::Vector{<:CemSpecies}) = CemSpecies
+    SpType(::AbstractVector) = Species
+    SpType(::AbstractVector{<:CemSpecies}) = CemSpecies
     Zz = SpType(newspecies)("Zz")
     charged = :Zz ∈ initial_involved_atoms
     if charged

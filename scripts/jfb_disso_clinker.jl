@@ -11,18 +11,16 @@ using SparseArrays
 using LinearAlgebra
 
 df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-thermofun.json")
-dict_species = build_species_from_database(df_substances)
+substances = build_species_from_database(df_substances)
+init_species = split("C3S C2S Gp Anh Portlandite Jennite H2O@")
+species = speciation(substances, init_species;
+               aggregate_state=[AS_AQUEOUS],
+               exclude_species=split("H2@ O2@ H2S@ HS- S2O3-2 SO3-2 HSO3-"),
+               include_species=init_species)
 
-df_selection = get_compatible_species(df_substances, split("C3S C2S Gp Anh Portlandite Jennite H2O@");
-               aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ H2S@ HS- S2O3-2 SO3-2 HSO3-"), union=true)
-d_species = build_species_from_database(df_selection)
-primaries = collect(skipmissing(get.(Ref(d_species), CEMDATA_PRIMARIES, missing)))
-
-species = collect(values(d_species))
-
-sort!(species, by=x->(x.aggregate_state, x.class, x.symbol))
-
-SM = StoichMatrix(species, primaries) ; pprint(SM)
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
+d_species = cs.dict_species
+SM = cs.SM
 
 μ = potentials_dilute_ideal(species)
 
@@ -66,7 +64,7 @@ opt = IpoptOptimizer(
     # expect_infeasible_problem = "yes",
 )
 prob = EquilibriumProblem(Float64.(SM.A), μ, n₀, p=p)
-sol = solve(prob, opt, Val(:linear); verbose=5, abstol=1e-10, reltol=1e-10)
+sol = solve(prob, opt, Val(:linear); verbose=0, abstol=1e-10, reltol=1e-10)
 
 initial = Dict(s => n₀[i] for (i,s) in enumerate(symbol.(species)))
 final = Dict(s => sol[i] for (i,s) in enumerate(symbol.(species)))

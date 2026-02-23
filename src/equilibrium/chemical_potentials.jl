@@ -2,7 +2,6 @@
     species::OrderedDict{S,TS} = OrderedDict{AbstractSpecies, Number}()
     T::Ttype = 298.15u"K"
     P::Ptype = 1.0u"bar"
-    t::ttype = 0.0u"s"
 end
 
 function Base.show(io::IO, st::State)
@@ -36,7 +35,7 @@ function potentials_dilute_ideal(species::AbstractVector)
         ΔₐGpoverRT[idxsolute] .+= log(Csolvent)
         ntot_aqueous = _n[idxsolvent] + sum(_n[idxsolute])
         if !iszero(ntot_aqueous)
-            ΔₐGpoverRT[idxsolute] .+= log.(_n[idxsolute] ./ ntot_aqueous)
+            ΔₐGpoverRT[idxsolute] .+= log.(_n[idxsolute] ./ _n[idxsolvent])
             ΔₐGpoverRT[idxsolvent] += log(_n[idxsolvent] / ntot_aqueous)
         end
         ntot_gas = sum(_n[idxgas])

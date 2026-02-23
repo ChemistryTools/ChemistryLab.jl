@@ -50,24 +50,29 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # Thermofun input
 println("LOADING DATABASES...")
 df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
-dict_species = build_species_from_database(df_substances)
-dict_reactions = build_reactions_from_database(df_reactions, dict_species)
+species_vec = build_species_from_database(df_substances)
+dict_species = Dict(symbol(s) => s for s in species_vec)
+dict_reactions = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions, species_vec))
 
 df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database("data/psinagra-12-07-thermofun.json")
-dict_species_psi = build_species_from_database(df_substances_psi)
-dict_reactions_psi = build_reactions_from_database(df_reactions_psi, dict_species_psi)
+species_psi = build_species_from_database(df_substances_psi)
+dict_species_psi = Dict(symbol(s) => s for s in species_psi)
+dict_reactions_psi = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_psi, species_psi))
 
 df_elements_aq17, df_substances_aq17, df_reactions_aq17 = read_thermofun_database("data/aq17-thermofun.json")
-dict_species_aq17 = build_species_from_database(df_substances_aq17)
-dict_reactions_aq17 = build_reactions_from_database(df_reactions_aq17, dict_species_aq17)
+species_aq17 = build_species_from_database(df_substances_aq17)
+dict_species_aq17 = Dict(symbol(s) => s for s in species_aq17)
+dict_reactions_aq17 = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_aq17, species_aq17))
 
 df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
-dict_species_orga = build_species_from_database(df_substances_orga)
-dict_reactions_orga = build_reactions_from_database(df_reactions_orga, dict_species_orga)
+species_orga = build_species_from_database(df_substances_orga)
+dict_species_orga = Dict(symbol(s) => s for s in species_orga)
+dict_reactions_orga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_orga, species_orga))
 
 df_elements_inorga, df_substances_inorga, df_reactions_inorga = read_thermofun_database("data/slop98-inorganic-thermofun.json")
-dict_species_inorga = build_species_from_database(df_substances_inorga)
-dict_reactions_inorga = build_reactions_from_database(df_reactions_inorga, dict_species_inorga)
+species_inorga = build_species_from_database(df_substances_inorga)
+dict_species_inorga = Dict(symbol(s) => s for s in species_inorga)
+dict_reactions_inorga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_inorga, species_inorga))
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -101,7 +106,8 @@ df_union = unique(vcat(df_given_species, df_secondaries))
 # Same as above in one command
 df_union = get_compatible_species(df_substances, split("C2S Portlandite Jennite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
-dict_all_species = build_species_from_database(df_union)
+all_species = build_species_from_database(df_union)
+dict_all_species = Dict(symbol(s) => s for s in all_species)
 candidate_primaries = collect(skipmissing(get.(Ref(dict_all_species), CEMDATA_PRIMARIES, missing)))
 candidate_primaries = get.(Ref(dict_all_species), intersect(keys(dict_all_species), CEMDATA_PRIMARIES), missing)
 candidate_primaries = [dict_all_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_all_species, s)]
@@ -112,7 +118,7 @@ list_reactions = reactions(SM)
 pprint(list_reactions)
 # Filtering reactions with involved species from database
 df_involved_reactions = filter(row -> all(in.([x.symbol for x in row.reactants], Ref(expr.(values(dict_all_species))))), df_reactions)
-dict_involved_reactions = build_reactions_from_database(df_involved_reactions, dict_all_species)
+dict_involved_reactions = build_reactions_from_database(df_involved_reactions, all_species)
 
 
 df_hydrates_clinker = get_compatible_species(df_substances, split("C3S C2S C3A C4AF Gp H2O@"); aggregate_states=[AS_CRYSTAL])
@@ -218,15 +224,9 @@ for r in values(dict_reactions)
     println(colored(r), " → ", r.logKr(), " == ", r.logKr_Tref)
 end
 
-coeffs = [:a₀ => 210.0u"J/K/mol", :a₁ => 0.12u"J/mol/K^2", :a₂ => -3.07e6u"J*K/mol", :a₃ => 0.0u"J/mol/√K"]
-Cp = ThermoFunction(dict_cp_ft_equation[:Cp], coeffs)
-
-rate = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*√t)), [:c₁ => 1.0u"min^2", :c₂ => 2.0u"s", :c₃ => 3.0, :c₄ => 4.0u"1/√s"])
-rate(1u"s")
-
 r = dict_reactions["Cal"]
 Tref = 298.15u"K"
-ΔᵣG⁰(T) = sum(ν*s.ΔₐG⁰(T) for (s,ν) in r)
+ΔᵣG⁰(T) = sum(ν*s.ΔₐG⁰(T = T) for (s,ν) in r)
 logK = -ΔᵣG⁰(Tref)/(Constants.R*Tref)/log(10)
 K(T) = 10^(-ΔᵣG⁰(T)/(Constants.R*T)/log(10))
 pK(T) = ΔᵣG⁰(T)/(Constants.R*T)/log(10)

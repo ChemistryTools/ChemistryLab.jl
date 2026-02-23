@@ -33,17 +33,28 @@ coeffs.values
 
 row = eachrow(df_reactions)[4]
 
-filename = "data/cemdata18-merged.json"
-df_elements, df_substances, df_reactions = read_thermofun_database(filename)
-dict_species = build_species_from_database(df_substances)
-dict_reactions = build_reactions_from_database(df_reactions, dict_species)
+println("LOADING DATABASES...")
+df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
+species_vec = build_species_from_database(df_substances)
+dict_species = Dict(symbol(s) => s for s in species_vec)
+dict_reactions = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions, species_vec))
 
-filename = "data/psinagra-12-07-thermofun.json"
-df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database(filename)
-dict_species_psi = build_species_from_database(df_substances_psi; verbose = false)
-dict_reactions_psi = build_reactions_from_database(df_reactions_psi, dict_species_psi)
+df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database("data/psinagra-12-07-thermofun.json")
+species_psi = build_species_from_database(df_substances_psi)
+dict_species_psi = Dict(symbol(s) => s for s in species_psi)
+dict_reactions_psi = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_psi, species_psi))
 
-filename = "data/aq17-thermofun.json"
-df_elements_aq, df_substances_aq, df_reactions_aq = read_thermofun_database(filename)
-dict_species_aq = build_species_from_database(df_substances_aq; verbose = false)
-dict_reactions_aq = build_reactions_from_database(df_reactions_aq, dict_species_aq)
+df_elements_aq17, df_substances_aq17, df_reactions_aq17 = read_thermofun_database("data/aq17-thermofun.json")
+species_aq17 = build_species_from_database(df_substances_aq17)
+dict_species_aq17 = Dict(symbol(s) => s for s in species_aq17)
+dict_reactions_aq17 = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_aq17, species_aq17))
+
+df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
+species_orga = build_species_from_database(df_substances_orga)
+dict_species_orga = Dict(symbol(s) => s for s in species_orga)
+dict_reactions_orga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_orga, species_orga))
+
+df_elements_inorga, df_substances_inorga, df_reactions_inorga = read_thermofun_database("data/slop98-inorganic-thermofun.json")
+species_inorga = build_species_from_database(df_substances_inorga)
+dict_species_inorga = Dict(symbol(s) => s for s in species_inorga)
+dict_reactions_inorga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_inorga, species_inorga))

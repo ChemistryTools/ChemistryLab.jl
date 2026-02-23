@@ -120,7 +120,9 @@ include("chemical_structs/parsing_tools.jl")
 include("chemical_structs/formulas.jl")
 include("chemical_structs/species.jl")
 include("chemical_structs/reactions.jl")
+include("chemical_structs/speciation.jl")
 include("chemical_structs/stoich_matrices.jl")
+include("chemical_structs/chemical_systems.jl")
 
 include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
@@ -173,13 +175,16 @@ export AbstractSpecies,
 export Reaction, CemReaction, reactants, products, charge, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
 
+export union_atoms, speciation
+
 export StoichMatrix,
     CanonicalStoichMatrix,
     pull_primaries,
     push_primaries,
     mass_matrix,
-    reactions,
-    union_atoms
+    reactions
+
+export ChemicalSystem, aqueous, crystal, gas, solutes, solvent, components, gasfluid
 
 export extract_primary_species
 
