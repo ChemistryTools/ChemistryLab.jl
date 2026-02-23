@@ -479,7 +479,9 @@ Earlier systems take priority over later ones in case of symbol conflicts.
 # Examples
 ```jldoctest
 julia> cs1 = ChemicalSystem([Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
 julia> cs2 = ChemicalSystem([Species("H+";   aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
+
 julia> cs3 = ChemicalSystem([Species("OH-";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
 
 julia> cs = merge(cs1, cs2, cs3);
