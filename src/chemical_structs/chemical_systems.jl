@@ -441,8 +441,9 @@ julia> length(cs)
 3
 
 julia> symbol.(cs.SM.primaries)
-1-element Vector{String}:
+2-element Vector{String}:
  "H2O"
+ "H+"
 ```
 """
 function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
