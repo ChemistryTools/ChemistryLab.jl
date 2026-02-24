@@ -80,6 +80,8 @@ const EQUAL_REACTION = vcat(
 )
 const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
 
+abstract type AbstractReaction end
+
 """
     struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
 
@@ -119,7 +121,7 @@ OrderedDict{Species{Int64}, Int64} with 1 entry:
   H2O {H2O} [H2O ◆ H₂O] => 2
 ```
 """
-struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number}
+struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number} <: AbstractReaction
     symbol::String
     equation::String
     colored::String

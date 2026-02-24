@@ -1,8 +1,13 @@
 """
-    mutable struct ChemicalSystem{T<:AbstractSpecies, C, S} <: AbstractVector{T}
+    struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S} <: AbstractVector{T}
 
-A mutable collection of chemical species with derived index structures
-and stoichiometric matrices.
+An immutable, fully typed collection of chemical species and reactions
+with derived index structures and stoichiometric matrices.
+
+Immutability guarantees that all derived fields (`dict_species`, `dict_reactions`,
+index vectors, `CSM`, `SM`) remain consistent with `species` and `reactions`
+throughout the lifetime of the object. To modify the system, use `merge` to
+construct a new `ChemicalSystem`.
 
 # Fields
 
@@ -10,12 +15,14 @@ and stoichiometric matrices.
   - `dict_species`: fast O(1) lookup by species symbol.
   - `idx_aqueous`, `idx_crystal`, `idx_gas`: indices by aggregate state.
   - `idx_solutes`, `idx_solvent`, `idx_components`, `idx_gasfluid`: indices by class.
+  - `reactions`: ordered list of all reactions.
+  - `dict_reactions`: fast O(1) lookup by reaction symbol.
   - `CSM`: canonical stoichiometric matrix.
   - `SM`: stoichiometric matrix with respect to primaries.
 """
-mutable struct ChemicalSystem{T<:AbstractSpecies, C, S} <: AbstractVector{T}
+struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S} <: AbstractVector{T}
     species::Vector{T}
-    dict_species::OrderedDict{String, T}
+    dict_species::Dict{String, T}               # fast O(1) lookup by symbol
 
     # Indices by aggregate_state
     idx_aqueous::Vector{Int}
@@ -28,122 +35,29 @@ mutable struct ChemicalSystem{T<:AbstractSpecies, C, S} <: AbstractVector{T}
     idx_components::Vector{Int}
     idx_gasfluid::Vector{Int}
 
-    CSM::C
-    SM::S
-end
+    reactions::Vector{R}
+    dict_reactions::Dict{String, R}             # fast O(1) lookup by reaction symbol
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
-
-"""
-    _reindex!(cs::ChemicalSystem) -> ChemicalSystem
-
-Recompute all index vectors from the current species list.
-Called internally after any mutation of `cs.species`.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([
-           Species("H2O"; aggregate_state=AS_AQUEOUS),
-           Species("NaCl"; aggregate_state=AS_CRYSTAL),
-       ]);
-
-julia> cs.idx_aqueous
-1-element Vector{Int64}:
- 1
-
-julia> cs.idx_crystal
-1-element Vector{Int64}:
- 2
-```
-"""
-function _reindex!(cs::ChemicalSystem)
-    idx(f) = findall(f, cs.species)
-    cs.idx_aqueous    = idx(s -> aggregate_state(s) == AS_AQUEOUS)
-    cs.idx_crystal    = idx(s -> aggregate_state(s) == AS_CRYSTAL)
-    cs.idx_gas        = idx(s -> aggregate_state(s) == AS_GAS)
-    cs.idx_solutes    = idx(s -> class(s) == SC_AQSOLUTE)
-    cs.idx_solvent    = idx(s -> class(s) == SC_AQSOLVENT)
-    cs.idx_components = idx(s -> class(s) == SC_COMPONENT)
-    cs.idx_gasfluid   = idx(s -> class(s) == SC_GASFLUID)
-    return cs
-end
-
-"""
-    _rebuild_dict!(cs::ChemicalSystem) -> ChemicalSystem
-
-Rebuild the symbol → species dictionary from scratch.
-Called internally after any mutation of `cs.species`.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS)]);
-
-julia> haskey(cs.dict_species, "H2O")
-true
-```
-"""
-function _rebuild_dict!(cs::ChemicalSystem)
-    empty!(cs.dict_species)
-    for s in cs.species
-        cs.dict_species[symbol(s)] = s
-    end
-    return cs
-end
-
-"""
-    _rebuild_matrices!(cs::ChemicalSystem, primaries=cs.species) -> ChemicalSystem
-
-Rebuild the canonical stoichiometric matrix `CSM` and the stoichiometric
-matrix `SM` from the current species list.
-
-Primaries default to all species, matching the behaviour of the main constructor.
-Pass a custom primaries vector to preserve a specific choice across mutations.
-
-Called internally after any mutation of `cs.species`.
-"""
-function _rebuild_matrices!(cs::ChemicalSystem, primaries=cs.species)
-    cs.CSM = CanonicalStoichMatrix(cs.species)
-    cs.SM  = StoichMatrix(cs.species, primaries)
-    return cs
-end
-
-"""
-    _update!(cs::ChemicalSystem, primaries=cs.species) -> ChemicalSystem
-
-Full update of all derived fields after a mutation of `cs.species`:
-  1. Rebuild the symbol → species dictionary.
-  2. Recompute all aggregate-state and class index vectors.
-  3. Rebuild `CSM` and `SM`.
-
-All mutation methods (`setindex!`, `push!`, `append!`, `deleteat!`, `pop!`)
-delegate to this function to keep the struct consistent.
-
-!!! note
-    Primaries default to all species. If custom primaries must survive
-    mutations, store them as an extra field and pass them explicitly here.
-"""
-function _update!(cs::ChemicalSystem, primaries=cs.species)
-    _rebuild_dict!(cs)       # keep dict_species consistent with species
-    _reindex!(cs)            # keep index vectors consistent with species
-    _rebuild_matrices!(cs, primaries)  # keep CSM and SM consistent with species
-    return cs
+    CSM::C                                      # canonical stoichiometric matrix — typed for performance
+    SM::S                                       # stoichiometric matrix w.r.t. primaries — typed for performance
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
 
 """
-    ChemicalSystem(species, primaries=species) -> ChemicalSystem
+    ChemicalSystem(species, primaries=species; reactions) -> ChemicalSystem
 
-Construct a `ChemicalSystem` from a vector of species and an optional vector
-of primary species used to build the stoichiometric matrix `SM`.
+Construct a fully typed `ChemicalSystem` from a vector of species,
+an optional vector of primary species, and an optional vector of reactions.
 
-All derived fields (`dict_species`, index vectors, `CSM`, `SM`) are computed
-at construction time.
+All derived fields are computed once at construction time and remain
+consistent for the lifetime of the object.
 
 # Arguments
 
   - `species`: vector of `AbstractSpecies`.
   - `primaries`: subset used as independent components (default: all species).
+  - `reactions`: vector of `AbstractReaction` (default: empty).
 
 # Examples
 ```jldoctest
@@ -163,14 +77,15 @@ true
 """
 function ChemicalSystem(
     species::AbstractVector{T},
-    primaries::AbstractVector{<:AbstractSpecies}=species,
-) where {T<:AbstractSpecies}
+    primaries::AbstractVector{<:AbstractSpecies}=species;
+    reactions::AbstractVector{R}=AbstractReaction[],
+) where {T<:AbstractSpecies, R<:AbstractReaction}
     idx(f) = findall(f, species)
     CSM = CanonicalStoichMatrix(species)
     SM  = StoichMatrix(species, primaries)
-    return ChemicalSystem{T, typeof(CSM), typeof(SM)}(
-        collect(species),                               # ensure owned Vector{T}
-        OrderedDict(symbol(s) => s for s in species),  # symbol → species map
+    return ChemicalSystem{T, R, typeof(CSM), typeof(SM)}(
+        collect(T, species),                            # owned Vector{T}
+        Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
         idx(s -> aggregate_state(s) == AS_AQUEOUS),
         idx(s -> aggregate_state(s) == AS_CRYSTAL),
         idx(s -> aggregate_state(s) == AS_GAS),
@@ -178,13 +93,15 @@ function ChemicalSystem(
         idx(s -> class(s) == SC_AQSOLVENT),
         idx(s -> class(s) == SC_COMPONENT),
         idx(s -> class(s) == SC_GASFLUID),
+        collect(R, reactions),                          # owned Vector{R}
+        Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
         CSM,
         SM,
     )
 end
 
 """
-    ChemicalSystem(species, primaries::AbstractVector{<:AbstractString}) -> ChemicalSystem
+    ChemicalSystem(species, primaries::AbstractVector{<:AbstractString}; reactions) -> ChemicalSystem
 
 Convenience constructor that resolves primary species from their symbol strings.
 
@@ -197,9 +114,6 @@ julia> sp = [
 
 julia> cs = ChemicalSystem(sp, ["H2O"]);
 
-julia> length(cs)
-2
-
 julia> symbol.(cs.SM.primaries)
 1-element Vector{String}:
  "H2O"
@@ -207,11 +121,12 @@ julia> symbol.(cs.SM.primaries)
 """
 function ChemicalSystem(
     species::AbstractVector{T},
-    primaries::AbstractVector{<:AbstractString},
-) where {T<:AbstractSpecies}
-    # Resolve string symbols to species, preserving order
-    primaries_species = @view species[symbol.(species) .∈ Ref(primaries)]
-    return ChemicalSystem(species, primaries_species)
+    primaries::AbstractVector{<:AbstractString};
+    reactions::AbstractVector{R}=AbstractReaction[],
+) where {T<:AbstractSpecies, R<:AbstractReaction}
+    # Resolve string symbols to species objects, preserving order
+    primaries_species = species[symbol.(species) .∈ Ref(primaries)]
+    return ChemicalSystem(species, primaries_species; reactions=reactions)
 end
 
 # ── AbstractVector interface ──────────────────────────────────────────────────
@@ -261,196 +176,70 @@ true
 """
 Base.getindex(cs::ChemicalSystem, i::AbstractString) = cs.dict_species[i]
 
-"""
-    Base.setindex!(cs::ChemicalSystem, x::AbstractSpecies, i::Int) -> ChemicalSystem
+# ── Reaction accessor ─────────────────────────────────────────────────────────
 
-Replace the species at position `i` and update all derived fields,
-including `CSM` and `SM` (rebuilt with `primaries = species`).
+"""
+    get_reaction(cs::ChemicalSystem, sym::AbstractString) -> AbstractReaction
+
+Return the reaction identified by symbol `sym`. Runs in O(1) via `dict_reactions`.
 
 # Examples
 ```jldoctest
-julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS)]);
+julia> cs = ChemicalSystem(
+           [Species("H2O"; aggregate_state=AS_AQUEOUS)];
+           reactions=[Reaction("H2O = H+ + OH-"; symbol="water_diss")],
+       );
 
-julia> cs[1] = Species("NaCl"; aggregate_state=AS_CRYSTAL);
-
-julia> aggregate_state(cs[1]) == AS_CRYSTAL
-true
-
-julia> cs.idx_crystal
-1-element Vector{Int64}:
- 1
-
-julia> isempty(cs.idx_aqueous)
-true
+julia> symbol(get_reaction(cs, "water_diss"))
+"water_diss"
 ```
 """
-function Base.setindex!(cs::ChemicalSystem, x::AbstractSpecies, i::Int)
-    cs.species[i] = x
-    _update!(cs)  # rebuild dict, indices, CSM and SM
-    return cs
-end
-
-# ── Mutation methods ──────────────────────────────────────────────────────────
-
-"""
-    Base.push!(cs::ChemicalSystem{T}, s::T) -> ChemicalSystem
-
-Append a single species and update all derived fields,
-including `CSM` and `SM`.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS)]);
-
-julia> push!(cs, Species("NaCl"; aggregate_state=AS_CRYSTAL));
-
-julia> length(cs)
-2
-
-julia> cs.idx_crystal
-1-element Vector{Int64}:
- 2
-```
-"""
-function Base.push!(cs::ChemicalSystem{T}, s::T) where {T<:AbstractSpecies}
-    push!(cs.species, s)
-    _update!(cs)  # rebuild dict, indices, CSM and SM
-    return cs
-end
-
-"""
-    Base.append!(cs::ChemicalSystem{T}, v::AbstractVector{<:AbstractSpecies}) -> ChemicalSystem
-
-Append multiple species at once and update all derived fields.
-More efficient than successive `push!` calls since `_update!` is called only once,
-rebuilding `CSM` and `SM` a single time.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS)]);
-
-julia> append!(cs, [
-           Species("NaCl"; aggregate_state=AS_CRYSTAL),
-           Species("CO2";  aggregate_state=AS_GAS),
-       ]);
-
-julia> length(cs)
-3
-
-julia> length(cs.idx_aqueous), length(cs.idx_crystal), length(cs.idx_gas)
-(1, 1, 1)
-```
-"""
-function Base.append!(
-    cs::ChemicalSystem{T},
-    v::AbstractVector{<:AbstractSpecies},
-) where {T<:AbstractSpecies}
-    append!(cs.species, v)
-    _update!(cs)  # single rebuild for all appended species
-    return cs
-end
-
-"""
-    Base.deleteat!(cs::ChemicalSystem, i) -> ChemicalSystem
-
-Remove the species at index `i` and update all derived fields,
-including `CSM` and `SM`.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([
-           Species("H2O";  aggregate_state=AS_AQUEOUS),
-           Species("NaCl"; aggregate_state=AS_CRYSTAL),
-       ]);
-
-julia> deleteat!(cs, 2);
-
-julia> length(cs)
-1
-
-julia> isempty(cs.idx_crystal)
-true
-```
-"""
-function Base.deleteat!(cs::ChemicalSystem, i)
-    deleteat!(cs.species, i)
-    _update!(cs)  # rebuild dict, indices, CSM and SM after removal
-    return cs
-end
-
-"""
-    Base.pop!(cs::ChemicalSystem) -> AbstractSpecies
-
-Remove and return the last species, updating all derived fields,
-including `CSM` and `SM`.
-
-# Examples
-```jldoctest
-julia> cs = ChemicalSystem([
-           Species("H2O";  aggregate_state=AS_AQUEOUS),
-           Species("NaCl"; aggregate_state=AS_CRYSTAL),
-       ]);
-
-julia> s = pop!(cs);
-
-julia> symbol(s)
-"NaCl"
-
-julia> length(cs)
-1
-
-julia> isempty(cs.idx_crystal)
-true
-```
-"""
-function Base.pop!(cs::ChemicalSystem)
-    s = pop!(cs.species)     # remove last species and capture it
-    _update!(cs)             # rebuild dict, indices, CSM and SM
-    return s                 # return the removed species to the caller
-end
+get_reaction(cs::ChemicalSystem, sym::AbstractString) = cs.dict_reactions[sym]
 
 # ── Merge ─────────────────────────────────────────────────────────────────────
 
 """
     Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem) -> ChemicalSystem
 
-Merge two `ChemicalSystem` instances into a single one.
+Construct a new `ChemicalSystem` from the union of two systems.
 
-Species are unioned by symbol — duplicates from `cs2` are discarded.
-`CSM` and `SM` are rebuilt from scratch from the full species list.
+Species and reactions are unioned by symbol — duplicates from `cs2` are discarded.
+`CSM` and `SM` are built from scratch from the full species list.
 Primaries are taken as the union of both systems' primaries, filtered
 to those actually present in the merged species list.
 
-In case of symbol conflict, `cs1` takes priority over `cs2`.
+In case of symbol conflict (species or reactions), `cs1` takes priority over `cs2`.
+The return type is inferred from the merged collections and may differ from
+`typeof(cs1)` or `typeof(cs2)` if they contain different concrete types.
 
 # Examples
 ```jldoctest
-julia> cs1 = ChemicalSystem([
-           Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
-           Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
-       ]);
+julia> cs1 = ChemicalSystem(
+           [Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+            Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)];
+           reactions=[Reaction("H2O = H+ + OH-"; symbol="water_diss")],
+       );
 
-julia> cs2 = ChemicalSystem([
-           Species("OH-"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
-           Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
-       ]);
+julia> cs2 = ChemicalSystem(
+           [Species("OH-"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
+            Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)];
+           reactions=[Reaction("CO2 + H2O = H2CO3"; symbol="co2_hyd")],
+       );
 
 julia> cs = merge(cs1, cs2);
 
 julia> length(cs)
 3
 
-julia> symbol.(cs.SM.primaries)
-2-element Vector{String}:
- "H2O"
- "H+"
+julia> length(cs.reactions)
+2
 ```
 """
 function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
-    # Build a set of existing symbols from cs1 for fast duplicate detection
+    # Build lookup sets for fast duplicate detection
     existing_symbols = Set(symbol.(cs1.species))
 
-    # Append only species from cs2 whose symbol is not already in cs1
+    # Append only species from cs2 not already present in cs1 (cs1 wins on conflict)
     extra_species = filter(s -> symbol(s) ∉ existing_symbols, cs2.species)
     all_species   = vcat(cs1.species, extra_species)
 
@@ -462,28 +251,33 @@ function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
     )
     all_primaries = vcat(cs1.SM.primaries, extra_primaries)
 
-    # Drop primaries that are not present in the merged species list
-    # (can happen if a cs2 primary was shadowed or not included)
-    all_symbols   = Set(symbol.(all_species))
-    all_primaries = filter(p -> symbol(p) ∈ all_symbols, all_primaries)
+    # Drop primaries absent from the merged species list
+    all_species_symbols = Set(symbol.(all_species))
+    all_primaries = filter(p -> symbol(p) ∈ all_species_symbols, all_primaries)
 
-    # Delegate to main constructor — rebuilds CSM and SM from scratch
-    return ChemicalSystem(all_species, all_primaries)
+    # Union of reactions by symbol — cs1 wins on conflict
+    existing_reaction_symbols = Set(symbol.(cs1.reactions))
+    extra_reactions = filter(r -> symbol(r) ∉ existing_reaction_symbols, cs2.reactions)
+    all_reactions   = vcat(cs1.reactions, extra_reactions)
+
+    # Construct a new ChemicalSystem — all derived fields rebuilt from scratch
+    return ChemicalSystem(all_species, all_primaries; reactions=all_reactions)
 end
 
 """
     Base.merge(css::ChemicalSystem...) -> ChemicalSystem
 
-Merge an arbitrary number of `ChemicalSystem` instances left-to-right.
-Earlier systems take priority over later ones in case of symbol conflicts.
+Construct a new `ChemicalSystem` from the union of an arbitrary number of systems,
+processed left-to-right. Earlier systems take priority over later ones
+in case of symbol conflicts.
 
 # Examples
 ```jldoctest
-julia> cs1 = ChemicalSystem([Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+julia> cs1 = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
 
-julia> cs2 = ChemicalSystem([Species("H+";   aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
+julia> cs2 = ChemicalSystem([Species("H+"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
 
-julia> cs3 = ChemicalSystem([Species("OH-";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
+julia> cs3 = ChemicalSystem([Species("OH-"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]);
 
 julia> cs = merge(cs1, cs2, cs3);
 

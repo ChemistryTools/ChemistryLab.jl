@@ -123,6 +123,7 @@ include("chemical_structs/reactions.jl")
 include("chemical_structs/speciation.jl")
 include("chemical_structs/stoich_matrices.jl")
 include("chemical_structs/chemical_systems.jl")
+include("chemical_structs/chemical_states.jl")
 
 include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
@@ -131,11 +132,20 @@ include("databases/merge_dat_json.jl")
 include("equilibrium/equilibrium_problems.jl")
 include("equilibrium/chemical_potentials.jl")
 
-export ThermoFunction, ThermoFactory, infer_unit
+export ThermoFunction,
+    ThermoFactory,
+    infer_unit
 
-export THERMO_MODELS, THERMO_FACTORIES, add_thermo_model, build_thermo_functions, check_dimensions
+export THERMO_MODELS,
+    THERMO_FACTORIES,
+    add_thermo_model,
+    build_thermo_functions,
+    check_dimensions
 
-export ATOMIC_ORDER, CEMENT_TO_MENDELEEV, OXIDE_ORDER, CEMDATA_PRIMARIES
+export ATOMIC_ORDER,
+    CEMENT_TO_MENDELEEV,
+    OXIDE_ORDER,
+    CEMDATA_PRIMARIES
 
 export stoich_coef_round,
     phreeqc_to_unicode,
@@ -149,11 +159,30 @@ export stoich_coef_round,
     format_equation
 
 export AtomGroup,
-    Formula, expr, phreeqc, unicode, colored, composition, charge, check_mendeleev, calculate_molar_mass, stoichtype, pprint
+    Formula,
+    expr,
+    phreeqc,
+    unicode,
+    colored,
+    composition,
+    charge,
+    check_mendeleev,
+    calculate_molar_mass,
+    stoichtype,
+    pprint
 
-export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
+export AggregateState,
+    AS_UNDEF,
+    AS_AQUEOUS,
+    AS_CRYSTAL,
+    AS_GAS
 
-export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GASFLUID
+export Class,
+    SC_UNDEF,
+    SC_AQSOLVENT,
+    SC_AQSOLUTE,
+    SC_COMPONENT,
+    SC_GASFLUID
 
 export AbstractSpecies,
     Species,
@@ -172,7 +201,13 @@ export AbstractSpecies,
     properties,
     apply
 
-export Reaction, CemReaction, reactants, products, charge, simplify_reaction
+export AbstractReaction,
+    Reaction,
+    CemReaction,
+    reactants,
+    products,
+    charge,
+    simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...)
 
 export union_atoms, speciation
@@ -184,11 +219,31 @@ export StoichMatrix,
     mass_matrix,
     reactions
 
-export ChemicalSystem, aqueous, crystal, gas, solutes, solvent, components, gasfluid
+export ChemicalSystem,
+    aqueous,
+    crystal,
+    gas,
+    solutes,
+    solvent,
+    components,
+    gasfluid,
+    get_reaction
+
+export ChemicalState,
+    temperature,
+    pressure,
+    set_temperature!,
+    set_pressure!,
+    moles,
+    set_moles!,
+    mass
 
 export extract_primary_species
 
-export read_thermofun_database, build_species_from_database, build_reactions_from_database, get_compatible_species
+export read_thermofun_database,
+    build_species_from_database,
+    build_reactions_from_database,
+    get_compatible_species
 
 export merge_json
 
