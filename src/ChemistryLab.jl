@@ -129,8 +129,10 @@ include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
-include("equilibrium/equilibrium_problems.jl")
 include("equilibrium/chemical_potentials.jl")
+include("equilibrium/activities.jl")
+include("equilibrium/equilibrium_problems.jl")
+include("equilibrium/equilibrium_solver.jl")
 
 export ThermoFunction,
     ThermoFactory,
@@ -235,8 +237,13 @@ export ChemicalState,
     set_temperature!,
     set_pressure!,
     moles,
-    set_moles!,
-    mass
+    set_quantity!,
+    mass,
+    volume,
+    pH,
+    pOH,
+    porosity,
+    saturation
 
 export extract_primary_species
 
@@ -247,9 +254,16 @@ export read_thermofun_database,
 
 export merge_json
 
+export potentials_dilute_ideal
+
+export AbstractActivityModel,
+    DiluteSolutionModel,
+    activity_model,
+    build_potentials
+
 export EquilibriumProblem
 
-export potentials_dilute_ideal
+export EquilibriumSolver
 
 function __init__()
     for (k, v) in THERMO_MODELS

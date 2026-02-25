@@ -16,27 +16,36 @@ Definition of a chemical equilibrium problem.
 The problem solves for the species distribution that minimizes the Gibbs energy
 subject to mass conservation constraints `A * n = b`.
 """
-@kwdef struct EquilibriumProblem{μType<:Function,T<:Number,P}
-    b::Vector{T}
-    A::Matrix{T}
-    μ::μType
-    u0::Vector{T}
-    p::P = SciMLBase.NullParameters()
-    lb::Vector{T}
-    ub::Vector{T}
-    function EquilibriumProblem(
-        A,
+struct EquilibriumProblem{F<:Function, Tb, TA, Tu, P}
+    b::Vector{Tb}
+    A::Matrix{TA}
+    μ::F
+    u0::Vector{Tu}
+    p::P
+    lb::Vector{Tu}
+    ub::Vector{Tu}
+end
+
+function EquilibriumProblem(
+    A::AbstractMatrix{TA},
+    μ::F,
+    u0::AbstractVector{Tu};
+    b::AbstractVector  = A * u0,
+    p                  = SciMLBase.NullParameters(),
+    lb::AbstractVector = fill(Tu(1e-16), length(u0)),
+    ub::AbstractVector = maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
+) where {Tu<:Number, TA<:Number, F<:Function}
+    ϵ  = Tu(1e-16)
+    Tb = eltype(b)
+    return EquilibriumProblem{F, Tb, TA, Tu, typeof(p)}(
+        Vector{Tb}(b),
+        Matrix{TA}(A),
         μ,
-        u0;
-        p=SciMLBase.NullParameters(),
-        lb=zero(u0),
-        ub=maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
+        Vector{Tu}(u0),
+        p,
+        Vector{Tu}(max.(lb, ϵ)),
+        Vector{Tu}(max.(ub, ϵ)),
     )
-        ϵ = 1.e-16
-        return new{typeof(μ),eltype(u0),typeof(p)}(
-            A * u0, A, μ, u0, p, max.(lb, ϵ), max.(ub, ϵ)
-        )
-    end
 end
 
 function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:linear}; kwargs...)

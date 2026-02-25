@@ -10,7 +10,7 @@ molar mass `M` stored in the corresponding species.
 
 The struct itself is immutable — fields cannot be reassigned. However,
 `n`, `T`, and `P` are stored as `Vector` to allow in-place mutation via
-`set_moles!`, `set_temperature!`, and `set_pressure!`.
+`set_quantity!`, `set_temperature!`, and `set_pressure!`.
 
 `system` is a shared reference: cloning via `Base.copy` does not duplicate
 the underlying `ChemicalSystem`.
@@ -21,6 +21,13 @@ the underlying `ChemicalSystem`.
   - `n`: molar amounts (mol), one per species — mutable in place.
   - `T`: temperature (K) — 1-element Vector, mutable in place.
   - `P`: pressure (Pa) — 1-element Vector, mutable in place.
+  - `n_phases`: moles per phase `(liquid, solid, gas, total)`.
+  - `m_phases`: mass per phase `(liquid, solid, gas, total)`.
+  - `V_phases`: volume per phase `(liquid, solid, gas, total)`.
+  - `pH`: pH of the liquid phase, or `nothing` if H⁺ is absent.
+  - `pOH`: pOH of the liquid phase, or `nothing` if OH⁻ is absent.
+  - `porosity`: `(V_liquid + V_gas) / V_total`, or `nothing` if volumes unavailable.
+  - `saturation`: `V_liquid / (V_liquid + V_gas)`, or `nothing` if pore volume is zero.
 
 # Examples
 ```jldoctest
@@ -39,13 +46,20 @@ julia> ustrip(state.T[])
 ```
 """
 struct ChemicalState{C, S, Q<:AbstractQuantity}
-    system::ChemicalSystem{C, S}    # shared reference — not duplicated on copy
-    n::Vector{Q}                     # molar amounts [mol] — always stored in mol
-    T::Vector{Q}                     # temperature [K]     — 1-element Vector for mutability
-    P::Vector{Q}                     # pressure [Pa]       — 1-element Vector for mutability
+    system::ChemicalSystem{C, S}        # shared reference — not duplicated on copy
+    n::Vector{Q}                         # molar amounts [mol] — always stored in mol
+    T::Vector{Q}                         # temperature [K]     — 1-element Vector for mutability
+    P::Vector{Q}                         # pressure [Pa]       — 1-element Vector for mutability
+    n_phases::Vector{NamedTuple}         # moles per phase — 1-element Vector for mutability
+    m_phases::Vector{NamedTuple}         # mass per phase  — 1-element Vector for mutability
+    V_phases::Vector{NamedTuple}         # volume per phase — 1-element Vector for mutability
+    pH::Vector{Union{Number, Nothing}}          # dimensionless — Float64 or Dual or nothing
+    pOH::Vector{Union{Number, Nothing}}         # dimensionless — Float64 or Dual or nothing
+    porosity::Vector{Union{Number, Nothing}}    # dimensionless ratio — V_pore / V_total
+    saturation::Vector{Union{Number, Nothing}}  # dimensionless ratio — V_liq / V_pore
 end
 
-# ── Internal helper ───────────────────────────────────────────────────────────
+# ── Internal helpers ──────────────────────────────────────────────────────────
 
 """
     _entry_to_moles(v::AbstractQuantity, s::AbstractSpecies) -> AbstractQuantity
@@ -57,12 +71,136 @@ Otherwise an error is raised.
 """
 function _entry_to_moles(v::AbstractQuantity, s::AbstractSpecies)
     if dimension(v) == dimension(u"mol")
-        return v                            # already in mol — return as-is
+        return v                                # already in mol — return as-is
     elseif dimension(v) == dimension(u"kg")
-        return uconvert(us"mol", v / s[:M])  # m / M → mol, with unit conversion
+        return uconvert(us"mol", v / s[:M])     # m / M → mol, with unit conversion
     else
         error("Value for species $(symbol(s)) must have amount (mol) or mass dimension, got $(dimension(v))")
     end
+end
+
+"""
+    _has_molar_volume(s::AbstractSpecies) -> Bool
+
+Return `true` if species `s` has a standard molar volume `V⁰` available.
+"""
+_has_molar_volume(s::AbstractSpecies) = haskey(s, :V⁰)
+
+"""
+    _molar_volume(s::AbstractSpecies) -> ThermoFunction
+
+Return the standard molar volume ThermoFunction of species `s`.
+Must be called as `_molar_volume(s)(T=T, P=P; unit=true)` to get a quantity.
+"""
+_molar_volume(s::AbstractSpecies) = s[:V⁰]
+
+"""
+    _compute_n_phases(system, n) -> NamedTuple
+
+Compute moles per phase from species vector `n`.
+"""
+function _compute_n_phases(system::ChemicalSystem, n::AbstractVector)
+    _phase(idx) = sum(n[i] for i in idx; init=0.0u"mol")
+    n_liquid = _phase(system.idx_aqueous)
+    n_solid  = _phase(system.idx_crystal)
+    n_gas    = _phase(system.idx_gas)
+    return (liquid=n_liquid, solid=n_solid, gas=n_gas, total=n_liquid + n_solid + n_gas)
+end
+
+"""
+    _compute_m_phases(system, n) -> NamedTuple
+
+Compute mass per phase from species vector `n` and molar masses.
+"""
+function _compute_m_phases(system::ChemicalSystem, n::AbstractVector)
+    _phase(idx) = sum(n[i] * system.species[i][:M] for i in idx; init=0.0u"g")
+    m_liquid = _phase(system.idx_aqueous)
+    m_solid  = _phase(system.idx_crystal)
+    m_gas    = _phase(system.idx_gas)
+    return (liquid=m_liquid, solid=m_solid, gas=m_gas, total=m_liquid + m_solid + m_gas)
+end
+
+"""
+    _compute_V_phases(system, n, T, P) -> NamedTuple
+
+Compute volume per phase from `n`, `T`, `P` and standard molar volumes `V⁰`.
+Gas phase falls back to ideal gas law if `V⁰` is not available for all gas species.
+"""
+function _compute_V_phases(system::ChemicalSystem, n::AbstractVector, T, P)
+    # Sum n × V⁰(T,P) over indices where V⁰ is available
+    _phase(idx) = sum(
+        n[i] * _molar_volume(system.species[i])(T=T, P=P; unit=true)
+        for i in idx if _has_molar_volume(system.species[i]);
+        init=0.0u"m^3",
+    )
+
+    V_liquid = _phase(system.idx_aqueous)
+    V_solid  = _phase(system.idx_crystal)
+
+    if isempty(system.idx_gas)
+        V_gas = 0.0u"m^3"
+    elseif all(_has_molar_volume(system.species[i]) for i in system.idx_gas)
+        V_gas = _phase(system.idx_gas)          # use database values if all available
+    else
+        R     = Constants.R                     # ideal gas constant
+        n_gas = sum(n[i] for i in system.idx_gas; init=0.0u"mol")
+        V_gas = uconvert(u"m^3", n_gas * R * T / P)    # ideal gas fallback
+    end
+
+    V_total = V_liquid + V_solid + V_gas
+    return (liquid=V_liquid, solid=V_solid, gas=V_gas, total=V_total)
+end
+
+"""
+    _compute_pH(system, n, V_liquid) -> Union{Float64, Nothing}
+
+Compute pH = -log10(c_H⁺) where c_H⁺ is in mol/L.
+Returns `nothing` if H⁺ is absent or liquid volume is zero.
+"""
+function _compute_pH(system::ChemicalSystem, n::AbstractVector, V_liquid)
+    i_H = findfirst(s -> symbol(s) == "H+", system.species)
+    isnothing(i_H)           && return nothing  # H⁺ not in system
+    iszero(ustrip(V_liquid)) && return nothing  # avoid division by zero
+    c_H = uconvert(us"mol/L", n[i_H] / V_liquid)
+    return -log10(ustrip(us"mol/L", c_H))       # dimensionless pH value
+end
+
+"""
+    _compute_pOH(system, n, V_liquid) -> Union{Float64, Nothing}
+
+Compute pOH = -log10(c_OH⁻) where c_OH⁻ is in mol/L.
+Returns `nothing` if OH⁻ is absent or liquid volume is zero.
+"""
+function _compute_pOH(system::ChemicalSystem, n::AbstractVector, V_liquid)
+    i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
+    isnothing(i_OH)          && return nothing  # OH⁻ not in system
+    iszero(ustrip(V_liquid)) && return nothing  # avoid division by zero
+    c_OH = uconvert(us"mol/L", n[i_OH] / V_liquid)
+    return -log10(ustrip(us"mol/L", c_OH))      # dimensionless pOH value
+end
+
+"""
+    _compute_porosity(V_phases) -> Union{Float64, Nothing}
+
+Compute porosity = (V_liquid + V_gas) / V_total.
+Returns `nothing` if total volume is zero.
+"""
+function _compute_porosity(V_phases)
+    V_tot = ustrip(V_phases.total)
+    iszero(V_tot) && return nothing
+    return ustrip(V_phases.liquid + V_phases.gas) / V_tot   # dimensionless ratio
+end
+
+"""
+    _compute_saturation(V_phases) -> Union{Float64, Nothing}
+
+Compute saturation = V_liquid / (V_liquid + V_gas).
+Returns `nothing` if pore volume is zero.
+"""
+function _compute_saturation(V_phases)
+    V_pore = ustrip(V_phases.liquid + V_phases.gas)
+    iszero(V_pore) && return nothing
+    return ustrip(V_phases.liquid) / V_pore                 # dimensionless ratio
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
@@ -113,23 +251,35 @@ function ChemicalState(
     n_mol = Q[uconvert(us"mol", _entry_to_moles(nᵢ, s))
               for (nᵢ, s) in zip(n, system.species)]
 
-    return ChemicalState(system, n_mol, Q[T], Q[P])
+    # Compute all derived quantities once at construction time
+    n_ph = _compute_n_phases(system, n_mol)
+    m_ph = _compute_m_phases(system, n_mol)
+    V_ph = _compute_V_phases(system, n_mol, T, P)
+    _pH        = _compute_pH(system, n_mol, V_ph.liquid)
+    _pOH       = _compute_pOH(system, n_mol, V_ph.liquid)
+    _porosity  = _compute_porosity(V_ph)
+    _saturation= _compute_saturation(V_ph)
+
+    return ChemicalState(
+        system,
+        n_mol,
+        Q[T],
+        Q[P],
+        NamedTuple[n_ph],       # 1-element Vector for in-place update
+        NamedTuple[m_ph],
+        NamedTuple[V_ph],
+        Union{Number, Nothing}[_pH],
+        Union{Number, Nothing}[_pOH],
+        Union{Number, Nothing}[_porosity],
+        Union{Number, Nothing}[_saturation],
+    )
 end
 
 """
     ChemicalState(system::ChemicalSystem, values::AbstractVector; T, P) -> ChemicalState
 
 Construct a `ChemicalState` with explicit initial amounts or masses.
-
-Each entry of `values` is converted to moles independently: it can be a molar
-amount (mol) or a mass (g, kg, etc.). Different entries may use different units.
-
-# Arguments
-
-  - `system`: the `ChemicalSystem`.
-  - `values`: one value per species — mol or mass, mixed units allowed.
-  - `T`: temperature (default: `298.15u"K"`).
-  - `P`: pressure (default: `1u"bar"`).
+Each entry is converted to moles independently — mixed units allowed.
 
 # Examples
 ```jldoctest
@@ -143,7 +293,7 @@ julia> state = ChemicalState(cs, [55.5u"mol", 5.844u"g"]);
 julia> ustrip(moles(state, "H2O"))
 55.5
 
-julia> isapprox(ustrip(moles(state, "NaCl")), 0.1; rtol=1.e-4)
+julia> isapprox(ustrip(moles(state, "NaCl")), 0.1; rtol=1e-4)
 true
 ```
 """
@@ -154,6 +304,29 @@ function ChemicalState(
     P::Q = 1u"bar",
 ) where {Q<:AbstractQuantity}
     return ChemicalState(system; T=T, P=P, n=values)
+end
+
+# ── Internal update ───────────────────────────────────────────────────────────
+
+"""
+    _update_derived!(state::ChemicalState)
+
+Recompute and update in place all derived quantities after any mutation
+of `n`, `T`, or `P`. Called automatically by `set_quantity!`,
+`set_temperature!`, and `set_pressure!`.
+"""
+function _update_derived!(state::ChemicalState)
+    T = temperature(state)
+    P = pressure(state)
+    V_ph = _compute_V_phases(state.system, state.n, T, P)
+    state.n_phases[]   = _compute_n_phases(state.system, state.n)
+    state.m_phases[]   = _compute_m_phases(state.system, state.n)
+    state.V_phases[]   = V_ph
+    state.pH[]         = _compute_pH(state.system, state.n, V_ph.liquid)
+    state.pOH[]        = _compute_pOH(state.system, state.n, V_ph.liquid)
+    state.porosity[]   = _compute_porosity(V_ph)
+    state.saturation[] = _compute_saturation(V_ph)
+    return state
 end
 
 # ── Temperature and pressure accessors ───────────────────────────────────────
@@ -173,7 +346,7 @@ julia> ustrip(temperature(state))
 298.15
 ```
 """
-temperature(state::ChemicalState) = state.T[]  # dereference the 1-element Vector
+temperature(state::ChemicalState) = state.T[]
 
 """
     pressure(state::ChemicalState) -> AbstractQuantity
@@ -186,16 +359,16 @@ julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_
 
 julia> state = ChemicalState(cs; T=298.15u"K", P=1u"bar");
 
-julia> isapprox(ustrip(pressure(state)), 1e5; rtol=1.e-4)
+julia> isapprox(ustrip(pressure(state)), 1e5; rtol=1e-4)
 true
 ```
 """
-pressure(state::ChemicalState) = state.P[]  # dereference the 1-element Vector
+pressure(state::ChemicalState) = state.P[]
 
 """
     set_temperature!(state::ChemicalState, T::AbstractQuantity) -> ChemicalState
 
-Set the temperature in place.
+Set the temperature in place and update all derived quantities.
 
 # Examples
 ```jldoctest
@@ -211,14 +384,15 @@ julia> ustrip(temperature(state))
 """
 function set_temperature!(state::ChemicalState, T::AbstractQuantity)
     @assert dimension(T) == dimension(u"K") "T must have temperature dimension"
-    state.T[] = T   # mutate the 1-element Vector in place
+    state.T[] = T
+    _update_derived!(state)     # volumes depend on T — recompute everything
     return state
 end
 
 """
     set_pressure!(state::ChemicalState, P::AbstractQuantity) -> ChemicalState
 
-Set the pressure in place.
+Set the pressure in place and update all derived quantities.
 
 # Examples
 ```jldoctest
@@ -228,17 +402,38 @@ julia> state = ChemicalState(cs; T=298.15u"K", P=1u"bar");
 
 julia> set_pressure!(state, 2u"bar");
 
-julia> isapprox(ustrip(pressure(state)), 2e5; rtol=1.e-4)
+julia> isapprox(ustrip(pressure(state)), 2e5; rtol=1e-4)
 true
 ```
 """
 function set_pressure!(state::ChemicalState, P::AbstractQuantity)
     @assert dimension(P) == dimension(u"Pa") "P must have pressure dimension"
-    state.P[] = P   # mutate the 1-element Vector in place
+    state.P[] = P
+    _update_derived!(state)     # volumes depend on P — recompute everything
     return state
 end
 
 # ── Molar amount accessors ────────────────────────────────────────────────────
+
+"""
+    moles(state::ChemicalState) -> NamedTuple
+
+Return moles per phase `(liquid, solid, gas, total)`.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("NaCl"; aggregate_state=AS_CRYSTAL),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
+
+julia> ustrip(moles(state).liquid)
+55.5
+```
+"""
+moles(state::ChemicalState) = state.n_phases[]
 
 """
     moles(state::ChemicalState, s::AbstractSpecies) -> AbstractQuantity
@@ -256,7 +451,7 @@ julia> ustrip(moles(state, cs[1]))
 ```
 """
 function moles(state::ChemicalState, s::AbstractSpecies)
-    i = findfirst(x -> x == s, state.system.species)   # lookup index by equality
+    i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
     return state.n[i]
 end
@@ -264,7 +459,7 @@ end
 """
     moles(state::ChemicalState, sym::AbstractString) -> AbstractQuantity
 
-Return the molar amount of the species identified by symbol `sym` in mol.
+Return the molar amount of the species identified by symbol `sym`.
 
 # Examples
 ```jldoctest
@@ -276,9 +471,29 @@ julia> ustrip(moles(state, "H2O"))
 55.5
 ```
 """
-function moles(state::ChemicalState, sym::AbstractString)
-    return moles(state, state.system[sym])  # resolve symbol via dict then delegate
-end
+moles(state::ChemicalState, sym::AbstractString) = moles(state, state.system[sym])
+
+# ── Mass accessors ────────────────────────────────────────────────────────────
+
+"""
+    mass(state::ChemicalState) -> NamedTuple
+
+Return mass per phase `(liquid, solid, gas, total)`.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("NaCl"; aggregate_state=AS_CRYSTAL),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
+
+julia> mass(state).total isa AbstractQuantity
+true
+```
+"""
+mass(state::ChemicalState) = state.m_phases[]
 
 """
     mass(state::ChemicalState, s::AbstractSpecies) -> AbstractQuantity
@@ -298,7 +513,7 @@ true
 function mass(state::ChemicalState, s::AbstractSpecies)
     i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
-    return state.n[i] * s[:M]   # n [mol] × M [g/mol] → mass
+    return state.n[i] * s[:M]
 end
 
 """
@@ -316,14 +531,161 @@ julia> ustrip(uconvert(us"g", mass(state, "H2O"))) ≈ 55.5 * 18.015
 true
 ```
 """
-function mass(state::ChemicalState, sym::AbstractString)
-    return mass(state, state.system[sym])   # resolve symbol then delegate
+mass(state::ChemicalState, sym::AbstractString) = mass(state, state.system[sym])
+
+# ── Volume accessors ──────────────────────────────────────────────────────────
+
+"""
+    volume(state::ChemicalState) -> NamedTuple
+
+Return volume per phase `(liquid, solid, gas, total)`.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("NaCl"; aggregate_state=AS_CRYSTAL),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
+
+julia> volume(state).total isa AbstractQuantity
+true
+```
+"""
+volume(state::ChemicalState) = state.V_phases[]
+
+"""
+    volume(state::ChemicalState, s::AbstractSpecies) -> Union{AbstractQuantity, Nothing}
+
+Return the volume contribution of species `s` as `n × V⁰(T,P)`.
+Returns `nothing` if `V⁰` is not available for `s`.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> state = ChemicalState(cs, [55.5u"mol"]);
+
+julia> volume(state, cs[1]) isa AbstractQuantity
+true
+```
+"""
+function volume(state::ChemicalState, s::AbstractSpecies)
+    i = findfirst(x -> x == s, state.system.species)
+    isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
+    _has_molar_volume(s) || return nothing
+    return state.n[i] * _molar_volume(s)(T=temperature(state), P=pressure(state); unit=true)
 end
 
 """
-    set_moles!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuantity) -> ChemicalState
+    volume(state::ChemicalState, sym::AbstractString) -> Union{AbstractQuantity, Nothing}
 
-Set the molar amount of species `s` in place.
+Return the volume contribution of the species identified by symbol `sym`.
+Returns `nothing` if `V⁰` is not available.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> state = ChemicalState(cs, [55.5u"mol"]);
+
+julia> volume(state, "H2O") isa AbstractQuantity
+true
+```
+"""
+volume(state::ChemicalState, sym::AbstractString) = volume(state, state.system[sym])
+
+# ── pH, pOH, porosity, saturation accessors ───────────────────────────────────
+
+"""
+    pH(state::ChemicalState) -> Union{Float64, Nothing}
+
+Return the pH of the liquid phase, or `nothing` if H⁺ is absent.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 1e-7u"mol"]);
+
+julia> pH(state) isa Float64
+true
+```
+"""
+pH(state::ChemicalState) = state.pH[]
+
+"""
+    pOH(state::ChemicalState) -> Union{Float64, Nothing}
+
+Return the pOH of the liquid phase, or `nothing` if OH⁻ is absent.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("OH-"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 1e-7u"mol"]);
+
+julia> pOH(state) isa Float64
+true
+```
+"""
+pOH(state::ChemicalState) = state.pOH[]
+
+"""
+    porosity(state::ChemicalState) -> Union{Float64, Nothing}
+
+Return the porosity `(V_liquid + V_gas) / V_total`,
+or `nothing` if total volume is zero.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("NaCl"; aggregate_state=AS_CRYSTAL),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
+
+julia> porosity(state) isa Union{Float64, Nothing}
+true
+```
+"""
+porosity(state::ChemicalState) = state.porosity[]
+
+"""
+    saturation(state::ChemicalState) -> Union{Float64, Nothing}
+
+Return the saturation `V_liquid / (V_liquid + V_gas)`,
+or `nothing` if pore volume is zero.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([
+           Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
+           Species("NaCl"; aggregate_state=AS_CRYSTAL),
+       ]);
+
+julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
+
+julia> saturation(state) isa Union{Float64, Nothing}
+true
+```
+"""
+saturation(state::ChemicalState) = state.saturation[]
+
+# ── Mutation ──────────────────────────────────────────────────────────────────
+
+"""
+    set_quantity!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuantity) -> ChemicalState
+
+Set the molar amount of species `s` in place and update all derived quantities.
 If `n` has mass dimension, it is automatically converted to moles using `M`.
 
 # Examples
@@ -332,25 +694,25 @@ julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_
 
 julia> state = ChemicalState(cs, [55.5u"mol"]);
 
-julia> set_moles!(state, cs[1], 10.0u"mol");
+julia> set_quantity!(state, cs[1], 10.0u"mol");
 
 julia> ustrip(moles(state, "H2O"))
 10.0
 ```
 """
-function set_moles!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuantity)
+function set_quantity!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuantity)
     i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
-    # Convert to mol in place — accepts mol or any mass unit
     state.n[i] = uconvert(us"mol", _entry_to_moles(n, s))
+    _update_derived!(state)     # recompute all derived quantities
     return state
 end
 
 """
-    set_moles!(state::ChemicalState, sym::AbstractString, n::AbstractQuantity) -> ChemicalState
+    set_quantity!(state::ChemicalState, sym::AbstractString, n::AbstractQuantity) -> ChemicalState
 
-Set the molar amount of the species identified by symbol `sym` in place.
-If `n` has mass dimension, it is automatically converted to moles using `M`.
+Set the molar amount of the species identified by symbol `sym` in place
+and update all derived quantities.
 
 # Examples
 ```jldoctest
@@ -358,15 +720,14 @@ julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_
 
 julia> state = ChemicalState(cs, [55.5u"mol"]);
 
-julia> set_moles!(state, "H2O", 10.0u"mol");
+julia> set_quantity!(state, "H2O", 10.0u"mol");
 
 julia> ustrip(moles(state, "H2O"))
 10.0
 ```
 """
-function set_moles!(state::ChemicalState, sym::AbstractString, n::AbstractQuantity)
-    return set_moles!(state, state.system[sym], n)  # resolve symbol then delegate
-end
+set_quantity!(state::ChemicalState, sym::AbstractString, n::AbstractQuantity) =
+    set_quantity!(state, state.system[sym], n)
 
 # ── Clone ─────────────────────────────────────────────────────────────────────
 
@@ -374,7 +735,7 @@ end
     Base.copy(state::ChemicalState) -> ChemicalState
 
 Create a clone of a `ChemicalState` that shares the same `ChemicalSystem`
-reference but owns independent copies of `n`, `T`, and `P`.
+reference but owns independent copies of all mutable fields.
 
 Modifying the clone does not affect the original, and vice versa.
 The underlying `ChemicalSystem` is not duplicated.
@@ -390,7 +751,7 @@ julia> state = ChemicalState(cs, [55.5u"mol", 0.1u"mol"]);
 
 julia> clone = copy(state);
 
-julia> set_moles!(clone, "Na+", 0.5u"mol");
+julia> set_quantity!(clone, "Na+", 0.5u"mol");
 
 julia> ustrip(moles(state, "Na+"))
 0.1
@@ -404,10 +765,17 @@ true
 """
 function Base.copy(state::ChemicalState)
     return ChemicalState(
-        state.system,       # shared reference — ChemicalSystem is not duplicated
-        copy(state.n),      # independent copy of molar amounts
-        copy(state.T),      # independent copy of temperature
-        copy(state.P),      # independent copy of pressure
+        state.system,                               # shared reference — not duplicated
+        copy(state.n),                              # independent copy of molar amounts
+        copy(state.T),                              # independent copy of temperature
+        copy(state.P),                              # independent copy of pressure
+        NamedTuple[state.n_phases[]],               # independent copy of phase moles
+        NamedTuple[state.m_phases[]],               # independent copy of phase masses
+        NamedTuple[state.V_phases[]],               # independent copy of phase volumes
+        Union{Number, Nothing}[state.pH[]],         # independent copy of pH
+        Union{Number, Nothing}[state.pOH[]],        # independent copy of pOH
+        Union{Number, Nothing}[state.porosity[]],   # independent copy of porosity
+        Union{Number, Nothing}[state.saturation[]], # independent copy of saturation
     )
 end
 
@@ -416,20 +784,172 @@ end
 """
     Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
 
-Detailed multi-line REPL display for `ChemicalState`.
-Shows both molar amounts and masses for each species.
+Detailed multi-line display for `ChemicalState`.
+Shows molar amounts, masses, and volumes for each species grouped by phase,
+with phase totals and scalar diagnostics (pH, pOH, porosity, saturation).
 """
 function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
-    pad = maximum(length.(unicode.(state.system.species)); init=8)
-    println(io, typeof(state))
-    println(io, lpad("T", pad), " : ", state.T[])
-    println(io, lpad("P", pad), " : ", uconvert(us"bar", state.P[]))
-    println(io, lpad("species", pad), " : ", rpad("n [mol]", 25), "m [g]")
-    println(io, repeat("─", pad + 50))
-    for (s, nᵢ) in zip(state.system.species, state.n)
-        mᵢ = uconvert(us"g", nᵢ * s[:M])    # compute mass from moles and molar mass
-        println(io, lpad(unicode(s), pad), " : ", rpad(string(nᵢ), 25), mᵢ)
+    cs  = state.system
+    T   = temperature(state)
+    P   = pressure(state)
+    pad = maximum(textwidth.(symbol.(cs.species)); init=8)
+
+    show_volume = any(_has_molar_volume(s) for s in cs.species)
+
+    # Fixed-width numeric columns — values only, units in header
+    col_n = 20
+    col_m = 20
+    col_v = show_volume ? 20 : 0
+    col_c = 20   # concentration [mol/L] for liquid, partial pressure [bar] for gas
+
+    # total_width = │ + pad + │ + col_n + │ + col_m [+ │ + col_v] + │ + col_c + │
+    total_width = 1 + pad + 1 + col_n + 1 + col_m +
+                  (show_volume ? 1 + col_v : 0) + 1 + col_c + 1
+
+    hl  = "─"; hhl = "═"; vl  = "│"
+    tl  = "┌"; tr  = "┐"; bl  = "└"; br  = "┘"
+    ml  = "├"; mr  = "┤"; mml = "╞"; mmr = "╡"
+    ht  = "┄"
+
+    _hline()   = ml  * repeat(hl,  total_width - 2) * mr
+    _htline() = ml  * repeat(ht,  total_width - 2) * mr
+    _hhline()  = mml * repeat(hhl, total_width - 2) * mmr
+    _topline() = tl  * repeat(hl,  total_width - 2) * tr
+    _botline() = bl  * repeat(hl,  total_width - 2) * br
+
+    # Numeric cells are right-aligned — all content is pure ASCII
+    _rpad(s, n) = s * repeat(" ", max(0, n - length(s)))
+    _lpad(s, n) = repeat(" ", max(0, n - length(s))) * s
+
+    # Format floats — pure ASCII output
+    _fmt(x)  = string(round(Float64(x); sigdigits=6))
+    _fmt4(x) = string(round(Float64(x); digits=4))
+    _fmt6(x) = string(round(Float64(x); digits=6))
+
+    # Data row — numeric cells right-aligned, species name left-aligned
+    function _row(col1, cell_n, cell_m, cell_v, cell_c; header=false)
+        pad_cell = header ? _lpad : _lpad   # header right-aligned, data right-aligned
+        r = vl * _lpad(col1, pad) *
+            vl * pad_cell(cell_n, col_n) *
+            vl * pad_cell(cell_m, col_m)
+        show_volume && (r *= vl * pad_cell(cell_v, col_v))
+        r *= vl * pad_cell(cell_c, col_c) * vl
+        return r
     end
+
+    # Full-width row spanning all columns (T, P, diagnostics)
+    inner = total_width - 2
+    function _full_row(label, val)
+        content = _lpad(label, pad) * " : " * val
+        return vl * _rpad(content, inner) * vl
+    end
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    println(io, typeof(state))
+    println(io, _topline())
+    println(io, _full_row("T", _fmt4(ustrip(us"K",   T)) * " K"))
+    println(io, _full_row("P", _fmt4(ustrip(us"bar", P)) * " bar"))
+    # println(io, _hline())
+
+    # ── Species rows ──────────────────────────────────────────────────────────
+
+    # Liquid: concentration in mol/L = n / V_liquid
+    V_liq = state.V_phases[].liquid
+    function _concentration(nᵢ)
+        iszero(ustrip(V_liq)) && return "N/A"
+        return _fmt(ustrip(us"mol/L", nᵢ / V_liq))
+    end
+
+    # Gas: partial pressure in bar = xᵢ × P where xᵢ = nᵢ / n_gas_total
+    n_gas_total = state.n_phases[].gas
+    function _partial_pressure(nᵢ)
+        iszero(ustrip(n_gas_total)) && return "N/A"
+        xᵢ = ustrip(us"mol", nᵢ) / ustrip(us"mol", n_gas_total)   # mole fraction
+        return _fmt(xᵢ * ustrip(us"bar", P))
+    end
+
+    function _species_row(s, nᵢ, phase_key)
+        n_val = _fmt(ustrip(us"mol", nᵢ))
+        m_val = _fmt(ustrip(us"g",   nᵢ * s[:M]))
+        V_val = if show_volume && _has_molar_volume(s)
+            _fmt(ustrip(us"cm^3", nᵢ * _molar_volume(s)(T=T, P=P; unit=true)))
+        elseif show_volume
+            "N/A"
+        else "" end
+        c_val = if phase_key == :liquid
+            _concentration(nᵢ)
+        elseif phase_key == :gas
+            _partial_pressure(nᵢ)
+        else "" end
+        println(io, _row(symbol(s), n_val, m_val, V_val, c_val))
+    end
+
+    # ── Phase title row ───────────────────────────────────────────────────────
+
+    # Header label for the last column depends on phase
+    function _col_c_header(phase_key)
+        phase_key == :liquid && return "c [mol/L]"
+        phase_key == :gas    && return "p [bar]"
+        return ""
+    end
+
+    function _phase_title_row(label, phase_key)
+        n_ph = _fmt(ustrip(us"mol",  state.n_phases[][phase_key]))
+        m_ph = _fmt(ustrip(us"g",    state.m_phases[][phase_key]))
+        V_ph = show_volume ?
+               _fmt(ustrip(us"cm^3", state.V_phases[][phase_key])) : ""
+        println(io, _hhline())
+        println(io, _row("# $label #", "n [mol]", "m [g]",
+                         show_volume ? "V [cm³]" : "",
+                         _col_c_header(phase_key); header=true))
+        println(io, _htline())
+        println(io, _row("tot. $label", n_ph, m_ph, V_ph, ""))
+        println(io, _htline())
+    end
+
+    # ── Phase block ───────────────────────────────────────────────────────────
+    function _print_phase(label, phase_key, indices)
+        isempty(indices) && return
+        _phase_title_row(label, phase_key)
+        for i in indices
+            _species_row(cs.species[i], state.n[i], phase_key)
+        end
+    end
+
+    _print_phase("liquid", :liquid, cs.idx_aqueous)
+    _print_phase("solid",  :solid,  cs.idx_crystal)
+    _print_phase("gas",    :gas,    cs.idx_gas)
+
+    # ── Total row ─────────────────────────────────────────────────────────────
+    println(io, _hhline())
+    println(io, _row("# TOTAL #", "n [mol]", "m [g]",
+                        show_volume ? "V [cm³]" : "",
+                        ""; header=true))
+    println(io, _htline())
+    println(io, _row(
+        "",
+        _fmt(ustrip(us"mol",  state.n_phases[].total)),
+        _fmt(ustrip(us"g",    state.m_phases[].total)),
+        show_volume ? _fmt(ustrip(us"cm^3", state.V_phases[].total)) : "",
+        "",
+    ))
+    println(io, _hhline())
+
+
+    # ── Scalar diagnostics ────────────────────────────────────────────────────
+    any_diag = !isnothing(state.pH[])       ||
+               !isnothing(state.pOH[])      ||
+               !isnothing(state.porosity[]) ||
+               !isnothing(state.saturation[])
+    if any_diag
+        # println(io, _hline())
+        isnothing(state.pH[])         || println(io, _full_row("pH",         _fmt4(state.pH[])))
+        isnothing(state.pOH[])        || println(io, _full_row("pOH",        _fmt4(state.pOH[])))
+        isnothing(state.porosity[])   || println(io, _full_row("porosity",   _fmt6(state.porosity[])))
+        isnothing(state.saturation[]) || println(io, _full_row("saturation", _fmt6(state.saturation[])))
+    end
+
+    println(io, _botline())
 end
 
 """
