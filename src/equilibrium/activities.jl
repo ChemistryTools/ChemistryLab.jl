@@ -38,53 +38,43 @@ All quantities are dimensionless — units are stripped at construction time.
 """
 function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
 
-    # Resolve indices once at construction time — not at evaluation time
-    idx_solvent = only(cs.idx_solvent)          # unique solvent index
-    idx_solutes = cs.idx_solutes                # aqueous solute indices
-    idx_crystal = cs.idx_crystal                # pure solid indices
-    idx_gas     = cs.idx_gas                    # gas species indices
+    idx_solvent  = only(cs.idx_solvent)
+    idx_solutes  = cs.idx_solutes
+    idx_crystal  = cs.idx_crystal
+    idx_gas      = cs.idx_gas
 
-    # Molar concentration of pure solvent c°_solvent = 1/M_solvent [mol/L]
-    # Stripped of units at construction — used as a constant in the closure
-    M_solvent = ustrip(us"kg/mol", cs.species[idx_solvent][:M])  # kg/mol
-    ρ_solvent = 1.0                              # kg/L for water — standard reference
-    c_solvent = ρ_solvent / M_solvent            # mol/L — ~55.5 for water
-
-    # Precompute correction for solutes: ln(c°/c_solvent) = -ln(c_solvent)
-    # Henry convention: ln a_i = ln(n_i/n_solvent) + ln(c_solvent)
+    M_solvent    = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
+    ρ_solvent    = 1.0
+    c_solvent    = ρ_solvent / M_solvent
     ln_c_solvent = log(c_solvent)
 
     function lna(n::AbstractVector, p)
-        ϵ   = p.ϵ                               # floor to avoid log(0)
-        _n  = max.(n, ϵ)                        # regularized mole vector
+        ϵ  = p.ϵ
+        _n = max.(n, ϵ)
 
-        lna = zeros(eltype(_n), length(_n))     # supports Dual numbers for autodiff
+        out = zeros(eltype(_n), length(_n))     # ← renommé : plus de collision avec `lna`
 
-        # Solvent — Raoult: ln a = ln(n_solvent / n_aqueous_total)
         n_aqueous = _n[idx_solvent] + sum(_n[idx_solutes])
         if !iszero(n_aqueous)
-            lna[idx_solvent] = log(_n[idx_solvent] / n_aqueous)
+            out[idx_solvent] = log(_n[idx_solvent] / n_aqueous)
         end
 
-        # Solutes — Henry: ln a_i = ln(n_i / n_solvent) + ln(c_solvent)
-        # Equivalent to ln(c_i [mol/L]) with c° = 1 mol/L reference
         if !iszero(_n[idx_solvent])
             for i in idx_solutes
-                lna[i] = log(_n[i] / _n[idx_solvent]) + ln_c_solvent
+                out[i] = log(_n[i] / _n[idx_solvent]) + ln_c_solvent
             end
         end
 
-        # Crystals — pure solid: a = 1, ln a = 0 (already zero)
+        # Crystals: ln a = 0 — already zero in `out`
 
-        # Gas — ideal mixture: ln a_i = ln(x_i) = ln(n_i / n_gas_total)
         n_gas = sum(_n[idx_gas])
         if !iszero(n_gas)
             for i in idx_gas
-                lna[i] = log(_n[i] / n_gas)
+                out[i] = log(_n[i] / n_gas)
             end
         end
 
-        return lna
+        return out
     end
 
     return lna

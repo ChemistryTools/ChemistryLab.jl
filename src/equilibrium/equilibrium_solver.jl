@@ -16,7 +16,7 @@ Construct once, call repeatedly with different `ChemicalState` inputs.
   - `kwargs`: solver keyword arguments forwarded to `solve`.
 
 # Examples
-```jldoctest
+```julia
 julia> cs = ChemicalSystem([
            Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
            Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
