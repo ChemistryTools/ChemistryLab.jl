@@ -70,25 +70,31 @@ end
     _build_params(state::ChemicalState; ϵ=1e-16) -> NamedTuple
 
 Extract dimensionless parameters `p = (ΔₐG⁰overT, ϵ)` from a `ChemicalState`.
-
 `ΔₐG⁰overT` is evaluated at the current `T` and `P` of the state.
-All quantities are stripped of units for compatibility with SciML and ForwardDiff.
+Units are stripped — compatible with ForwardDiff dual numbers.
 """
 function _build_params(state::ChemicalState; ϵ::Float64=1e-16)
-    T  = ustrip(us"K",  temperature(state))
-    R  = ustrip(Constants.R)
-    RT = R * T
-    ΔₐG⁰overT = [s[:ΔₐG⁰](T=temperature(state), P=pressure(state); unit=true) / RT
+    T  = temperature(state)
+    P  = pressure(state)
+    R  = Constants.R
+    RT = R * T                  # keeps units — division below strips them
+
+    # ustrip without forced Float64 conversion — preserves Dual if T is Dual
+    ΔₐG⁰overT = [ustrip(s[:ΔₐG⁰](T=T, P=P; unit=true) / RT)
                   for s in state.system.species]
-    return (ΔₐG⁰overT = Float64.(ustrip.(ΔₐG⁰overT)), ϵ = ϵ)
+
+    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ)
 end
 
 """
-    _build_n0(state::ChemicalState) -> Vector{Float64}
+    _build_n0(state::ChemicalState) -> Vector
 
 Extract the dimensionless mole vector from a `ChemicalState`.
+Type is inferred from the state — compatible with ForwardDiff dual numbers.
 """
-_build_n0(state::ChemicalState) = Float64.(ustrip.(us"mol", state.n))
+function _build_n0(state::ChemicalState)
+    return ustrip.(us"mol", state.n)    # no Float64 cast — type follows eltype(state.n)
+end
 
 # ── solve(EquilibriumSolver, ChemicalState) ───────────────────────────────────
 
@@ -141,4 +147,81 @@ function SciMLBase.solve(
     _update_derived!(state_eq)                  # recompute phases, pH, porosity...
 
     return state_eq
+end
+
+"""
+    equilibrate(state::ChemicalState;
+                model    = DiluteSolutionModel(),
+                solver   = IpoptOptimizer(...),
+                vartype  = Val(:log),
+                ϵ        = 1e-16,
+                kwargs...) -> ChemicalState
+
+Compute the chemical equilibrium state from an initial `ChemicalState`.
+
+This is a high-level convenience function that wraps `EquilibriumSolver` and
+`solve` with sensible defaults. It is intended for users who do not need to
+fine-tune the solver.
+
+# Arguments
+
+  - `state`: initial `ChemicalState` — defines the system, T, P, and composition.
+  - `model`: activity model (default: `DiluteSolutionModel()`).
+  - `solver`: SciML-compatible solver (default: `IpoptOptimizer` with tight tolerances).
+  - `vartype`: variable space — `Val(:linear)` or `Val(:log)` (default).
+    `Val(:log)` is more robust for systems spanning many orders of magnitude.
+  - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
+  - `kwargs...`: additional keyword arguments forwarded to the solver.
+
+# Returns
+
+A new `ChemicalState` at thermodynamic equilibrium, with all derived quantities
+(pH, pOH, volumes, porosity, saturation) already computed.
+
+# Examples
+```julia
+# Minimal usage — all defaults
+state_eq = equilibrate(state)
+
+# Custom temperature-dependent run
+set_temperature!(state, 350.0u"K")
+state_eq = equilibrate(state)
+
+# Custom solver tolerance
+state_eq = equilibrate(state; abstol=1e-12, reltol=1e-12)
+
+# Custom activity model (future)
+state_eq = equilibrate(state; model=DebyeHuckelModel(A=0.51, B=3.28))
+```
+"""
+function equilibrate(
+    state::ChemicalState;
+    model::AbstractActivityModel = DiluteSolutionModel(),
+    solver = _default_ipopt_solver(),
+    vartype::Val               = Val(:linear),
+    ϵ::Float64                 = 1e-16,
+    kwargs...,
+)
+    esolver = EquilibriumSolver(
+        state.system, model, solver;
+        vartype = vartype,
+        kwargs...,
+    )
+    return solve(esolver, state; ϵ=ϵ)
+end
+
+"""
+    _default_ipopt_solver() -> IpoptOptimizer
+
+Return an `IpoptOptimizer` instance with tight tolerances suitable for
+chemical equilibrium calculations.
+"""
+function _default_ipopt_solver()
+    return IpoptOptimizer(
+        acceptable_tol        = 1e-12,
+        dual_inf_tol          = 1e-12,
+        acceptable_iter       = 100,
+        constr_viol_tol       = 1e-12,
+        warm_start_init_point = "no",
+    )
 end

@@ -98,6 +98,7 @@ using JSON
 using LinearAlgebra
 using ModelingToolkit
 using Optimization
+using OptimizationIpopt
 using OrderedCollections
 using PeriodicTable
 using PrettyTables
@@ -263,7 +264,8 @@ export AbstractActivityModel,
 
 export EquilibriumProblem
 
-export EquilibriumSolver
+export EquilibriumSolver,
+    equilibrate
 
 function __init__()
     for (k, v) in THERMO_MODELS

@@ -100,7 +100,9 @@ _molar_volume(s::AbstractSpecies) = s[:V⁰]
 Compute moles per phase from species vector `n`.
 """
 function _compute_n_phases(system::ChemicalSystem, n::AbstractVector)
-    _phase(idx) = sum(n[i] for i in idx; init=0.0u"mol")
+    function _phase(idx)
+        return sum((n[i] for i in idx); init=0.0u"mol")
+    end
     n_liquid = _phase(system.idx_aqueous)
     n_solid  = _phase(system.idx_crystal)
     n_gas    = _phase(system.idx_gas)
@@ -113,7 +115,9 @@ end
 Compute mass per phase from species vector `n` and molar masses.
 """
 function _compute_m_phases(system::ChemicalSystem, n::AbstractVector)
-    _phase(idx) = sum(n[i] * system.species[i][:M] for i in idx; init=0.0u"g")
+    function _phase(idx)
+        return sum((n[i] * system.species[i][:M] for i in idx); init=0.0u"kg")
+    end
     m_liquid = _phase(system.idx_aqueous)
     m_solid  = _phase(system.idx_crystal)
     m_gas    = _phase(system.idx_gas)
@@ -152,43 +156,15 @@ function _compute_V_phases(system::ChemicalSystem, n::AbstractVector, T, P)
 end
 
 """
-    _compute_pH(system, n, V_liquid) -> Union{Float64, Nothing}
-
-Compute pH = -log10(c_H⁺) where c_H⁺ is in mol/L.
-Returns `nothing` if H⁺ is absent or liquid volume is zero.
-"""
-function _compute_pH(system::ChemicalSystem, n::AbstractVector, V_liquid)
-    i_H = findfirst(s -> symbol(s) == "H+", system.species)
-    isnothing(i_H)           && return nothing  # H⁺ not in system
-    iszero(ustrip(V_liquid)) && return nothing  # avoid division by zero
-    c_H = uconvert(us"mol/L", n[i_H] / V_liquid)
-    return -log10(ustrip(us"mol/L", c_H))       # dimensionless pH value
-end
-
-"""
-    _compute_pOH(system, n, V_liquid) -> Union{Float64, Nothing}
-
-Compute pOH = -log10(c_OH⁻) where c_OH⁻ is in mol/L.
-Returns `nothing` if OH⁻ is absent or liquid volume is zero.
-"""
-function _compute_pOH(system::ChemicalSystem, n::AbstractVector, V_liquid)
-    i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
-    isnothing(i_OH)          && return nothing  # OH⁻ not in system
-    iszero(ustrip(V_liquid)) && return nothing  # avoid division by zero
-    c_OH = uconvert(us"mol/L", n[i_OH] / V_liquid)
-    return -log10(ustrip(us"mol/L", c_OH))      # dimensionless pOH value
-end
-
-"""
     _compute_porosity(V_phases) -> Union{Float64, Nothing}
 
 Compute porosity = (V_liquid + V_gas) / V_total.
 Returns `nothing` if total volume is zero.
 """
 function _compute_porosity(V_phases)
-    V_tot = ustrip(V_phases.total)
-    iszero(V_tot) && return nothing
-    return ustrip(V_phases.liquid + V_phases.gas) / V_tot   # dimensionless ratio
+    V_tot  = V_phases.total
+    iszero(ustrip(V_tot)) && return nothing
+    return (V_phases.liquid + V_phases.gas) / V_tot   # dimensionless
 end
 
 """
@@ -198,9 +174,9 @@ Compute saturation = V_liquid / (V_liquid + V_gas).
 Returns `nothing` if pore volume is zero.
 """
 function _compute_saturation(V_phases)
-    V_pore = ustrip(V_phases.liquid + V_phases.gas)
-    iszero(V_pore) && return nothing
-    return ustrip(V_phases.liquid) / V_pore                 # dimensionless ratio
+    V_pore = V_phases.liquid + V_phases.gas
+    iszero(ustrip(V_pore)) && return nothing
+    return V_phases.liquid / V_pore                   # dimensionless
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────

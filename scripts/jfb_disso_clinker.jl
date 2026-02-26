@@ -20,7 +20,6 @@ species = speciation(substances, init_species;
 
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 
-
 state = ChemicalState(cs)
 compo = ["C3S" => 67.8/100, "C2S" => 16.6/100, "Gp" => 2.8/100]
 c =  sum(last.(compo))
@@ -32,9 +31,6 @@ set_quantity!(state, "H2O@", w/mtot*u"kg")
 V = volume(state)
 set_quantity!(state, "H+", 1.e-7*u"mol/L"*V.liquid)
 set_quantity!(state, "OH-", 1.e-7*u"mol/L"*V.liquid)
-
-T = 298.15 ; R = ustrip(Constants.R) ; RT = R*T
-p = (ϵ = 1.e-16, ΔₐG⁰overT = [s.ΔₐG⁰(T = T)/RT for s in species])
 
 opt = IpoptOptimizer(
     acceptable_tol = 1e-12,

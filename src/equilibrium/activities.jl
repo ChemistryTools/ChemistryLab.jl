@@ -50,25 +50,20 @@ function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
 
     function lna(n::AbstractVector, p)
         ϵ  = p.ϵ
-        _n = max.(n, ϵ)
+        _n = max.(n, ϵ)     # ϵ::Float64 — promotion vers Dual automatique si n est Dual
 
-        out = zeros(eltype(_n), length(_n))     # ← renommé : plus de collision avec `lna`
+        out = zeros(eltype(_n), length(_n))
 
-        n_aqueous = _n[idx_solvent] + sum(_n[idx_solutes])
-        if !iszero(n_aqueous)
+        n_aqueous = _n[idx_solvent] + sum((_n[i] for i in idx_solutes); init=0.0)
+        if !iszero(ustrip(n_aqueous))
             out[idx_solvent] = log(_n[idx_solvent] / n_aqueous)
-        end
-
-        if !iszero(_n[idx_solvent])
             for i in idx_solutes
                 out[i] = log(_n[i] / _n[idx_solvent]) + ln_c_solvent
             end
         end
 
-        # Crystals: ln a = 0 — already zero in `out`
-
-        n_gas = sum(_n[idx_gas])
-        if !iszero(n_gas)
+        n_gas = sum((_n[i] for i in idx_gas); init=0.0)
+        if !iszero(ustrip(n_gas))
             for i in idx_gas
                 out[i] = log(_n[i] / n_gas)
             end
