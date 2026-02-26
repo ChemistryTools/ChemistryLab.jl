@@ -35,10 +35,10 @@ df_calcite = get_compatible_species(df_substances, split("Cal H2O@");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
 ```
 
-The construction of thermodynamic functions is then done by calling the `build_species_from_database` function:
+The construction of thermodynamic functions is then done by calling the `build_species` function:
 
 ```julia
-dict_species_calcite = Dict(symbol(s) => s for s in build_species_from_database(df_calcite))
+dict_species_calcite = Dict(symbol(s) => s for s in build_species(df_calcite))
 ```
 
 For example, $\text{Ca}(\text{HCO}_3)^+$ properties can be read as follows:
@@ -46,7 +46,7 @@ For example, $\text{Ca}(\text{HCO}_3)^+$ properties can be read as follows:
 ```@example database
 df_calcite = get_compatible_species(df_substances, split("Cal H2O@");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true) #hide
-dict_species_calcite = Dict(symbol(s) => s for s in build_species_from_database(df_calcite)) #hide
+dict_species_calcite = Dict(symbol(s) => s for s in build_species(df_calcite)) #hide
 dict_species_calcite["Ca(HCO3)+"]
 ```
 

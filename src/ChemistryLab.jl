@@ -249,8 +249,8 @@ export ChemicalState,
 export extract_primary_species
 
 export read_thermofun_database,
-    build_species_from_database,
-    build_reactions_from_database,
+    build_species,
+    build_reactions,
     get_compatible_species
 
 export merge_json

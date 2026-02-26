@@ -1,7 +1,7 @@
 using Revise
-using ModelingToolkit
-using ChemistryLab, Unicode
+using ChemistryLab
 using DynamicQuantities
+using ModelingToolkit
 using Plots
 
 # Formula
@@ -50,29 +50,29 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # Thermofun input
 println("LOADING DATABASES...")
 df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
-species_vec = build_species_from_database(df_substances)
+species_vec = build_species(df_substances)
 dict_species = Dict(symbol(s) => s for s in species_vec)
-dict_reactions = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions, species_vec))
+dict_reactions = Dict(symbol(r) => r for r in build_reactions(df_reactions, species_vec))
 
 df_elements_psi, df_substances_psi, df_reactions_psi = read_thermofun_database("data/psinagra-12-07-thermofun.json")
-species_psi = build_species_from_database(df_substances_psi)
+species_psi = build_species(df_substances_psi)
 dict_species_psi = Dict(symbol(s) => s for s in species_psi)
-dict_reactions_psi = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_psi, species_psi))
+dict_reactions_psi = Dict(symbol(r) => r for r in build_reactions(df_reactions_psi, species_psi))
 
 df_elements_aq17, df_substances_aq17, df_reactions_aq17 = read_thermofun_database("data/aq17-thermofun.json")
-species_aq17 = build_species_from_database(df_substances_aq17)
+species_aq17 = build_species(df_substances_aq17)
 dict_species_aq17 = Dict(symbol(s) => s for s in species_aq17)
-dict_reactions_aq17 = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_aq17, species_aq17))
+dict_reactions_aq17 = Dict(symbol(r) => r for r in build_reactions(df_reactions_aq17, species_aq17))
 
 df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
-species_orga = build_species_from_database(df_substances_orga)
+species_orga = build_species(df_substances_orga)
 dict_species_orga = Dict(symbol(s) => s for s in species_orga)
-dict_reactions_orga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_orga, species_orga))
+dict_reactions_orga = Dict(symbol(r) => r for r in build_reactions(df_reactions_orga, species_orga))
 
 df_elements_inorga, df_substances_inorga, df_reactions_inorga = read_thermofun_database("data/slop98-inorganic-thermofun.json")
-species_inorga = build_species_from_database(df_substances_inorga)
+species_inorga = build_species(df_substances_inorga)
 dict_species_inorga = Dict(symbol(s) => s for s in species_inorga)
-dict_reactions_inorga = Dict(symbol(r) => r for r in build_reactions_from_database(df_reactions_inorga, species_inorga))
+dict_reactions_inorga = Dict(symbol(r) => r for r in build_reactions(df_reactions_inorga, species_inorga))
 
 # Extraction of primaries from .dat
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -87,7 +87,7 @@ end
 function get_secondaries(all_species, species_list, aggregate_states=[AS_AQUEOUS], excluded_species=[])
     return get_secondaries(all_species, union_atoms(atoms.(collect(values(species_list)))), aggregate_states, excluded_species)
 end
-given_species = collect(values(build_species_from_database(df_substances, split("C2S Portlandite Jennite H2O@"))))
+given_species = collect(values(build_species(df_substances, split("C2S Portlandite Jennite H2O@"))))
 secondaries = get_secondaries(dict_species, given_species, [AS_AQUEOUS], [dict_species["H2@"], dict_species["O2@"]])
 species = unique([given_species; secondaries])
 candidate_primaries = [s == "Zz" ? Species("Zz") : dict_species[s] for s in df_primaries.symbol]
@@ -106,7 +106,7 @@ df_union = unique(vcat(df_given_species, df_secondaries))
 # Same as above in one command
 df_union = get_compatible_species(df_substances, split("C2S Portlandite Jennite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
-all_species = build_species_from_database(df_union)
+all_species = build_species(df_union)
 dict_all_species = Dict(symbol(s) => s for s in all_species)
 candidate_primaries = collect(skipmissing(get.(Ref(dict_all_species), CEMDATA_PRIMARIES, missing)))
 candidate_primaries = get.(Ref(dict_all_species), intersect(keys(dict_all_species), CEMDATA_PRIMARIES), missing)
@@ -118,7 +118,7 @@ list_reactions = reactions(SM)
 pprint(list_reactions)
 # Filtering reactions with involved species from database
 df_involved_reactions = filter(row -> all(in.([x.symbol for x in row.reactants], Ref(expr.(values(dict_all_species))))), df_reactions)
-dict_involved_reactions = build_reactions_from_database(df_involved_reactions, all_species)
+dict_involved_reactions = build_reactions(df_involved_reactions, all_species)
 
 
 df_hydrates_clinker = get_compatible_species(df_substances, split("C3S C2S C3A C4AF Gp H2O@"); aggregate_states=[AS_CRYSTAL])
@@ -208,7 +208,7 @@ list_reactions = reactions(SM)
 pprint(list_reactions)
 
 lT = ((0:1:100) .+ 273.15)
-@time plot(lT, dict_species["Jennite"].ΔₐH⁰.(lT))
+@time plot(lT, (T->dict_species["Jennite"].ΔₐH⁰(T=T)).(lT))
 
 # Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
 for re in values(dict_reactions)
@@ -233,13 +233,13 @@ pK(T) = ΔᵣG⁰(T)/(Constants.R*T)/log(10)
 r.logKr()
 plot(ustrip.(lT), ustrip.(ΔᵣG⁰.(lT)))
 for (re,ν) in r.reactants
-    println(re, " ΔₐG⁰=", re.ΔₐG⁰(Tref))
+    println(re, " ΔₐG⁰=", re.ΔₐG⁰(T=Tref))
 end
 for (pr,ν) in r.products
-    println(pr, " ΔₐG⁰=", pr.ΔₐG⁰(Tref))
+    println(pr, " ΔₐG⁰=", pr.ΔₐG⁰(T=Tref))
 end
 for (s, ν) in r
-    println(s, " ΔₐG⁰=", s.ΔₐG⁰(Tref))
+    println(s, " ΔₐG⁰=", s.ΔₐG⁰(T=Tref))
 end
 
 Tref=298.15
@@ -309,8 +309,8 @@ plot(xlabel="T [°C]", ylabel="ln(P/P0)")
 plot!(θ -> Rankine(273.15+θ), lθ, label="Rankine")
 plot!(θ -> lnP(273.15+θ), lθ, label = "ΔHₗᵥ/Constants.R*(1/T0-1/T)")
 
-using JSON
-json_str = JSON.json(df_substances)           # DataFrame → chaîne JSON
-open("data/test.json", "w") do f        # écriture dans un fichier
-    JSON.print(f, json_str, 4)
-end
+# using JSON
+# json_str = JSON.json(df_substances)           # DataFrame → chaîne JSON
+# open("data/test.json", "w") do f        # écriture dans un fichier
+#     JSON.print(f, json_str, 4)
+# end

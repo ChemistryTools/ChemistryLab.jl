@@ -17,7 +17,7 @@ It is then necessary to identify the list of secondary species likely to appear 
 ```julia
 df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
-dict_species = Dict(symbol(s) => s for s in build_species_from_database(df_species))
+dict_species = Dict(symbol(s) => s for s in build_species(df_species))
 ```
 
 We can then deduce the primary species concerned by the reaction.
@@ -34,7 +34,7 @@ And construct the stoichiometric matrix
 
     df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
                 aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true) #hide
-    dict_species = Dict(symbol(s) => s for s in build_species_from_database(df_species)) #hide
+    dict_species = Dict(symbol(s) => s for s in build_species(df_species)) #hide
 
     candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)] #hide
 ```
@@ -53,7 +53,7 @@ df_elements, df_substances, df_reactions = read_thermofun_database("../../../dat
 
 ```@example example1
 df_aqueous_species = filter(row -> only(row.aggregate_state).second == "AS_AQUEOUS", df_substances)
-dict_aqueous_species = Dict(symbol(s) => s for s in build_species_from_database(df_aqueous_species))
+dict_aqueous_species = Dict(symbol(s) => s for s in build_species(df_aqueous_species))
 candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
 SM = StoichMatrix(dict_aqueous_species, candidate_primaries)
 ```
@@ -70,7 +70,7 @@ The exercise can also be done on solid species. In this case, the data filter is
 
 ```@setup example1
 df_solid_species = filter(row -> only(row.aggregate_state).second == "AS_CRYSTAL", df_substances)
-dict_solid_species = Dict(symbol(s) => s for s in build_species_from_database(df_solid_species))
+dict_solid_species = Dict(symbol(s) => s for s in build_species(df_solid_species))
 candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
 SM = StoichMatrix(dict_solid_species, candidate_primaries) ; pprint(SM)
 ```
@@ -85,7 +85,7 @@ Or with gases ("AS_GAS")
 
 ```@setup example1
 df_gas_species = filter(row -> only(row.aggregate_state).second == "AS_GAS", df_substances)
-dict_gas_species = Dict(symbol(s) => s for s in build_species_from_database(df_gas_species))
+dict_gas_species = Dict(symbol(s) => s for s in build_species(df_gas_species))
 candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
 SM = StoichMatrix(dict_gas_species, candidate_primaries) ; pprint(SM)
 ```

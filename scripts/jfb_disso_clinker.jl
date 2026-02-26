@@ -11,7 +11,7 @@ using SparseArrays
 using LinearAlgebra
 
 df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-thermofun.json")
-substances = build_species_from_database(df_substances)
+substances = build_species(df_substances)
 init_species = split("C3S C2S Gp Anh Portlandite Jennite H2O@")
 species = speciation(substances, init_species;
                aggregate_state=[AS_AQUEOUS],

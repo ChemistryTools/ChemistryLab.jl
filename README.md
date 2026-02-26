@@ -57,7 +57,7 @@ The chemical species likely to appear during calcite equilibrium in water are ob
 ```julia
 df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
                         aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
-dict_species_calcite = Dict(symbol(s) => s for s in build_species_from_database(df_calcite))
+dict_species_calcite = Dict(symbol(s) => s for s in build_species(df_calcite))
 ```
 
 The output of `dict_species_calcite` reads:

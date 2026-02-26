@@ -108,7 +108,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
 end
 
 """
-    build_species_from_database(df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false) -> Vector{Species}
+    build_species(df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false) -> Vector{Species}
 
 Build Species objects from a substance DataFrame.
 
@@ -122,7 +122,7 @@ Build Species objects from a substance DataFrame.
 
   - Vector of `Species`.
 """
-function build_species_from_database(
+function build_species(
     df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false
 )
     local_df_substances = if isnothing(list_symbols)
@@ -163,6 +163,11 @@ function build_species_from_database(
         push!(species_list,species)
     end
     return species_list
+end
+
+function build_species(filename, list_symbols=nothing; verbose=false)
+    _, df_substances, _ = read_thermofun_database(filename)
+    return build_species(df_substances, list_symbols; verbose=verbose)
 end
 
 function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
@@ -207,7 +212,7 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
 end
 
 """
-    build_reactions_from_database(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols=nothing; verbose=false) -> Vector{Reaction}
+    build_reactions(df_reactions::AbstractDataFrame, dict_species=Dict(), list_symbols=nothing; verbose=false) -> Vector{Reaction}
 
 Build Reaction objects from a reaction DataFrame.
 
@@ -222,7 +227,7 @@ Build Reaction objects from a reaction DataFrame.
 
   - Vector of `Reaction` objects.
 """
-function build_reactions_from_database(
+function build_reactions(
     df_reactions::AbstractDataFrame,
     species_list=[],
     list_symbols=nothing;
@@ -273,6 +278,11 @@ function build_reactions_from_database(
         push!(reactions_list, reaction)
     end
     return reactions_list
+end
+
+function build_reactions(filename, species_list=[], list_symbols=nothing; verbose=false)
+    _, _, df_reactions = read_thermofun_database(filename)
+    return build_reactions(df_reactions, species_list, list_symbols; verbose=verbose)
 end
 
 """

@@ -10,9 +10,9 @@ using Plots
 using SparseArrays
 
 df_elements_orga, df_substances_orga, df_reactions_orga = read_thermofun_database("data/slop98-organic-thermofun.json")
-dict_species_orga = Dict(symbol(s) => s for s in build_species_from_database(df_substances_orga))
+dict_species_orga = Dict(symbol(s) => s for s in build_species(df_substances_orga))
 df_elements_inorga, df_substances_inorga, df_reactions_inorga = read_thermofun_database("data/slop98-inorganic-thermofun.json")
-dict_species_inorga = Dict(symbol(s) => s for s in build_species_from_database(df_substances_inorga))
+dict_species_inorga = Dict(symbol(s) => s for s in build_species(df_substances_inorga))
 dict_species = merge(dict_species_orga, dict_species_inorga)
 
 species = [dict_species[s] for s in split("H2O@ OH- H+ AceH@ Ace- NaOH@ Na+")]
