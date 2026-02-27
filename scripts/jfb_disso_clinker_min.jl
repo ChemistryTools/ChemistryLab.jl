@@ -7,15 +7,14 @@ using DynamicQuantities
 using Optimization, OptimizationMOI, OptimizationOptimJL, OptimizationIpopt
 
 substances = build_species("data/cemdata18-thermofun.json")
-species = speciation(substances, split("C3S C2S Gp Anh Portlandite Jennite H2O@");
-               aggregate_state=[AS_AQUEOUS],
-               exclude_species=split("H2@ O2@ H2S@ HS- S2O3-2 SO3-2 HSO3-"))
+species = speciation(substances, split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12");
+               aggregate_state=[AS_AQUEOUS])
 
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 
 # ── Initial state ──────────────────────────────────────────────────────────────
 state = ChemicalState(cs)
-compo = ["C3S" => 67.8/100, "C2S" => 16.6/100, "Gp" => 2.8/100]
+compo = ["C3S" => 67.8/100, "C2S" => 16.6/100, "C3A" => 4/100, "C4AF" => 7.2/100, "Gp" => 2.8/100]
 c     = sum(last.(compo))
 wc    = 0.4
 w     = wc * c

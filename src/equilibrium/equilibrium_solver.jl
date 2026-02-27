@@ -220,7 +220,7 @@ function _default_ipopt_solver()
     return IpoptOptimizer(
         acceptable_tol        = 1e-12,
         dual_inf_tol          = 1e-12,
-        acceptable_iter       = 100,
+        acceptable_iter       = 1000,
         constr_viol_tol       = 1e-12,
         warm_start_init_point = "no",
     )

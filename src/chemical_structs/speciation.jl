@@ -95,5 +95,6 @@ function speciation(
     species_list, short_species_list_symbols::AbstractVector{<:AbstractString}; kwargs...
 )
     short_species_list = @view species_list[symbol.(species_list) .∈ Ref(short_species_list_symbols)]
-    return speciation(species_list, short_species_list; kwargs...)
+    return speciation(species_list, short_species_list;
+                            include_species = short_species_list_symbols, kwargs...)
 end
