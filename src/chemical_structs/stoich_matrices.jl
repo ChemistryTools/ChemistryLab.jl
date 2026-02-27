@@ -383,7 +383,7 @@ function StoichMatrix(
     dep_comp = newspecies[1:num_initial_species]
     A = A[:, 1:num_initial_species]
 
-    if redox && Zz ∈ dep_comp && Zz ∉ indep_comp
+    if redox && Zz ∈ dep_comp # && Zz ∉ indep_comp
         A = A[:, 1:(end - 1)]
         dep_comp = dep_comp[1:(end - 1)]
         num_initial_species -= 1

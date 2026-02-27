@@ -130,7 +130,6 @@ include("databases/phreeqc_dat.jl")
 include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
-include("equilibrium/chemical_potentials.jl")
 include("equilibrium/activities.jl")
 include("equilibrium/equilibrium_problems.jl")
 include("equilibrium/equilibrium_solver.jl")
@@ -254,8 +253,6 @@ export read_thermofun_database,
     get_compatible_species
 
 export merge_json
-
-export potentials_dilute_ideal
 
 export AbstractActivityModel,
     DiluteSolutionModel,
