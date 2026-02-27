@@ -969,7 +969,7 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
         println(io, _htline())
         println(io, _row("tot. $label", n_ph, m_ph, V_ph, "", ""))
         println(io, _htline())
-        for i in indices
+        for i in sort(indices; by=j->state.n[j], rev=true)
             _species_row(cs.species[i], state.n[i], phase_key)
         end
     end

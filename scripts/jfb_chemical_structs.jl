@@ -170,7 +170,7 @@ end
 CSH = CemSpecies(Dict(:C => a, :S => one(a), :A => b, :H => g))
 HT = CemSpecies("M₅AH₁₃")
 HG = CemSpecies("C₆AFS₂H₈")
-AFt = CemSpecies("C₆S̄₃H₃₂")
+AFt = CemSpecies("C₆AS̄₃H₃₂")
 ST = CemSpecies("C₂ASH₈")
 AH = CemSpecies("C₄AH₁₃")
 CSM = CanonicalStoichMatrix([CSH, HT, HG, AFt, ST, AH]); pprint(CSM)
