@@ -1,4 +1,4 @@
-# Chemical reactions
+# Chemical Reactions
 
 In ChemistryLab it is possible to build chemical reactions and manipulate them. A reaction is constructed as a structure, "a composite data type that allows you to store multiple values in a single object". The `struct` is organized as follows:
 
