@@ -12,7 +12,7 @@ Construct once, call repeatedly with different `ChemicalState` inputs.
 
   - `μ`: chemical potential closure `μ(n, p) -> Vector{Float64}`.
   - `solver`: any Optimization.jl-compatible solver (e.g. `IpoptOptimizer()`).
-  - `vartype`: variable space — `Val(:linear)` or `Val(:log)`.
+  - `variable_space`: variable space — `Val(:linear)` or `Val(:log)`.
   - `kwargs`: solver keyword arguments forwarded to `solve`.
 
 # Examples
@@ -32,12 +32,12 @@ true
 struct EquilibriumSolver{F<:Function, S, V<:Val}
     μ::F                    # potential closure — built once from cs and model
     solver::S               # SciML-compatible solver
-    vartype::V              # Val(:linear) or Val(:log)
+    variable_space::V       # Val(:linear) or Val(:log)
     kwargs::Base.Pairs      # forwarded to solve
 end
 
 """
-    EquilibriumSolver(cs, model, solver; vartype=Val(:linear), kwargs...)
+    EquilibriumSolver(cs, model, solver; variable_space=Val(:linear), kwargs...)
 
 Construct an `EquilibriumSolver` from a `ChemicalSystem`, an activity model,
 and a SciML solver.
@@ -50,18 +50,18 @@ Repeated calls to `solve` with different `ChemicalState` inputs reuse it.
   - `cs`: the `ChemicalSystem` defining species and conservation matrix.
   - `model`: an `AbstractActivityModel` (e.g. `DiluteSolutionModel()`).
   - `solver`: any Optimization.jl solver.
-  - `vartype`: `Val(:linear)` (default) or `Val(:log)`.
+  - `variable_space`: `Val(:linear)` (default) or `Val(:log)`.
   - `kwargs...`: forwarded to the underlying `solve` call (tolerances, verbosity...).
 """
 function EquilibriumSolver(
     cs::ChemicalSystem,
     model::AbstractActivityModel,
     solver::S;
-    vartype::V = Val(:linear),
+    variable_space::V = Val(:linear),
     kwargs...,
 ) where {S, V<:Val}
     μ = build_potentials(cs, model)     # built once — captures indices and constants
-    return EquilibriumSolver{typeof(μ), S, V}(μ, solver, vartype, kwargs)
+    return EquilibriumSolver{typeof(μ), S, V}(μ, solver, variable_space, kwargs)
 end
 
 # ── Internal helper: build p from ChemicalState ───────────────────────────────
@@ -119,7 +119,7 @@ sharing the same `ChemicalSystem` as the input.
 # Examples
 ```julia
 solver = EquilibriumSolver(cs, DiluteSolutionModel(), IpoptOptimizer();
-                           vartype=Val(:log), abstol=1e-10)
+                           variable_space=Val(:log), abstol=1e-10)
 state0 = ChemicalState(cs, n0; T=298.15u"K", P=1u"bar")
 state_eq = solve(solver, state0)
 ```
@@ -135,9 +135,12 @@ function SciMLBase.solve(
     n0 = _build_n0(state)
     p  = _build_params(state; ϵ=ϵ)
 
+    # Ensure initial guess is positive (critical for log variables)
+    n0 = max.(n0, ϵ)
+
     # Build and solve the optimization problem
-    prob = EquilibriumProblem(Float64.(cs.SM.A), esolver.μ, n0; p=p)
-    sol  = solve(prob, esolver.solver, esolver.vartype; esolver.kwargs...)
+    prob = EquilibriumProblem(cs.SM.A, esolver.μ, n0; p=p)
+    sol  = solve(prob, esolver.solver; variable_space=esolver.variable_space, esolver.kwargs...)
 
     # Wrap result back into a ChemicalState — same system, same T and P
     state_eq = copy(state)                      # shares ChemicalSystem, copies n/T/P
@@ -153,7 +156,7 @@ end
     equilibrate(state::ChemicalState;
                 model    = DiluteSolutionModel(),
                 solver   = IpoptOptimizer(...),
-                vartype  = Val(:log),
+                variable_space  = Val(:log),
                 ϵ        = 1e-16,
                 kwargs...) -> ChemicalState
 
@@ -168,7 +171,7 @@ fine-tune the solver.
   - `state`: initial `ChemicalState` — defines the system, T, P, and composition.
   - `model`: activity model (default: `DiluteSolutionModel()`).
   - `solver`: SciML-compatible solver (default: `IpoptOptimizer` with tight tolerances).
-  - `vartype`: variable space — `Val(:linear)` or `Val(:log)` (default).
+  - `variable_space`: variable space — `Val(:linear)` or `Val(:log)` (default).
     `Val(:log)` is more robust for systems spanning many orders of magnitude.
   - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
   - `kwargs...`: additional keyword arguments forwarded to the solver.
@@ -198,13 +201,13 @@ function equilibrate(
     state::ChemicalState;
     model::AbstractActivityModel = DiluteSolutionModel(),
     solver = _default_ipopt_solver(),
-    vartype::Val               = Val(:linear),
+    variable_space::Val               = Val(:linear),
     ϵ::Float64                 = 1e-16,
     kwargs...,
 )
     esolver = EquilibriumSolver(
         state.system, model, solver;
-        vartype = vartype,
+        variable_space = variable_space,
         kwargs...,
     )
     return solve(esolver, state; ϵ=ϵ)
