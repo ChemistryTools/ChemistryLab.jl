@@ -8,6 +8,7 @@ pages = [
         "man/databases.md",
         "man/stoich_matrices.md",
         "man/reactions.md",
+        "man/equilibrium.md",
     ],
     "Examples" => [
         "examples/bogue_calculation.md",
@@ -24,5 +25,7 @@ pages = [
         "Stoichiometric Matrix" => "api/stoich_matrices.md",
         "Reactions" => "api/reactions.md",
         "Databases" => "api/databases.md",
+        "Chemical systems and states" => "api/chemical_systems.md",
+        "Equilibrium" => "api/equilibrium.md",
     ],
 ]
