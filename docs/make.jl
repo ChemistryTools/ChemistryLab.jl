@@ -14,6 +14,7 @@ DocMeta.setdocmeta!(
 ENV["FORCE_COLOR"] = "true"
 ENV["COLUMNS"] = "200"
 ENV["LINES"] = "100"
+ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging in doc builds
 
 makedocs(;
     modules=[ChemistryLab],
@@ -27,6 +28,7 @@ makedocs(;
     ),
     pages=pages,
     warnonly=[:missing_docs, :docs_block],
+    draft=false,
 )
 
 deploydocs(; repo="github.com/jfbarthelemy/ChemistryLab.jl", devbranch="main")
