@@ -12,35 +12,44 @@ ChemistryLab computes thermodynamic equilibrium by minimising the Gibbs free ene
 ## Minimal workflow
 
 The convenience function [`equilibrate`](@ref) handles everything with sensible defaults.
-The example below computes the equilibrium state of calcite (CaCO₃) dissolving in mildly acidic water — a standard geochemical benchmark.
+The example below reproduces a simplified clinker dissolution calculation.
 
-```@example eq_setup
+```@setup eq_setup
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/slop98-inorganic-thermofun.json")
-input_species = split("Cal H2O@ Ca+2 CO3-2 HCO3- CO2@ H+ OH-")
+substances = build_species("../../../data/cemdata18-thermofun.json")
+input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13")
 species = speciation(substances, input_species; aggregate_state=[AS_AQUEOUS])
 
-cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 ```
 
-```@example eq_setup
+```julia
 state = ChemicalState(cs)
 
-# 1 mmol calcite dissolved in 1 L of acidic water (initial pH ≈ 4)
-set_quantity!(state, "Cal",  1e-3u"mol")
-set_quantity!(state, "H2O@", 1.0u"kg")
+# Clinker + gypsum composition (mass fractions, total = 1)
+compo = ["C3S" => 0.678, "C2S" => 0.166, "C3A" => 0.04, "C4AF" => 0.072, "Gp" => 0.028]
+c     = sum(last.(compo))
+wc    = 0.4          # water-to-cement ratio
+w     = wc * c
+mtot  = c + w
 
+for x in compo
+    set_quantity!(state, x.first, x.second / mtot * u"kg")
+end
+set_quantity!(state, "H2O@", w / mtot * u"kg")
+
+# pH-neutral seed for H⁺ and OH⁻
 V = volume(state)
-set_quantity!(state, "H+",  1e-4u"mol/L" * V.liquid)   # pH = 4
-set_quantity!(state, "OH-", 1e-10u"mol/L" * V.liquid)  # charge seed
+set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
+set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
 
 state_eq = equilibrate(state)
 ```
 
 !!! tip "Quick shortcut"
-    Calling `equilibrate(state)` with no extra arguments uses sensible defaults and is usually sufficient for aqueous geochemical problems.
+    If your `ChemicalState` was constructed from a `ChemicalSystem` built with `CEMDATA_PRIMARIES`, calling `equilibrate(state)` with no other arguments is usually sufficient for cement-chemistry problems.
 
 ---
 
@@ -48,7 +57,7 @@ state_eq = equilibrate(state)
 
 The returned [`ChemicalState`](@ref) carries all derived thermodynamic quantities:
 
-```@example eq_setup
+```julia
 println("pH      = ", pH(state_eq))
 println("pOH     = ", pOH(state_eq))
 println("porosity   = ", porosity(state_eq))
@@ -57,7 +66,7 @@ println("saturation = ", saturation(state_eq))
 
 Phase volumes and mole amounts are accessible via named tuples:
 
-```@example eq_setup
+```julia
 v = volume(state_eq)
 println("V liquid = ", v.liquid)
 println("V solid  = ", v.solid)
@@ -70,7 +79,7 @@ println("n solid  = ", m.solid)
 
 Individual species amounts (in mol):
 
-```@example eq_setup
+```julia
 cs_eq = state_eq.system
 for (i, sp) in enumerate(cs_eq.species)
     n_i = state_eq.n[i]
@@ -161,51 +170,6 @@ state_eq2 = solve(solver, state)
 
 !!! note "Performance"
     The potential function `μ(n, p)` is compiled once during `EquilibriumSolver` construction. Repeated calls to `solve(solver, ...)` with different states reuse it, avoiding redundant compilation overhead.
-
----
-
-## Temperature dependence (10–30 °C)
-
-Calcite solubility varies with temperature. Using the `solver` built above, we sweep from 10 to 30 °C and track pH, dissolved calcium and remaining solid calcite:
-
-```julia
-using Plots
-
-temperatures = 10:30   # °C
-
-pH_vals   = Float64[]
-nCa_vals  = Float64[]  # mmol
-nCal_vals = Float64[]  # mmol
-
-i_Ca  = findfirst(sp -> symbol(sp) == "Ca+2", cs.species)
-i_Cal = findfirst(sp -> symbol(sp) == "Cal",  cs.species)
-
-for θ in temperatures
-    s = deepcopy(state)
-    set_temperature!(s, (273.15 + θ) * u"K")
-    s_eq = solve(solver, s)
-    push!(pH_vals,   pH(s_eq))
-    push!(nCa_vals,  ustrip(s_eq.n[i_Ca]) * 1e3)
-    push!(nCal_vals, ustrip(s_eq.n[i_Cal]) * 1e3)
-end
-```
-
-The figures can then be drawn.
-
-```julia
-p1 = plot(collect(temperatures), pH_vals,
-    xlabel = "T (°C)", ylabel = "pH", label = "pH",
-    marker = :circle, linewidth = 2, title = "pH")
-p2 = plot(collect(temperatures), nCa_vals,
-    xlabel = "T (°C)", ylabel = "n (mmol)", label = "Ca²⁺",
-    marker = :circle, linewidth = 2, title = "Dissolved species")
-plot!(p2, collect(temperatures), nCal_vals,
-    label = "Cal", marker = :square, linewidth = 2)
-plot(p1, p2, layout = (1, 2), size = (700, 350))
-```
-
-!!! note "Calcite solubility"
-    Calcite is a **retrograde soluble** mineral: its solubility decreases with increasing temperature, so less Ca²⁺ is released and pH rises slightly as temperature increases.
 
 ---
 
