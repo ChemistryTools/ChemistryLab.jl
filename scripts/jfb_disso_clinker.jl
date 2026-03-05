@@ -47,7 +47,7 @@ solver = EquilibriumSolver(
     cs,
     DiluteSolutionModel(),
     opt;
-    vartype = Val(:linear),
+    variable_space = Val(:linear),
     abstol  = 1e-10,
     reltol  = 1e-10,
 )

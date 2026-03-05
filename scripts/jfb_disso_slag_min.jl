@@ -38,7 +38,7 @@ display(state_eq)
 
 # # ── Equilibrate with explicit options ───────────────────────────────────────────
 # state_eq = equilibrate(state;
-#     vartype = Val(:linear),
+#     variable_space = Val(:linear),
 #     abstol  = 1e-10,
 #     reltol  = 1e-10,
 # )
@@ -56,7 +56,7 @@ display(state_eq)
 
 # state_eq = equilibrate(state;
 #     solver  = opt,
-#     vartype = Val(:linear),
+#     variable_space = Val(:linear),
 #     abstol  = 1e-10,
 #     reltol  = 1e-10,
 # )
