@@ -23,7 +23,7 @@ the organic database provides maleic acid and its conjugate bases.
 | `OH-`    | OH⁻ | aqueous solute |
 | `H2O@`   | H₂O | aqueous solvent |
 
-```@setup titration_setup
+```@example titration_setup
 using ChemistryLab
 using DynamicQuantities
 

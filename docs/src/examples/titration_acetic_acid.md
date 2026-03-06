@@ -26,7 +26,7 @@ the organic database provides acetic acid and acetate.
 The primaries `H2O@`, `H+`, `Ace-`, `Na+` form a basis for the system.
 Every other species is expressed as a linear combination of these four.
 
-```@setup titration_acetic_setup
+```@example titration_acetic_setup
 using ChemistryLab
 using DynamicQuantities
 
