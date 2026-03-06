@@ -132,7 +132,7 @@ hline!(p, [pKa2];  linestyle = :dot,  color = :green,  label = "pKₐ₂ = $pKa2
 p
 ```
 
-![Maleitric titration curve]("../assets/maleic_titration.png")
+![Maleitric titration curve](../assets/maleic_titration.png)
 
 ---
 

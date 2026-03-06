@@ -178,7 +178,7 @@ hline!(p, [pKa];  linestyle = :dot,  color = :grey, label = "pKₐ = $(round(pKa
 p
 ```
 
-![Acetitric titration curve]("../assets/acetic_titration.png")
+![Acetitric titration curve](../assets/acetic_titration.png)
 
 ---
 
