@@ -33,9 +33,8 @@ using DynamicQuantities
 substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
 substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
 
-aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state = [AS_AQUEOUS])
-ace_species = speciation(substances_org,   split("AceH@ Ace-");             aggregate_state = [AS_AQUEOUS])
-species     = unique(s -> symbol(s), vcat(aq_species, ace_species))
+dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
+species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- AceH@ Ace-")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 ```
@@ -63,7 +62,7 @@ println("pKa = ", round(pKa, digits = 2))
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each titration point:
 
 ```julia
-using OptimizationIpopt #hide
+using OptimizationIpopt
 
 solver = EquilibriumSolver(
     cs,
@@ -97,15 +96,15 @@ nAH  = ca * Va # total moles of CH₃COOH = 10 mmol
 Vbeq = nAH / cb          # equivalence volume, L
 V_eq = Vbeq * 1e3        # equivalence volume, mL
 
-volumes_NaOH = range(0, 2 * V_eq; length = 5)   # mL
+volumes_NaOH = range(0, 2 * V_eq; length = 100)   # mL
 pH_vals = Float64[]
 
+s = ChemicalState(cs)
 for V_mL in volumes_NaOH
     Vb      = V_mL * 1e-3     # L
     n_NaOH  = cb * Vb         # mol of NaOH added
     V_total = Va + Vb          # total volume, L
 
-    s = ChemicalState(cs)
     set_quantity!(s, "AceH@", nAH    * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
     set_quantity!(s, "H2O@",  V_total * u"kg")

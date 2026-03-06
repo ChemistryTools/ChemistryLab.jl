@@ -34,7 +34,11 @@ aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggre
 ace_species = speciation(substances_org,   split("MalH2@ MalH- Mal-2");             aggregate_state = [AS_AQUEOUS])
 species     = unique(s -> symbol(s), vcat(aq_species, ace_species))
 
+dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
+species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
+
 cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
+
 ```
 
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each of the 66 titration points:
@@ -46,15 +50,13 @@ solver = EquilibriumSolver(
     cs,
     DiluteSolutionModel(),
     IpoptOptimizer(
-        acceptable_tol        = 1e-5,
-        dual_inf_tol          = 1e-5,
-        acceptable_iter       = 1000,
-        constr_viol_tol       = 1e-5,
-        warm_start_init_point = "no",
+        mu_strategy = "adaptive",
     );
     variable_space = Val(:linear),
-    abstol  = 1e-5,
-    reltol  = 1e-5,
+    abstol  = 1e-8,
+    reltol  = 1e-8,
+    maxiters = 100,
+    verbose = 0,
 )
 ```
 
@@ -71,7 +73,7 @@ c_acid = 0.1     # maleic acid concentration, mol/L
 c_base = 2     # NaOH concentration, mol/L
 n_H2A  = V_acid * c_acid   # total moles of H₂A = 2.5 mmol
 
-volumes_NaOH = range(0, 15; length = 31)   # mL
+volumes_NaOH = range(0, 15; length = 101)   # mL
 pH_vals = Float64[]
 
 for V_mL in volumes_NaOH
@@ -93,11 +95,7 @@ for V_mL in volumes_NaOH
 end
 
 println("pH at V = 0 mL (pure acid)        : ", round(pH_vals[1],  digits = 2))
-println("pH at V = 2.5 mL (½ PE₁, ≈ pKa₁): ", round(pH_vals[6], digits = 2))
-println("pH at V = 5 mL  (PE₁)            : ", round(pH_vals[11], digits = 2))
-println("pH at V = 7.5 mL (½ PE₂, ≈ pKa₂): ", round(pH_vals[16], digits = 2))
-println("pH at V = 10 mL  (PE₂)            : ", round(pH_vals[21], digits = 2))
-println("pH at V = 15 mL  (excess NaOH)    : ", round(pH_vals[26], digits = 2))
+println("pH at V = 15 mL  (excess NaOH)    : ", round(pH_vals[100], digits = 2))
 ```
 
 ---
@@ -105,7 +103,7 @@ println("pH at V = 15 mL  (excess NaOH)    : ", round(pH_vals[26], digits = 2))
 ## Titration curve
 
 ```julia
-using Plots #hide
+using Plots
 
 pKa1 = 1.92
 pKa2 = 6.27
