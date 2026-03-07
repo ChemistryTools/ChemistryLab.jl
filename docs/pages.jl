@@ -15,7 +15,7 @@ pages = [
         "examples/example_stoich_matrix.md",
         "examples/from_scratch.md",
         "examples/titration_acetic_acid.md",
-        # "examples/titration_maleic_acid.md",
+        "examples/titration_maleic_acid.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",
