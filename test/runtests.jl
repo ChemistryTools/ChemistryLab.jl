@@ -26,5 +26,22 @@ reset_timer!()
 
 end
 
+@testsection "Speciation tests" begin
+    include("speciation.jl")
+end
+
+@testsection "System and State tests" begin
+    include("chemical_systems.jl")
+    include("chemical_states.jl")
+end
+
+@testsection "Thermodynamics tests" begin
+    include("thermodynamics.jl")
+end
+
+@testsection "Utils tests" begin
+    include("utils.jl")
+end
+
 print_timer()
 println()
