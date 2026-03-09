@@ -39,6 +39,15 @@ species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- AceH@ Ace-"
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 ```
 
+!!! note "Selection of a few species"
+    In the example, only a portion of the species is considered (Na+ NaOH@ H+ OH- AceH@ Ace-), although the entire set contained in the data file is possible by executing, for example, the following three lines:
+    ```julia
+    aq_species = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state = [AS_AQUEOUS])
+    ace_species = speciation(substances_org, split("AceH@ Ace-"); aggregate_state = [AS_AQUEOUS])
+    species = unique(s -> symbol(s), vcat(aq_species, ace_species))
+    ```
+    However, the calculation can be much more expensive. Furthermore, the user must ensure that the experimentally observed dissolution/precipitation kinetics are consistent with the equilibrium results calculated here.
+
 ---
 
 ## Dissociation constant from thermodynamic data

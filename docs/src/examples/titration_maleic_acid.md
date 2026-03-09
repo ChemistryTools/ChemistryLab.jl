@@ -76,12 +76,12 @@ n_H2A  = V_acid * c_acid   # total moles of H₂A = 2.5 mmol
 volumes_NaOH = range(0, 15; length = 101)   # mL
 pH_vals = Float64[]
 
+s = ChemicalState(cs)
 for V_mL in volumes_NaOH
     V_NaOH  = V_mL * 1e-3           # L
     n_NaOH    = c_base * V_NaOH        # mol of NaOH (= mol of Na⁺ added)
     V_total = V_acid + V_NaOH        # total volume, L
 
-    s = ChemicalState(cs)
     set_quantity!(s, "MalH2@", n_H2A   * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
     set_quantity!(s, "H2O@",   V_total * u"kg")
