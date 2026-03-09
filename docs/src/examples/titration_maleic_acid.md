@@ -30,10 +30,6 @@ using DynamicQuantities
 substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
 substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
 
-aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state = [AS_AQUEOUS])
-ace_species = speciation(substances_org,   split("MalH2@ MalH- Mal-2");             aggregate_state = [AS_AQUEOUS])
-species     = unique(s -> symbol(s), vcat(aq_species, ace_species))
-
 dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
 
@@ -43,7 +39,7 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each of the 66 titration points:
 
-```julia
+```@example titration_setup
 using OptimizationIpopt
 
 solver = EquilibriumSolver(
@@ -67,7 +63,7 @@ solver = EquilibriumSolver(
 At each titration point the total composition is reset from scratch and the equilibrium is recomputed.
 The conservation constraint (total moles of each element) is automatically enforced by the solver.
 
-```julia
+```@example titration_setup
 V_acid = 100e-3   # volume of acid solution, L
 c_acid = 0.1     # maleic acid concentration, mol/L
 c_base = 2     # NaOH concentration, mol/L
@@ -96,6 +92,8 @@ end
 
 println("pH at V = 0 mL (pure acid)        : ", round(pH_vals[1],  digits = 2))
 println("pH at V = 15 mL  (excess NaOH)    : ", round(pH_vals[100], digits = 2))
+
+pprint(cs.SM)
 ```
 
 ---

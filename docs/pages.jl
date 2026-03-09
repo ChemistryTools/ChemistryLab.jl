@@ -16,6 +16,10 @@ pages = [
         "examples/from_scratch.md",
         "examples/titration_acetic_acid.md",
         "examples/titration_maleic_acid.md",
+        "examples/co2_carbonate_system.md",
+        "examples/simplified_clinker_dissolution.md",
+        # "examples/cement_wc_ratio.md",
+        "examples/cement_carbonation.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",
