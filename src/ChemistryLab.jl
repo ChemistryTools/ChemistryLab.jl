@@ -256,6 +256,9 @@ export merge_json
 
 export AbstractActivityModel,
     DiluteSolutionModel,
+    HKFActivityModel,
+    REJ_HKF,
+    REJ_CHARGE_DEFAULT,
     activity_model,
     build_potentials
 

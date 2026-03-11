@@ -18,6 +18,7 @@ pages = [
         "examples/titration_maleic_acid.md",
         "examples/co2_carbonate_system.md",
         "examples/simplified_clinker_dissolution.md",
+        "examples/hkf_vs_dilute_clinker.md",
         # "examples/cement_wc_ratio.md",
         "examples/cement_carbonation.md",
     ],

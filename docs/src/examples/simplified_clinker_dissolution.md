@@ -1,4 +1,4 @@
-# [Chemical Equilibrium](@id sec-equilibrium)
+# [Chemical Equilibrium](@id sec-clinker-dissolution)
 
 ChemistryLab computes thermodynamic equilibrium by minimising the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:
 

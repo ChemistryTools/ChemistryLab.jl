@@ -83,14 +83,11 @@ p = [:order => order_species,
 
 prob = EquilibriumProblem(SM.A, μ, n0(p), ub=ub(p), p=p)
 opt = IpoptOptimizer(
-    acceptable_tol = 1e-12,
-    dual_inf_tol = 1e-12,
-    acceptable_iter = 100,
-    constr_viol_tol = 1e-12,
-    # compl_inf_tol = 1e-4,
-    # mu_strategy = "adaptive",
-    warm_start_init_point = "no",
-    # expect_infeasible_problem = "yes",
+        acceptable_tol        = 1e-10,
+        dual_inf_tol          = 1e-10,
+        acceptable_iter       = 1000,
+        constr_viol_tol       = 1e-10,
+        warm_start_init_point = "no",
 )
 sol = exp.(solve(prob, opt, Val(:log), verbose=5, abstol=1e-10, reltol=1e-10))
 sol = solve(prob, opt, Val(:linear), verbose=5, abstol=1e-10, reltol=1e-10)

@@ -211,16 +211,59 @@ plot(p1, p2, layout = (1, 2), size = (700, 350))
 
 ## Activity models
 
-All activity models inherit from [`AbstractActivityModel`](@ref). The only built-in model is [`DiluteSolutionModel`](@ref), which implements:
+All activity models inherit from [`AbstractActivityModel`](@ref). Two built-in
+models are available.
+
+### [`DiluteSolutionModel`](@ref) — ideal dilute solution
+
+Suitable for dilute systems (I ≲ 0.01 mol/kg) or as a fast starting point.
 
 | Phase | Law | Expression |
-|-------|-----|-----------|
+|:------|:----|:-----------|
 | Solvent (H₂O) | Raoult | `ln a = ln xₛ` |
 | Aqueous solutes | Henry | `ln a = ln(cᵢ / c°)`, `c° = 1 mol/L` |
 | Crystals | Pure solid | `ln a = 0` |
 | Gas | Ideal mixture | `ln a = ln xᵢ` |
 
-To implement a custom activity model, define a new subtype and extend `activity_model`:
+```julia
+state_eq = equilibrate(state)                           # DiluteSolutionModel by default
+state_eq = equilibrate(state; model=DiluteSolutionModel())
+```
+
+### [`HKFActivityModel`](@ref) — extended Debye-Hückel (B-dot)
+
+The Helgeson-Kirkham-Flowers model, suitable for electrolyte solutions up to
+I ≈ 1 mol/kg. Accounts for individual ionic activity coefficients and the
+water activity via the osmotic coefficient.
+
+| Phase | Law | Expression |
+|:------|:----|:-----------|
+| Ions | Extended DH | `log₁₀ γᵢ = −A zᵢ² √I / (1 + B åᵢ √I) + Ḃ I` |
+| Neutral solutes | Salting-out | `log₁₀ γᵢ = Kₙ I` |
+| Solvent (H₂O) | Osmotic | `ln a_w = −Mw Σmⱼ φ` |
+| Crystals | Pure solid | `ln a = 0` |
+| Gas | Ideal mixture | `ln a = ln xᵢ` |
+
+Default parameters correspond to 25 °C, 1 bar. The ion-size parameter `åᵢ` [Å]
+is read from `sp[:å]` if present in the species properties; otherwise
+`å_default = 3.72 Å` is used.
+
+```julia
+state_eq = equilibrate(state; model=HKFActivityModel())
+
+# Explicit T,P parameters (e.g. 60 °C, 1 bar):
+state_eq = equilibrate(state; model=HKFActivityModel(A=0.5390, B=0.3346, Bdot=0.044))
+```
+
+!!! tip "Model selection"
+    Use `DiluteSolutionModel` for quick calculations or very dilute systems.
+    Switch to `HKFActivityModel` when the ionic strength exceeds ~0.01 mol/kg
+    (seawater, leachates, cement pore solutions).
+
+### Custom activity model
+
+To implement a custom activity model, define a new subtype and extend
+`activity_model`:
 
 ```julia
 struct MyModel <: AbstractActivityModel

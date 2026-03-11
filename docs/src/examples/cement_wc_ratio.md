@@ -16,7 +16,8 @@ This example scans w/c from 0.25 to 0.60 and tracks, at full thermodynamic equil
 
 ## System setup
 
-The same clinker composition and species set as the "simplified clinker dissolution" example are used here.
+The species set and system are the same as in the
+[simplified clinker dissolution](@ref sec-clinker-dissolution) example.
 
 ```@example wc_setup
 using ChemistryLab
