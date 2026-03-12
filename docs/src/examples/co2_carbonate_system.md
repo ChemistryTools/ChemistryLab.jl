@@ -54,13 +54,9 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "CO3-2"])
 
 The two acid–base equilibria of the carbonate system are:
 
-$$\text{H}_2\text{CO}_3(\text{aq}) \rightleftharpoons \text{H}^+ + \text{HCO}_3^- \qquad \text{pK}_{a1} \approx 6.35$$
+$$\text{CO}_2(\text{aq}) + \text{H}_2\text{O} \rightleftharpoons \text{H}^+ + \text{HCO}_3^- \qquad \text{pK}_{a1} \approx 6.35$$
 
 $$\text{HCO}_3^- \rightleftharpoons \text{H}^+ + \text{CO}_3^{2-} \qquad \text{pK}_{a2} \approx 10.33$$
-
-!!! note "Dissolved $\text{CO}_2$"
-    $\text{H}_2\text{CO}_3(\text{aq})$ is the result of the dissolution of gaseous $\text{CO}_2(\text{g})$ in water. However, databases more often contain $\text{CO}_2(\text{aq})$ than $\text{H}_2\text{CO}_3(\text{aq})$. In this case, the reaction is written as:
-    $$\text{CO}_2(\text{aq}) + \text{H}_2\text{O} \rightleftharpoons \text{HCO}_3^- + \text{H}^+$$ and $$\text{pK}_{a} \approx -76.8$$
 
 Both constants are computed from standard Gibbs energies of formation at 25 °C,
 exactly as in the acetic acid titration example:
@@ -72,12 +68,8 @@ RT = R * T
 
 sp = Dict(symbol(s) => s for s in cs.species)
 
-# pKa_CO2 : CO₂(aq) + H2O ⇌  HCO₃⁻ + H⁺
-Ka_CO₂  = exp(-(sp["HCO3-"].ΔₐG⁰(T = T) + sp["H2O@"].ΔₐG⁰(T = T) - sp["H+"].ΔₐG⁰(T = T) - sp["CO2@"].ΔₐG⁰(T = T)) / RT)
-pKa_CO₂ = -log10(Ka_CO₂)
-
-# pKa1 : H2CO₃(aq) ⇌ H⁺ + HCO₃⁻
-Ka1  = exp(-(sp["HCO3-"].ΔₐG⁰(T = T) + sp["H+"].ΔₐG⁰(T = T) - (-623.1e3)) / RT)
+# pKa1 : CO₂(aq) + H2O ⇌  HCO₃⁻ + H⁺
+Ka1  = exp(-(sp["HCO3-"].ΔₐG⁰(T = T) + sp["H+"].ΔₐG⁰(T = T) - sp["H2O@"].ΔₐG⁰(T = T) - sp["CO2@"].ΔₐG⁰(T = T)) / RT)
 pKa1 = -log10(Ka1)
 
 # pKa2 : HCO₃⁻ ⇌ H⁺ + CO₃²⁻
@@ -88,7 +80,7 @@ pKa2 = -log10(Ka2)
 Kw   = exp(-(sp["H+"].ΔₐG⁰(T = T) + sp["OH-"].ΔₐG⁰(T = T) - sp["H2O@"].ΔₐG⁰(T = T)) / RT)
 pKw  = -log10(Kw)
 
-println("pKa1 (H₂CO₃(aq) / HCO₃⁻) = ", round(pKa1, digits = 2), "   (lit. 6.35)")
+println("pKa1 (CO₂(aq) / HCO₃⁻) = ", round(pKa1, digits = 2), "   (lit. 6.35)")
 println("pKa2 (HCO₃⁻  / CO₃²⁻)  = ", round(pKa2, digits = 2), "   (lit. 10.33)")
 println("pKw  (H₂O    / H⁺+OH⁻) = ", round(pKw,  digits = 2), "   (lit. 14.00)")
 ```
@@ -99,7 +91,7 @@ println("pKw  (H₂O    / H⁺+OH⁻) = ", round(pKw,  digits = 2), "   (lit. 14
 
 A single [`EquilibriumSolver`](@ref) is compiled once and reused for every point of the scan:
 
-```julia
+```@example carbonate_setup
 using OptimizationIpopt
 
 solver = EquilibriumSolver(
@@ -124,7 +116,27 @@ solver = EquilibriumSolver(
 
 The experiment: 1 kg of pure water receives an increasing amount of dissolved CO₂ (CO₂(aq)),
 from trace atmospheric levels (~10⁻⁵ mol) up to a highly carbonated solution (~0.1 mol).
-At each point the system equilibrates and the resulting pH and species distribution are recorded.
+Three representative concentrations illustrate the pH trend:
+
+```@example carbonate_setup
+s = ChemicalState(cs)
+for (n_CO2, label) in [
+    (1e-5, "atmospheric, ~400 ppm"),
+    (1e-3, "lightly carbonated"),
+    (1e-1, "strongly carbonated"),
+]
+    set_quantity!(s, "H2O@", 1.0u"kg")
+    set_quantity!(s, "CO2@", n_CO2 * u"mol")
+    V_liq = volume(s).liquid
+    set_quantity!(s, "H+",  1e-7u"mol/L" * V_liq)
+    set_quantity!(s, "OH-", 1e-7u"mol/L" * V_liq)
+    s_eq = solve(solver, s)
+    println("pH at [CO₂]₀ = ", n_CO2, " mol (", label, ") : ",
+            round(pH(s_eq), digits = 2))
+end
+```
+
+For the full scan used to generate the plots below, loop over 60 log-spaced points:
 
 ```julia
 sp_idx = Dict(symbol(s) => i for (i, s) in enumerate(cs.species))
@@ -157,13 +169,6 @@ for n_CO2 in n_CO2_range
     push!(f_HCO3_vals, n_b / n_C)
     push!(f_CO3_vals,  n_c / n_C)
 end
-
-println("pH at [CO₂]₀ = 1×10⁻⁵ mol (atmospheric, ~400 ppm) : ",
-        round(pH_vals[1],   digits = 2))
-println("pH at [CO₂]₀ = 1×10⁻³ mol (lightly carbonated)      : ",
-        round(pH_vals[argmin(abs.(n_CO2_range .- 1e-3))], digits = 2))
-println("pH at [CO₂]₀ = 1×10⁻¹ mol (strongly carbonated)     : ",
-        round(pH_vals[end],  digits = 2))
 ```
 
 ---

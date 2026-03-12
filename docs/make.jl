@@ -17,6 +17,7 @@ ENV["LINES"] = "100"
 ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging in doc builds
 
 makedocs(;
+    clean=false,
     modules=[ChemistryLab],
     authors="Jean-François Barthélémy and Anthony Soive",
     sitename="ChemistryLab.jl",
@@ -25,6 +26,7 @@ makedocs(;
         edit_link="main",
         assets=["assets/favicon.ico", "assets/custom.css"],
         prettyurls=(get(ENV, "CI", nothing) == "true"),
+        collapselevel=1,
     ),
     pages=pages,
     warnonly=[:missing_docs, :docs_block],

@@ -19,8 +19,10 @@ using ChemistryLab
 using DynamicQuantities
 
 substances = build_species("../../../data/slop98-inorganic-thermofun.json")
-input_species = split("Cal H2O@ Ca+2 CO3-2 HCO3- CO2@ H+ OH-")
-species = speciation(substances, input_species; aggregate_state=[AS_AQUEOUS])
+
+# Select the carbonate-system species, calcite and its dissolution product Ca²⁺
+dict = Dict(symbol(s) => s for s in substances)
+species = [dict[sym] for sym in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
 ```
@@ -137,7 +139,7 @@ solver = EquilibriumSolver(
 
 Once built, `solver` is called with any compatible `ChemicalState`:
 
-```julia
+```@example eq_setup
 using OptimizationIpopt #hide
 
 opt = IpoptOptimizer( #hide
@@ -168,8 +170,9 @@ state_eq2 = solve(solver, state)
 
 Calcite solubility varies with temperature. Using the `solver` built above, we sweep from 10 to 30 °C and track pH, dissolved calcium and remaining solid calcite:
 
-```julia
+```@example eq_setup
 using Plots
+
 
 temperatures = 10:30   # °C
 
@@ -180,8 +183,8 @@ nCal_vals = Float64[]  # mmol
 i_Ca  = findfirst(sp -> symbol(sp) == "Ca+2", cs.species)
 i_Cal = findfirst(sp -> symbol(sp) == "Cal",  cs.species)
 
+s = ChemicalState(cs)
 for θ in temperatures
-    s = deepcopy(state)
     set_temperature!(s, (273.15 + θ) * u"K")
     s_eq = solve(solver, s)
     push!(pH_vals,   pH(s_eq))
@@ -192,7 +195,7 @@ end
 
 The figures can then be drawn.
 
-```julia
+```@example eq_setup
 p1 = plot(collect(temperatures), pH_vals,
     xlabel = "T (°C)", ylabel = "pH", label = "pH",
     marker = :circle, linewidth = 2, title = "pH")

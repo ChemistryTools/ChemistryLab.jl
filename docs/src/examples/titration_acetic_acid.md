@@ -20,7 +20,7 @@ the organic database provides acetic acid and acetate.
 | `NaOH@`  | NaOH — sodium hydroxide    | aqueous solute  |
 | `Na+`    | Na⁺                        | aqueous solute  |
 | `H+`     | H⁺                         | aqueous solute  |
-| `OH-`    | OH⁻                        | aqueous solvent |
+| `OH-`    | OH⁻                        | aqueous solute  |
 | `H2O@`   | H₂O                        | aqueous solvent |
 
 The primaries `H2O@`, `H+`, `Ace-`, `Na+` form a basis for the system.
@@ -33,20 +33,25 @@ using DynamicQuantities
 substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
 substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
 
-dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
+dict_all_species = merge(
+    Dict(symbol(s) => s for s in substances_inorg),
+    Dict(symbol(s) => s for s in substances_org),
+)
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- AceH@ Ace-")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 ```
 
-!!! note "Selection of a few species"
-    In the example, only a portion of the species is considered (Na+ NaOH@ H+ OH- AceH@ Ace-), although the entire set contained in the data file is possible by executing, for example, the following three lines:
+!!! note "Restricting the species set"
+    This example uses a hand-picked list of species for efficiency.
+    To include all compatible species from the databases automatically, use `speciation`:
     ```julia
-    aq_species = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state = [AS_AQUEOUS])
-    ace_species = speciation(substances_org, split("AceH@ Ace-"); aggregate_state = [AS_AQUEOUS])
-    species = unique(s -> symbol(s), vcat(aq_species, ace_species))
+    aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-");  aggregate_state=[AS_AQUEOUS])
+    ace_species = speciation(substances_org,   split("AceH@ Ace-");              aggregate_state=[AS_AQUEOUS])
+    species     = unique(s -> symbol(s), vcat(aq_species, ace_species))
     ```
-    However, the calculation can be much more expensive. Furthermore, the user must ensure that the experimentally observed dissolution/precipitation kinetics are consistent with the equilibrium results calculated here.
+    Note that equilibrium calculations may be more expensive, and that the results
+    assume the system reaches thermodynamic equilibrium — kinetic effects are not captured.
 
 ---
 
@@ -55,7 +60,7 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 The pKₐ is derived from the standard Gibbs energies of the dissociation reaction
 CH₃COOH ⇌ CH₃COO⁻ + H⁺:
 
-```julia
+```@example titration_acetic_setup
 R  = ustrip(Constants.R)
 T  = 298.15   # K
 RT = R * T
@@ -70,7 +75,7 @@ println("pKa = ", round(pKa, digits = 2))
 
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each titration point:
 
-```julia
+```@example titration_acetic_setup
 using OptimizationIpopt
 
 solver = EquilibriumSolver(
@@ -97,22 +102,22 @@ The base is introduced as `NaOH@` (the undissociated form); the solver distribut
 between `NaOH@`, `Na+` and `OH-` according to the stoichiometric constraints.
 
 ```julia
-ca   = 0.1     # acetic acid concentration, mol/L
-Va   = 0.1     # volume of acid solution, L
-cb   = 0.1     # NaOH concentration, mol/L
-nAH  = ca * Va # total moles of CH₃COOH = 10 mmol
+ca  = 0.1      # acetic acid concentration, mol/L
+Va  = 0.1      # volume of acid solution, L
+cb  = 0.1      # NaOH concentration, mol/L
+nAH = ca * Va  # total moles of CH₃COOH = 10 mmol
 
-Vbeq = nAH / cb          # equivalence volume, L
-V_eq = Vbeq * 1e3        # equivalence volume, mL
+Vbeq = nAH / cb   # equivalence volume, L
+V_eq = Vbeq * 1e3  # equivalence volume, mL
 
 volumes_NaOH = range(0, 2 * V_eq; length = 100)   # mL
 pH_vals = Float64[]
 
 s = ChemicalState(cs)
 for V_mL in volumes_NaOH
-    Vb      = V_mL * 1e-3     # L
-    n_NaOH  = cb * Vb         # mol of NaOH added
-    V_total = Va + Vb          # total volume, L
+    Vb      = V_mL * 1e-3      # L
+    n_NaOH  = cb * Vb           # mol of NaOH added
+    V_total = Va + Vb           # total volume, L
 
     set_quantity!(s, "AceH@", nAH    * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
@@ -129,10 +134,10 @@ end
 idx_heq = argmin(abs.(collect(volumes_NaOH) .- V_eq / 2))
 idx_eq  = argmin(abs.(collect(volumes_NaOH) .- V_eq))
 
-println("pH at V = 0 mL    (pure acid)        : ", round(pH_vals[begin],   digits = 2))
-println("pH at V = 50 mL   (½ PE, ≈ pKₐ)     : ", round(pH_vals[idx_heq], digits = 2))
-println("pH at V = 100 mL  (equivalence point): ", round(pH_vals[idx_eq],   digits = 2))
-println("pH at V = 300 mL  (excess NaOH)      : ", round(pH_vals[end],      digits = 2))
+println("pH at V =   0 mL  (pure acid)         : ", round(pH_vals[begin],   digits = 2))
+println("pH at V =  50 mL  (½ PE, ≈ pKₐ)      : ", round(pH_vals[idx_heq], digits = 2))
+println("pH at V = 100 mL  (equivalence point) : ", round(pH_vals[idx_eq],   digits = 2))
+println("pH at V = 200 mL  (excess NaOH)       : ", round(pH_vals[end],      digits = 2))
 ```
 
 ---
@@ -181,12 +186,12 @@ scatter!(p, [0, V_eq], [pH0, pHeq];
     color      = :red,
     markersize = 6,
 )
-vline!(p, [V_eq]; linestyle = :dash, color = :red,  label = "PE ($(round(V_eq,digits = 1)) mL)")
-hline!(p, [pKa];  linestyle = :dot,  color = :grey, label = "pKₐ = $(round(pKa, digits = 2)) at V = 50 mL")
+vline!(p, [V_eq]; linestyle = :dash, color = :red,  label = "PE ($(round(V_eq, digits=1)) mL)")
+hline!(p, [pKa];  linestyle = :dot,  color = :grey, label = "pKₐ = $(round(pKa, digits=2)) at V = 50 mL")
 p
 ```
 
-![Acetitric titration curve](../assets/acetic_titration.png)
+![Acetic acid titration curve](../assets/acetic_titration.png)
 
 ---
 

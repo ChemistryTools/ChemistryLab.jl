@@ -9,6 +9,7 @@ pages = [
         "man/stoich_matrices.md",
         "man/reactions.md",
         "man/equilibrium.md",
+        "man/advanced.md",
     ],
     "Examples" => [
         "examples/bogue_calculation.md",

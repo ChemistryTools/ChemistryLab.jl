@@ -114,14 +114,12 @@ calcite.S⁰ = dtf_calcite[:S⁰] #hide
 calcite.ΔₐG⁰ = dtf_calcite[:ΔₐG⁰]
 ```
 
-```julia
+```@example example1
 using Plots
 
 p1 = plot(xlabel="Temperature [°C]", ylabel="ΔₐG⁰ [J.mol⁻¹]", title="Gibbs energy of calcite \nas a function of temperature")
 plot!(p1, θ -> calcite.ΔₐG⁰(T = 273.15+θ), 0:0.1:100, label="ΔₐG⁰ of calcite")
 ```
-
-![pcoa plot](../assets/pcoplot.png)
 
 
 Similarly, we can provide information on the thermal capacity of species $Ca^{2+}$ and ${CO_3}^{2-}$, as proposed in the thermoddem database:
@@ -131,7 +129,7 @@ Similarly, we can provide information on the thermal capacity of species $Ca^{2+
 ![Figure](../assets/co3_properties_thermoddem.png)
 
 
-These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers equation. This equation is not yet implemented in ChemistryLab (see note below). We therefore take the values ​​at 25°C given in Thermoddem, that is -26.38 and -276.88, respectively.
+These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers (HKF) equation for Cp(T) of aqueous ions. The HKF Cp(T) model is not currently available as a built-in thermodynamic model in ChemistryLab; we therefore use the constant value at 25 °C given in Thermoddem, that is -26.38 and -276.88 J mol⁻¹ K⁻¹ respectively.
 
 
 ```@example example1
@@ -148,8 +146,8 @@ dtf_CO₃²⁻ = build_thermo_functions(:cp_ft_equation, params_CO₃²⁻)
 CO₃²⁻.ΔₐG⁰ = dtf_CO₃²⁻[:ΔₐG⁰]
 ```
 
-!!! warning "Implementation of Helgeson-Kirkham-Flowers equation"
-    Although the Helgeson-Kirkham-Flowers equation is not implemented, the expressions for enthalpies and free energies are temperature-dependent due to the integration performed on Cp. Furthermore, within the temperature and pressure ranges currently tested in ChemistryLab, assuming a constant temperature for Cp has little impact on the solubility product of a reaction.
+!!! warning "HKF Cp(T) model for aqueous ions"
+    The Helgeson-Kirkham-Flowers equation for the temperature dependence of Cp of aqueous ions is not yet available as a built-in thermodynamic model. The expressions for enthalpies and free energies remain temperature-dependent thanks to the integration performed on Cp. Within the temperature and pressure ranges typically considered in ChemistryLab (0–100 °C, 1 atm), assuming a constant Cp has little impact on the solubility product.
 
 ### Third step: writing the reaction
 
@@ -163,11 +161,25 @@ During the construction of this reaction, the thermodynamic properties of the re
 
 $RT \; ln(K) = - \Delta_r G^° = - \sum_i \nu_i  \Delta_f {G^°}_i$
 
-```julia
+```@example example1
 using Plots
 
 p1 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
 plot!(p1, θ -> r.ΔᵣG⁰(T = 273.15+θ) / 8.31 / (273.15+θ) / log(10), 0:0.1:100, label="pKs")
 ```
 
-![pcoa plot](../assets/solubility_calcite.png)
+---
+
+## Notes and next steps
+
+This example demonstrates the **manual** workflow: create species, attach thermodynamic data from an external source, build a reaction and evaluate its temperature-dependent properties.
+
+In practice, loading species from a built-in database (see [Database Interoperability](@ref)) is faster and less error-prone:
+
+```julia
+all_species = build_species("data/cemdata18-merged.json")
+species = speciation(all_species, split("Cal H2O@");
+              aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"))
+```
+
+To go further and compute the actual **equilibrium state** (species amounts, pH, saturation index), build a `ChemicalSystem` from the species and call `equilibrate`. See the [Chemical Equilibrium](@ref sec-equilibrium) tutorial for the complete workflow.

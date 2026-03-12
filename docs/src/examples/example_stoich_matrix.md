@@ -1,95 +1,104 @@
 # Stoichiometric Matrix
 
-Calculating stoichiometric matrices is a prerequisite for equilibrium calculations by minimizing Gibbs energy. The examples below show how they can be constructed.
+Calculating stoichiometric matrices is a prerequisite for equilibrium calculations by minimizing Gibbs energy. The examples below show how they can be constructed from a thermodynamic database.
 
-## Get Stoichiometric Matrix from a list of species
+## Stoichiometric matrix for a subset of species
 
-Let's imagine that we want to form the stoichiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate.
+The recommended workflow is:
+1. Load all species from the database with `build_species`.
+2. Filter to the relevant chemical space with `speciation`.
+3. Build a `ChemicalSystem`, which automatically computes the stoichiometric matrices.
 
 ```julia
 using ChemistryLab
-using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json")
+
+# 1. Load all species from the database
+all_species = build_species("../../../data/cemdata18-merged.json")
 ```
 
-It is then necessary to identify the list of secondary species likely to appear during the reactions.
+Identify the secondary species likely to appear during the reactions of interest (here: C₃S, Portlandite, Jennite and water):
 
 ```julia
-df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
-               aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true)
-dict_species = Dict(symbol(s) => s for s in build_species(df_species))
+# 2. Filter species compatible with the chosen seeds
+species = speciation(all_species, split("C3S Portlandite Jennite H2O@");
+              aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@"))
+dict_species = Dict(symbol(s) => s for s in species)
 ```
 
-We can then deduce the primary species concerned by the reaction.
+Deduce the primary species present in this subset:
 
 ```julia
+# 3. Select primaries available in the subset
 candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)]
 ```
 
-And construct the stoichiometric matrix
+Build the `ChemicalSystem`. Both stoichiometric matrices (`CSM` and `SM`) are computed once at construction time:
 
 ```@setup example1
     using ChemistryLab #hide
-    df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json") #hide
-
-    df_species = get_compatible_species(df_substances, split("C3S Portlandite Jennite H2O@");
-                aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@"), union=true) #hide
-    dict_species = Dict(symbol(s) => s for s in build_species(df_species)) #hide
-
+    all_species = build_species("../../../data/cemdata18-merged.json") #hide
+    species = speciation(all_species, split("C3S Portlandite Jennite H2O@");
+                  aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@")) #hide
+    dict_species = Dict(symbol(s) => s for s in species) #hide
     candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)] #hide
 ```
 
 ```@example example1
-SM = StoichMatrix(dict_species, candidate_primaries)
+cs = ChemicalSystem(species, candidate_primaries)
 ```
 
-## Get Stoichiometric Matrix from a database file
+All independent reactions are then reconstructed from `cs.SM`:
+
+```@example example1
+lr = reactions(cs.SM)
+```
+
+---
+
+## Stoichiometric matrix for all aqueous species in the database
+
+To work with the full set of aqueous species, filter by aggregate state directly in `speciation`:
 
 ```julia
-using ChemistryLab
-
-df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json")
+# Keep only aqueous species
+aqueous_species = speciation(all_species, collect(keys(first(all_species).atoms));
+                      aggregate_state=[AS_AQUEOUS])
 ```
 
-```@example example1
-df_aqueous_species = filter(row -> only(row.aggregate_state).second == "AS_AQUEOUS", df_substances)
-dict_aqueous_species = Dict(symbol(s) => s for s in build_species(df_aqueous_species))
+A more direct alternative is to filter using all atom symbols present in the database:
+
+```julia
+all_atoms = union_atoms(all_species)
+aqueous_species = speciation(all_species, all_atoms; aggregate_state=[AS_AQUEOUS])
+dict_aqueous_species = Dict(symbol(s) => s for s in aqueous_species)
 candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
-SM = StoichMatrix(dict_aqueous_species, candidate_primaries)
 ```
 
-All the independent reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database ("AS_AQUEOUS").
+```@setup example1
+    aqueous_species = speciation(all_species, union_atoms(all_species); aggregate_state=[AS_AQUEOUS]) #hide
+    dict_aqueous_species = Dict(symbol(s) => s for s in aqueous_species) #hide
+    candidate_primaries_aq = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)] #hide
+```
 
 ```@example example1
-lr = reactions(SM)
+cs_aq = ChemicalSystem(aqueous_species, candidate_primaries_aq)
+lr_aq = reactions(cs_aq.SM)
 ```
+
+Here only ionic species appear, given the `AS_AQUEOUS` filter.
 
 ---
 
-The exercise can also be done on solid species. In this case, the data filter is carried out using the keyword "AS_CRYSTAL", in accordance with the terminology adopted in Thermofun. Note that primaries are still built among aqueous species.
+The exercise can also be done on solid species (`AS_CRYSTAL`) or gases (`AS_GAS`). Primaries are still drawn from the aqueous subset in those cases:
 
-```@setup example1
-df_solid_species = filter(row -> only(row.aggregate_state).second == "AS_CRYSTAL", df_substances)
-dict_solid_species = Dict(symbol(s) => s for s in build_species(df_solid_species))
-candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
-SM = StoichMatrix(dict_solid_species, candidate_primaries) ; pprint(SM)
-```
+```julia
+# Solid species
+solid_species = speciation(all_species, union_atoms(all_species); aggregate_state=[AS_CRYSTAL])
+cs_solid = ChemicalSystem(solid_species, candidate_primaries)
+lr_solid = reactions(cs_solid.SM)
 
-```@example example1
-lr = reactions(SM)
-```
-
----
-
-Or with gases ("AS_GAS")
-
-```@setup example1
-df_gas_species = filter(row -> only(row.aggregate_state).second == "AS_GAS", df_substances)
-dict_gas_species = Dict(symbol(s) => s for s in build_species(df_gas_species))
-candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
-SM = StoichMatrix(dict_gas_species, candidate_primaries) ; pprint(SM)
-```
-
-```@example example1
-lr = reactions(SM)
+# Gas species
+gas_species = speciation(all_species, union_atoms(all_species); aggregate_state=[AS_GAS])
+cs_gas = ChemicalSystem(gas_species, candidate_primaries)
+lr_gas = reactions(cs_gas.SM)
 ```

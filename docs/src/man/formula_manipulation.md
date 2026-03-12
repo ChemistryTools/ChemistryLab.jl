@@ -50,6 +50,30 @@ Or:
 fNa⁺ = AtomGroup(:Na)+AtomGroup(:Zz)
 ```
 
+## Formula accessors
+
+All fields of a `Formula` are accessible through dedicated functions:
+
+```@example 1
+f = Formula("Ca(HSiO3)+")
+expr(f)         # canonical string (as given)
+phreeqc(f)      # Phreeqc notation: "Ca(HSiO3)+"
+unicode(f)      # Unicode notation: "Ca(HSiO₃)⁺"
+colored(f)      # colored terminal string (ANSI)
+composition(f)  # OrderedDict{Symbol,Int}: composition by atom
+charge(f)       # Int8: net charge
+```
+
+## Notation conversion
+
+Switch between Phreeqc (plain text) and Unicode (pretty) notations without creating a full `Formula`:
+
+```@example 1
+phreeqc_to_unicode("SO4-2")   # "SO₄²⁻"
+unicode_to_phreeqc("SO₄²⁻")  # "SO4-2"
+phreeqc_to_unicode("Ca+2")    # "Ca²⁺"
+```
+
 ## Type of Formula
 
 The type of the `Formula` `struct` being associated with the most complex type of the set of coefficients.
@@ -69,5 +93,33 @@ Coefficient types can be converted *a posteriori*.
 ```@example 1
 convert(Float64, Formula("H2O"))
 ```
+
+## Formula arithmetic
+
+Scalar multiplication and division return a new `Formula` with all coefficients scaled:
+
+```@example 1
+f = Formula("H2O")
+
+f * 2     # H₄O₂  — all coefficients × 2
+f / 2     # H₁O½  — all coefficients ÷ 2 (Float64)
+f // 2    # H₁O½  — rational coefficients (Rational)
+```
+
+Individual atoms can be appended with `+ AtomGroup(n, :Symbol)`:
+
+```@example 1
+fCO2 = Formula("CO2")
+fCO2 + AtomGroup(2, :H)   # CO₂H₂  — add 2 hydrogen atoms
+```
+
+For element-wise transformations, use `apply`:
+
+```@example 1
+apply(x -> x * 0.5, Formula("H2O"))   # H₁O½  — same as f / 2
+```
+
+!!! note "Advanced operations"
+    For fractional stoichiometry, reaction algebra, and notation conversion see the [Advanced Topics](@ref) page.
 
 ---

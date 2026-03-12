@@ -1,6 +1,6 @@
 # Getting started
 
-This quickstart shows a few common, minimal examples to get you productive with ChemistryLab. It demonstrates creating species, building reactions and generating a stoichiometric matrix.
+This quickstart shows a few common, minimal examples to get you productive with ChemistryLab. It demonstrates loading species from a database, building reactions and solving a thermodynamic equilibrium problem.
 
 ## Simplified example
 
@@ -18,27 +18,20 @@ $\Delta_r G^° = \sum_i \nu_i \Delta_f {G_i}^°$
 
 ------------------------
 
-To do this, we can create a list of chemical species, retrieve the thermodynamic properties of these species from one of the databases integrated into ChemistryLab. We can then deduce the chemical species likely to appear in the reaction and calculate the associated stoichiometric matrix.
+To do this, we load the species from one of the databases integrated into ChemistryLab, filter those relevant to the calcite–water system, then build the stoichiometric matrix and derive the reactions.
 
 In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermodynamic-data). The `.json` file is included in ChemistryLab but is a copy of a file which can be found in [ThermoHub](https://github.com/thermohub).
 
-```julia
-using ChemistryLab
-
-filebasename = "cemdata18-thermofun.json"
-df_elements, df_substances, df_reactions = read_thermofun_database("../../data/" * filebasename)
-```
-
-The chemical species likely to appear during calcite equilibrium in water are obtained in the following way:
+`build_species` reads the database file and returns a `Vector{Species}` with compiled thermodynamic functions. `speciation` then filters this list to the species whose atomic composition is a subset of the seed atoms (here Ca, C, H and O from `Cal`, `H2O@` and `CO2`):
 
 ```@example from_scratch
 using ChemistryLab #hide
 
-filebasename = "cemdata18-thermofun.json" #hide
-df_elements, df_substances, df_reactions = read_thermofun_database("../../data/" * filebasename) #hide
-df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
-                        aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
-dict_species_calcite = Dict(symbol(s) => s for s in build_species(df_calcite))
+all_species = build_species("../../data/cemdata18-thermofun.json") #hide
+species_calcite = speciation(all_species, split("Cal H2O@ CO2");
+                             aggregate_state=[AS_AQUEOUS],
+                             exclude_species=split("H2@ O2@ CH4@"))
+dict_species_calcite = Dict(symbol(s) => s for s in species_calcite)
 ```
 
 During species creation, ChemistryLab calculates the molar mass of the species. It also constructs thermodynamic functions (heat capacity, entropy, enthalpy, and Gibbs free energy of formation) as a function of temperature. The evolution of thermodynamic properties as a function of temperature, such as heat capacity, can thus be easily plotted.
@@ -58,7 +51,8 @@ Obtaining stoichiometric matrices requires the choice of a species-independent b
 
 ```@example from_scratch
 primaries = [dict_species_calcite[s] for s in split("H2O@ H+ CO3-2 Ca+2")]
-SM = StoichMatrix(values(dict_species_calcite), primaries)
+SM = StoichMatrix(collect(values(dict_species_calcite)), primaries)
+pprint(SM)
 ```
 
 These stoichiometric matrices thus allow us to write the chemical reactions at work.
@@ -79,9 +73,49 @@ p2 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs
 plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
 ```
 
+## Equilibrium solving
+
+The previous section computed thermodynamic properties of reactions analytically. ChemistryLab can go further and solve the full **thermodynamic equilibrium** — that is, find the species amounts that minimise the Gibbs free energy of the system given initial conditions.
+
+Three objects are needed:
+
+| Object | Role |
+|--------|------|
+| [`ChemicalSystem`](@ref) | Immutable description of the system: species list, primary species, stoichiometric matrices, and derived index maps. Built once and reused. |
+| [`ChemicalState`](@ref) | Mutable thermodynamic state: amounts `n` (mol), temperature `T` and pressure `P`. Modified in-place before and after solving. |
+| `equilibrate` | Convenience function that wraps a `ChemicalSystem` + `ChemicalState` into an optimisation problem and solves it. Returns a new equilibrated `ChemicalState`. |
+
+```@example from_scratch
+using DynamicQuantities
+
+# ChemicalSystem: declare the species and which four are the independent basis
+primaries_eq = [dict_species_calcite[s] for s in split("H2O@ H+ CO3-2 Ca+2")]
+cs = ChemicalSystem(collect(values(dict_species_calcite)), primaries_eq)
+
+# ChemicalState: set the initial amounts
+state = ChemicalState(cs)
+set_quantity!(state, "Cal",  1e-3u"mol")   # 1 mmol of calcite
+set_quantity!(state, "H2O@", 1.0u"kg")     # 1 kg of water
+
+# Seed H⁺ and OH⁻ at pH 4 (trace amounts to help convergence)
+V = volume(state)
+set_quantity!(state, "H+",  1e-4u"mol/L" * V.liquid)
+set_quantity!(state, "OH-", 1e-10u"mol/L" * V.liquid)
+
+# Solve: find the Gibbs-energy minimum
+state_eq = equilibrate(state)
+```
+
+```@example from_scratch
+println("pH = ", round(pH(state_eq), digits = 2))
+```
+
+Derived quantities such as pH, pOH, phase volumes and individual species amounts are all accessible on the returned `ChemicalState`. For a detailed description of the solver options, activity models, and temperature sweeps, see the equilibrium tutorial (`Tutorial → Chemical Equilibrium`).
+
 ## Notes and next steps
 
 - The `Formula`, `Species`, `Reaction` and `StoichMatrix` APIs are intentionally small and composable — explore the `docs/src/` pages for detailed examples.
+- For equilibrium calculations, see `docs/src/man/equilibrium.md` and the worked examples `co2_carbonate_system` and `cement_carbonation`.
 - For cement-specific workflows, use `CemSpecies` and the `databases` utilities to convert between oxide- and atom-based representations.
 
 Now try the `quickstart` examples interactively in the REPL and then follow the next pages of the tutorial for deeper coverage.

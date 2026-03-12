@@ -1,6 +1,6 @@
-# [Chemical Equilibrium](@id sec-equilibrium)
+# [Simplified Clinker Dissolution](@id sec-clinker-dissolution)
 
-ChemistryLab computes thermodynamic equilibrium by minimising the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:
+This example illustrates ChemistryLab's equilibrium workflow applied to cement chemistry: computing the hydration state of a simplified Portland clinker at a given water-to-cement ratio. ChemistryLab computes thermodynamic equilibrium by minimising the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:
 
 1. Build a [`ChemicalSystem`](@ref) (species + stoichiometric matrix).
 2. Create an initial [`ChemicalState`](@ref) (temperature, pressure, initial amounts).

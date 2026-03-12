@@ -42,26 +42,26 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄A
 
 The previous species were constructed from integer values ​​of the number of chemical elements. However, other numerical value types ​​are possible (as for [formulas](./formula_manipulation.md#formulas)), such as fraction or Real values.
 
-```@example
+```@example example_cemspecies
 using ChemistryLab
 ox = Dict(:C => 1.666667, :S => 1, :H => 2.1)
 jennite = CemSpecies(ox, aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 ```
 
-Symbolic values are also allowed. In this case, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
+Symbolic values are also allowed. In this case, you need to use the [`ModelingToolkit`](https://github.com/SciML/ModelingToolkit.jl) library:
 
 ```julia
 using ChemistryLab
-using SymPy
-â, ĝ = symbols("â ĝ", real = true)
-ox = Dict(:C => â, :S => one(Sym), :H => ĝ)
+using ModelingToolkit
+@variables a g
+ox = Dict(:C => a, :S => one(Num), :H => g)
 CSH = CemSpecies(ox)
 ```
 
-The value of variables can be defined *a posteriori*.
+The value of variables can be substituted *a posteriori* to obtain a numeric species:
 
 ```julia
-jennite = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.666667, ĝ => 2.1)))
+jennite = CemSpecies(map(x -> substitute(x, Dict(a => 1.666667, g => 2.1)), cemformula(CSH)))
 ```
 
 !!! note "Remark"
@@ -88,7 +88,7 @@ spC3S = Species(C3S)
 
 Or more complex one:
 
-```@example CSH
+```@example example_cemspecies
 using ChemistryLab #hide
 CSH = Species("(SiO2)1(CaO)1.666667(H2O)2.1", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 jennite = CemSpecies(CSH)

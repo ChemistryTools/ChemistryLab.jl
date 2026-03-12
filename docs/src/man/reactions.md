@@ -71,6 +71,7 @@ r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
 ```@example
 using ChemistryLab
 using ModelingToolkit
+using PrettyTables
 @variables a b g
 CSH = CemSpecies(Dict(:C => a, :S => one(Num), :H => g))
 C3S = CemSpecies("C3S")
@@ -78,6 +79,7 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 SM = StoichMatrix([C3S], [CSH, H, CH])
+pprint(SM)
 ```
 
 !!! note "Collection of arrow symbols"
@@ -86,3 +88,57 @@ SM = StoichMatrix([C3S], [CSH, H, CH])
     - `<`, `←`, `↢`, `↤`, `⇽`, `⟵`, `⟻`, `⥚`, `⥞`, `↼`, `↽`, `⇐`, `⟽` for reaction directionality from products to reactants;
     - `↔`, `⟷`, `⇄`, `⇆`, `⇌`, `⇋`, `⇔`, `⟺` for reversible reactions and equilibrium states;
     - `=`, `≔`, `⩴`, `≕` to separate reactants from products in balanced equations.
+
+## Thermodynamic properties of reactions
+
+When the species involved in a reaction carry thermodynamic data (loaded from a database), the reaction automatically exposes temperature-dependent thermodynamic functions. These are computed lazily on first access and stored in the reaction's `properties` dict:
+
+| Property | Description |
+|----------|-------------|
+| `r.ΔᵣCp⁰` | Heat capacity of reaction (J mol⁻¹ K⁻¹) |
+| `r.ΔᵣH⁰`  | Enthalpy of reaction (J mol⁻¹) |
+| `r.ΔᵣS⁰`  | Entropy of reaction (J mol⁻¹ K⁻¹) |
+| `r.ΔᵣG⁰`  | Gibbs free energy of reaction (J mol⁻¹) |
+| `r.logK⁰` | Decimal logarithm of the equilibrium constant |
+
+Each property is a `ThermoFunction` callable with a keyword argument `T` (temperature in K):
+
+```julia
+using ChemistryLab
+
+# Load reactions from a database-built stoichiometric matrix
+all_species = build_species("../../../data/cemdata18-merged.json")
+species = speciation(all_species, split("Cal H2O@");
+              aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"))
+dict_species = Dict(symbol(s) => s for s in species)
+candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)]
+cs = ChemicalSystem(species, candidate_primaries)
+list_reactions = reactions(cs.SM)
+dict_reactions = Dict(r.symbol => r for r in list_reactions)
+
+r_cal = dict_reactions["Cal"]   # calcite dissolution reaction
+
+# Evaluate at 25 °C
+r_cal.logK⁰(T = 298.15)          # log₁₀ K at 25 °C
+r_cal.ΔᵣG⁰(T = 298.15)           # ΔᵣG° at 25 °C  (J/mol)
+```
+
+Properties can also be set manually on a reaction:
+
+```julia
+r = Reaction("H2 + O2 = H2O")
+r[:ΔᵣH⁰] = -241800.0   # J/mol
+```
+
+## Reactions from a stoichiometric matrix
+
+The most common source of reactions in a database workflow is `reactions(SM)`, which derives all independent reactions from a `StoichMatrix`:
+
+```julia
+list_reactions = reactions(cs.SM)
+dict_reactions = Dict(r.symbol => r for r in list_reactions)
+```
+
+Each reaction symbol matches the dependent species it describes. Temperature-dependent thermodynamic functions are computed automatically when the constituent species carry thermodynamic data.
+
+---

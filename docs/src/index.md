@@ -53,6 +53,9 @@ If you use ChemistryLab in your work, please cite the following:
 - Build canonical stoichiometric matrices and convert them to `Reaction` objects.
 - Read, merge and write ThermoFun / Cemdata sources and extract species and reactions programmatically.
 - Combine, simplify and transform reactions using the `Reaction` API.
+- Solve thermodynamic equilibrium problems by Gibbs energy minimisation (`equilibrate`, `EquilibriumSolver`).
+- Built-in activity model (`DiluteSolutionModel`) and extension API for custom models.
+- Temperature-dependent thermodynamic sweeps and speciation diagrams.
 
 ## Documentation structure
 
@@ -61,10 +64,18 @@ If you use ChemistryLab in your work, please cite the following:
 - `tutorial` — basic examples to get you started more deeply in the library.
   - `formula_manipulation` — parsing, conversions (Phreeqc ⇄ Unicode), formatting and arithmetic on `Formula` objects.
   - `species` — constructing `Species` and `CemSpecies`, managing properties and basic queries.
-  - `equations` — parsing, formatting and coloring of chemical equations and balancing helpers.
+  - `cement_species` — cement-specific species and oxide nomenclature.
   - `stoich_matrices` — building canonical stoichiometric matrices and converting them to reaction objects.
+  - `reactions` — parsing, combining and simplifying chemical reactions.
   - `databases` — reading ThermoFun JSON and Cemdata `.dat` files, merging reactions and exporting results.
-- `example/` — runnable examples and small worked problems (also built to HTML under `docs/build/example/`).
+  - `equilibrium` — setting up and solving chemical equilibrium problems (`ChemicalSystem`, `ChemicalState`, `equilibrate`, activity models, temperature sweeps).
+  - `advanced` — advanced patterns: formula arithmetic, reaction algebra, database operations.
+- `examples/` — runnable worked examples (also built to HTML under `docs/build/examples/`):
+  - `co2_carbonate_system` — CO₂ dissolution in water, pKₐ extraction and carbonate speciation diagram.
+  - `cement_carbonation` — progressive carbonation of hydrated cement paste (pH, portlandite, calcite).
+  - `titration_acetic_acid`, `titration_maleic_acid` — acid–base titration curves.
+  - `simplified_clinker_dissolution` — clinker phase dissolution.
+  - `bogue_calculation` — Bogue calculation for cement clinker.
 
 ## Try it locally
 
@@ -86,11 +97,12 @@ After the build completes, open `docs/build/index.html` in a browser to read the
 ## Quick tips
 
 - In the REPL try small calls like `using ChemistryLab; Species("CaCO3")` and `Formula("SO4-2")` to explore parsing behavior interactively.
-- Start with `docs/src/example/get_stoichio_matrix.md` to see a concise, runnable example converting a stoichiometric matrix into reactions.
+- Start with `docs/src/examples/example_stoich_matrix.md` to see a concise, runnable example converting a stoichiometric matrix into reactions.
+- For equilibrium calculations, see `docs/src/man/equilibrium.md` for the minimal workflow, then explore the `co2_carbonate_system` and `cement_carbonation` examples.
 - If you plan to work with ThermoFun/Cemdata sources, run the examples in `docs/src/man/databases.md` after placing the required `.json`/`.dat` data files in the `data/` directory.
 
 ## Next steps
 
-You can see `examples` for more advanced runnable examples and small worked problems.
+You can see the `examples` section for more advanced runnable examples and small worked problems, including CO₂ dissolution, carbonate speciation, cement carbonation, and clinker dissolution.
 
 Happy exploring — this tutorial aims to be practical and runnable, so please tell me which example you want expanded into a fully reproducible script.

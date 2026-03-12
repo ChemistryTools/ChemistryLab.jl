@@ -77,6 +77,44 @@ function idx_speciation(
     return (mask1 .&& mask2 .&& mask3 .&& mask4) .|| mask5
 end
 
+"""
+    speciation(species_list, atoms_list::AbstractVector{Symbol}; kwargs...) -> SubArray
+    speciation(species_list, short_species_list::AbstractVector{<:AbstractSpecies}; kwargs...) -> SubArray
+    speciation(species_list, short_species_list_symbols::AbstractVector{<:AbstractString}; kwargs...) -> SubArray
+
+Filter a list of species to those whose atomic composition is a subset of the given atoms (or of the atoms
+found in `short_species_list`).
+
+# Arguments
+
+  - `species_list`: full list of species to filter.
+  - `atoms_list`: vector of atom symbols that define the chemical space.
+  - `short_species_list`: seed species whose union of atoms defines the chemical space.
+  - `short_species_list_symbols`: string symbols of seed species.
+
+# Keyword arguments
+
+  - `aggregate_state`: filter by aggregate state (default: all states).
+  - `class`: filter by species class (default: all classes).
+  - `exclude_species`: species (or symbols) to always exclude.
+  - `include_species`: species (or symbols) to always include regardless of composition.
+
+# Returns
+
+  - A view (SubArray) of `species_list` containing the matching species.
+
+# Examples
+
+```julia
+julia> all_species = [Species("H2O"), Species("OH-"), Species("H+"), Species("Ca+2"), Species("CaCO3")];
+
+julia> speciation(all_species, [:H, :O])
+3-element view(::Vector{Species{Int64}}, [1, 2, 3]) with eltype Species{Int64}:
+ H₂O {H₂O} [H₂O ◆ H2O]
+ OH⁻ {OH⁻} [OH⁻ ◆ OH-]
+ H⁺ {H⁺} [H⁺ ◆ H+]
+```
+"""
 function speciation(
     species_list, atoms_list::AbstractVector{Symbol}; kwargs...
 )
