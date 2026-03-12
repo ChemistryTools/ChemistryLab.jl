@@ -16,6 +16,17 @@ activity_model
 build_potentials
 ```
 
+## Solid solutions
+
+```@docs
+AbstractSolidSolutionMixingModel
+IdealSolidSolutionMixingModel
+RegularSolidSolutionMixingModel
+lnγ_ss
+SolidSolution
+SolidSolutionActivityModel
+```
+
 ## Problem and solver
 
 ```@docs

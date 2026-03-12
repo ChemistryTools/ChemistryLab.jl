@@ -43,5 +43,9 @@ end
     include("utils.jl")
 end
 
+@testsection "Equilibrium tests" begin
+    include("solid_solutions.jl")
+end
+
 print_timer()
 println()

@@ -69,8 +69,10 @@ end
 """
     _build_params(state::ChemicalState; ϵ=1e-16) -> NamedTuple
 
-Extract dimensionless parameters `p = (ΔₐG⁰overT, ϵ)` from a `ChemicalState`.
+Extract dimensionless parameters `p = (ΔₐG⁰overT, ϵ, T)` from a `ChemicalState`.
 `ΔₐG⁰overT` is evaluated at the current `T` and `P` of the state.
+`T` [K] is provided for activity models that need temperature explicitly
+(e.g. `SolidSolutionActivityModel` with `RegularSolidSolutionMixingModel`).
 Units are stripped — compatible with ForwardDiff dual numbers.
 """
 function _build_params(state::ChemicalState; ϵ::Float64=1e-16)
@@ -83,7 +85,7 @@ function _build_params(state::ChemicalState; ϵ::Float64=1e-16)
     ΔₐG⁰overT = [ustrip(s[:ΔₐG⁰](T=T, P=P; unit=true) / RT)
                   for s in state.system.species]
 
-    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ)
+    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ, T = ustrip(us"K", T))
 end
 
 """

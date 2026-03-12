@@ -131,6 +131,7 @@ include("databases/thermofun_json.jl")
 include("databases/merge_dat_json.jl")
 
 include("equilibrium/activities.jl")
+include("equilibrium/solid_solutions.jl")
 include("equilibrium/equilibrium_problems.jl")
 include("equilibrium/equilibrium_solver.jl")
 
@@ -261,6 +262,13 @@ export AbstractActivityModel,
     REJ_CHARGE_DEFAULT,
     activity_model,
     build_potentials
+
+export AbstractSolidSolutionMixingModel,
+    IdealSolidSolutionMixingModel,
+    RegularSolidSolutionMixingModel,
+    SolidSolution,
+    SolidSolutionActivityModel,
+    lnγ_ss
 
 export EquilibriumProblem
 

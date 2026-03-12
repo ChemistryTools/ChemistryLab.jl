@@ -21,6 +21,7 @@ pages = [
         "examples/hkf_vs_dilute_clinker.md",
         # "examples/cement_wc_ratio.md",
         "examples/cement_carbonation.md",
+        "examples/solid_solutions.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",
