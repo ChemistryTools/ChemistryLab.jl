@@ -1,181 +1,114 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Stoichiometric Matrix · ChemistryLab.jl</title><meta name="title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta property="og:title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta property="twitter:title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><meta property="twitter:url" content="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><link rel="canonical" href="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><span class="tocitem">Tutorial</span><ul><li><a class="tocitem" href="../../man/formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../../man/species/">Species</a></li><li><a class="tocitem" href="../../man/cement_species/">Cement Species</a></li><li><a class="tocitem" href="../../man/databases/">Database Interoperability</a></li><li><a class="tocitem" href="../../man/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../man/reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../../man/equilibrium/">Chemical Equilibrium</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../bogue_calculation/">Bogue Calculation</a></li><li class="is-active"><a class="tocitem" href>Stoichiometric Matrix</a><ul class="internal"><li><a class="tocitem" href="#Get-Stoichiometric-Matrix-from-a-list-of-species"><span>Get Stoichiometric Matrix from a list of species</span></a></li><li><a class="tocitem" href="#Get-Stoichiometric-Matrix-from-a-database-file"><span>Get Stoichiometric Matrix from a database file</span></a></li></ul></li><li><a class="tocitem" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li><a class="tocitem" href="../simplified_clinker_dissolution/">Chemical Equilibrium</a></li><li><a class="tocitem" href="../cement_carbonation/">Carbonation of a Cement Paste</a></li></ul></li><li><span class="tocitem">API</span><ul><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Stoichiometric Matrix</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Stoichiometric Matrix</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/jfbarthelemy/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/jfbarthelemy/ChemistryLab.jl/blob/main/docs/src/examples/example_stoich_matrix.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Stoichiometric-Matrix"><a class="docs-heading-anchor" href="#Stoichiometric-Matrix">Stoichiometric Matrix</a><a id="Stoichiometric-Matrix-1"></a><a class="docs-heading-anchor-permalink" href="#Stoichiometric-Matrix" title="Permalink"></a></h1><p>Calculating stoichiometric matrices is a prerequisite for equilibrium calculations by minimizing Gibbs energy. The examples below show how they can be constructed.</p><h2 id="Get-Stoichiometric-Matrix-from-a-list-of-species"><a class="docs-heading-anchor" href="#Get-Stoichiometric-Matrix-from-a-list-of-species">Get Stoichiometric Matrix from a list of species</a><a id="Get-Stoichiometric-Matrix-from-a-list-of-species-1"></a><a class="docs-heading-anchor-permalink" href="#Get-Stoichiometric-Matrix-from-a-list-of-species" title="Permalink"></a></h2><p>Let&#39;s imagine that we want to form the stoichiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate.</p><pre><code class="language-julia hljs">using ChemistryLab
-using PrettyTables
-df_elements, df_substances, df_reactions = read_thermofun_database(&quot;../../../data/cemdata18-merged.json&quot;)</code></pre><p>It is then necessary to identify the list of secondary species likely to appear during the reactions.</p><pre><code class="language-julia hljs">df_species = get_compatible_species(df_substances, split(&quot;C3S Portlandite Jennite H2O@&quot;);
-               aggregate_states=[AS_AQUEOUS], exclude_species=split(&quot;H2@ O2@&quot;), union=true)
-dict_species = Dict(symbol(s) =&gt; s for s in build_species(df_species))</code></pre><p>We can then deduce the primary species concerned by the reaction.</p><pre><code class="language-julia hljs">candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)]</code></pre><p>And construct the stoichiometric matrix</p><pre><code class="language-julia hljs">SM = StoichMatrix(dict_species, candidate_primaries)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"></code></pre><h2 id="Get-Stoichiometric-Matrix-from-a-database-file"><a class="docs-heading-anchor" href="#Get-Stoichiometric-Matrix-from-a-database-file">Get Stoichiometric Matrix from a database file</a><a id="Get-Stoichiometric-Matrix-from-a-database-file-1"></a><a class="docs-heading-anchor-permalink" href="#Get-Stoichiometric-Matrix-from-a-database-file" title="Permalink"></a></h2><pre><code class="language-julia hljs">using ChemistryLab
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Stoichiometric Matrix · ChemistryLab.jl</title><meta name="title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta property="og:title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta property="twitter:title" content="Stoichiometric Matrix · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><meta property="twitter:url" content="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><link rel="canonical" href="https://jfbarthelemy.github.io/ChemistryLab.jl/examples/example_stoich_matrix/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorial</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../man/formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../../man/species/">Species</a></li><li><a class="tocitem" href="../../man/cement_species/">Cement Species</a></li><li><a class="tocitem" href="../../man/databases/">Database Interoperability</a></li><li><a class="tocitem" href="../../man/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../man/reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../../man/equilibrium/">Chemical Equilibrium</a></li><li><a class="tocitem" href="../../man/advanced/">Advanced Topics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../bogue_calculation/">Bogue Calculation</a></li><li class="is-active"><a class="tocitem" href>Stoichiometric Matrix</a><ul class="internal"><li><a class="tocitem" href="#Stoichiometric-matrix-for-a-subset-of-species"><span>Stoichiometric matrix for a subset of species</span></a></li><li><a class="tocitem" href="#Stoichiometric-matrix-for-all-aqueous-species-in-the-database"><span>Stoichiometric matrix for all aqueous species in the database</span></a></li></ul></li><li><a class="tocitem" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li><a class="tocitem" href="../simplified_clinker_dissolution/">Simplified Clinker Dissolution</a></li><li><a class="tocitem" href="../cement_carbonation/">Carbonation of a Cement Paste</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Stoichiometric Matrix</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Stoichiometric Matrix</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/jfbarthelemy/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/jfbarthelemy/ChemistryLab.jl/blob/main/docs/src/examples/example_stoich_matrix.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Stoichiometric-Matrix"><a class="docs-heading-anchor" href="#Stoichiometric-Matrix">Stoichiometric Matrix</a><a id="Stoichiometric-Matrix-1"></a><a class="docs-heading-anchor-permalink" href="#Stoichiometric-Matrix" title="Permalink"></a></h1><p>Calculating stoichiometric matrices is a prerequisite for equilibrium calculations by minimizing Gibbs energy. The examples below show how they can be constructed from a thermodynamic database.</p><h2 id="Stoichiometric-matrix-for-a-subset-of-species"><a class="docs-heading-anchor" href="#Stoichiometric-matrix-for-a-subset-of-species">Stoichiometric matrix for a subset of species</a><a id="Stoichiometric-matrix-for-a-subset-of-species-1"></a><a class="docs-heading-anchor-permalink" href="#Stoichiometric-matrix-for-a-subset-of-species" title="Permalink"></a></h2><p>The recommended workflow is:</p><ol><li>Load all species from the database with <code>build_species</code>.</li><li>Filter to the relevant chemical space with <code>speciation</code>.</li><li>Build a <code>ChemicalSystem</code>, which automatically computes the stoichiometric matrices.</li></ol><pre><code class="language-julia hljs">using ChemistryLab
 
-df_elements, df_substances, df_reactions = read_thermofun_database(&quot;../../../data/cemdata18-merged.json&quot;)</code></pre><pre><code class="language-julia hljs">df_aqueous_species = filter(row -&gt; only(row.aggregate_state).second == &quot;AS_AQUEOUS&quot;, df_substances)
-dict_aqueous_species = Dict(symbol(s) =&gt; s for s in build_species(df_aqueous_species))
-candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]
-SM = StoichMatrix(dict_aqueous_species, candidate_primaries)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"></code></pre><p>All the independent reactions of the species contained in the database can thus be reconstructed. Here, only ionic species are listed given the choice to only read ionic species in the database (&quot;AS_AQUEOUS&quot;).</p><pre><code class="language-julia hljs">lr = reactions(SM)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">67-element Vector{Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}}:
- 2H⁺ + SO₄²⁻ + 2e⁻ = SO₃²⁻ + H₂O@
- 3Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl₃@ + 2H₂O@
- FeO₂⁻ + 4H⁺ + SO₄²⁻ + e⁻ = Fe(SO₄)@ + 2H₂O@
- FeO₂⁻ + 4H⁺ = Fe³⁺ + 2H₂O@
- CO₃²⁻ + H⁺ + Mg²⁺ = Mg(HCO₃)⁺
- AlO₂⁻ + 4H⁺ + 2SO₄²⁻ = Al(SO₄)₂⁻ + 2H₂O@
- FeO₂⁻ + 5H⁺ + SO₄²⁻ + e⁻ = FeHSO₄⁺ + 2H₂O@
- AlO₂⁻ + H⁺ = AlO₂H@
- 3H⁺ + SO₄²⁻ + 2e⁻ = HSO₃⁻ + H₂O@
- SO₄²⁻ + Sr²⁺ = Sr(SO₄)@
- CO₃²⁻ + H⁺ = HCO₃⁻
- CO₃²⁻ + H⁺ + Sr²⁺ = SrHCO₃⁺
- H₂O@ + Sr²⁺ = Sr(OH)⁺ + H⁺
- H₂O@ + SiO₂@ = HSiO₃⁻ + H⁺
- 2Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl₂⁺ + 2H₂O@
- 10H⁺ + NO₃⁻ + 8e⁻ = NH₄⁺ + 3H₂O@
- 2H₂O@ + 4SiO₂@ = Si₄O₁₀⁴⁻ + 4H⁺
- CO₃²⁻ + 20H⁺ + NO₃⁻ + SO₄²⁻ + 15e⁻ = SCN⁻  + 10H₂O@
- FeO₂⁻ + 3H⁺ = Fe(OH)²⁺ + H₂O@
- H₂O@ + Ca²⁺ + SiO₂@ = Ca(HSiO₃)⁺ + H⁺
- Cl⁻ + FeO₂⁻ + 4H⁺ + e⁻ = FeCl⁺ + 2H₂O@
- H₂O@ + Na⁺ = NaOH@ + H⁺
- Ca²⁺ + CO₃²⁻ + H⁺ = Ca(HCO₃)⁺
- H₂O@ + SiO₂@ + Sr²⁺ = SrSiO₃@ + 2H⁺
- CO₃²⁻ + 2H⁺ = CO₂@ + H₂O@
- H⁺ + SO₄²⁻ = HSO₄⁻
- CO₃²⁻ + Sr²⁺ = Sr(CO₃)@
- 10H⁺ + SO₄²⁻ + 8e⁻ = H₂S@ + 4H₂O@
- FeO₂⁻ + 5H⁺ + SO₄²⁻ = FeHSO₄²⁺ + 2H₂O@
- Na⁺ + SO₄²⁻ = Na(SO₄)⁻
- FeO₂⁻ + 3H⁺ + e⁻ = FeOH⁺ + H₂O@
- AlO₂⁻ + 3H⁺ = Al(OH)²⁺ + H₂O@
- Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl²⁺ + 2H₂O@
- AlO₂⁻ + 4H⁺ + SO₄²⁻ = Al(SO₄)⁺ + 2H₂O@
- CO₃²⁻ + Na⁺ = NaCO₃⁻
- H₂O@ + SiO₂@ = SiO₃²⁻ + 2H⁺
- CO₃²⁻ + FeO₂⁻ + 4H⁺ + e⁻ = FeCO₃@ + 2H₂O@
- FeO₂⁻ + 4H⁺ + SO₄²⁻ = Fe(SO₄)⁺ + 2H₂O@
- AlO₂⁻ + 2H⁺ = AlO⁺ + H₂O@
- FeO₂⁻ + 4H⁺ + 2SO₄²⁻ = Fe(SO₄)₂⁻ + 2H₂O@
- 9H⁺ + NO₃⁻ + 8e⁻ = NH₃@ + 3H₂O@
- FeO₂⁻ + 4H⁺ + e⁻ = Fe²⁺ + 2H₂O@
- H₂O@ + Mg²⁺ + SiO₂@ = Mg(HSiO₃)⁺ + H⁺
- Ca²⁺ + SO₄²⁻ = CaSO₄@
- H₂O@ + Ca²⁺ = Ca(OH)⁺ + H⁺
- 2H⁺ + 2e⁻ = H₂@
- H₂O@ + Mg²⁺ = Mg(OH)⁺ + H⁺
- Ca²⁺ + CO₃²⁻ = CaCO₃@
- FeO₂⁻ + H⁺ = FeO₂H@
- H₂O@ = OH⁻ + H⁺
- CO₃²⁻ + 10H⁺ + 8e⁻ = CH₄@ + 3H₂O@
- 12H⁺ + 2NO₃⁻ + 10e⁻ = N₂@ + 6H₂O@
- 9H⁺ + SO₄²⁻ + 8e⁻ = HS⁻ + 4H₂O@
+# 1. Load all species from the database
+all_species = build_species(&quot;../../../data/cemdata18-merged.json&quot;)</code></pre><p>Identify the secondary species likely to appear during the reactions of interest (here: C₃S, Portlandite, Jennite and water):</p><pre><code class="language-julia hljs"># 2. Filter species compatible with the chosen seeds
+species = speciation(all_species, split(&quot;C3S Portlandite Jennite H2O@&quot;);
+              aggregate_state=[AS_AQUEOUS], exclude_species=split(&quot;H2@ O2@&quot;))
+dict_species = Dict(symbol(s) =&gt; s for s in species)</code></pre><p>Deduce the primary species present in this subset:</p><pre><code class="language-julia hljs"># 3. Select primaries available in the subset
+candidate_primaries = [dict_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_species, s)]</code></pre><p>Build the <code>ChemicalSystem</code>. Both stoichiometric matrices (<code>CSM</code> and <code>SM</code>) are computed once at construction time:</p><pre><code class="language-julia hljs">cs = ChemicalSystem(species, candidate_primaries)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">14-element ChemicalSystem{Species, AbstractReaction, StoichMatrix{Real, Symbol, Vector{Symbol}, Matrix{Real}, Species}, StoichMatrix{Real, Species, Vector{Species}, Matrix{Real}, Species}}:
+ H2O@ {H2O  l} [H2O@ ◆ H₂O@]
+ CaSiO3@ {CaSiO3  aq } [CaSiO3@ ◆ CaSiO₃@]
+ SiO3-2 {SiO3-2  aq } [SiO3-2 ◆ SiO₃²⁻]
+ Si4O10-4 {Si4O10-4  aq } [Si4O10-4 ◆ Si₄O₁₀⁴⁻]
+ SiO2@ {SiO2  aq ( + 2 H2O = Si(OH)4  aq )} [SiO2@ ◆ SiO₂@]
+ Ca+2 {Ca+2} [Ca+2 ◆ Ca²⁺]
+ H+ {H+} [H+ ◆ H⁺]
+ CaOH+ {CaOH+} [Ca(OH)+ ◆ Ca(OH)⁺]
+ OH- {OH-} [OH- ◆ OH⁻]
+ Ca(HSiO3)+ {CaHSiO3+  ( + H2O = CaSiO(OH)3+ )} [Ca(HSiO3)+ ◆ Ca(HSiO₃)⁺]
+ HSiO3- {HSiO3-  ( + H2O = SiO(OH)3- )} [HSiO3- ◆ HSiO₃⁻]
+ Jennite {Jennite   10/6 end-member of  id CSH SS (norm per 1 Si)  } [(SiO2)1(CaO)1.666667(H2O)2.1 ◆ (SiO₂)₁(CaO)₅//₃(H₂O)₂.₁]
+ C3S {C3S} [(CaO)3SiO2 ◆ (CaO)₃SiO₂]
+ Portlandite {Portlandite} [Ca(OH)2 ◆ Ca(OH)₂]</code></pre><p>All independent reactions are then reconstructed from <code>cs.SM</code>:</p><pre><code class="language-julia hljs">lr = reactions(cs.SM)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Reaction{Species, Real, Species, Real, Int64}}:
  H₂O@ + Ca²⁺ + SiO₂@ = CaSiO₃@ + 2H⁺
- H₂O@ + AlO₂⁻ + SiO₂@ = AlSiO₅³⁻ + 2H⁺
- Mg²⁺ + SO₄²⁻ = Mg(SO₄)@
- CO₃²⁻ + H⁺ + Na⁺ = NaHCO₃@
- 4H₂O@ + Cl⁻ = ClO₄⁻ + 8H⁺ + 8e⁻
- 10H⁺ + 2SO₄²⁻ + 8e⁻ = S₂O₃²⁻ + 5H₂O@
- AlO₂⁻ + 4H⁺ = Al³⁺ + 2H₂O@
- H₂O@ + K⁺ = KOH@ + H⁺
- CO₃²⁻ + 13H⁺ + NO₃⁻ + 10e⁻ = HCN@ + 6H₂O@
- CO₃²⁻ + Mg²⁺ = Mg(CO₃)@
- FeO₂⁻ + 2H⁺ = FeO⁺ + H₂O@
- K⁺ + SO₄²⁻ = KSO₄⁻
- 2H₂O@ = O₂@ + 4H⁺ + 4e⁻
- CO₃²⁻ + FeO₂⁻ + 5H⁺ + e⁻ = FeHCO₃⁺ + 2H₂O@</code></pre><hr/><p>The exercise can also be done on solid species. In this case, the data filter is carried out using the keyword &quot;AS_CRYSTAL&quot;, in accordance with the terminology adopted in Thermofun. Note that primaries are still built among aqueous species.</p><pre><code class="language-julia hljs">lr = reactions(SM)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">140-element Vector{Reaction{Species, TR, Species, TP, Int64} where {TR&lt;:Number, TP&lt;:Number}}:
- 4H₂O@ + 3//2Mg²⁺ + SiO₂@ = Mg₃//₂SiO₇//₂(H₂O)₅//₂ + 3H⁺
- 3H₂O@ + SiO₂@ + Sr²⁺ = ((Sr(OH)₂)₁SiO₂H₂O)₁ + 2H⁺
- 17H₂O@ + 2AlO₂⁻ + 6Mg²⁺ = Mg₆Al₂(OH)₁₈(H₂O)₃ + 10H⁺
- 8//3H₂O@ + 5//6Ca²⁺ + 2//3SiO₂@ = ((CaO)₅//₄(SiO₂)₁(H₂O)₁₁//₄)⅔ + 5//3H⁺
- 11H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₃ + 4H⁺
- 8H₂O@ + AlO₂⁻ + 2Ca²⁺ = Ca₂Al(OH)₇(H₂O)₃ + 3H⁺
- 2H₂O@ + 2AlO₂⁻ + 3Ca²⁺ = (CaO)₃Al₂O₃ + 4H⁺
- 17//2H₂O@ + 2AlO₂⁻ + 2Ca²⁺ = Ca₂Al₂(OH)₁₀(H₂O)₅//₂ + 2H⁺
- CO₃²⁻ + FeO₂⁻ + 4H⁺ + e⁻ = FeCO₃ + 2H₂O@
- 4H₂O@ + 3//2Ca²⁺ + SiO₂@ = (CaO)₃//₂(SiO₂)₁(H₂O)₅//₂ + 3H⁺
- FeO₂⁻ + H⁺ = FeO(OH)
- 13//2H₂O@ + AlO₂⁻ + 2Ca²⁺ + 1//2CO₃²⁻ = Ca₂AlC½O₉//₂(H₂O)₁₁//₂ + 2H⁺
- 21H₂O@ + 2AlO₂⁻ + 8Mg²⁺ = Mg₈Al₂(OH)₂₂(H₂O)₃ + 14H⁺
- Ca²⁺ + CO₃²⁻ = CaCO₃
- 8H⁺ + SO₄²⁻ + 6e⁻ = S + 4H₂O@
- 17//2H₂O@ + AlO₂⁻ + 1//2CO₃²⁻ + 3Mg²⁺ = Mg₃Al(OH)₈(CO₃)½(H₂O)₅//₂ + 4H⁺
- 7H₂O@ + 2Ca²⁺ + FeO₂⁻ + 1//2SO₄²⁻ = Ca₂FeS½O₅(H₂O)₆ + 2H⁺
- Ca²⁺ + 2CO₃²⁻ + Mg²⁺ = CaMg(CO₃)₂
- 13H₂O@ + 2AlO₂⁻ + 4Mg²⁺ = Mg₄Al₂(OH)₁₄(H₂O)₃ + 6H⁺
- FeO₂⁻ + H⁺ = FeOOH 
- H₂O@ + 2AlO₂⁻ + 2H⁺ + 2SiO₂@ = Al₂Si₂O₅(OH)₄
- 29//2H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + 1//2CO₃²⁻ = (CaO)₃Al₂O₃(CaCO₃)½(CaO₂H₂)½(H₂O)₂₃//₂ + 5H⁺
- H₂O@ + AlO₂⁻ + H⁺ = Al(OH)₃
- CO₃²⁻ + Mg²⁺ = MgCO₃
- 0.7H₂O@ + 1//2K⁺ + 1//5SiO₂@ = ((KOH)₅//₂SiO₂H₂O)⅕ + 1//2H⁺
- 15//4H₂O@ + 5//4Ca²⁺ + 5//4SiO₂@ = (CaO)₅//₄(SiO₂)₅//₄(H₂O)₅//₂ + 5//2H⁺
- 3H₂O@ + SiO₂@ + Sr²⁺ = ((Sr(OH)₂)₁SiO₂H₂O)₁ + 2H⁺
- 4H₂O@ + 3//2Ca²⁺ + 2//3SiO₂@ = (CaO)₃//₂(SiO₂)⅔(H₂O)₅//₂ + 3H⁺
- 6H₂O@ + 2AlO₂⁻ + Ca²⁺ + 4SiO₂@ = Ca(Al₂Si₄)O₁₂(H₂O)₆
- 26//5H₂O@ + 2Ca²⁺ + 12//5SiO₂@ = (SiO₂)₁₂//₅(CaO)₂(H₂O)₁₆//₅ + 4H⁺
- 0.7H₂O@ + 1//2K⁺ + 1//5SiO₂@ = ((KOH)₅//₂SiO₂H₂O)⅕ + 1//2H⁺
- 10H₂O@ + 2AlO₂⁻ + Ca²⁺ = CaOAl₂O₃(H₂O)₁₀
- SO₄²⁻ + Sr²⁺ = SrSO₄
- 0.7H₂O@ + 1//2Na⁺ + 1//5SiO₂@ = ((NaOH)₅//₂SiO₂H₂O)⅕ + 1//2H⁺
- 8H₂O@ + 2AlO₂⁻ + 3Ca²⁺ = Ca₃Al₂O₆(H₂O)₆ + 4H⁺
- 17//2H₂O@ + 1//2CO₃²⁻ + FeO₂⁻ + 3Mg²⁺ = Mg₃Fe(OH)₈(CO₃)½(H₂O)₅//₂ + 4H⁺
- 5//2H₂O@ + 0.3125AlO₂⁻ + Ca²⁺ + 1.1875SiO₂@ = (CaO)₁(SiO₂)₁.₁₈₇₅(Al₂O₃)₀.₁₅₆₂₅(H₂O)₁.₆₅₆₂₅ + 1.6875H⁺
- 34H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = {SO₄}₃:Ca₆Al₂(OH)₁₂(H₂O)₂₆ + 4H⁺
- 0.7H₂O@ + 1//2K⁺ + 1//5SiO₂@ = ((KOH)₅//₂SiO₂H₂O)⅕ + 1//2H⁺
- 2H₂O@ + Ca²⁺ + SO₄²⁻ = CaSO₄(H₂O)₂
- 13//2H₂O@ + 2AlO₂⁻ + 2Ca²⁺ + SiO₂@ = Ca₂Al₂SiO₇(H₂O)₁₁//₂ + 2H⁺
- 5//2H₂O@ + Ca²⁺ + 5//8Na⁺ + 3//2SiO₂@ = (CaO)₁(SiO₂)₃//₂(Na₂O)₀.₃₁₂₅(H₂O)₁.₁₈₇₅ + 21//8H⁺
- 8H₂O@ + 2AlO₂⁻ + 2Na⁺ + 4SiO₂@ = Na₂(Al₂Si₄)O₁₂(H₂O)₈
- 3H₂O@ + 3Ca²⁺ + SiO₂@ = (CaO)₃SiO₂ + 6H⁺
- 34H₂O@ + 6Ca²⁺ + 2FeO₂⁻ + 3SO₄²⁻ = Ca₆Fe₂(SO₄)₃(OH)₁₂(H₂O)₂₆ + 4H⁺
- 13H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + 1//2CO₃²⁻ = (CaO)₃Al₂O₃(CaCO₃)½(CaO₂H₂)½(H₂O)₁₀ + 5H⁺
- 6H₂O@ + AlO₂⁻ + 1//2CO₃²⁻ + 2Mg²⁺ = Mg₂Al(OH)₆(CO₃)½(H₂O)₂ + 2H⁺
- 5.32H₂O@ + 3Ca²⁺ + 2FeO₂⁻ + 1.34SiO₂@ = Ca₃Fe₂O₆(SiO₂)₁.₃₄(H₂O)₃.₃₂ + 4H⁺
- ⋮
- CO₃²⁻ + 6H⁺ + 4e⁻ = C + 3H₂O@
- Ca²⁺ + 2CO₃²⁻ + Mg²⁺ = CaMg(CO₃)₂
- 7//2H₂O@ + Ca²⁺ + 3//2SiO₂@ = (CaO)₁(SiO₂)₃//₂(H₂O)₅//₂ + 2H⁺
- 7//2H₂O@ + Ca²⁺ + 3//2SiO₂@ = (CaO)₁(SiO₂)₃//₂(H₂O)₅//₂ + 2H⁺
- 5H₂O@ + 14AlO₂⁻ + 12Ca²⁺ = (CaO)₁₂(Al₂O₃)₇ + 10H⁺
- 4AlO₂⁻ + Ca²⁺ + 2H⁺ = CaO(Al₂O₃)₂ + H₂O@
- 0.7H₂O@ + 1//2Na⁺ + 1//5SiO₂@ = ((NaOH)₅//₂SiO₂H₂O)⅕ + 1//2H⁺
- 32H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₂₄ + 4H⁺
- 11//4H₂O@ + 1//4AlO₂⁻ + 5//4Ca²⁺ + 1//2Na⁺ + SiO₂@ = (CaO)₅//₄(SiO₂)₁(Al₂O₃)⅛(Na₂O)¼(H₂O)₁₁//₈ + 11//4H⁺
- 2K⁺ + SO₄²⁻ = K₂SO₄
- SiO₂@ = SiO₂
- 17H₂O@ + AlO₂⁻ + 3Ca²⁺ + 3//2SO₄²⁻ = Ca₃Al(SO₄)₃//₂(OH)₆(H₂O)₁₃ + 2H⁺
- 2H₂O@ + Ca²⁺ = Ca(OH)₂ + 2H⁺
- 8//3H₂O@ + 5//6Ca²⁺ + SiO₂@ = ((Ca(OH)₂)⅚SiO₂H₂O)₁ + 5//3H⁺
- 4H₂O@ + 3//2Mg²⁺ + 2SiO₂@ = Mg₃//₂Si₂O₁₁//₂(H₂O)₅//₂ + 3H⁺
- 23//2H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + 1//2CO₃²⁻ = (CaO)₃Al₂O₃(CaCO₃)½(CaO₂H₂)½(H₂O)₁₇//₂ + 5H⁺
- 6.32H₂O@ + 2AlO₂⁻ + 3Ca²⁺ + 0.84SiO₂@ = (AlAlO₃)[Ca₃O₃(SiO₂)₀.₈₄(H₂O)₄.₃₂] + 4H⁺
- 13H₂O@ + 2AlO₂⁻ + 4Mg²⁺ = Mg₄Al₂O₇(H₂O)₁₀ + 6H⁺
- FeO₂⁻ + 12H⁺ + SO₄²⁻ + 9e⁻ = FeS + 6H₂O@
+ H₂O@ + SiO₂@ = SiO₃²⁻ + 2H⁺
+ 2H₂O@ + 4SiO₂@ = Si₄O₁₀⁴⁻ + 4H⁺
+ H₂O@ + Ca²⁺ = Ca(OH)⁺ + H⁺
+ H₂O@ = OH⁻ + H⁺
+ H₂O@ + Ca²⁺ + SiO₂@ = Ca(HSiO₃)⁺ + H⁺
+ H₂O@ + SiO₂@ = HSiO₃⁻ + H⁺
  3.76667H₂O@ + 5//3Ca²⁺ + SiO₂@ = (SiO₂)₁(CaO)₅//₃(H₂O)₂.₁ + 10//3H⁺
- 15H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₇ + 4H⁺
- 8//3H₂O@ + 5//6Ca²⁺ + SiO₂@ = ((Ca(OH)₂)⅚SiO₂H₂O)₁ + 5//3H⁺
- 16H₂O@ + 4Ca²⁺ + 2FeO₂⁻ = Ca₄Fe₂(OH)₁₄(H₂O)₆ + 6H⁺
- 4H₂O@ + 3//2Ca²⁺ + SiO₂@ = ((CaO)¾(SiO₂)½(H₂O)₅//₄)₂ + 3H⁺
- 3H₂O@ + SiO₂@ + Sr²⁺ = ((Sr(OH)₂)₁SiO₂H₂O)₁ + 2H⁺
- 5H₂O@ + FeO₂⁻ + 4H⁺ + SO₄²⁻ + e⁻ = FeSO₄(H₂O)₇
- 11H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + CO₃²⁻ = Ca₄Al₂CO₉(H₂O)₉ + 4H⁺
- 14H₂O@ + 4Ca²⁺ + 2FeO₂⁻ + SO₄²⁻ = Ca₄Fe₂SO₁₀(H₂O)₁₂ + 4H⁺
- 7.18H₂O@ + 2AlO₂⁻ + 3Ca²⁺ + 0.41SiO₂@ = Ca₃Al₂O₆(SiO₂)₀.₄₁(H₂O)₅.₁₈ + 4H⁺
- 8H₂O@ + 3Ca²⁺ + 2FeO₂⁻ = Ca₃Fe₂O₆(H₂O)₆ + 4H⁺
- H₂O@ + AlO₂⁻ + H⁺ = Al(OH)₃
- 14H₂O@ + 2AlO₂⁻ + 4Ca²⁺ = Ca₄Al₂(OH)₁₄(H₂O)₄ + 6H⁺
- 11H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + SO₄²⁻ = Ca₄Al₂SO₁₀(H₂O)₉ + 4H⁺
- 9//2H₂O@ + 2AlO₂⁻ + Ca²⁺ + 2SiO₂@ = Ca(Al₂Si₂)O₈(H₂O)₉//₂
- 25//2H₂O@ + 4Ca²⁺ + 1//2CO₃²⁻ + 2FeO₂⁻ = Ca₃O₃Fe₂O₃(CaCO₃)½(CaO₂H₂)½(H₂O)₁₉//₂ + 5H⁺
- 34H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = ((H₂O)₂)Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₂₄ + 4H⁺
- 16H₂O@ + 3Ca²⁺ + CO₃²⁻ + SiO₂@ + SO₄²⁻ = (CaSiO₃)(CaSO₄)(CaCO₃)(H₂O)₁₅ + 2H⁺
- H₂O@ + Ca²⁺ = CaO + 2H⁺
- 6.32H₂O@ + AlO₂⁻ + 3Ca²⁺ + FeO₂⁻ + 0.84SiO₂@ = (AlFeO₃)[Ca₃O₃(SiO₂)₀.₈₄(H₂O)₄.₃₂] + 4H⁺
- 6H₂O@ + AlO₂⁻ + 2Ca²⁺ + Cl⁻ = Ca₂AlCl(OH)₆(H₂O)₂ + 2H⁺
- 25//2H₂O@ + 2AlO₂⁻ + 4Ca²⁺ + SO₄²⁻ = Ca₄Al₂SO₁₀(H₂O)₂₁//₂ + 4H⁺
- H₂O@ + 2K⁺ = K₂O + 2H⁺
- 31//5H₂O@ + 2AlO₂⁻ + 2Na⁺ + 5//2SiO₂@ = Na₂(Al₂Si₅//₂)O₉(H₂O)₃₁//₅
- 7//2H₂O@ + 4//3Ca²⁺ + SiO₂@ = (CaO)₄//₃(SiO₂)₁(H₂O)₁₃//₆ + 8//3H⁺
- 11H₂O@ + 2AlO₂⁻ + 6Ca²⁺ + 3SO₄²⁻ = Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₃ + 4H⁺
- 2H₂O@ + Mg²⁺ = Mg(OH)₂ + 2H⁺
- H₂O@ + 2Na⁺ = Na₂O + 2H⁺</code></pre><hr/><p>Or with gases (&quot;AS_GAS&quot;)</p><pre><code class="language-julia hljs">lr = reactions(SM)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">7-element Vector{Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}}:
- 12H⁺ + 2NO₃⁻ + 10e⁻ = N₂ + 6H₂O@
- 2H⁺ + 2e⁻ = H₂
- CO₃²⁻ + 10H⁺ + 8e⁻ = CH₄ + 3H₂O@
- 10H⁺ + SO₄²⁻ + 8e⁻ = H₂S + 4H₂O@
- H₂O@ = H₂O
- CO₃²⁻ + 2H⁺ = CO₂ + H₂O@
- 2H₂O@ = O₂ + 4H⁺ + 4e⁻</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bogue_calculation/">« Bogue Calculation</a><a class="docs-footer-nextpage" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 9 March 2026 23:28">Monday 9 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 3H₂O@ + 3Ca²⁺ + SiO₂@ = (CaO)₃SiO₂ + 6H⁺
+ 2H₂O@ + Ca²⁺ = Ca(OH)₂ + 2H⁺</code></pre><hr/><h2 id="Stoichiometric-matrix-for-all-aqueous-species-in-the-database"><a class="docs-heading-anchor" href="#Stoichiometric-matrix-for-all-aqueous-species-in-the-database">Stoichiometric matrix for all aqueous species in the database</a><a id="Stoichiometric-matrix-for-all-aqueous-species-in-the-database-1"></a><a class="docs-heading-anchor-permalink" href="#Stoichiometric-matrix-for-all-aqueous-species-in-the-database" title="Permalink"></a></h2><p>To work with the full set of aqueous species, filter by aggregate state directly in <code>speciation</code>:</p><pre><code class="language-julia hljs"># Keep only aqueous species
+aqueous_species = speciation(all_species, collect(keys(first(all_species).atoms));
+                      aggregate_state=[AS_AQUEOUS])</code></pre><p>A more direct alternative is to filter using all atom symbols present in the database:</p><pre><code class="language-julia hljs">all_atoms = union_atoms(all_species)
+aqueous_species = speciation(all_species, all_atoms; aggregate_state=[AS_AQUEOUS])
+dict_aqueous_species = Dict(symbol(s) =&gt; s for s in aqueous_species)
+candidate_primaries = [dict_aqueous_species[s] for s in CEMDATA_PRIMARIES if haskey(dict_aqueous_species, s)]</code></pre><pre><code class="language-julia hljs">cs_aq = ChemicalSystem(aqueous_species, candidate_primaries_aq)
+lr_aq = reactions(cs_aq.SM)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">67-element Vector{Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}}:
+ H₂O@ + Ca²⁺ + SiO₂@ = CaSiO₃@ + 2H⁺
+ H₂O@ + SiO₂@ = SiO₃²⁻ + 2H⁺
+ H₂O@ + SiO₂@ + Sr²⁺ = SrSiO₃@ + 2H⁺
+ CO₃²⁻ + 13H⁺ + NO₃⁻ + 10e⁻ = HCN@ + 6H₂O@
+ CO₃²⁻ + 20H⁺ + NO₃⁻ + SO₄²⁻ + 15e⁻ = SCN⁻  + 10H₂O@
+ H₂O@ + AlO₂⁻ + SiO₂@ = AlSiO₅³⁻ + 2H⁺
+ 2H₂O@ + 4SiO₂@ = Si₄O₁₀⁴⁻ + 4H⁺
+ 3Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl₃@ + 2H₂O@
+ AlO₂⁻ + 4H⁺ + 2SO₄²⁻ = Al(SO₄)₂⁻ + 2H₂O@
+ FeO₂⁻ + 4H⁺ + SO₄²⁻ + e⁻ = Fe(SO₄)@ + 2H₂O@
+ FeO₂⁻ + 4H⁺ + SO₄²⁻ = Fe(SO₄)⁺ + 2H₂O@
+ FeO₂⁻ + 4H⁺ + 2SO₄²⁻ = Fe(SO₄)₂⁻ + 2H₂O@
+ CO₃²⁻ + FeO₂⁻ + 4H⁺ + e⁻ = FeCO₃@ + 2H₂O@
+ CO₃²⁻ + Na⁺ = NaCO₃⁻
+ AlO₂⁻ + 4H⁺ + SO₄²⁻ = Al(SO₄)⁺ + 2H₂O@
+ CO₃²⁻ + FeO₂⁻ + 5H⁺ + e⁻ = FeHCO₃⁺ + 2H₂O@
+ Mg²⁺ + SO₄²⁻ = Mg(SO₄)@
+ Na⁺ + SO₄²⁻ = Na(SO₄)⁻
+ SO₄²⁻ + Sr²⁺ = Sr(SO₄)@
+ 2Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl₂⁺ + 2H₂O@
+ CO₃²⁻ + H⁺ + Sr²⁺ = SrHCO₃⁺
+ FeO₂⁻ + 5H⁺ + SO₄²⁻ = FeHSO₄²⁺ + 2H₂O@
+ CO₃²⁻ + H⁺ + Na⁺ = NaHCO₃@
+ FeO₂⁻ + 5H⁺ + SO₄²⁻ + e⁻ = FeHSO₄⁺ + 2H₂O@
+ AlO₂⁻ + 4H⁺ = Al³⁺ + 2H₂O@
+ 4H₂O@ + Cl⁻ = ClO₄⁻ + 8H⁺ + 8e⁻
+ FeO₂⁻ + 4H⁺ + e⁻ = Fe²⁺ + 2H₂O@
+ CO₃²⁻ + H⁺ = HCO₃⁻
+ 9H⁺ + SO₄²⁻ + 8e⁻ = HS⁻ + 4H₂O@
+ AlO₂⁻ + 3H⁺ = Al(OH)²⁺ + H₂O@
+ AlO₂⁻ + 2H⁺ = AlO⁺ + H₂O@
+ AlO₂⁻ + H⁺ = AlO₂H@
+ H₂O@ + Ca²⁺ = Ca(OH)⁺ + H⁺
+ FeO₂⁻ + 3H⁺ = Fe(OH)²⁺ + H₂O@
+ FeO₂⁻ + 2H⁺ = FeO⁺ + H₂O@
+ FeO₂⁻ + H⁺ = FeO₂H@
+ FeO₂⁻ + 3H⁺ + e⁻ = FeOH⁺ + H₂O@
+ 3H⁺ + SO₄²⁻ + 2e⁻ = HSO₃⁻ + H₂O@
+ H⁺ + SO₄²⁻ = HSO₄⁻
+ H₂O@ + K⁺ = KOH@ + H⁺
+ H₂O@ + Mg²⁺ = Mg(OH)⁺ + H⁺
+ 10H⁺ + NO₃⁻ + 8e⁻ = NH₄⁺ + 3H₂O@
+ H₂O@ + Na⁺ = NaOH@ + H⁺
+ H₂O@ = OH⁻ + H⁺
+ 10H⁺ + 2SO₄²⁻ + 8e⁻ = S₂O₃²⁻ + 5H₂O@
+ 2H⁺ + SO₄²⁻ + 2e⁻ = SO₃²⁻ + H₂O@
+ H₂O@ + Sr²⁺ = Sr(OH)⁺ + H⁺
+ FeO₂⁻ + 4H⁺ = Fe³⁺ + 2H₂O@
+ CO₃²⁻ + 10H⁺ + 8e⁻ = CH₄@ + 3H₂O@
+ Ca²⁺ + CO₃²⁻ + H⁺ = Ca(HCO₃)⁺
+ H₂O@ + Ca²⁺ + SiO₂@ = Ca(HSiO₃)⁺ + H⁺
+ 10H⁺ + SO₄²⁻ + 8e⁻ = H₂S@ + 4H₂O@
+ CO₃²⁻ + Mg²⁺ = Mg(CO₃)@
+ CO₃²⁻ + H⁺ + Mg²⁺ = Mg(HCO₃)⁺
+ H₂O@ + Mg²⁺ + SiO₂@ = Mg(HSiO₃)⁺ + H⁺
+ CO₃²⁻ + 2H⁺ = CO₂@ + H₂O@
+ 12H⁺ + 2NO₃⁻ + 10e⁻ = N₂@ + 6H₂O@
+ 2H⁺ + 2e⁻ = H₂@
+ 2H₂O@ = O₂@ + 4H⁺ + 4e⁻
+ 9H⁺ + NO₃⁻ + 8e⁻ = NH₃@ + 3H₂O@
+ Ca²⁺ + CO₃²⁻ = CaCO₃@
+ Ca²⁺ + SO₄²⁻ = CaSO₄@
+ H₂O@ + SiO₂@ = HSiO₃⁻ + H⁺
+ Cl⁻ + FeO₂⁻ + 4H⁺ = FeCl²⁺ + 2H₂O@
+ Cl⁻ + FeO₂⁻ + 4H⁺ + e⁻ = FeCl⁺ + 2H₂O@
+ K⁺ + SO₄²⁻ = KSO₄⁻
+ CO₃²⁻ + Sr²⁺ = Sr(CO₃)@</code></pre><p>Here only ionic species appear, given the <code>AS_AQUEOUS</code> filter.</p><hr/><p>The exercise can also be done on solid species (<code>AS_CRYSTAL</code>) or gases (<code>AS_GAS</code>). Primaries are still drawn from the aqueous subset in those cases:</p><pre><code class="language-julia hljs"># Solid species
+solid_species = speciation(all_species, union_atoms(all_species); aggregate_state=[AS_CRYSTAL])
+cs_solid = ChemicalSystem(solid_species, candidate_primaries)
+lr_solid = reactions(cs_solid.SM)
+
+# Gas species
+gas_species = speciation(all_species, union_atoms(all_species); aggregate_state=[AS_GAS])
+cs_gas = ChemicalSystem(gas_species, candidate_primaries)
+lr_gas = reactions(cs_gas.SM)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bogue_calculation/">« Bogue Calculation</a><a class="docs-footer-nextpage" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 12 March 2026 19:42">Thursday 12 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
