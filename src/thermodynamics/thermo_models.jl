@@ -1,4 +1,3 @@
-
 """
     THERMO_MODELS
 
@@ -12,57 +11,57 @@ const THERMO_MODELS = Dict(
     :cp_ft_equation => Dict(
         :Cp => :(
             a₀ +
-            a₁ * T +
-            a₂ / T^2 +
-            a₃ / sqrt(T) +
-            a₄ * T^2 +
-            a₅ * T^3 +
-            a₆ * T^4 +
-            a₇ / T^3 +
-            a₈ / T +
-            a₉ * sqrt(T) +
-            a₁₀ * log(T)
+                a₁ * T +
+                a₂ / T^2 +
+                a₃ / sqrt(T) +
+                a₄ * T^2 +
+                a₅ * T^3 +
+                a₆ * T^4 +
+                a₇ / T^3 +
+                a₈ / T +
+                a₉ * sqrt(T) +
+                a₁₀ * log(T)
         ),
         :S => :(
             a₀ * log(T) +
-            a₁ * T +
-            -(a₂ / 2) / T^2 +
-            -2 * a₃ / sqrt(T) +
-            (a₄ / 2) * T^2 +
-            (a₅ / 3) * T^3 +
-            (a₆ / 4) * T^4 +
-            -(a₇ / 3) / T^3 +
-            -a₈ / T +
-            2 * a₉ * sqrt(T) +
-            (a₁₀ / 2) * (log(T))^2
+                a₁ * T +
+                -(a₂ / 2) / T^2 +
+                -2 * a₃ / sqrt(T) +
+                (a₄ / 2) * T^2 +
+                (a₅ / 3) * T^3 +
+                (a₆ / 4) * T^4 +
+                -(a₇ / 3) / T^3 +
+                -a₈ / T +
+                2 * a₉ * sqrt(T) +
+                (a₁₀ / 2) * (log(T))^2
         ),
         :H => :(
             a₀ * T +
-            a₁ * T^2 / 2 +
-            -a₂ / T +
-            2 * a₃ * sqrt(T) +
-            (a₄ / 3) * T^3 +
-            (a₅ / 4) * T^4 +
-            (a₆ / 5) * T^5 +
-            -(a₇ / 2) / T^2 +
-            a₈ * log(T) +
-            (2 / 3) * a₉ * T^(3 / 2) +
-            a₁₀ * T * log(T) - a₁₀ * T
+                a₁ * T^2 / 2 +
+                -a₂ / T +
+                2 * a₃ * sqrt(T) +
+                (a₄ / 3) * T^3 +
+                (a₅ / 4) * T^4 +
+                (a₆ / 5) * T^5 +
+                -(a₇ / 2) / T^2 +
+                a₈ * log(T) +
+                (2 / 3) * a₉ * T^(3 / 2) +
+                a₁₀ * T * log(T) - a₁₀ * T
         ),
         :G => :(
             -a₀ * T * log(T) +
-            a₀ * T +
-            -(a₁ / 2) * T^2 +
-            -(a₂ / 2) / T +
-            4 * a₃ * sqrt(T) +
-            -(a₄ / 6) * T^3 +
-            -(a₅ / 12) * T^4 +
-            -(a₆ / 20) * T^5 +
-            -(a₇ / 6) / T^2 +
-            a₈ * log(T) +
-            -(4 / 3) * a₉ * T^(3 / 2) +
-            -(a₁₀ / 2) * T * (log(T))^2 +
-            a₁₀ * T * log(T) - a₁₀ * T
+                a₀ * T +
+                -(a₁ / 2) * T^2 +
+                -(a₂ / 2) / T +
+                4 * a₃ * sqrt(T) +
+                -(a₄ / 6) * T^3 +
+                -(a₅ / 12) * T^4 +
+                -(a₆ / 20) * T^5 +
+                -(a₇ / 6) / T^2 +
+                a₈ * log(T) +
+                -(4 / 3) * a₉ * T^(3 / 2) +
+                -(a₁₀ / 2) * T * (log(T))^2 +
+                a₁₀ * T * log(T) - a₁₀ * T
         ),
         :units => [
             :a₀ => "J/(mol*K)",
@@ -106,7 +105,7 @@ const THERMO_MODELS = Dict(
 Dictionary storing compiled `ThermoFactory` objects for each model.
 Used to efficiently generate `ThermoFunction` instances.
 """
-const THERMO_FACTORIES = Dict{Symbol,AbstractDict}()
+const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()
 
 """
     build_thermo_functions(model_name, params) -> OrderedDict
@@ -138,18 +137,18 @@ function build_thermo_functions(model_name, params)
     Cp⁰ = dict_factories[:Cp](; params...)
 
     H = dict_factories[:H](; params...)
-    ΔₐH⁰ = H + (HTref - H(; T=Tref, unit=true))
+    ΔₐH⁰ = H + (HTref - H(; T = Tref, unit = true))
 
     S = dict_factories[:S](; params...)
-    δS⁰ = STref - S(; T=Tref, unit=true)
+    δS⁰ = STref - S(; T = Tref, unit = true)
     S⁰ = S + δS⁰
 
-    T = ThermoFunction(:T; units=[:T => "K"])
+    T = ThermoFunction(:T; units = [:T => "K"])
     if haskey(dict_factories, :G)
         G = dict_factories[:G](; params...)
-        ΔₐG⁰ = (G - T * δS⁰) + (GTref - G(; T=Tref, unit=true) + Tref * δS⁰)
+        ΔₐG⁰ = (G - T * δS⁰) + (GTref - G(; T = Tref, unit = true) + Tref * δS⁰)
     else
-        ΔₐG⁰ = (H - T * S⁰) + (GTref - H(; T=Tref, unit=true) + Tref * STref)
+        ΔₐG⁰ = (H - T * S⁰) + (GTref - H(; T = Tref, unit = true) + Tref * STref)
     end
 
     return OrderedDict(:Cp⁰ => Cp⁰, :ΔₐH⁰ => ΔₐH⁰, :S⁰ => S⁰, :ΔₐG⁰ => ΔₐG⁰)
@@ -162,8 +161,8 @@ Helper function to build `ThermoFactory` objects from a model dictionary.
 """
 function build_thermo_factories(dict_expr)
     return Dict(
-        k => ThermoFactory(v, [:T, :P]; units=get(dict_expr, :units, nothing)) for
-        (k, v) in dict_expr if k != :units
+        k => ThermoFactory(v, [:T, :P]; units = get(dict_expr, :units, nothing)) for
+            (k, v) in dict_expr if k != :units
     )
 end
 
@@ -194,22 +193,22 @@ Automatically integrates Cp to find H, S, and G.
   - `Cpexpr`: symbolic expression for heat capacity as a function of T.
   - `units`: optional dictionary of units for parameters.
 """
-function add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
+function add_thermo_model(model_name, Cpexpr::Expr, units = nothing)
     vars, params = extract_vars_params(Cpexpr, [:T])
-    var_sym_dict = Dict{Symbol,Num}(v => Symbolics.variable(v) for v in vars)
-    param_sym_dict = Dict{Symbol,Num}(p => Symbolics.variable(p) for p in params)
+    var_sym_dict = Dict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
+    param_sym_dict = Dict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
     all_symbols = merge(var_sym_dict, param_sym_dict)
     T = var_sym_dict[:T]
 
     Cp = Symbolics.simplify(
         Symbolics.expand(Symbolics.parse_expr_to_symbolic(Cpexpr, all_symbols))
     )
-    H = integrate(Cp, T; symbolic=true, detailed=false)
+    H = integrate(Cp, T; symbolic = true, detailed = false)
 
     integS = sum(terms(Cp) ./ T)
-    S = integrate(integS, T; symbolic=true, detailed=false)
+    S = integrate(integS, T; symbolic = true, detailed = false)
 
-    G = integrate(-S, T; symbolic=true, detailed=false)
+    G = integrate(-S, T; symbolic = true, detailed = false)
 
     if !isnothing(units)
         dict_units = Dict(units)

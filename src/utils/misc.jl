@@ -26,7 +26,7 @@ julia> print_title("Section"; style=:underline, indent="  ")
   ───────
 ```
 """
-function print_title(title; crayon=:none, indent="", style=:none)
+function print_title(title; crayon = :none, indent = "", style = :none)
     draw = crayon != :none ? x -> println(crayon(x)) : println
     if style == :underline
         width = length(title)
@@ -40,7 +40,7 @@ function print_title(title; crayon=:none, indent="", style=:none)
     else
         draw(indent * "$title")
     end
-    print(crayon"reset")
+    return print(crayon"reset")
 end
 
 """
@@ -122,4 +122,4 @@ safe_uparse(x::AbstractQuantity) = x
 
 # force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q::UnionAbstractQuantity{<:Any, <:Dimensions}) = safe_uconvert(qout, q)
 
-force_uconvert(qout::UnionAbstractQuantity, q) = safe_ustrip(qout, q)*qout
+force_uconvert(qout::UnionAbstractQuantity, q) = safe_ustrip(qout, q) * qout

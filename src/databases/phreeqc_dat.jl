@@ -140,7 +140,7 @@ Parses the PHASES section and extracts reaction equations, equilibrium constants
 expressions, and molar volumes for each phase.
 """
 function parse_phases(dat_content)
-    phases = Dict{String,Any}()
+    phases = Dict{String, Any}()
     in_phases = false
     current_phase = nothing
 
@@ -154,7 +154,7 @@ function parse_phases(dat_content)
                 parts = split(line)
                 if length(parts) >= 1 && !startswith(parts[1], "-")
                     phase_name = parts[1]
-                    current_phase = Dict{String,Any}("symbol" => phase_name)
+                    current_phase = Dict{String, Any}("symbol" => phase_name)
                     phases[phase_name] = current_phase
                 end
             elseif occursin("=", line) && current_phase !== nothing
@@ -232,7 +232,7 @@ function extract_primary_species(file_path)
             while start_idx <= length(lines)
                 next_line = strip(lines[start_idx])
                 if startswith(next_line, "# PMATCH MASTER SPECIES") ||
-                    occursin("=", next_line)
+                        occursin("=", next_line)
                     break
                 end
                 start_idx += 1
@@ -270,7 +270,7 @@ function extract_primary_species(file_path)
                 symbol = current_species * "@"
             end
 
-            push!(species_data, (species=current_species, symbol=symbol, gamma=Float64[]))
+            push!(species_data, (species = current_species, symbol = symbol, gamma = Float64[]))
         end
 
         if startswith(line, "-gamma") && !isempty(species_data)
@@ -286,7 +286,7 @@ function extract_primary_species(file_path)
             if !isempty(gamma_values)
                 last_entry = species_data[end]
                 species_data[end] = (
-                    species=last_entry.species, symbol=last_entry.symbol, gamma=gamma_values
+                    species = last_entry.species, symbol = last_entry.symbol, gamma = gamma_values,
                 )
             end
         end

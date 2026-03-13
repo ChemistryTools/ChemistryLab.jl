@@ -16,7 +16,7 @@ Definition of a chemical equilibrium problem.
 The problem solves for the species distribution that minimizes the Gibbs energy
 subject to mass conservation constraints `A * n = b`.
 """
-struct EquilibriumProblem{F<:Function, Tb, TA, Tu, P}
+struct EquilibriumProblem{F <: Function, Tb, TA, Tu, P}
     b::Vector{Tb}
     A::Matrix{TA}
     μ::F
@@ -46,15 +46,15 @@ Construct an `EquilibriumProblem` with the given stoichiometric matrix `A`, chem
 An `EquilibriumProblem` instance.
 """
 function EquilibriumProblem(
-    A::AbstractMatrix{TA},
-    μ::F,
-    u0::AbstractVector{Tu};
-    b::AbstractVector  = A * u0,
-    p                  = SciMLBase.NullParameters(),
-    lb::AbstractVector = fill(Tu(1e-16), length(u0)),
-    ub::AbstractVector = maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
-) where {Tu<:Number, TA<:Number, F<:Function}
-    ϵ  = 1e-16
+        A::AbstractMatrix{TA},
+        μ::F,
+        u0::AbstractVector{Tu};
+        b::AbstractVector = A * u0,
+        p = SciMLBase.NullParameters(),
+        lb::AbstractVector = fill(Tu(1.0e-16), length(u0)),
+        ub::AbstractVector = maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
+    ) where {Tu <: Number, TA <: Number, F <: Function}
+    ϵ = 1.0e-16
     lb = max.(lb, ϵ)
     ub = max.(ub, ϵ)
     # Ensure u0 has no zeros or negative values
@@ -91,17 +91,17 @@ function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:linear}; k
     optf = OptimizationFunction(
         Gibbs_energy,
         Optimization.AutoForwardDiff();
-        cons=conservation_constraints,
+        cons = conservation_constraints,
     )
 
     return OptimizationProblem(
         optf,
         ep.u0,          # Initial guess in linear space
         ep.p;
-        lb=ep.lb,        # Lower bounds (already ensured positive)
-        ub=ep.ub,        # Upper bounds (already ensured positive)
-        lcons=zeros(size(ep.A, 1)),  # Equality constraints: A*n = b
-        ucons=zeros(size(ep.A, 1)),
+        lb = ep.lb,        # Lower bounds (already ensured positive)
+        ub = ep.ub,        # Upper bounds (already ensured positive)
+        lcons = zeros(size(ep.A, 1)),  # Equality constraints: A*n = b
+        ucons = zeros(size(ep.A, 1)),
         kwargs...,
     )
 end
@@ -144,7 +144,7 @@ function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:log}; kwar
     optf = OptimizationFunction(
         Gibbs_energy_log,
         Optimization.AutoForwardDiff();
-        cons=conservation_constraints_log,
+        cons = conservation_constraints_log,
     )
 
     # Transform bounds to log-space
@@ -156,10 +156,10 @@ function SciMLBase.OptimizationProblem(ep::EquilibriumProblem, ::Val{:log}; kwar
         optf,
         log_u0,         # Initial guess in log-space
         ep.p;
-        lb=log_lb,       # Lower bounds in log-space
-        ub=log_ub,       # Upper bounds in log-space
-        lcons=zeros(size(ep.A, 1)),  # Equality constraints: A*exp(x) = b
-        ucons=zeros(size(ep.A, 1)),
+        lb = log_lb,       # Lower bounds in log-space
+        ub = log_ub,       # Upper bounds in log-space
+        lcons = zeros(size(ep.A, 1)),  # Equality constraints: A*exp(x) = b
+        ucons = zeros(size(ep.A, 1)),
         kwargs...,
     )
 end
@@ -184,7 +184,7 @@ Solve an `EquilibriumProblem` using the specified solver and variable space.
 
 The solution to the `EquilibriumProblem` with variables transformed back to physical space.
 """
-function SciMLBase.solve(ep::EquilibriumProblem, solver; variable_space=Val(:linear), kwargs...)
+function SciMLBase.solve(ep::EquilibriumProblem, solver; variable_space = Val(:linear), kwargs...)
     # Create and solve the optimization problem
     opt_prob = OptimizationProblem(ep, variable_space)
     sol = solve(opt_prob, solver; kwargs...)

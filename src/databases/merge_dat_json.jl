@@ -25,9 +25,9 @@ function merge_reactions(json_data, new_reactions)
     for (name, phase) in new_reactions
         if !(name in existing_symbols)
             if haskey(phase, "logKr") &&
-                haskey(phase, "analytical_expression") &&
-                haskey(phase, "equation")
-                reaction_dict = Dict{String,Any}()
+                    haskey(phase, "analytical_expression") &&
+                    haskey(phase, "equation")
+                reaction_dict = Dict{String, Any}()
 
                 reaction_dict["symbol"] = phase["symbol"]
                 reaction_dict["equation"] = phase["equation"]
@@ -36,7 +36,7 @@ function merge_reactions(json_data, new_reactions)
                 end
                 reaction_dict["reactants"] = phase["reactants"]
 
-                reaction_dict["limitsTP"] = Dict{String,Any}(
+                reaction_dict["limitsTP"] = Dict{String, Any}(
                     "range" => false,
                     "lowerP" => 0.1,
                     "lowerT" => 273.15,
@@ -48,23 +48,23 @@ function merge_reactions(json_data, new_reactions)
                 reaction_dict["Pst"] = 100000
 
                 reaction_dict["TPMethods"] = [
-                    Dict{String,Any}(
+                    Dict{String, Any}(
                         "method" => Dict("0" => "logk_fpt_function"),
-                        "limitsTP" => Dict{String,Any}(
+                        "limitsTP" => Dict{String, Any}(
                             "lowerP" => 0,
                             "lowerT" => 273.15,
                             "upperP" => 0,
                             "upperT" => 273.15,
                         ),
-                        "logk_ft_coeffs" => Dict{String,Any}(
+                        "logk_ft_coeffs" => Dict{String, Any}(
                             "values" => vcat(
                                 phase["analytical_expression"],
                                 zeros(max(0, 12 - length(phase["analytical_expression"]))),
                             ),
                         ),
                     ),
-                    Dict{String,Any}("method" => Dict("7" => "logk_3_term_extrap")),
-                    Dict{String,Any}("method" => Dict("13" => "dr_volume_constant")),
+                    Dict{String, Any}("method" => Dict("7" => "logk_3_term_extrap")),
+                    Dict{String, Any}("method" => Dict("13" => "dr_volume_constant")),
                 ]
 
                 reaction_dict["logKr"] = phase["logKr"]
@@ -73,19 +73,19 @@ function merge_reactions(json_data, new_reactions)
                 Tst = reaction_dict["Tst"]
                 logKr = phase["logKr"]["values"][1]
                 dG = R * Tst * log(10) * logKr
-                reaction_dict["drsm_gibbs_energy"] = Dict{String,Any}(
+                reaction_dict["drsm_gibbs_energy"] = Dict{String, Any}(
                     "values" => [dG], "units" => ["J/mol"]
                 )
 
-                reaction_dict["drsm_heat_capacity_p"] = Dict{String,Any}(
+                reaction_dict["drsm_heat_capacity_p"] = Dict{String, Any}(
                     "values" => [""], "units" => ["J/(mol*K)"]
                 )
 
-                reaction_dict["drsm_enthalpy"] = Dict{String,Any}(
+                reaction_dict["drsm_enthalpy"] = Dict{String, Any}(
                     "values" => [""], "units" => ["J/mol"]
                 )
 
-                reaction_dict["drsm_entropy"] = Dict{String,Any}(
+                reaction_dict["drsm_entropy"] = Dict{String, Any}(
                     "values" => [""], "units" => ["J/(mol*K)"]
                 )
 
@@ -94,7 +94,7 @@ function merge_reactions(json_data, new_reactions)
                 #     "values" => [phase["drsm_volume"]],
                 #     "units" => ["cm3/mol"]
                 # )
-                reaction_dict["drsm_volume"] = Dict{String,Any}(
+                reaction_dict["drsm_volume"] = Dict{String, Any}(
                     "values" => [""], "units" => ["J/bar"]
                 )
 
@@ -231,7 +231,7 @@ function write_reaction(f, reaction)
 
     write(f, "      \"datasources\": [\"Cemdata18\"]\n")
 
-    write(f, "    }")
+    return write(f, "    }")
 end
 
 """
@@ -263,7 +263,7 @@ function merge_json(json_path, dat_path, output_path)
     merged_data = merge_reactions(json_data, new_reactions)
 
     # Write the output JSON file, preserving the initial order
-    open(output_path, "w") do f
+    return open(output_path, "w") do f
         # Find the start and end indices of the "reactions" section
         lines = split(initial_content, '\n')
         reactions_start = 0
