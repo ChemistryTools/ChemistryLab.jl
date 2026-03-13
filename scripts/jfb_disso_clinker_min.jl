@@ -28,7 +28,7 @@ set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
 set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
 
 # ── Equilibrate ─────────────────────────────────────────────────────────────────
-state_eq = equilibrate(state; variable_space=Val(:linear), verbose=0)
+state_eq = equilibrate(state; variable_space=Val(:linear), verbose=5)
 
 display(state_eq)
 
