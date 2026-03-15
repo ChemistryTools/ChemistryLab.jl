@@ -39,6 +39,14 @@ end
     include("thermodynamics.jl")
 end
 
+@testsection "Water EOS tests" begin
+    include("water_eos.jl")
+end
+
+@testsection "HKF EOS tests" begin
+    include("hkf_eos.jl")
+end
+
 @testsection "Utils tests" begin
     include("utils.jl")
 end
