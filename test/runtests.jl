@@ -53,6 +53,7 @@ end
 
 @testsection "Equilibrium tests" begin
     include("solid_solutions.jl")
+    include("activities.jl")
 end
 
 print_timer()
