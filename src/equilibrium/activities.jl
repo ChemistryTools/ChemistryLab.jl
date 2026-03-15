@@ -151,6 +151,37 @@ const REJ_CHARGE_DEFAULT = Dict{Int, Float64}(
 # ─────────────────────────────────────────────────────────────────────────────
 
 """
+    hkf_debye_huckel_params(T::Float64, P::Float64;
+                             weos::AbstractWaterEOS = DEFAULT_WATER_EOS)
+        -> @NamedTuple{A::Float64, B::Float64}
+
+Calcule les paramètres de Debye-Hückel A et B en fonction de T [K] et P [Pa]
+d'après Helgeson et al. (1981) :
+
+```
+A = 1.8248×10⁶ × √ρ / (ε T)^(3/2)    [(kg/mol)^(1/2)]
+B = 50.29 × √ρ / √(ε T)               [Å⁻¹ (kg/mol)^(1/2)]
+```
+
+avec ρ [g/cm³] et ε obtenus via `water_density` et `water_dielectric`.
+
+Valeurs de référence à 25 °C / 1 bar : A ≈ 0.5114, B ≈ 0.3288.
+"""
+function hkf_debye_huckel_params(
+    T::Float64,
+    P::Float64;
+    weos::AbstractWaterEOS = DEFAULT_WATER_EOS,
+)
+    ρ = water_density(T, P, weos)        # g/cm³
+    ε = water_dielectric(T, P)           # sans unité
+    A = 1.8248e6 * sqrt(ρ) / (ε * T)^1.5
+    B = 50.29    * sqrt(ρ) / sqrt(ε * T)
+    return (A = A, B = B)
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
     _hkf_sigma(x) -> Real
 
 Auxiliary function for the Debye-Hückel osmotic-coefficient integral:
@@ -241,26 +272,31 @@ concentrations consider the Pitzer model.
 - Parkhurst, D.L. & Appelo, C.A.J. (2013). *USGS Techniques Methods*, Book 6, A43.
 """
 struct HKFActivityModel <: AbstractActivityModel
-    A::Float64          # Debye-Hückel A  [(kg/mol)^(1/2)]
-    B::Float64          # Debye-Hückel B  [Å⁻¹ (kg/mol)^(1/2)]
-    Bdot::Float64       # B-dot           [kg/mol]
-    Kn::Float64         # neutral salting [kg/mol]
-    å_default::Float64  # fallback å      [Å]
+    A::Float64               # Debye-Hückel A  [(kg/mol)^(1/2)]
+    B::Float64               # Debye-Hückel B  [Å⁻¹ (kg/mol)^(1/2)]
+    Bdot::Float64            # B-dot           [kg/mol]
+    Kn::Float64              # neutral salting [kg/mol]
+    å_default::Float64       # fallback å      [Å]
+    temperature_dependent::Bool  # recalculer A et B depuis T, P à chaque appel
 end
 
 """
-    HKFActivityModel(; A=0.5114, B=0.3288, Bdot=0.041, Kn=0.1, å_default=3.72)
+    HKFActivityModel(; A=0.5114, B=0.3288, Bdot=0.041, Kn=0.1, å_default=3.72,
+                       temperature_dependent=false)
 
-Keyword constructor with default parameters at 25 °C, 1 bar (H₂O solvent).
+Keyword constructor. Si `temperature_dependent=true`, les paramètres A et B
+sont recalculés à chaque évaluation depuis T et P via [`hkf_debye_huckel_params`](@ref)
+(le NamedTuple `p` doit alors contenir `p.T` [K] et `p.P` [Pa]).
 """
 function HKFActivityModel(;
-    A         = 0.5114,
-    B         = 0.3288,
-    Bdot      = 0.041,
-    Kn        = 0.1,
-    å_default = 3.72,
+    A                    = 0.5114,
+    B                    = 0.3288,
+    Bdot                 = 0.041,
+    Kn                   = 0.1,
+    å_default            = 3.72,
+    temperature_dependent = false,
 )
-    return HKFActivityModel(A, B, Bdot, Kn, å_default)
+    return HKFActivityModel(A, B, Bdot, Kn, å_default, temperature_dependent)
 end
 
 """
@@ -285,11 +321,12 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
     idx_solutes = cs.idx_solutes
     idx_gas     = cs.idx_gas
 
-    A    = model.A
-    B    = model.B
-    Bdot = model.Bdot
-    Kn   = model.Kn
-    ln10 = log(10)
+    A_fixed = model.A
+    B_fixed = model.B
+    Bdot    = model.Bdot
+    Kn      = model.Kn
+    ln10    = log(10)
+    use_TP  = model.temperature_dependent
 
     M_w = ustrip(us"kg/mol", cs.species[idx_solvent][:M])  # Mw [kg/mol]
 
@@ -315,6 +352,14 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         ϵ  = p.ϵ
         _n = max.(n, ϵ)
         out = zeros(eltype(_n), length(_n))
+
+        # ── Paramètres A, B (fixes ou T,P-dépendants) ─────────────────────────
+        A, B = if use_TP && hasproperty(p, :T) && hasproperty(p, :P)
+            ab = hkf_debye_huckel_params(Float64(p.T), Float64(p.P))
+            ab.A, ab.B
+        else
+            A_fixed, B_fixed
+        end
 
         # ── Molalities [mol/kg] ────────────────────────────────────────────────
         kgw = _n[idx_solvent] * M_w                                    # kg of water

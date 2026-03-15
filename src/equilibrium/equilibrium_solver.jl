@@ -85,7 +85,7 @@ function _build_params(state::ChemicalState; ϵ::Float64=1e-16)
     ΔₐG⁰overT = [ustrip(s[:ΔₐG⁰](T=T, P=P; unit=true) / RT)
                   for s in state.system.species]
 
-    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ, T = ustrip(us"K", T))
+    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ, T = ustrip(us"K", T), P = ustrip(us"Pa", P))
 end
 
 """

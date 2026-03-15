@@ -115,6 +115,8 @@ include("utils/subsuperscripts.jl")
 
 include("thermodynamics/thermo_factories.jl")
 include("thermodynamics/thermo_models.jl")
+include("thermodynamics/water_eos.jl")
+include("thermodynamics/hkf_eos.jl")
 
 include("chemical_structs/element_order.jl")
 include("chemical_structs/parsing_tools.jl")
@@ -255,13 +257,32 @@ export read_thermofun_database,
 
 export merge_json
 
+export AbstractWaterEOS,
+    HelgesonKirkham1974,
+    DEFAULT_WATER_EOS,
+    water_density,
+    water_dielectric,
+    born_functions
+
+export HKFParams,
+    HKFReferenceState,
+    HKFThermoFunction,
+    build_hkf_functions,
+    hkf_Cp,
+    hkf_V,
+    hkf_S,
+    hkf_H,
+    hkf_G,
+    HKF_Θ, HKF_Ψ, HKF_Tr, HKF_Pr
+
 export AbstractActivityModel,
     DiluteSolutionModel,
     HKFActivityModel,
     REJ_HKF,
     REJ_CHARGE_DEFAULT,
     activity_model,
-    build_potentials
+    build_potentials,
+    hkf_debye_huckel_params
 
 export AbstractSolidSolutionMixingModel,
     IdealSolidSolutionMixingModel,
