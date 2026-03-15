@@ -244,4 +244,89 @@
         @test out[i_iron] ≈ 0.0  atol = 1e-14  # singleton SS, x = 1
     end
 
+    # ── Regular ternary lnγ_ss — equimolar and asymmetric ─────────────────────
+    @testsection "Regular ternary SS lnγ_ss" begin
+        W     = 6000.0
+        W_mat = [0.0 W W; W 0.0 W; W W 0.0]
+        mix   = RegularSolidSolutionMixingModel(W_mat)
+
+        # Equimolar x = [1/3, 1/3, 1/3]:
+        # RT ln γᵢ = W(1/3)(2/3) + W(1/3)(2/3) - W(1/3)(1/3) = W/3
+        x_eq = [1.0 / 3, 1.0 / 3, 1.0 / 3]
+        lnγ_eq = lnγ_ss(mix, x_eq, RT25)
+        @test lnγ_eq[1] ≈ W / 3 / RT25  rtol = 1e-10
+        @test lnγ_eq[2] ≈ W / 3 / RT25  rtol = 1e-10
+        @test lnγ_eq[3] ≈ W / 3 / RT25  rtol = 1e-10
+
+        # Asymmetric x = [0.5, 0.3, 0.2] (same W everywhere):
+        # RT ln γ₁ = W x₂(1-x₁) + W x₃(1-x₁) - W x₂x₃
+        #          = W(0.3·0.5 + 0.2·0.5 − 0.3·0.2) = 0.19 W
+        # RT ln γ₂ = W x₁(1-x₂) + W x₃(1-x₂) - W x₁x₃
+        #          = W(0.5·0.7 + 0.2·0.7 − 0.5·0.2) = 0.39 W
+        # RT ln γ₃ = W x₁(1-x₃) + W x₂(1-x₃) - W x₁x₂
+        #          = W(0.5·0.8 + 0.3·0.8 − 0.5·0.3) = 0.49 W
+        x_as = [0.5, 0.3, 0.2]
+        lnγ_as = lnγ_ss(mix, x_as, RT25)
+        @test lnγ_as[1] ≈ W * (0.3 * 0.5 + 0.2 * 0.5 - 0.3 * 0.2) / RT25  rtol = 1e-10
+        @test lnγ_as[2] ≈ W * (0.5 * 0.7 + 0.2 * 0.7 - 0.5 * 0.2) / RT25  rtol = 1e-10
+        @test lnγ_as[3] ≈ W * (0.5 * 0.8 + 0.3 * 0.8 - 0.5 * 0.3) / RT25  rtol = 1e-10
+    end
+
+    # ── Gibbs–Duhem numerical check (binary regular) ──────────────────────────
+    # At constant T,P: Σᵢ xᵢ d(ln γᵢ)/dx₁ = 0.
+    # For symmetric Margules: x₁(-2Wx₂/RT) + x₂(+2Wx₁/RT) = 0 exactly.
+    @testsection "Gibbs-Duhem consistency (binary regular)" begin
+        W   = 5000.0
+        mix = RegularSolidSolutionMixingModel([0.0 W; W 0.0])
+        Δ   = 1e-7
+
+        for x1 in [0.1, 0.3, 0.5, 0.7, 0.9]
+            x2 = 1 - x1
+            lnγ_fwd = lnγ_ss(mix, [x1 + Δ, x2 - Δ], RT25)
+            lnγ_bwd = lnγ_ss(mix, [x1 - Δ, x2 + Δ], RT25)
+            d_lnγ1 = (lnγ_fwd[1] - lnγ_bwd[1]) / (2Δ)
+            d_lnγ2 = (lnγ_fwd[2] - lnγ_bwd[2]) / (2Δ)
+            @test abs(x1 * d_lnγ1 + x2 * d_lnγ2) < 1e-5
+        end
+    end
+
+    # ── W = 0 regular solution equals ideal ───────────────────────────────────
+    @testsection "Regular with W=0 equals ideal" begin
+        mix_zero  = RegularSolidSolutionMixingModel([0.0 0.0; 0.0 0.0])
+        mix_ideal = IdealSolidSolutionMixingModel()
+
+        for x in [[0.3, 0.7], [0.5, 0.5], [0.9, 0.1]]
+            @test lnγ_ss(mix_zero, x, RT25) == lnγ_ss(mix_ideal, x, RT25)
+        end
+    end
+
+    # ── Regular ternary SS — full activity_model closure ──────────────────────
+    @testsection "Regular ternary SS in activity_model" begin
+        W     = 3000.0
+        W_mat = [0.0 W W; W 0.0 W; W W 0.0]
+        mix   = RegularSolidSolutionMixingModel(W_mat)
+        cs    = ChemicalSystem([h2o, calcite, magnesite, dolomite])
+        ss    = SolidSolution(["CaCO3", "MgCO3", "CaMg(CO3)2"], mix)
+        lna   = activity_model(cs, SolidSolutionActivityModel(DiluteSolutionModel(), [ss]))
+
+        # n_SS = 5 + 3 + 2 = 10 → x = [0.5, 0.3, 0.2]
+        n = [55.5, 5.0, 3.0, 2.0]
+        p = (ΔₐG⁰overT = zeros(4), ϵ = 1e-30, T = T25)
+        out = lna(n, p)
+
+        RT = R_gas * T25
+        i_cal = findfirst(s -> symbol(s) == "CaCO3",      cs.species)
+        i_mag = findfirst(s -> symbol(s) == "MgCO3",      cs.species)
+        i_dol = findfirst(s -> symbol(s) == "CaMg(CO3)2", cs.species)
+
+        x1, x2, x3 = 0.5, 0.3, 0.2
+        lnγ1 = W * (x2 * (1 - x1) + x3 * (1 - x1) - x2 * x3) / RT
+        lnγ2 = W * (x1 * (1 - x2) + x3 * (1 - x2) - x1 * x3) / RT
+        lnγ3 = W * (x1 * (1 - x3) + x2 * (1 - x3) - x1 * x2) / RT
+
+        @test out[i_cal] ≈ log(x1) + lnγ1  rtol = 1e-10
+        @test out[i_mag] ≈ log(x2) + lnγ2  rtol = 1e-10
+        @test out[i_dol] ≈ log(x3) + lnγ3  rtol = 1e-10
+    end
+
 end  # @testsection "SolidSolution"
