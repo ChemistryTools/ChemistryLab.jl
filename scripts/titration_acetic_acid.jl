@@ -1,5 +1,6 @@
 using ChemistryLab
 using DynamicQuantities
+using ProgressMeter
 
 substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
 substances_org   = build_species("data/slop98-organic-thermofun.json")
@@ -46,11 +47,11 @@ nAH  = ca * Va # total moles of CH₃COOH = 10 mmol
 Vbeq = nAH / cb          # equivalence volume, L
 V_eq = Vbeq * 1e3        # equivalence volume, mL
 
-volumes_NaOH = range(0, 2 * V_eq; length = 100)   # mL
+volumes_NaOH = range(0, 2 * V_eq; length = 200)   # mL
 pH_vals = Float64[]
 
 s = ChemicalState(cs)
-for V_mL in volumes_NaOH
+@showprogress for V_mL in volumes_NaOH
     # @show V_mL
     Vb      = V_mL * 1e-3     # L
     n_NaOH  = cb * Vb         # mol of NaOH added
