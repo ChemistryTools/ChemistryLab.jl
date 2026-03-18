@@ -37,6 +37,7 @@ end
 
 @testsection "Thermodynamics tests" begin
     include("thermodynamics.jl")
+    include("hkf.jl")
 end
 
 @testsection "Utils tests" begin

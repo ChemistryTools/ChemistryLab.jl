@@ -1,5 +1,6 @@
 using ChemistryLab
 using DynamicQuantities
+using ProgressMeter
 
 substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
 substances_org   = build_species("data/slop98-organic-thermofun.json")
@@ -38,11 +39,11 @@ c_acid = 0.1     # maleic acid concentration, mol/L
 c_base = 2     # NaOH concentration, mol/L
 n_H2A  = V_acid * c_acid   # total moles of H₂A = 2.5 mmol
 
-volumes_NaOH = range(0, 15; length = 101)   # mL
+volumes_NaOH = range(0, 15; length = 201)   # mL
 pH_vals = Float64[]
 
 s = ChemicalState(cs)
-@time for V_mL in volumes_NaOH
+@showprogress for V_mL in volumes_NaOH
     # @show V_mL
     V_NaOH  = V_mL * 1e-3           # L
     n_NaOH    = c_base * V_NaOH        # mol of NaOH (= mol of Na⁺ added)

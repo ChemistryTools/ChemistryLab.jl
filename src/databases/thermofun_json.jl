@@ -1,4 +1,30 @@
 """
+    HKF_SI_CONVERSIONS
+
+Hardcoded conversion factors from SUPCRT (cal, bar) to SI (J, Pa) for `eos_hkf_coeffs`.
+The JSON unit metadata for a3 and a4 is incorrect (missing `/bar`), hence this explicit table.
+
+| Symbol | SUPCRT unit             | SI unit             | Factor     |
+|--------|-------------------------|---------------------|------------|
+| a1     | cal/(mol·bar)           | J/(mol·Pa)          | 4.184e-5   |
+| a2     | cal/mol                 | J/mol               | 4.184      |
+| a3     | (cal·K)/(mol·bar)       | (J·K)/(mol·Pa)      | 4.184e-5   |
+| a4     | cal·K/mol               | J·K/mol             | 4.184      |
+| c1     | cal/(mol·K)             | J/(mol·K)           | 4.184      |
+| c2     | cal·K/mol               | J·K/mol             | 4.184      |
+| wref   | cal/mol                 | J/mol               | 4.184      |
+"""
+const HKF_SI_CONVERSIONS = OrderedDict{Symbol, Float64}(
+    :a1   => 4.184e-5,
+    :a2   => 4.184,
+    :a3   => 4.184e-5,
+    :a4   => 4.184,
+    :c1   => 4.184,
+    :c2   => 4.184,
+    :wref => 4.184,
+)
+
+"""
     read_thermofun_database(filename::AbstractString) -> (DataFrame, DataFrame, DataFrame)
 
 Read a ThermoFun database from a JSON file.
@@ -89,7 +115,7 @@ function complete_species_with_thermo_model!(species, row; verbose = false)
         for method in TPMethods
             method_type = only(values(method.method))
             if method_type == "cp_ft_equation" && haskey(method, :m_heat_capacity_ft_coeffs)
-                species[:Cp_method] = "cp_ft_equation"
+                species[:thermo_method] = "cp_ft_equation"
                 coeffs = method.m_heat_capacity_ft_coeffs
                 vals = coeffs.values
                 units = extract_unit.(coeffs.units)
@@ -98,6 +124,19 @@ function complete_species_with_thermo_model!(species, row; verbose = false)
                         i in 1:min(length(vals), length(units))
                 ]
                 species[:thermo_params] = [params; species[:thermo_params]]
+
+            elseif method_type == "solute_hkf88_reaktoro" && haskey(method, :eos_hkf_coeffs)
+                species[:thermo_method] = "solute_hkf88_reaktoro"
+                coeffs = method.eos_hkf_coeffs
+                vals   = float.(coeffs.values)
+                names  = [:a1, :a2, :a3, :a4, :c1, :c2, :wref]
+                hkf_params = [
+                    names[i] => vals[i] * HKF_SI_CONVERSIONS[names[i]] for
+                        i in 1:min(length(vals), length(names))
+                ]
+                z = float(get(row, :formula_charge, 0))
+                push!(hkf_params, :z => z)
+                species[:thermo_params] = [hkf_params; species[:thermo_params]]
 
             elseif method_type == "mv_constant"
                 species[:V_method] = "mv_constant"

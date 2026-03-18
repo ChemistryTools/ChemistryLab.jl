@@ -114,6 +114,7 @@ module ChemistryLab
     include("utils/subsuperscripts.jl")
 
     include("thermodynamics/thermo_factories.jl")
+    include("thermodynamics/water_properties.jl")
     include("thermodynamics/thermo_models.jl")
 
     include("chemical_structs/element_order.jl")
@@ -136,7 +137,18 @@ module ChemistryLab
 
     export ThermoFunction,
         ThermoFactory,
+        ClosureThermoFunction,
+        HKFThermoFunction,
         infer_unit
+
+    export WaterThermoProps,
+        WaterElectroProps,
+        HKFGState,
+        SpeciesElectroPropsHKF,
+        water_thermo_props,
+        water_electro_props_jn,
+        hkf_g_function,
+        species_electro_props_hkf
 
     export THERMO_MODELS,
         THERMO_FACTORIES,
@@ -250,7 +262,8 @@ module ChemistryLab
     export read_thermofun_database,
         build_species,
         build_reactions,
-        get_compatible_species
+        get_compatible_species,
+        HKF_SI_CONVERSIONS
 
     export merge_json
 
