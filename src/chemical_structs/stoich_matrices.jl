@@ -30,8 +30,8 @@ julia> SM = StoichMatrix(species)
 ```
 """
 struct StoichMatrix{
-    T<:Number,P,V<:AbstractVector{P},M<:AbstractMatrix{T},S<:AbstractSpecies
-} <: AbstractMatrix{T}
+        T <: Number, P, V <: AbstractVector{P}, M <: AbstractMatrix{T}, S <: AbstractSpecies,
+    } <: AbstractMatrix{T}
     A::M
     primaries::V
     species::AbstractVector{S}
@@ -40,11 +40,11 @@ end
 
 Base.eltype(::StoichMatrix{T}) where {T} = T
 
-primtype(::StoichMatrix{T,P}) where {T,P} = P
+primtype(::StoichMatrix{T, P}) where {T, P} = P
 
 function StoichMatrix(
-    A::M, primaries::Union{Vector{Symbol},Vector{S}}, species::AbstractVector{S}
-) where {M<:AbstractMatrix,S<:AbstractSpecies}
+        A::M, primaries::Union{Vector{Symbol}, Vector{S}}, species::AbstractVector{S}
+    ) where {M <: AbstractMatrix, S <: AbstractSpecies}
     indices_in = [findfirst(x -> x == p, species) for p in primaries]
     if any(x -> isnothing(x), indices_in)
         return StoichMatrix(A, primaries, species, similar(A, 0, 0))
@@ -78,7 +78,7 @@ function Base.show(::IO, ::MIME"text/plain", SM::StoichMatrix)
     end
     formatters = [(v, i, j) -> iszero(v) ? "" : AnsiTextCell(string(v))]
     pretty_table(
-        A; column_labels=column_labels, row_labels=row_labels, formatters=formatters
+        A; column_labels = column_labels, row_labels = row_labels, formatters = formatters
     )
     return nothing
 end
@@ -101,14 +101,14 @@ Print a stoichiometric matrix with colored formatting.
 Uses text highlighters to color positive (red), negative (blue), and zero (concealed) values.
 """
 function pprint(
-    A::AbstractMatrix,
-    indep_comp_names::AbstractVector,
-    dep_comp_names::AbstractVector;
-    row_label=:symbol,
-    col_label=:symbol,
-    label=:identity,
-    kwargs...,
-)
+        A::AbstractMatrix,
+        indep_comp_names::AbstractVector,
+        dep_comp_names::AbstractVector;
+        row_label = :symbol,
+        col_label = :symbol,
+        label = :identity,
+        kwargs...,
+    )
     if label != :identity
         row_label = label
         col_label = label
@@ -126,30 +126,30 @@ function pprint(
     hl_p = TextHighlighter((data, i, j) -> (data[i, j] > 0), crayon"bold light_red")
     hl_n = TextHighlighter((data, i, j) -> (data[i, j] < 0), crayon"bold light_blue")
     formatters = [(v, i, j) -> iszero(v) ? "" : AnsiTextCell(string(v))]
-    try
+    return try
         pretty_table(
             A;
-            column_labels=column_labels,
-            row_labels=row_labels,
-            formatters=formatters,
-            highlighters=[hl_p, hl_n],
-            style=TextTableStyle(;
-                row_label=crayon"magenta bold",
-                first_line_column_label=crayon"cyan bold",
-                table_border=crayon"green bold",
+            column_labels = column_labels,
+            row_labels = row_labels,
+            formatters = formatters,
+            highlighters = [hl_p, hl_n],
+            style = TextTableStyle(;
+                row_label = crayon"magenta bold",
+                first_line_column_label = crayon"cyan bold",
+                table_border = crayon"green bold",
             ),
             kwargs...,
         )
     catch
         pretty_table(
             A;
-            column_labels=column_labels,
-            row_labels=row_labels,
-            formatters=formatters,
-            style=TextTableStyle(;
-                row_label=crayon"magenta bold",
-                first_line_column_label=crayon"cyan bold",
-                table_border=crayon"green bold",
+            column_labels = column_labels,
+            row_labels = row_labels,
+            formatters = formatters,
+            style = TextTableStyle(;
+                row_label = crayon"magenta bold",
+                first_line_column_label = crayon"cyan bold",
+                table_border = crayon"green bold",
             ),
             kwargs...,
         )
@@ -157,16 +157,16 @@ function pprint(
 end
 
 function pprint(
-    SM::StoichMatrix; row_label=:symbol, col_label=:symbol, label=:identity, kwargs...
-)
+        SM::StoichMatrix; row_label = :symbol, col_label = :symbol, label = :identity, kwargs...
+    )
     (; A, primaries, species) = SM
     return pprint(
         A,
         primaries,
         species;
-        row_label=row_label,
-        col_label=col_label,
-        label=label,
+        row_label = row_label,
+        col_label = col_label,
+        label = label,
         kwargs...,
     )
 end
@@ -269,27 +269,27 @@ julia> SM.A * SM.N
 ```
 """
 function StoichMatrix(
-    species::AbstractVector{<:AbstractSpecies},
-    candidate_primaries::AbstractVector{<:AbstractSpecies}=species;
-    involve_all_atoms=true,
-    optimize_primaries=false,
-)
-    safe_rank(A; rtol=1e-6) =
+        species::AbstractVector{<:AbstractSpecies},
+        candidate_primaries::AbstractVector{<:AbstractSpecies} = species;
+        involve_all_atoms = true,
+        optimize_primaries = false,
+    )
+    safe_rank(A; rtol = 1.0e-6) =
+    try
+        rank(A; rtol = rtol)
+    catch
         try
-            rank(A; rtol=rtol)
+            rank(A)
         catch
-            try
-                rank(A)
-            catch
-                min(size(A)...)
-            end
+            min(size(A)...)
         end
+    end
     safe_pinv(A) =
-        try
-            pinv(A)
-        catch
-            inv(A)
-        end
+    try
+        pinv(A)
+    catch
+        inv(A)
+    end
 
     all_species = union(species, candidate_primaries)
     vec_components = same_components(all_species)
@@ -323,7 +323,7 @@ function StoichMatrix(
     for x in candidate_primaries
         idx = findfirst(y -> x == y, newspecies)
         if isnothing(idx) &&
-            all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
+                all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
             push!(newspecies, x)
         end
     end
@@ -369,11 +369,11 @@ function StoichMatrix(
 
     sort!(
         independent_cols_indices;
-        by=x ->
-            symbol(newspecies[x]) !== "H2O@" &&
-                symbol(newspecies[x]) !== "H2O" &&
-                symbol(newspecies[x]) !== "H₂O" &&
-                symbol(newspecies[x]) !== "H",
+        by = x ->
+        symbol(newspecies[x]) !== "H2O@" &&
+            symbol(newspecies[x]) !== "H2O" &&
+            symbol(newspecies[x]) !== "H₂O" &&
+            symbol(newspecies[x]) !== "H",
     )
     M_indep = M[:, independent_cols_indices]
     M_indep = promote_type(typeof.(M_indep)...).(M_indep)
@@ -389,7 +389,7 @@ function StoichMatrix(
         num_initial_species -= 1
     end
 
-    zero_rows = all(iszero.(A); dims=2)[:, 1]
+    zero_rows = all(iszero.(A); dims = 2)[:, 1]
     A = A[.!zero_rows, :]
     indep_comp = indep_comp[.!zero_rows]
 
@@ -397,30 +397,30 @@ function StoichMatrix(
 end
 
 function StoichMatrix(
-    species::AbstractDict,
-    candidate_primaries=species;
-    involve_all_atoms=true,
-    optimize_primaries=false,
-)
-    gather_species(d::AbstractDict{T,S} where {T,S<:AbstractSpecies}) = collect(values(d))
-    gather_species(d::AbstractDict{S,T} where {S<:AbstractSpecies,T}) = collect(keys(d))
+        species::AbstractDict,
+        candidate_primaries = species;
+        involve_all_atoms = true,
+        optimize_primaries = false,
+    )
+    gather_species(d::AbstractDict{T, S} where {T, S <: AbstractSpecies}) = collect(values(d))
+    gather_species(d::AbstractDict{S, T} where {S <: AbstractSpecies, T}) = collect(keys(d))
     gather_species(d) = d
     return StoichMatrix(
         gather_species(species),
         gather_species(candidate_primaries);
-        involve_all_atoms=involve_all_atoms,
-        optimize_primaries=optimize_primaries,
+        involve_all_atoms = involve_all_atoms,
+        optimize_primaries = optimize_primaries,
     )
 end
 
 function StoichMatrix(
-    species, candidate_primaries=species; involve_all_atoms=true, optimize_primaries=false
-)
+        species, candidate_primaries = species; involve_all_atoms = true, optimize_primaries = false
+    )
     return StoichMatrix(
         collect(species),
         collect(candidate_primaries);
-        involve_all_atoms=involve_all_atoms,
-        optimize_primaries=optimize_primaries,
+        involve_all_atoms = involve_all_atoms,
+        optimize_primaries = optimize_primaries,
     )
 end
 
@@ -612,13 +612,13 @@ julia> mass_matrix(CSM)
 └────┴──────────┴─────┴───────────┴──────────┴───────────┴──────────┘
 ```
 """
-function mass_matrix(SM::StoichMatrix{T,S}) where {T,S<:AbstractSpecies}
+function mass_matrix(SM::StoichMatrix{T, S}) where {T, S <: AbstractSpecies}
     Mspecies = ustrip.(getproperty.(SM.species, :M))
     Mprimaries = ustrip.(getproperty.(SM.primaries, :M))
     return StoichMatrix(Mprimaries .* SM.A .* inv.(Mspecies)', SM.primaries, SM.species)
 end
 
-function mass_matrix(SM::StoichMatrix{T,Symbol}) where {T}
+function mass_matrix(SM::StoichMatrix{T, Symbol}) where {T}
     Mspecies = ustrip.(getproperty.(SM.species, :M))
     S = promote_type(root_type.(typeof.(SM.species))...)
     Mprimaries = ustrip.(getproperty.(S.(string.(SM.primaries)), :M))
@@ -666,18 +666,20 @@ function reactions(SM::StoichMatrix)
     if !isempty(SM.N)
         pSM = push_primaries(SM)
         return [
-            Reaction(OrderedDict(zip(pSM.species, V)); symbol=symbol(pSM.species[j])) for
-            (j, V) in enumerate(eachcol(pSM.N))
+            Reaction(OrderedDict(zip(pSM.species, V)); symbol = symbol(pSM.species[j])) for
+                (j, V) in enumerate(eachcol(pSM.N))
         ]
     else
-        lr = unique!([
-            Reaction(
-                merge(
-                    +, OrderedDict(SM.species[j] => 1), OrderedDict(zip(SM.primaries, -V))
-                );
-                symbol=symbol(SM.species[j]),
-            ) for (j, V) in enumerate(eachcol(SM.A))
-        ])
+        lr = unique!(
+            [
+                Reaction(
+                        merge(
+                            +, OrderedDict(SM.species[j] => 1), OrderedDict(zip(SM.primaries, -V))
+                        );
+                        symbol = symbol(SM.species[j]),
+                    ) for (j, V) in enumerate(eachcol(SM.A))
+            ]
+        )
         # return filter(x->!isempty(x), lr)
         return lr[.!isempty.(lr)]
     end
@@ -724,9 +726,10 @@ function pprint(reactions::AbstractVector{<:Reaction}; kwargs...)
     for r in reactions
         println(lpad("$(symbol(r))", pad), " │ ", colored(r))
     end
+    return
 end
 
-const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in CEMENT_TO_MENDELEEV]
+const oxides_as_species = [Species(d; symbol = string(k)) for (k, d) in CEMENT_TO_MENDELEEV]
 
 const Aoxides, atoms_in_oxides =
     getfield.(Ref(CanonicalStoichMatrix(oxides_as_species)), [:A, :primaries])

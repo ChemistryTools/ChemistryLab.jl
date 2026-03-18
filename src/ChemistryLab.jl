@@ -88,186 +88,187 @@ C₃H₈ + 5O₂ = 4H₂O + 3CO₂
 """
 module ChemistryLab
 
-import Base: ==, +, -, *, /, //, ^
+    import Base: ==, +, -, *, /, //, ^
 
-using Crayons
-using CSV
-using DataFrames
-using DynamicQuantities
-using JSON
-using LinearAlgebra
-using ModelingToolkit
-using Optimization
-using OptimizationIpopt
-using OrderedCollections
-using PeriodicTable
-using PrettyTables
-using ProgressMeter
-using RuntimeGeneratedFunctions
-using SciMLBase
-using SymbolicNumericIntegration
-using Unicode
+    using Crayons
+    using CSV
+    using DataFrames
+    using DynamicQuantities
+    using JSON
+    using LinearAlgebra
+    using ModelingToolkit
+    using Optimization
+    using OptimizationIpopt
+    using OrderedCollections
+    using PeriodicTable
+    using PrettyTables
+    using ProgressMeter
+    using RuntimeGeneratedFunctions
+    using SciMLBase
+    using SymbolicNumericIntegration
+    using Unicode
 
-RuntimeGeneratedFunctions.init(@__MODULE__)
+    RuntimeGeneratedFunctions.init(@__MODULE__)
 
-include("utils/misc.jl")
-include("utils/subsuperscripts.jl")
+    include("utils/misc.jl")
+    include("utils/subsuperscripts.jl")
 
-include("thermodynamics/thermo_factories.jl")
-include("thermodynamics/thermo_models.jl")
+    include("thermodynamics/thermo_factories.jl")
+    include("thermodynamics/thermo_models.jl")
 
-include("chemical_structs/element_order.jl")
-include("chemical_structs/parsing_tools.jl")
-include("chemical_structs/formulas.jl")
-include("chemical_structs/species.jl")
-include("chemical_structs/reactions.jl")
-include("chemical_structs/speciation.jl")
-include("chemical_structs/stoich_matrices.jl")
-include("chemical_structs/chemical_systems.jl")
-include("chemical_structs/chemical_states.jl")
+    include("chemical_structs/element_order.jl")
+    include("chemical_structs/parsing_tools.jl")
+    include("chemical_structs/formulas.jl")
+    include("chemical_structs/species.jl")
+    include("chemical_structs/reactions.jl")
+    include("chemical_structs/speciation.jl")
+    include("chemical_structs/stoich_matrices.jl")
+    include("chemical_structs/chemical_systems.jl")
+    include("chemical_structs/chemical_states.jl")
 
-include("databases/phreeqc_dat.jl")
-include("databases/thermofun_json.jl")
-include("databases/merge_dat_json.jl")
+    include("databases/phreeqc_dat.jl")
+    include("databases/thermofun_json.jl")
+    include("databases/merge_dat_json.jl")
 
-include("equilibrium/activities.jl")
-include("equilibrium/equilibrium_problems.jl")
-include("equilibrium/equilibrium_solver.jl")
+    include("equilibrium/activities.jl")
+    include("equilibrium/equilibrium_problems.jl")
+    include("equilibrium/equilibrium_solver.jl")
 
-export ThermoFunction,
-    ThermoFactory,
-    infer_unit
+    export ThermoFunction,
+        ThermoFactory,
+        infer_unit
 
-export THERMO_MODELS,
-    THERMO_FACTORIES,
-    add_thermo_model,
-    build_thermo_functions,
-    check_dimensions
+    export THERMO_MODELS,
+        THERMO_FACTORIES,
+        add_thermo_model,
+        build_thermo_functions,
+        check_dimensions
 
-export ATOMIC_ORDER,
-    CEMENT_TO_MENDELEEV,
-    OXIDE_ORDER,
-    CEMDATA_PRIMARIES
+    export ATOMIC_ORDER,
+        CEMENT_TO_MENDELEEV,
+        OXIDE_ORDER,
+        CEMDATA_PRIMARIES
 
-export stoich_coef_round,
-    phreeqc_to_unicode,
-    unicode_to_phreeqc,
-    colored_formula,
-    parse_formula,
-    extract_charge,
-    to_mendeleev,
-    parse_equation,
-    colored_equation,
-    format_equation
+    export stoich_coef_round,
+        phreeqc_to_unicode,
+        unicode_to_phreeqc,
+        colored_formula,
+        parse_formula,
+        extract_charge,
+        to_mendeleev,
+        parse_equation,
+        colored_equation,
+        format_equation
 
-export AtomGroup,
-    Formula,
-    expr,
-    phreeqc,
-    unicode,
-    colored,
-    composition,
-    charge,
-    check_mendeleev,
-    calculate_molar_mass,
-    stoichtype,
-    pprint
+    export AtomGroup,
+        Formula,
+        expr,
+        phreeqc,
+        unicode,
+        colored,
+        composition,
+        charge,
+        check_mendeleev,
+        calculate_molar_mass,
+        stoichtype,
+        pprint
 
-export AggregateState,
-    AS_UNDEF,
-    AS_AQUEOUS,
-    AS_CRYSTAL,
-    AS_GAS
+    export AggregateState,
+        AS_UNDEF,
+        AS_AQUEOUS,
+        AS_CRYSTAL,
+        AS_GAS
 
-export Class,
-    SC_UNDEF,
-    SC_AQSOLVENT,
-    SC_AQSOLUTE,
-    SC_COMPONENT,
-    SC_GASFLUID
+    export Class,
+        SC_UNDEF,
+        SC_AQSOLVENT,
+        SC_AQSOLUTE,
+        SC_COMPONENT,
+        SC_GASFLUID
 
-export AbstractSpecies,
-    Species,
-    CemSpecies,
-    name,
-    symbol,
-    formula,
-    cemformula,
-    atoms,
-    atoms_charge,
-    oxides,
-    oxides_charge,
-    components,
-    aggregate_state,
-    class,
-    properties,
-    apply
+    export AbstractSpecies,
+        Species,
+        CemSpecies,
+        name,
+        symbol,
+        formula,
+        cemformula,
+        atoms,
+        atoms_charge,
+        oxides,
+        oxides_charge,
+        components,
+        aggregate_state,
+        class,
+        properties,
+        apply
 
-export AbstractReaction,
-    Reaction,
-    CemReaction,
-    reactants,
-    products,
-    charge,
-    simplify_reaction
-@eval export $(Symbol.(EQUAL_OPS)...)
+    export AbstractReaction,
+        Reaction,
+        CemReaction,
+        reactants,
+        products,
+        charge,
+        simplify_reaction
+    @eval export $(Symbol.(EQUAL_OPS)...)
 
-export union_atoms, speciation
+    export union_atoms, speciation
 
-export StoichMatrix,
-    CanonicalStoichMatrix,
-    pull_primaries,
-    push_primaries,
-    mass_matrix,
-    reactions
+    export StoichMatrix,
+        CanonicalStoichMatrix,
+        pull_primaries,
+        push_primaries,
+        mass_matrix,
+        reactions
 
-export ChemicalSystem,
-    aqueous,
-    crystal,
-    gas,
-    solutes,
-    solvent,
-    components,
-    gasfluid,
-    get_reaction
+    export ChemicalSystem,
+        aqueous,
+        crystal,
+        gas,
+        solutes,
+        solvent,
+        components,
+        gasfluid,
+        get_reaction
 
-export ChemicalState,
-    temperature,
-    pressure,
-    set_temperature!,
-    set_pressure!,
-    moles,
-    set_quantity!,
-    mass,
-    volume,
-    pH,
-    pOH,
-    porosity,
-    saturation
+    export ChemicalState,
+        temperature,
+        pressure,
+        set_temperature!,
+        set_pressure!,
+        moles,
+        set_quantity!,
+        mass,
+        volume,
+        pH,
+        pOH,
+        porosity,
+        saturation
 
-export extract_primary_species
+    export extract_primary_species
 
-export read_thermofun_database,
-    build_species,
-    build_reactions,
-    get_compatible_species
+    export read_thermofun_database,
+        build_species,
+        build_reactions,
+        get_compatible_species
 
-export merge_json
+    export merge_json
 
-export AbstractActivityModel,
-    DiluteSolutionModel,
-    activity_model,
-    build_potentials
+    export AbstractActivityModel,
+        DiluteSolutionModel,
+        activity_model,
+        build_potentials
 
-export EquilibriumProblem
+    export EquilibriumProblem
 
-export EquilibriumSolver,
-    equilibrate
+    export EquilibriumSolver,
+        equilibrate
 
-function __init__()
-    for (k, v) in THERMO_MODELS
-        THERMO_FACTORIES[k] = build_thermo_factories(v)
+    function __init__()
+        for (k, v) in THERMO_MODELS
+            THERMO_FACTORIES[k] = build_thermo_factories(v)
+        end
+        return
     end
-end
 
 end

@@ -1,4 +1,4 @@
-const dict_super_to_normal = OrderedDict{Char,Char}(
+const dict_super_to_normal = OrderedDict{Char, Char}(
     '⁰' => '0',
     '¹' => '1',
     '²' => '2',
@@ -14,7 +14,7 @@ const dict_super_to_normal = OrderedDict{Char,Char}(
     '.' => '.',
 )
 
-const dict_normal_to_super = OrderedDict{Char,Char}(
+const dict_normal_to_super = OrderedDict{Char, Char}(
     '0' => '⁰',
     '1' => '¹',
     '2' => '²',
@@ -30,7 +30,7 @@ const dict_normal_to_super = OrderedDict{Char,Char}(
     '.' => '.',
 )
 
-const dict_sub_to_normal = OrderedDict{Char,Char}(
+const dict_sub_to_normal = OrderedDict{Char, Char}(
     '₀' => '0',
     '₁' => '1',
     '₂' => '2',
@@ -44,7 +44,7 @@ const dict_sub_to_normal = OrderedDict{Char,Char}(
     '.' => '.',
 )
 
-const dict_normal_to_sub = OrderedDict{Char,Char}(
+const dict_normal_to_sub = OrderedDict{Char, Char}(
     '0' => '₀',
     '1' => '₁',
     '2' => '₂',
@@ -60,7 +60,7 @@ const dict_normal_to_sub = OrderedDict{Char,Char}(
     '.' => '.',
 )
 
-const dict_all_normal_to_sub = OrderedDict{Char,Char}(
+const dict_all_normal_to_sub = OrderedDict{Char, Char}(
     '0' => '₀',
     '1' => '₁',
     '2' => '₂',

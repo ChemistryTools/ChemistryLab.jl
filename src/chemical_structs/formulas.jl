@@ -18,7 +18,7 @@ julia> AtomGroup(:Ca)
 AtomGroup{Int64}(1, :Ca)
 ```
 """
-struct AtomGroup{T<:Number}
+struct AtomGroup{T <: Number}
     coef::T
     sym::Symbol
 end
@@ -59,7 +59,7 @@ AtomGroup{Int64}(3, :C)
 ```
 """
 AtomGroup(sym::Symbol) = AtomGroup(1, sym)
-AtomGroup(sym::Symbol, coef::T) where {T<:Number} = AtomGroup(coef, sym)
+AtomGroup(sym::Symbol, coef::T) where {T <: Number} = AtomGroup(coef, sym)
 
 """
     struct Formula{T}
@@ -84,12 +84,12 @@ julia> composition(f)[:H]
 2
 ```
 """
-struct Formula{T<:Number}
+struct Formula{T <: Number}
     expr::String
     phreeqc::String
     unicode::String
     colored::String
-    composition::OrderedDict{Symbol,T}
+    composition::OrderedDict{Symbol, T}
     charge::Int8
 end
 
@@ -209,12 +209,12 @@ julia> composition(f)[:S]
 1
 ```
 """
-function Formula(expr::AbstractString="")
+function Formula(expr::AbstractString = "")
     if expr == "Zz" || expr == "Zz+" || expr == "Zz⁺"
-        composition = OrderedDict{Symbol,Int}()
+        composition = OrderedDict{Symbol, Int}()
         charge = 1
     elseif expr == "e" || expr == "e-" || expr == "e⁻"
-        composition = OrderedDict{Symbol,Int}()
+        composition = OrderedDict{Symbol, Int}()
         charge = -1
     else
         composition = parse_formula(expr)
@@ -251,11 +251,11 @@ julia> expr(f)
 ```
 """
 function Formula(
-    composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORDER
-) where {T<:Number}
+        composition::AbstractDict{Symbol, T}, charge = 0; order = ATOMIC_ORDER
+    ) where {T <: Number}
     charge_symbols = [:Zz, :Zz⁺, :e, :e⁻]
     filtered_keys = setdiff(keys(composition), charge_symbols)
-    sorted_keys = sort(collect(filtered_keys); by=k -> findfirst(==(k), order))
+    sorted_keys = sort(collect(filtered_keys); by = k -> findfirst(==(k), order))
 
     expr_parts = String[]
     uni_parts = String[]
@@ -368,7 +368,7 @@ true
 ```
 """
 function Base.isequal(f1::Formula, f2::Formula)
-    isequal(composition(f1), composition(f2)) && isequal(charge(f1), charge(f2))
+    return isequal(composition(f1), composition(f2)) && isequal(charge(f1), charge(f2))
 end
 ==(f1::Formula, f2::Formula) = isequal(f1, f2)
 
@@ -385,7 +385,7 @@ Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 Concise single-line representation for `Formula` objects, joining available textual forms.
 """
 function Base.show(io::IO, f::Formula)
-    print(io, join(unique!([expr(f), phreeqc(f), unicode(f)]), " ◆ "))
+    return print(io, join(unique!([expr(f), phreeqc(f), unicode(f)]), " ◆ "))
 end
 
 """
@@ -402,7 +402,7 @@ Used by the MIME text/plain `show` method.
   - `pad`: left-padding width.
 """
 function print_formula(io::IO, f::Formula, title::String, pad::Int)
-    println(
+    return println(
         io,
         lpad(title, pad),
         ": ",
@@ -426,7 +426,7 @@ function Base.show(io::IO, ::MIME"text/plain", f::Formula)
         ": ",
         join(["$k => $v" for (k, v) in composition(f)], ", "),
     )
-    println(io, lpad("charge", pad), ": ", charge(f))
+    return println(io, lpad("charge", pad), ": ", charge(f))
 end
 
 """
@@ -442,7 +442,7 @@ MIME/plain `show` helpers to render the "formula" field.
   - `pad` : left-padding width.
 """
 function pprint_formula(f::Formula, title::String, pad::Int)
-    println(
+    return println(
         lpad(title, pad),
         ": ",
         join(unique!([expr(f), phreeqc(f), unicode(f), colored(f)]), " ◆ "),
@@ -468,7 +468,7 @@ function pprint(f::Formula)
         ": ",
         join(["$k => $v" for (k, v) in composition(f)], ", "),
     )
-    println(lpad("charge", pad), ": ", charge(f))
+    return println(lpad("charge", pad), ": ", charge(f))
 end
 
 """
@@ -476,7 +476,7 @@ end
 
 Multiply all stoichiometric coefficients of `f` by scalar `x`.
 """
-function *(f::Formula, x::T) where {T<:Number}
+function *(f::Formula, x::T) where {T <: Number}
     composition = OrderedDict(k => x * v for (k, v) in f.composition)
     return Formula(composition, f.charge)
 end
@@ -486,7 +486,7 @@ end
 
 Divide all stoichiometric coefficients of `f` by scalar `x`.
 """
-function /(f::Formula, x::T) where {T<:Number}
+function /(f::Formula, x::T) where {T <: Number}
     composition = OrderedDict(k => v / x for (k, v) in f.composition)
     return Formula(composition, f.charge)
 end
@@ -496,7 +496,7 @@ end
 
 Produce rational coefficients by dividing `f`'s coefficients by `x` (rational result).
 """
-function //(f::Formula, x::T) where {T<:Number}
+function //(f::Formula, x::T) where {T <: Number}
     composition = OrderedDict(k => v // x for (k, v) in f.composition)
     return Formula(composition, f.charge)
 end
@@ -528,11 +528,11 @@ julia> composition(result)[:H]
 3
 ```
 """
-function +(a::AtomGroup{T}, b::AtomGroup{S}) where {T,S}
+function +(a::AtomGroup{T}, b::AtomGroup{S}) where {T, S}
     composition = if a.sym == b.sym
-        OrderedDict{Symbol,promote_type(T, S)}(a.sym => a.coef + b.coef)
+        OrderedDict{Symbol, promote_type(T, S)}(a.sym => a.coef + b.coef)
     else
-        Dict{Symbol,promote_type(T, S)}(a.sym => a.coef, b.sym => b.coef)
+        Dict{Symbol, promote_type(T, S)}(a.sym => a.coef, b.sym => b.coef)
     end
     return Formula(composition, 0)
 end
@@ -577,28 +577,28 @@ julia> result[:H]
 """
 function apply(func::Function, f::Formula, args...; kwargs...)
     tryfunc(v) =
-        if v isa Quantity
-            (
-                try
-                    func(ustrip(v), args...; kwargs...) *
+    if v isa Quantity
+        (
+            try
+                func(ustrip(v), args...; kwargs...) *
                     func(dimension(v), args...; kwargs...)
-                catch
-                    try
-                        func(ustrip(v), args...; kwargs...) * dimension(v)
-                    catch
-                        v
-                    end
-                end
-            )
-        else
-            (
+            catch
                 try
-                    func(v, args...; kwargs...)
+                    func(ustrip(v), args...; kwargs...) * dimension(v)
                 catch
                     v
                 end
-            )
-        end
+            end
+        )
+    else
+        (
+            try
+                func(v, args...; kwargs...)
+            catch
+                v
+            end
+        )
+    end
     newcomposition = OrderedDict(k => tryfunc(v) for (k, v) in composition(f))
     return Formula{valtype(newcomposition)}(
         expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f))
@@ -647,12 +647,12 @@ julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
 0.0180149999937744 kg mol⁻¹
 ```
 """
-function calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number}
+function calculate_molar_mass(atoms::AbstractDict{Symbol, T}) where {T <: Number}
     # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
     # return uconvert(u"g/mol", sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
     molar_masses = [
         cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for
-        (element, cnt) in atoms if haskey(elements, element)
+            (element, cnt) in atoms if haskey(elements, element)
     ]
     return length(molar_masses) > 0 ? sum(molar_masses) * Constants.N_A : 0u"g/mol"
 end

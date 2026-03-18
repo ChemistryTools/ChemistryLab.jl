@@ -16,9 +16,9 @@ Read a ThermoFun database from a JSON file.
 function read_thermofun_database(filename)
     print_title(
         "Loading database: $filename";
-        crayon=Crayon(; foreground=:green),
-        style=:box,
-        indent="",
+        crayon = Crayon(; foreground = :green),
+        style = :box,
+        indent = "",
     )
     data = JSON.parsefile(filename)
     df_substances = DataFrame(Tables.dictrowtable(data["substances"]))
@@ -27,7 +27,7 @@ function read_thermofun_database(filename)
     return df_elements, df_substances, df_reactions
 end
 
-function extract_unit(v, default_unit=u"1")
+function extract_unit(v, default_unit = u"1")
     return try
         uparse(v)
     catch
@@ -36,8 +36,8 @@ function extract_unit(v, default_unit=u"1")
 end
 
 function extract_value(
-    row, field::Symbol; verbose=false, default_unit=u"1", with_units=true
-)
+        row, field::Symbol; verbose = false, default_unit = u"1", with_units = true
+    )
     if haskey(row, field) && !ismissing(row[field]) && haskey(row[field], :values)
         try
             val = only(row[field].values)
@@ -63,25 +63,25 @@ function extract_value(
     end
 end
 
-correct_volume_unit(v::AbstractQuantity) = uamount(v) != -1 ? v/1u"mol" : v
+correct_volume_unit(v::AbstractQuantity) = uamount(v) != -1 ? v / 1u"mol" : v
 
 correct_volume_unit(v) = v
 
-function complete_species_with_thermo_model!(species, row; verbose=false)
+function complete_species_with_thermo_model!(species, row; verbose = false)
     Tref = row.Tst * u"K"
     Pref = row.Pst * u"Pa"
     species.Tref = Tref
     species.Pref = Pref
     values0 = [
         :Cp⁰ => extract_value(
-            row, :sm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"
+            row, :sm_heat_capacity_p; verbose = verbose, default_unit = u"J/K/mol"
         ),
-        :ΔₐH⁰ => extract_value(row, :sm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔₐH⁰ => extract_value(row, :sm_enthalpy; verbose = verbose, default_unit = u"J/mol"),
         :S⁰ =>
-            extract_value(row, :sm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
+            extract_value(row, :sm_entropy_abs; verbose = verbose, default_unit = u"J/K/mol"),
         :ΔₐG⁰ =>
-            extract_value(row, :sm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
-        :V⁰ => correct_volume_unit(extract_value(row, :sm_volume; verbose=verbose, default_unit=u"J/bar")),
+            extract_value(row, :sm_gibbs_energy; verbose = verbose, default_unit = u"J/mol"),
+        :V⁰ => correct_volume_unit(extract_value(row, :sm_volume; verbose = verbose, default_unit = u"J/bar")),
     ]
     species[:thermo_params] = [values0; :T => Tref; :P => Pref]
     TPMethods = row.TPMethods
@@ -95,7 +95,7 @@ function complete_species_with_thermo_model!(species, row; verbose=false)
                 units = extract_unit.(coeffs.units)
                 params = [
                     Symbol("a", subscriptnumber(i - 1)) => float(vals[i] * units[i]) for
-                    i in 1:min(length(vals), length(units))
+                        i in 1:min(length(vals), length(units))
                 ]
                 species[:thermo_params] = [params; species[:thermo_params]]
 
@@ -123,8 +123,8 @@ Build Species objects from a substance DataFrame.
   - Vector of `Species`.
 """
 function build_species(
-    df_substances::AbstractDataFrame, list_symbols=nothing; verbose=false
-)
+        df_substances::AbstractDataFrame, list_symbols = nothing; verbose = false
+    )
     local_df_substances = if isnothing(list_symbols)
         df_substances
     else
@@ -133,7 +133,7 @@ function build_species(
     keylist = String[]
     species_list = Species[]
     print_title(
-        "Building species"; crayon=Crayon(; foreground=:blue), style=:box, indent=""
+        "Building species"; crayon = Crayon(; foreground = :blue), style = :box, indent = ""
     )
     @showprogress for row in eachrow(local_df_substances)
         if verbose
@@ -141,51 +141,51 @@ function build_species(
         end
         species = Species(
             row.formula;
-            name=row.name,
-            symbol=row.symbol,
-            aggregate_state=try
+            name = row.name,
+            symbol = row.symbol,
+            aggregate_state = try
                 eval(Meta.parse(only(values(row.aggregate_state))))
             catch
                 AS_UNDEF
             end,
-            class=try
+            class = try
                 eval(Meta.parse(only(values(row.class_))))
             catch
                 SC_UNDEF
             end,
         )
-        complete_species_with_thermo_model!(species, row; verbose=verbose)
+        complete_species_with_thermo_model!(species, row; verbose = verbose)
         key = row.symbol
         if key in keylist
             @warn("Symbol $key is used for multiple species")
         end
         push!(keylist, key)
-        push!(species_list,species)
+        push!(species_list, species)
     end
     return species_list
 end
 
-function build_species(filename, list_symbols=nothing; verbose=false)
+function build_species(filename, list_symbols = nothing; verbose = false)
     _, df_substances, _ = read_thermofun_database(filename)
-    return build_species(df_substances, list_symbols; verbose=verbose)
+    return build_species(df_substances, list_symbols; verbose = verbose)
 end
 
-function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
+function complete_reaction_with_thermo_model!(reaction, row; verbose = false)
     Tref = row.Tst * u"K"
     Pref = row.Pst * u"Pa"
     reaction.Tref = Tref
     reaction.Pref = Pref
     values0 = [
         :ΔᵣCp⁰ => extract_value(
-            row, :drsm_heat_capacity_p; verbose=verbose, default_unit=u"J/K/mol"
+            row, :drsm_heat_capacity_p; verbose = verbose, default_unit = u"J/K/mol"
         ),
-        :ΔᵣH⁰ => extract_value(row, :drsm_enthalpy; verbose=verbose, default_unit=u"J/mol"),
+        :ΔᵣH⁰ => extract_value(row, :drsm_enthalpy; verbose = verbose, default_unit = u"J/mol"),
         :ΔᵣS⁰ =>
-            extract_value(row, :drsm_entropy_abs; verbose=verbose, default_unit=u"J/K/mol"),
+            extract_value(row, :drsm_entropy_abs; verbose = verbose, default_unit = u"J/K/mol"),
         :ΔᵣG⁰ =>
-            extract_value(row, :drsm_gibbs_energy; verbose=verbose, default_unit=u"J/mol"),
-        :ΔᵣV⁰ => correct_volume_unit(extract_value(row, :drsm_volume; verbose=verbose, default_unit=u"J/bar")),
-        :logKr => extract_value(row, :logKr; verbose=verbose, default_unit=u"1"),
+            extract_value(row, :drsm_gibbs_energy; verbose = verbose, default_unit = u"J/mol"),
+        :ΔᵣV⁰ => correct_volume_unit(extract_value(row, :drsm_volume; verbose = verbose, default_unit = u"J/bar")),
+        :logKr => extract_value(row, :logKr; verbose = verbose, default_unit = u"1"),
     ]
     reaction[:thermo_params] = [values0; :T => Tref; :P => Pref]
     TPMethods = row.TPMethods
@@ -200,7 +200,7 @@ function complete_reaction_with_thermo_model!(reaction, row; verbose=false)
                 params = [
                     Symbol("A", subscriptnumber(i - 1)) =>
                         float(Quantity(vals[i], units[i])) for
-                    i in 1:min(length(vals), length(units))
+                        i in 1:min(length(vals), length(units))
                 ]
                 reaction[:thermo_params] = [params; reaction[:thermo_params]]
             elseif method_type == "dr_volume_constant"
@@ -228,11 +228,11 @@ Build Reaction objects from a reaction DataFrame.
   - Vector of `Reaction` objects.
 """
 function build_reactions(
-    df_reactions::AbstractDataFrame,
-    species_list=[],
-    list_symbols=nothing;
-    verbose=false,
-)
+        df_reactions::AbstractDataFrame,
+        species_list = [],
+        list_symbols = nothing;
+        verbose = false,
+    )
     local_df_reactions = if isnothing(list_symbols)
         df_reactions
     else
@@ -242,7 +242,7 @@ function build_reactions(
     keylist = String[]
     reactions_list = Reaction[]
     print_title(
-        "Building reactions"; crayon=Crayon(; foreground=:red), style=:box, indent=""
+        "Building reactions"; crayon = Crayon(; foreground = :red), style = :box, indent = ""
     )
     function choose_species(k, rowsymbol, dict_species)
         if haskey(dict_species, k)
@@ -265,11 +265,11 @@ function build_reactions(
         reaction = Reaction(
             OrderedDict(
                 choose_species(last(k), row.symbol, dict_species) => last(v) for
-                (k, v) in row.reactants if last(k) != "e-"
+                    (k, v) in row.reactants if last(k) != "e-"
             );
-            symbol=row.symbol,
+            symbol = row.symbol,
         )
-        complete_reaction_with_thermo_model!(reaction, row; verbose=verbose)
+        complete_reaction_with_thermo_model!(reaction, row; verbose = verbose)
         key = row.symbol
         if key in keylist
             @warn("Symbol $key is used for multiple reactions")
@@ -280,9 +280,9 @@ function build_reactions(
     return reactions_list
 end
 
-function build_reactions(filename, species_list=[], list_symbols=nothing; verbose=false)
+function build_reactions(filename, species_list = [], list_symbols = nothing; verbose = false)
     _, _, df_reactions = read_thermofun_database(filename)
-    return build_reactions(df_reactions, species_list, list_symbols; verbose=verbose)
+    return build_reactions(df_reactions, species_list, list_symbols; verbose = verbose)
 end
 
 """
@@ -303,12 +303,12 @@ Find species in the database compatible with a given list of species (sharing at
   - DataFrame of compatible substances.
 """
 function get_compatible_species(
-    df_substances::AbstractDataFrame,
-    species_list;
-    aggregate_states=[AS_AQUEOUS],
-    exclude_species=[],
-    union=false,
-)
+        df_substances::AbstractDataFrame,
+        species_list;
+        aggregate_states = [AS_AQUEOUS],
+        exclude_species = [],
+        union = false,
+    )
     df_given_species = @view df_substances[df_substances.symbol .∈ Ref(species_list), :]
     involved_atoms = union_atoms(parse_formula.(df_given_species.formula))
     mask1 = last.(only.(df_substances.aggregate_state)) .∈ Ref(string.(aggregate_states))

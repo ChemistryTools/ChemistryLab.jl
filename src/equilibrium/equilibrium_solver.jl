@@ -29,7 +29,7 @@ julia> solver isa EquilibriumSolver
 true
 ```
 """
-struct EquilibriumSolver{F<:Function, S, V<:Val}
+struct EquilibriumSolver{F <: Function, S, V <: Val}
     μ::F                    # potential closure — built once from cs and model
     solver::S               # SciML-compatible solver
     variable_space::V       # Val(:linear) or Val(:log)
@@ -54,12 +54,12 @@ Repeated calls to `solve` with different `ChemicalState` inputs reuse it.
   - `kwargs...`: forwarded to the underlying `solve` call (tolerances, verbosity...).
 """
 function EquilibriumSolver(
-    cs::ChemicalSystem,
-    model::AbstractActivityModel,
-    solver::S;
-    variable_space::V = Val(:linear),
-    kwargs...,
-) where {S, V<:Val}
+        cs::ChemicalSystem,
+        model::AbstractActivityModel,
+        solver::S;
+        variable_space::V = Val(:linear),
+        kwargs...,
+    ) where {S, V <: Val}
     μ = build_potentials(cs, model)     # built once — captures indices and constants
     return EquilibriumSolver{typeof(μ), S, V}(μ, solver, variable_space, kwargs)
 end
@@ -73,15 +73,17 @@ Extract dimensionless parameters `p = (ΔₐG⁰overT, ϵ)` from a `ChemicalStat
 `ΔₐG⁰overT` is evaluated at the current `T` and `P` of the state.
 Units are stripped — compatible with ForwardDiff dual numbers.
 """
-function _build_params(state::ChemicalState; ϵ::Float64=1e-16)
-    T  = temperature(state)
-    P  = pressure(state)
-    R  = Constants.R
+function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
+    T = temperature(state)
+    P = pressure(state)
+    R = Constants.R
     RT = R * T                  # keeps units — division below strips them
 
     # ustrip without forced Float64 conversion — preserves Dual if T is Dual
-    ΔₐG⁰overT = [ustrip(s[:ΔₐG⁰](T=T, P=P; unit=true) / RT)
-                  for s in state.system.species]
+    ΔₐG⁰overT = [
+        ustrip(s[:ΔₐG⁰](T = T, P = P; unit = true) / RT)
+            for s in state.system.species
+    ]
 
     return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ)
 end
@@ -125,22 +127,22 @@ state_eq = solve(solver, state0)
 ```
 """
 function SciMLBase.solve(
-    esolver::EquilibriumSolver,
-    state::ChemicalState;
-    ϵ::Float64 = 1e-16,
-)
+        esolver::EquilibriumSolver,
+        state::ChemicalState;
+        ϵ::Float64 = 1.0e-16,
+    )
     cs = state.system
 
     # Extract dimensionless inputs from state
     n0 = _build_n0(state)
-    p  = _build_params(state; ϵ=ϵ)
+    p = _build_params(state; ϵ = ϵ)
 
     # Ensure initial guess is positive (critical for log variables)
     n0 = max.(n0, ϵ)
 
     # Build and solve the optimization problem
-    prob = EquilibriumProblem(cs.SM.A, esolver.μ, n0; p=p)
-    sol  = solve(prob, esolver.solver; variable_space=esolver.variable_space, esolver.kwargs...)
+    prob = EquilibriumProblem(cs.SM.A, esolver.μ, n0; p = p)
+    sol = solve(prob, esolver.solver; variable_space = esolver.variable_space, esolver.kwargs...)
 
     # Wrap result back into a ChemicalState — same system, same T and P
     state_eq = copy(state)                      # shares ChemicalSystem, copies n/T/P
@@ -198,19 +200,19 @@ state_eq = equilibrate(state; model=DebyeHuckelModel(A=0.51, B=3.28))
 ```
 """
 function equilibrate(
-    state::ChemicalState;
-    model::AbstractActivityModel = DiluteSolutionModel(),
-    solver = _default_ipopt_solver(),
-    variable_space::Val               = Val(:linear),
-    ϵ::Float64                 = 1e-16,
-    kwargs...,
-)
+        state::ChemicalState;
+        model::AbstractActivityModel = DiluteSolutionModel(),
+        solver = _default_ipopt_solver(),
+        variable_space::Val = Val(:linear),
+        ϵ::Float64 = 1.0e-16,
+        kwargs...,
+    )
     esolver = EquilibriumSolver(
         state.system, model, solver;
         variable_space = variable_space,
         kwargs...,
     )
-    return solve(esolver, state; ϵ=ϵ)
+    return solve(esolver, state; ϵ = ϵ)
 end
 
 """
@@ -221,10 +223,10 @@ chemical equilibrium calculations.
 """
 function _default_ipopt_solver()
     return IpoptOptimizer(
-        acceptable_tol        = 1e-12,
-        dual_inf_tol          = 1e-12,
-        acceptable_iter       = 1000,
-        constr_viol_tol       = 1e-12,
+        acceptable_tol = 1.0e-12,
+        dual_inf_tol = 1.0e-12,
+        acceptable_iter = 1000,
+        constr_viol_tol = 1.0e-12,
         warm_start_init_point = "no",
     )
 end

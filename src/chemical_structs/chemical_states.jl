@@ -45,7 +45,7 @@ julia> ustrip(state.T[])
 298.15
 ```
 """
-struct ChemicalState{C, S, Q<:AbstractQuantity}
+struct ChemicalState{C, S, Q <: AbstractQuantity}
     system::ChemicalSystem{C, S}        # shared reference — not duplicated on copy
     n::Vector{Q}                         # molar amounts [mol] — always stored in mol
     T::Vector{Q}                         # temperature [K]     — 1-element Vector for mutability
@@ -101,12 +101,12 @@ Compute moles per phase from species vector `n`.
 """
 function _compute_n_phases(system::ChemicalSystem, n::AbstractVector)
     function _phase(idx)
-        return sum((n[i] for i in idx); init=0.0u"mol")
+        return sum((n[i] for i in idx); init = 0.0u"mol")
     end
     n_liquid = _phase(system.idx_aqueous)
-    n_solid  = _phase(system.idx_crystal)
-    n_gas    = _phase(system.idx_gas)
-    return (liquid=n_liquid, solid=n_solid, gas=n_gas, total=n_liquid + n_solid + n_gas)
+    n_solid = _phase(system.idx_crystal)
+    n_gas = _phase(system.idx_gas)
+    return (liquid = n_liquid, solid = n_solid, gas = n_gas, total = n_liquid + n_solid + n_gas)
 end
 
 """
@@ -116,12 +116,12 @@ Compute mass per phase from species vector `n` and molar masses.
 """
 function _compute_m_phases(system::ChemicalSystem, n::AbstractVector)
     function _phase(idx)
-        return sum((n[i] * system.species[i][:M] for i in idx); init=0.0u"kg")
+        return sum((n[i] * system.species[i][:M] for i in idx); init = 0.0u"kg")
     end
     m_liquid = _phase(system.idx_aqueous)
-    m_solid  = _phase(system.idx_crystal)
-    m_gas    = _phase(system.idx_gas)
-    return (liquid=m_liquid, solid=m_solid, gas=m_gas, total=m_liquid + m_solid + m_gas)
+    m_solid = _phase(system.idx_crystal)
+    m_gas = _phase(system.idx_gas)
+    return (liquid = m_liquid, solid = m_solid, gas = m_gas, total = m_liquid + m_solid + m_gas)
 end
 
 """
@@ -133,26 +133,26 @@ Gas phase falls back to ideal gas law if `V⁰` is not available for all gas spe
 function _compute_V_phases(system::ChemicalSystem, n::AbstractVector, T, P)
     # Sum n × V⁰(T,P) over indices where V⁰ is available
     _phase(idx) = sum(
-        n[i] * _molar_volume(system.species[i])(T=T, P=P; unit=true)
-        for i in idx if _has_molar_volume(system.species[i]);
-        init=0.0u"m^3",
+        n[i] * _molar_volume(system.species[i])(T = T, P = P; unit = true)
+            for i in idx if _has_molar_volume(system.species[i]);
+        init = 0.0u"m^3",
     )
 
     V_liquid = _phase(system.idx_aqueous)
-    V_solid  = _phase(system.idx_crystal)
+    V_solid = _phase(system.idx_crystal)
 
     if isempty(system.idx_gas)
         V_gas = 0.0u"m^3"
     elseif all(_has_molar_volume(system.species[i]) for i in system.idx_gas)
         V_gas = _phase(system.idx_gas)          # use database values if all available
     else
-        R     = Constants.R                     # ideal gas constant
-        n_gas = sum(n[i] for i in system.idx_gas; init=0.0u"mol")
+        R = Constants.R                     # ideal gas constant
+        n_gas = sum(n[i] for i in system.idx_gas; init = 0.0u"mol")
         V_gas = uconvert(u"m^3", n_gas * R * T / P)    # ideal gas fallback
     end
 
     V_total = V_liquid + V_solid + V_gas
-    return (liquid=V_liquid, solid=V_solid, gas=V_gas, total=V_total)
+    return (liquid = V_liquid, solid = V_solid, gas = V_gas, total = V_total)
 end
 
 """
@@ -162,7 +162,7 @@ Compute porosity = (V_liquid + V_gas) / V_total.
 Returns `nothing` if total volume is zero.
 """
 function _compute_porosity(V_phases)
-    V_tot  = V_phases.total
+    V_tot = V_phases.total
     iszero(ustrip(V_tot)) && return nothing
     return (V_phases.liquid + V_phases.gas) / V_tot   # dimensionless
 end
@@ -214,24 +214,26 @@ true
 ```
 """
 function ChemicalState(
-    system::ChemicalSystem;
-    T::Q = 298.15u"K",
-    P::Q = 1u"bar",
-    n::AbstractVector = fill(0.0u"mol", length(system)),
-) where {Q<:AbstractQuantity}
+        system::ChemicalSystem;
+        T::Q = 298.15u"K",
+        P::Q = 1u"bar",
+        n::AbstractVector = fill(0.0u"mol", length(system)),
+    ) where {Q <: AbstractQuantity}
     @assert dimension(T) == dimension(u"K")  "T must have temperature dimension"
     @assert dimension(P) == dimension(u"Pa") "P must have pressure dimension"
     @assert length(n) == length(system) "n must have one entry per species (got $(length(n)), expected $(length(system)))"
 
     # Convert each entry individually — species i may be in mol while species j is in g
-    n_mol = Q[uconvert(us"mol", _entry_to_moles(nᵢ, s))
-              for (nᵢ, s) in zip(n, system.species)]
+    n_mol = Q[
+        uconvert(us"mol", _entry_to_moles(nᵢ, s))
+            for (nᵢ, s) in zip(n, system.species)
+    ]
 
     # Compute all derived quantities once at construction time
     n_ph = _compute_n_phases(system, n_mol)
     m_ph = _compute_m_phases(system, n_mol)
     V_ph = _compute_V_phases(system, n_mol, T, P)
-    _pH = _compute_pH( system, n_mol, T, P, V_ph.liquid)
+    _pH = _compute_pH(system, n_mol, T, P, V_ph.liquid)
     _pOH = _compute_pOH(system, n_mol, T, P, V_ph.liquid)
     _porosity = _compute_porosity(V_ph)
     _saturation = _compute_saturation(V_ph)
@@ -274,12 +276,12 @@ true
 ```
 """
 function ChemicalState(
-    system::ChemicalSystem,
-    values::AbstractVector;
-    T::Q = 298.15u"K",
-    P::Q = 1u"bar",
-) where {Q<:AbstractQuantity}
-    return ChemicalState(system; T=T, P=P, n=values)
+        system::ChemicalSystem,
+        values::AbstractVector;
+        T::Q = 298.15u"K",
+        P::Q = 1u"bar",
+    ) where {Q <: AbstractQuantity}
+    return ChemicalState(system; T = T, P = P, n = values)
 end
 
 # ── Internal update ───────────────────────────────────────────────────────────
@@ -292,15 +294,15 @@ of `n`, `T`, or `P`. Called automatically by `set_quantity!`,
 `set_temperature!`, and `set_pressure!`.
 """
 function _update_derived!(state::ChemicalState)
-    T    = temperature(state)
-    P    = pressure(state)
+    T = temperature(state)
+    P = pressure(state)
     V_ph = _compute_V_phases(state.system, state.n, T, P)
-    state.n_phases[]   = _compute_n_phases(state.system, state.n)
-    state.m_phases[]   = _compute_m_phases(state.system, state.n)
-    state.V_phases[]   = V_ph
-    state.pH[]         = _compute_pH( state.system, state.n, T, P, V_ph.liquid)
-    state.pOH[]        = _compute_pOH(state.system, state.n, T, P, V_ph.liquid)
-    state.porosity[]   = _compute_porosity(V_ph)
+    state.n_phases[] = _compute_n_phases(state.system, state.n)
+    state.m_phases[] = _compute_m_phases(state.system, state.n)
+    state.V_phases[] = V_ph
+    state.pH[] = _compute_pH(state.system, state.n, T, P, V_ph.liquid)
+    state.pOH[] = _compute_pOH(state.system, state.n, T, P, V_ph.liquid)
+    state.porosity[] = _compute_porosity(V_ph)
     state.saturation[] = _compute_saturation(V_ph)
     return state
 end
@@ -551,7 +553,7 @@ function volume(state::ChemicalState, s::AbstractSpecies)
     i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
     _has_molar_volume(s) || return nothing
-    return state.n[i] * _molar_volume(s)(T=temperature(state), P=pressure(state); unit=true)
+    return state.n[i] * _molar_volume(s)(T = temperature(state), P = pressure(state); unit = true)
 end
 
 """
@@ -671,13 +673,13 @@ Returns `nothing` if neither H⁺ nor OH⁻ is present, or if liquid volume is z
 function _compute_pH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
     iszero(ustrip(V_liquid)) && return nothing
 
-    i_H  = findfirst(s -> symbol(s) == "H+",  system.species)
+    i_H = findfirst(s -> symbol(s) == "H+", system.species)
     i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
 
     # Need at least one of H+ or OH-
     isnothing(i_H) && isnothing(i_OH) && return nothing
 
-    c_H  = isnothing(i_H)  ? 0.0 : ustrip(us"mol/L", n[i_H]  / V_liquid)
+    c_H = isnothing(i_H) ? 0.0 : ustrip(us"mol/L", n[i_H] / V_liquid)
     c_OH = isnothing(i_OH) ? 0.0 : ustrip(us"mol/L", n[i_OH] / V_liquid)
 
     if c_H >= c_OH
@@ -707,12 +709,12 @@ Returns `nothing` if neither species is present or volume is zero.
 function _compute_pOH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
     iszero(ustrip(V_liquid)) && return nothing
 
-    i_H  = findfirst(s -> symbol(s) == "H+",  system.species)
+    i_H = findfirst(s -> symbol(s) == "H+", system.species)
     i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
 
     isnothing(i_H) && isnothing(i_OH) && return nothing
 
-    c_H  = isnothing(i_H)  ? 0.0 : ustrip(us"mol/L", n[i_H]  / V_liquid)
+    c_H = isnothing(i_H) ? 0.0 : ustrip(us"mol/L", n[i_H] / V_liquid)
     c_OH = isnothing(i_OH) ? 0.0 : ustrip(us"mol/L", n[i_OH] / V_liquid)
 
     if c_OH >= c_H
@@ -720,7 +722,7 @@ function _compute_pOH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
         return -log10(c_OH)
     else
         c_H <= 0.0 && return nothing
-        pH  = -log10(c_H)
+        pH = -log10(c_H)
         pKw = _compute_pKw(system, T, P)
         isnothing(pKw) && return pH    # fallback
         return pKw - pH
@@ -738,15 +740,15 @@ Returns `nothing` if any of H2O@, H+, or OH- is absent from the system.
 function _compute_pKw(system::ChemicalSystem, T, P)
     # All three species must be present
     i_H2O = findfirst(s -> symbol(s) == "H2O@", system.species)
-    i_H   = findfirst(s -> symbol(s) == "H+",   system.species)
-    i_OH  = findfirst(s -> symbol(s) == "OH-",  system.species)
+    i_H = findfirst(s -> symbol(s) == "H+", system.species)
+    i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
 
     (isnothing(i_H2O) || isnothing(i_H) || isnothing(i_OH)) && return nothing
 
     # Reconstruct the reaction H2O@ → H+ + OH- from the species objects
     r = system.species[i_H2O] → system.species[i_H] + system.species[i_OH]
 
-    return -r.logK⁰(T=T, P=P)
+    return -r.logK⁰(T = T, P = P)
 end
 
 # ── Mutation ──────────────────────────────────────────────────────────────────
@@ -858,18 +860,20 @@ Shows molar amounts, masses, and volumes for each species grouped by phase,
 with phase totals and scalar diagnostics (pH, pOH, porosity, saturation).
 """
 function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
-    cs  = state.system
-    T   = temperature(state)
-    P   = pressure(state)
+    cs = state.system
+    T = temperature(state)
+    P = pressure(state)
 
     # pad must accommodate species symbols AND phase labels
-    phase_labels = ["# liquid #", "tot. liquid", "# solid #", "tot. solid",
-                    "# gas #",    "tot. gas",    "# TOTAL #"]
-    pad = maximum(length.([symbol.(cs.species); phase_labels]); init=12)
+    phase_labels = [
+        "# liquid #", "tot. liquid", "# solid #", "tot. solid",
+        "# gas #", "tot. gas", "# TOTAL #",
+    ]
+    pad = maximum(length.([symbol.(cs.species); phase_labels]); init = 12)
 
     show_volume = any(_has_molar_volume(s) for s in cs.species)
-    show_conc   = show_volume && !isempty(cs.idx_aqueous)   # needs V_liquid
-    show_ppart  = !isempty(cs.idx_gas)                      # needs only n_gas, P
+    show_conc = show_volume && !isempty(cs.idx_aqueous)   # needs V_liquid
+    show_ppart = !isempty(cs.idx_gas)                      # needs only n_gas, P
 
     col_n = 20
     col_m = 20
@@ -878,27 +882,27 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     col_p = 20   # p [bar]   — gas only
 
     total_width = 1 + pad + 1 + col_n + 1 + col_m +
-                  (show_volume ? 1 + col_v : 0) +
-                  (show_conc   ? 1 + col_c : 0) +
-                  (show_ppart  ? 1 + col_p : 0) + 1
+        (show_volume ? 1 + col_v : 0) +
+        (show_conc ? 1 + col_c : 0) +
+        (show_ppart ? 1 + col_p : 0) + 1
 
-    hl  = "─"; hhl = "═"; vl  = "│"
-    tl  = "┌"; tr  = "┐"; bl  = "└"; br  = "┘"
-    ml  = "├"; mr  = "┤"; mml = "╞"; mmr = "╡"
-    ht  = "┄"
+    hl = "─"; hhl = "═"; vl = "│"
+    tl = "┌"; tr = "┐"; bl = "└"; br = "┘"
+    ml = "├"; mr = "┤"; mml = "╞"; mmr = "╡"
+    ht = "┄"
 
-    _hline()   = ml  * repeat(hl,  total_width - 2) * mr
-    _htline()  = ml  * repeat(ht,  total_width - 2) * mr
-    _hhline()  = mml * repeat(hhl, total_width - 2) * mmr
-    _topline() = tl  * repeat(hl,  total_width - 2) * tr
-    _botline() = bl  * repeat(hl,  total_width - 2) * br
+    _hline() = ml * repeat(hl, total_width - 2) * mr
+    _htline() = ml * repeat(ht, total_width - 2) * mr
+    _hhline() = mml * repeat(hhl, total_width - 2) * mmr
+    _topline() = tl * repeat(hl, total_width - 2) * tr
+    _botline() = bl * repeat(hl, total_width - 2) * br
 
     _rpad(s, n) = s * repeat(" ", max(0, n - length(s)))
     _lpad(s, n) = repeat(" ", max(0, n - length(s))) * s
 
-    _fmt(x)  = string(round(Float64(x); sigdigits=6))
-    _fmt4(x) = string(round(Float64(x); digits=4))
-    _fmt6(x) = string(round(Float64(x); digits=6))
+    _fmt(x) = string(round(Float64(x); sigdigits = 6))
+    _fmt4(x) = string(round(Float64(x); digits = 4))
+    _fmt6(x) = string(round(Float64(x); digits = 6))
 
     function _row(col1, cell_n, cell_m, cell_v, cell_c, cell_p)
         r = vl * _lpad(col1, pad) *
@@ -920,7 +924,7 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     # ── Header ────────────────────────────────────────────────────────────────
     println(io, typeof(state))
     println(io, _topline())
-    println(io, _full_row("T", _fmt4(ustrip(us"K",   T)) * " K"))
+    println(io, _full_row("T", _fmt4(ustrip(us"K", T)) * " K"))
     println(io, _full_row("P", _fmt4(ustrip(us"bar", P)) * " bar"))
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -942,69 +946,82 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
 
     function _species_row(s, nᵢ, phase_key)
         n_val = _fmt(ustrip(us"mol", nᵢ))
-        m_val = _fmt(ustrip(us"g",   nᵢ * s[:M]))
+        m_val = _fmt(ustrip(us"g", nᵢ * s[:M]))
         V_val = if show_volume && _has_molar_volume(s)
-            _fmt(ustrip(us"cm^3", nᵢ * _molar_volume(s)(T=T, P=P; unit=true)))
+            _fmt(ustrip(us"cm^3", nᵢ * _molar_volume(s)(T = T, P = P; unit = true)))
         elseif show_volume
             "N/A"
-        else "" end
+        else
+            ""
+        end
         c_val = phase_key == :liquid ? _concentration(nᵢ) : ""
-        p_val = phase_key == :gas    ? _partial_pressure(nᵢ) : ""
-        println(io, _row(symbol(s), n_val, m_val, V_val, c_val, p_val))
+        p_val = phase_key == :gas ? _partial_pressure(nᵢ) : ""
+        return println(io, _row(symbol(s), n_val, m_val, V_val, c_val, p_val))
     end
 
     function _print_phase(label, phase_key, indices)
         isempty(indices) && return
-        n_ph = _fmt(ustrip(us"mol",  state.n_phases[][phase_key]))
-        m_ph = _fmt(ustrip(us"g",    state.m_phases[][phase_key]))
+        n_ph = _fmt(ustrip(us"mol", state.n_phases[][phase_key]))
+        m_ph = _fmt(ustrip(us"g", state.m_phases[][phase_key]))
         V_ph = show_volume ?
-               _fmt(ustrip(us"cm^3", state.V_phases[][phase_key])) : ""
+            _fmt(ustrip(us"cm^3", state.V_phases[][phase_key])) : ""
         # Column sub-header — only show relevant columns per phase
         c_hdr = phase_key == :liquid ? "c [mol/L]" : ""
-        p_hdr = phase_key == :gas    ? "p [bar]"   : ""
+        p_hdr = phase_key == :gas ? "p [bar]" : ""
         println(io, _hhline())
-        println(io, _row("# $label #", "n [mol]", "m [g]",
-                         show_volume ? "V [cm³]" : "",
-                         c_hdr, p_hdr))
+        println(
+            io, _row(
+                "# $label #", "n [mol]", "m [g]",
+                show_volume ? "V [cm³]" : "",
+                c_hdr, p_hdr
+            )
+        )
         println(io, _htline())
         println(io, _row("tot. $label", n_ph, m_ph, V_ph, "", ""))
         println(io, _htline())
-        for i in sort(indices; by=j->state.n[j], rev=true)
+        for i in sort(indices; by = j -> state.n[j], rev = true)
             _species_row(cs.species[i], state.n[i], phase_key)
         end
+        return
     end
 
     _print_phase("liquid", :liquid, cs.idx_aqueous)
-    _print_phase("solid",  :solid,  cs.idx_crystal)
-    _print_phase("gas",    :gas,    cs.idx_gas)
+    _print_phase("solid", :solid, cs.idx_crystal)
+    _print_phase("gas", :gas, cs.idx_gas)
 
     # ── Total ─────────────────────────────────────────────────────────────────
     println(io, _hhline())
-    println(io, _row("# TOTAL #", "n [mol]", "m [g]",
-                     show_volume ? "V [cm³]" : "", "", ""))
+    println(
+        io, _row(
+            "# TOTAL #", "n [mol]", "m [g]",
+            show_volume ? "V [cm³]" : "", "", ""
+        )
+    )
     println(io, _htline())
-    println(io, _row(
-        "",
-        _fmt(ustrip(us"mol",  state.n_phases[].total)),
-        _fmt(ustrip(us"g",    state.m_phases[].total)),
-        show_volume ? _fmt(ustrip(us"cm^3", state.V_phases[].total)) : "",
-        "", "",
-    ))
+    println(
+        io, _row(
+            "",
+            _fmt(ustrip(us"mol", state.n_phases[].total)),
+            _fmt(ustrip(us"g", state.m_phases[].total)),
+            show_volume ? _fmt(ustrip(us"cm^3", state.V_phases[].total)) : "",
+            "", "",
+        )
+    )
     println(io, _hhline())
 
     # ── Diagnostics ───────────────────────────────────────────────────────────
     any_diag = !isnothing(state.pH[])       ||
-               !isnothing(state.pOH[])      ||
-               !isnothing(state.porosity[]) ||
-               !isnothing(state.saturation[])
+        !isnothing(state.pOH[])      ||
+        !isnothing(state.porosity[]) ||
+        !isnothing(state.saturation[])
     if any_diag
-        isnothing(state.pH[])         || println(io, _full_row("pH",         _fmt4(state.pH[])))
-        isnothing(state.pOH[])        || println(io, _full_row("pOH",        _fmt4(state.pOH[])))
-        isnothing(state.porosity[])   || println(io, _full_row("porosity",   _fmt6(state.porosity[])))
+        isnothing(state.pH[])         || println(io, _full_row("pH", _fmt4(state.pH[])))
+        isnothing(state.pOH[])        || println(io, _full_row("pOH", _fmt4(state.pOH[])))
+        isnothing(state.porosity[])   || println(io, _full_row("porosity", _fmt6(state.porosity[])))
         isnothing(state.saturation[]) || println(io, _full_row("saturation", _fmt6(state.saturation[])))
     end
 
-    println(io, _botline())
+    return println(io, _botline())
 end
 
 """
@@ -1013,6 +1030,8 @@ end
 Compact single-line representation of a `ChemicalState`.
 """
 function Base.show(io::IO, state::ChemicalState)
-    return print(io, "ChemicalState(T=", state.T[], ", P=", state.P[],
-                 ", ", length(state.n), " species)")
+    return print(
+        io, "ChemicalState(T=", state.T[], ", P=", state.P[],
+        ", ", length(state.n), " species)"
+    )
 end

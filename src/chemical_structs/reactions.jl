@@ -121,15 +121,15 @@ OrderedDict{Species{Int64}, Int64} with 1 entry:
   H2O {H2O} [H2O ◆ H₂O] => 2
 ```
 """
-struct Reaction{SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number,IC<:Number} <: AbstractReaction
+struct Reaction{SR <: AbstractSpecies, TR <: Number, SP <: AbstractSpecies, TP <: Number, IC <: Number} <: AbstractReaction
     symbol::String
     equation::String
     colored::String
-    reactants::OrderedDict{SR,TR}
-    products::OrderedDict{SP,TP}
+    reactants::OrderedDict{SR, TR}
+    products::OrderedDict{SP, TP}
     charge::IC
     equal_sign::Char
-    properties::OrderedDict{Symbol,PropertyType}
+    properties::OrderedDict{Symbol, PropertyType}
 end
 
 """
@@ -347,7 +347,7 @@ Iterate over all species in the reaction with signed coefficients.
 Yields (species, coefficient) pairs where coefficients are negative for reactants
 and positive for products.
 """
-function Base.iterate(r::Reaction, state=(1, nothing))
+function Base.iterate(r::Reaction, state = (1, nothing))
     idx, inner_state = state
     if idx == 1
         if inner_state === nothing
@@ -453,7 +453,7 @@ function complete_thermo_functions!(r::Reaction)
         if all(x -> haskey(x, :ΔₐG⁰), species_list)
             g = sum(ν * s.ΔₐG⁰ for (s, ν) in r)
             r.ΔᵣG⁰ = g
-            r.logK⁰ = -g/((ustrip(Constants.R)*log(10))*ThermoFunction(:T))
+            r.logK⁰ = -g / ((ustrip(Constants.R) * log(10)) * ThermoFunction(:T))
         end
         if all(x -> haskey(x, :V⁰), species_list)
             r.ΔᵣV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
@@ -462,10 +462,14 @@ function complete_thermo_functions!(r::Reaction)
     if haskey(properties(r), :thermo_params)
         params = r[:thermo_params]
         dict_params = Dict(params)
-        if !haskey(properties(r), :Tref) r.Tref = dict_params[:T] end
-        if !haskey(properties(r), :Pref) r.Pref = dict_params[:P] end
+        if !haskey(properties(r), :Tref)
+            r.Tref = dict_params[:T]
+        end
+        if !haskey(properties(r), :Pref)
+            r.Pref = dict_params[:P]
+        end
         if haskey(properties(r), :logk_method)
-            r.logKr = THERMO_FACTORIES[Symbol(r[:logk_method])][:logKr](; params..., T=r.Tref, P=r.Pref)
+            r.logKr = THERMO_FACTORIES[Symbol(r[:logk_method])][:logKr](; params..., T = r.Tref, P = r.Pref)
             delete!(r.properties, :logk_method)
         end
         for k in [:ΔᵣCp⁰, :ΔᵣH⁰, :ΔᵣS⁰, :ΔᵣG⁰, :ΔᵣV⁰, :logKr]
@@ -508,13 +512,13 @@ julia> Reaction("2H2 + O2 = 2H2O")
 ```
 """
 function Reaction(
-    equation::AbstractString,
-    S::Type{<:AbstractSpecies}=Species;
-    symbol="",
-    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
-    side::Symbol=:none,
-    species_list=nothing,
-)
+        equation::AbstractString,
+        S::Type{<:AbstractSpecies} = Species;
+        symbol = "",
+        properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
+        side::Symbol = :none,
+        species_list = nothing,
+    )
     reactants, products, equal_sign = parse_equation(equation)
     if !isnothing(species_list)
         species_list = collect(values(species_list))
@@ -522,7 +526,7 @@ function Reaction(
     reacdict = ordered_dict_with_default(
         (
             find_species(k, species_list, S) => stoich_coef_round(v) for
-            (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
+                (k, v) in reactants if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
         ),
         S,
         Number,
@@ -530,14 +534,15 @@ function Reaction(
     proddict = ordered_dict_with_default(
         (
             find_species(k, species_list, S) => stoich_coef_round(v) for
-            (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
+                (k, v) in products if !iszero(v) && !startswith(k, "Zz") && !startswith(k, "e")
         ),
         S,
         Number,
     )
     reaccharge = stoich_coef_round(
-    sum(ν * charge(s) for (s, ν) in proddict; init=0) -
-    sum(ν * charge(s) for (s, ν) in reacdict; init=0))
+        sum(ν * charge(s) for (s, ν) in proddict; init = 0) -
+            sum(ν * charge(s) for (s, ν) in reacdict; init = 0)
+    )
     if isnothing(symbol)
         reacspecies = keys(reacdict)
         if !isempty(reacspecies)
@@ -559,13 +564,13 @@ function Reaction(
         proddict,
         reaccharge,
         equal_sign,
-        OrderedDict{Symbol,PropertyType}(properties),
+        OrderedDict{Symbol, PropertyType}(properties),
     )
     # complete_thermo_functions!(r)
     if side == :none
         return r
     else
-        return Reaction(r; side=side)
+        return Reaction(r; side = side)
     end
 end
 
@@ -586,7 +591,7 @@ julia> CemReaction("C + H = CH")
 ```
 """
 function CemReaction(equation::AbstractString, args...; kwargs...)
-    Reaction(equation, CemSpecies, args...; kwargs...)
+    return Reaction(equation, CemSpecies, args...; kwargs...)
 end
 
 """
@@ -604,17 +609,17 @@ Split a species-coefficient dictionary into reactants and products.
   - Tuple of (reactants_dict, products_dict) with positive coefficients.
 """
 function split_species_by_stoich(
-    species_stoich::AbstractDict{S,T}; side::Symbol=:sign
-) where {S<:AbstractSpecies,T<:Number}
-    reactants = OrderedDict{S,T}()
-    products = OrderedDict{S,T}()
+        species_stoich::AbstractDict{S, T}; side::Symbol = :sign
+    ) where {S <: AbstractSpecies, T <: Number}
+    reactants = OrderedDict{S, T}()
+    products = OrderedDict{S, T}()
     for (species, coef) in species_stoich
         if !iszero(coef)
             if try
-                side == :reactants || side == :left || (coef < 0 && side == :sign)
-            catch
-                false
-            end
+                    side == :reactants || side == :left || (coef < 0 && side == :sign)
+                catch
+                    false
+                end
                 reactants[species] = -stoich_coef_round(coef)
             else
                 products[species] = stoich_coef_round(coef)
@@ -631,8 +636,8 @@ Merge reactants and products into a single dictionary with signed coefficients.
 Reactants get negative coefficients, products get positive coefficients.
 """
 function merge_species_by_stoich(
-    reactants::AbstractDict{SR,TR}, products::AbstractDict{SP,TP}
-) where {SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
+        reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP}
+    ) where {SR <: AbstractSpecies, TR <: Number, SP <: AbstractSpecies, TP <: Number}
     return merge(
         +,
         ordered_dict_with_default(
@@ -657,7 +662,7 @@ Format one side of a reaction equation.
 
   - Tuple of (equation_string, colored_string, total_charge).
 """
-function format_side(side::AbstractDict{S,T}) where {S<:AbstractSpecies,T<:Number}
+function format_side(side::AbstractDict{S, T}) where {S <: AbstractSpecies, T <: Number}
     equation = String[]
     coleq = String[]
     ch = 0
@@ -695,16 +700,16 @@ Construct a Reaction from reactants and products dictionaries.
     Automatically balances electron charges in the equation.
 """
 function Reaction(
-    reactants::AbstractDict{SR,TR},
-    products::AbstractDict{SP,TP};
-    symbol="",
-    equal_sign='=',
-    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
-    side::Symbol=:none,
-) where {SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
+        reactants::AbstractDict{SR, TR},
+        products::AbstractDict{SP, TP};
+        symbol = "",
+        equal_sign = '=',
+        properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
+        side::Symbol = :none,
+    ) where {SR <: AbstractSpecies, TR <: Number, SP <: AbstractSpecies, TP <: Number}
     if side ∈ (:sign, :products, :right, :reactants, :left)
         reactants, products = split_species_by_stoich(
-            merge_species_by_stoich(reactants, products); side=side
+            merge_species_by_stoich(reactants, products); side = side
         )
     end
     delete!(reactants, root_type(SR)("Zz"))
@@ -714,7 +719,7 @@ function Reaction(
     sreac, creac, charge_left = format_side(reactants)
     sprod, cprod, charge_right = format_side(products)
     charge_diff = charge_right - charge_left
-    if !isapprox(charge_diff, 0; atol=1e-4)
+    if !isapprox(charge_diff, 0; atol = 1.0e-4)
         needed_e = if charge_diff < 0
             -stoich_coef_round(charge_diff)
         else
@@ -736,11 +741,12 @@ function Reaction(
     end
     equation = sreac * " " * string(equal_sign) * " " * sprod
     colored = creac * " " * string(COL_PAR(string(equal_sign))) * " " * cprod
-    reacdict = OrderedDict{SR,TR}(reactants)
-    proddict = OrderedDict{SP,TP}(products)
+    reacdict = OrderedDict{SR, TR}(reactants)
+    proddict = OrderedDict{SP, TP}(products)
     reaccharge = stoich_coef_round(
-    sum(ν * charge(s) for (s, ν) in proddict; init=0) -
-    sum(ν * charge(s) for (s, ν) in reacdict; init=0))
+        sum(ν * charge(s) for (s, ν) in proddict; init = 0) -
+            sum(ν * charge(s) for (s, ν) in reacdict; init = 0)
+    )
     if isnothing(symbol)
         reacspecies = keys(reacdict)
         if !isempty(reacspecies)
@@ -762,7 +768,7 @@ function Reaction(
         proddict,
         reaccharge,
         equal_sign,
-        OrderedDict{Symbol,PropertyType}(properties),
+        OrderedDict{Symbol, PropertyType}(properties),
     )
     # complete_thermo_functions!(r)
     return r
@@ -782,19 +788,19 @@ Construct a Reaction from a dictionary with signed stoichiometric coefficients.
   - `side`: splitting criterion (default: :sign).
 """
 function Reaction(
-    species_stoich::AbstractDict{S,T};
-    symbol="",
-    equal_sign::Char='=',
-    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
-    side::Symbol=:sign,
-) where {S<:AbstractSpecies,T<:Number}
-    reactants, products = split_species_by_stoich(species_stoich; side=side)
+        species_stoich::AbstractDict{S, T};
+        symbol = "",
+        equal_sign::Char = '=',
+        properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
+        side::Symbol = :sign,
+    ) where {S <: AbstractSpecies, T <: Number}
+    reactants, products = split_species_by_stoich(species_stoich; side = side)
     return Reaction(
         reactants,
         products;
-        symbol=symbol,
-        equal_sign=equal_sign,
-        properties=OrderedDict{Symbol,PropertyType}(properties),
+        symbol = symbol,
+        equal_sign = equal_sign,
+        properties = OrderedDict{Symbol, PropertyType}(properties),
     )
 end
 
@@ -803,8 +809,8 @@ end
 
 Convert a species to a trivial Reaction (species = species).
 """
-function Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies}
-    Reaction(OrderedDict(s => 1))
+function Base.convert(::Type{Reaction}, s::S) where {S <: AbstractSpecies}
+    return Reaction(OrderedDict(s => 1))
 end
 
 """
@@ -813,9 +819,9 @@ end
 Convert a species to a typed Reaction.
 """
 function Base.convert(
-    ::Type{Reaction{U,T}}, s::S
-) where {U<:AbstractSpecies,T<:Number,S<:AbstractSpecies}
-    Reaction(OrderedDict(s => 1))
+        ::Type{Reaction{U, T}}, s::S
+    ) where {U <: AbstractSpecies, T <: Number, S <: AbstractSpecies}
+    return Reaction(OrderedDict(s => 1))
 end
 
 """
@@ -823,15 +829,15 @@ end
 
 Construct a trivial Reaction from a single species.
 """
-Reaction(s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
+Reaction(s::S) where {S <: AbstractSpecies} = Reaction(OrderedDict(s => 1))
 
 """
     Reaction{U,T}(s::S) where {U,T,S} -> Reaction
 
 Construct a typed Reaction from a single species.
 """
-function Reaction{U,T}(s::S) where {U<:AbstractSpecies,T<:Number,S<:AbstractSpecies}
-    Reaction(OrderedDict(s => 1))
+function Reaction{U, T}(s::S) where {U <: AbstractSpecies, T <: Number, S <: AbstractSpecies}
+    return Reaction(OrderedDict(s => 1))
 end
 
 """
@@ -847,18 +853,18 @@ Copy constructor for Reaction with optional field overrides.
   - `side`: reorganization criterion (default: :none).
 """
 function Reaction(
-    r::R; kwargs...
-) where {R<:Reaction}
+        r::R; kwargs...
+    ) where {R <: Reaction}
     if isempty(kwargs)
         return r
     end
     return Reaction(
         reactants(r),
         products(r);
-        symbol=r.symbol,
-        equal_sign=r.equal_sign,
-        side=:none,
-        properties=r.properties,
+        symbol = r.symbol,
+        equal_sign = r.equal_sign,
+        side = :none,
+        properties = r.properties,
         kwargs...
     )
 end
@@ -888,10 +894,10 @@ function simplify_reaction(r::Reaction)
             delete!(reac, species)
             delete!(prod, species)
         elseif try
-            coef > 0
-        catch
-            true
-        end
+                coef > 0
+            catch
+                true
+            end
             prod[species] = coef
             delete!(reac, species)
         else
@@ -899,7 +905,7 @@ function simplify_reaction(r::Reaction)
             delete!(prod, species)
         end
     end
-    return Reaction(reac, prod; symbol=symbol(r), equal_sign=equal_sign(r), properties=properties(r))
+    return Reaction(reac, prod; symbol = symbol(r), equal_sign = equal_sign(r), properties = properties(r))
 end
 
 """
@@ -912,9 +918,9 @@ Modifies the dictionary in place to ensure integer coefficients when possible.
 
   - `species_stoich`: dictionary mapping species to stoichiometric coefficients
 """
-function scale_stoich!(species_stoich::AbstractDict{<:AbstractSpecies,<:Number})
+function scale_stoich!(species_stoich::AbstractDict{<:AbstractSpecies, <:Number})
     v = values(species_stoich)
-    if all(x -> x isa Integer || x isa Rational, v)
+    return if all(x -> x isa Integer || x isa Rational, v)
         mult = gcd([numerator(x) for x in v]...)
         for k in keys(species_stoich)
             species_stoich[k] *= mult
@@ -939,11 +945,11 @@ The first species is treated as the dependent component.
   - OrderedDict mapping species to signed stoichiometric coefficients (negative for reactants)
 """
 function build_species_stoich(
-    species::AbstractVector{<:AbstractSpecies}; scaling=1, auto_scale=false
-)
-    SM = StoichMatrix(species[1:1], species[2:end]; involve_all_atoms=true)
+        species::AbstractVector{<:AbstractSpecies}; scaling = 1, auto_scale = false
+    )
+    SM = StoichMatrix(species[1:1], species[2:end]; involve_all_atoms = true)
     S, T = promote_type(typeof.(SM.primaries)..., typeof.(SM.species)...), eltype(SM.A)
-    species_stoich = OrderedDict{S,T}()
+    species_stoich = OrderedDict{S, T}()
     species_stoich[SM.species[1]] = -scaling
     for (i, s) in enumerate(SM.primaries)
         species_stoich[s] = SM.A[i, 1] * scaling
@@ -975,21 +981,21 @@ coefficients are computed automatically.
   - A balanced Reaction object
 """
 function Reaction(
-    species::AbstractVector{<:AbstractSpecies};
-    symbol="",
-    equal_sign='=',
-    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
-    scaling=1,
-    auto_scale=false,
-    side::Symbol=:sign,
-)
-    species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
+        species::AbstractVector{<:AbstractSpecies};
+        symbol = "",
+        equal_sign = '=',
+        properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
+        scaling = 1,
+        auto_scale = false,
+        side::Symbol = :sign,
+    )
+    species_stoich = build_species_stoich(species; scaling = scaling, auto_scale = auto_scale)
     return Reaction(
         species_stoich;
-        symbol=symbol,
-        equal_sign=equal_sign,
-        properties=OrderedDict{Symbol,PropertyType}(properties),
-        side=side,
+        symbol = symbol,
+        equal_sign = equal_sign,
+        properties = OrderedDict{Symbol, PropertyType}(properties),
+        side = side,
     )
 end
 
@@ -1014,25 +1020,25 @@ Stoichiometric coefficients are computed automatically to balance the reaction.
   - A balanced Reaction object
 """
 function Reaction(
-    reac::AbstractVector{<:AbstractSpecies},
-    prod::AbstractVector{<:AbstractSpecies};
-    symbol="",
-    equal_sign='=',
-    properties::AbstractDict=OrderedDict{Symbol,PropertyType}(),
-    scaling=1,
-    auto_scale=false,
-    side::Symbol=:none,
-)
+        reac::AbstractVector{<:AbstractSpecies},
+        prod::AbstractVector{<:AbstractSpecies};
+        symbol = "",
+        equal_sign = '=',
+        properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
+        scaling = 1,
+        auto_scale = false,
+        side::Symbol = :none,
+    )
     species = [reac; prod]
-    species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
+    species_stoich = build_species_stoich(species; scaling = scaling, auto_scale = auto_scale)
     S, T = keytype(species_stoich), valtype(species_stoich)
     if side != :none
         return Reaction(
             species_stoich;
-            symbol=symbol,
-            equal_sign=equal_sign,
-            properties=OrderedDict{Symbol,PropertyType}(properties),
-            side=side,
+            symbol = symbol,
+            equal_sign = equal_sign,
+            properties = OrderedDict{Symbol, PropertyType}(properties),
+            side = side,
         )
     else
         return Reaction(
@@ -1042,10 +1048,10 @@ function Reaction(
             ordered_dict_with_default(
                 (k => v for (k, v) in species_stoich if k in prod), S, T
             );
-            symbol=symbol,
-            equal_sign=equal_sign,
-            properties=OrderedDict{Symbol,PropertyType}(properties),
-            side=:none,
+            symbol = symbol,
+            equal_sign = equal_sign,
+            properties = OrderedDict{Symbol, PropertyType}(properties),
+            side = :none,
         )
     end
 end
@@ -1101,14 +1107,14 @@ julia> 3Reaction("2H2 + O2 = 2H2O")
 ```
 """
 function *(
-    ν::Number, r::Reaction{SR,TR,SP,TP}
-) where {SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
-    Reaction(
+        ν::Number, r::Reaction{SR, TR, SP, TP}
+    ) where {SR <: AbstractSpecies, TR <: Number, SP <: AbstractSpecies, TP <: Number}
+    return Reaction(
         ordered_dict_with_default((k => ν * v for (k, v) in reactants(r)), SR, TR),
         ordered_dict_with_default((k => ν * v for (k, v) in products(r)), SP, TP);
-        symbol=r.symbol,
-        equal_sign=r.equal_sign,
-        properties=r.properties,
+        symbol = r.symbol,
+        equal_sign = r.equal_sign,
+        properties = r.properties,
     )
 end
 
@@ -1161,7 +1167,7 @@ julia> 3Reaction("2H2 + O2 = 2H2O") - 2Reaction("2H2 + O2 = 2H2O")
 ```
 """
 -(r::Reaction) = Reaction(
-    products(r), reactants(r); symbol=r.symbol, equal_sign=r.equal_sign, properties=r.properties
+    products(r), reactants(r); symbol = r.symbol, equal_sign = r.equal_sign, properties = r.properties
 )
 
 """
@@ -1188,9 +1194,9 @@ julia> 2Species("H2") + Species("O2") - 2Species("H2O")
     charge: 0
 ```
 """
-function +(s::S1, t::S2) where {S1<:AbstractSpecies,S2<:AbstractSpecies}
+function +(s::S1, t::S2) where {S1 <: AbstractSpecies, S2 <: AbstractSpecies}
     S = promote_type(S1, S2)
-    s == t ? Reaction(OrderedDict(S(s) => 2)) : Reaction(OrderedDict(S(s) => 1, S(t) => 1))
+    return s == t ? Reaction(OrderedDict(S(s) => 2)) : Reaction(OrderedDict(S(s) => 1, S(t) => 1))
 end
 
 """
@@ -1207,10 +1213,10 @@ Subtract two species to create a Reaction.
 
   - A Reaction with s as reactant and t as product
 """
-function -(s::S1, t::S2) where {S1<:AbstractSpecies,S2<:AbstractSpecies}
+function -(s::S1, t::S2) where {S1 <: AbstractSpecies, S2 <: AbstractSpecies}
     S = promote_type(S1, S2)
-    if s == t
-        Reaction(OrderedDict{S,Number}())
+    return if s == t
+        Reaction(OrderedDict{S, Number}())
     else
         Reaction(OrderedDict(S(s) => 1, S(t) => -1))
     end
@@ -1231,11 +1237,11 @@ Add stoichiometric coefficients from two dictionaries.
   - A new dictionary with combined coefficients
 """
 function add_stoich(
-    d1::AbstractDict{S1,T1}, d2::AbstractDict{S2,T2}
-) where {S1<:AbstractSpecies,T1<:Number,S2<:AbstractSpecies,T2<:Number}
+        d1::AbstractDict{S1, T1}, d2::AbstractDict{S2, T2}
+    ) where {S1 <: AbstractSpecies, T1 <: Number, S2 <: AbstractSpecies, T2 <: Number}
     S = promote_type(S1, S2)
     T = promote_type(T1, T2)
-    d = OrderedDict{S,T}()
+    d = OrderedDict{S, T}()
     for (k, v) in d1
         d[k] = get(d, k, 0) + v
     end
@@ -1269,12 +1275,12 @@ julia> Reaction("2H2 + O2 = H2O") + Species("H2O")
     charge: 0
 ```
 """
-function +(r::R, s::S) where {R<:Reaction,S<:AbstractSpecies}
+function +(r::R, s::S) where {R <: Reaction, S <: AbstractSpecies}
     return Reaction(
         reactants(r),
         add_stoich(products(r), OrderedDict(s => 1));
-        equal_sign=r.equal_sign,
-        properties=r.properties,
+        equal_sign = r.equal_sign,
+        properties = r.properties,
     )
 end
 
@@ -1302,17 +1308,17 @@ julia> Reaction("2H2 + O2 = 3H2O") - Species("H2O")
     charge: 0
 ```
 """
-function -(r::R, s::S) where {R<:Reaction,S<:AbstractSpecies}
+function -(r::R, s::S) where {R <: Reaction, S <: AbstractSpecies}
     return Reaction(
         reactants(r),
         add_stoich(products(r), OrderedDict(s => -1));
-        equal_sign=r.equal_sign,
-        properties=r.properties,
+        equal_sign = r.equal_sign,
+        properties = r.properties,
     )
 end
 
-+(s::S, r::R) where {S<:AbstractSpecies,R<:Reaction} = +(r, s)
--(s::S, r::R) where {S<:AbstractSpecies,R<:Reaction} = +(s, -r)
++(s::S, r::R) where {S <: AbstractSpecies, R <: Reaction} = +(r, s)
+-(s::S, r::R) where {S <: AbstractSpecies, R <: Reaction} = +(s, -r)
 
 """
     +(r::R, u::U) where {R<:Reaction,U<:Reaction} -> Reaction
@@ -1328,12 +1334,12 @@ Add two reactions.
 
   - A new Reaction combining both reactions
 """
-function +(r::R, u::U) where {R<:Reaction,U<:Reaction}
+function +(r::R, u::U) where {R <: Reaction, U <: Reaction}
     return Reaction(
         add_stoich(reactants(r), reactants(u)),
         add_stoich(products(r), products(u));
-        equal_sign=r.equal_sign,
-        properties=merge(properties(r), properties(u)),
+        equal_sign = r.equal_sign,
+        properties = merge(properties(r), properties(u)),
     )
 end
 
@@ -1351,12 +1357,12 @@ Subtract two reactions.
 
   - A new Reaction representing r - u
 """
-function -(r::R, u::U) where {R<:Reaction,U<:Reaction}
+function -(r::R, u::U) where {R <: Reaction, U <: Reaction}
     return Reaction(
         add_stoich(reactants(r), products(u)),
         add_stoich(products(r), reactants(u));
-        equal_sign=r.equal_sign,
-        properties=merge(properties(r), properties(u)),
+        equal_sign = r.equal_sign,
+        properties = merge(properties(r), properties(u)),
     )
 end
 
@@ -1387,15 +1393,15 @@ const EQUAL_OPS = union(
 for OP in Symbol.(EQUAL_OPS)
     @eval begin
         $OP(r, s) = Reaction(
-            -Reaction(r) + Reaction(s); equal_sign=first(string($OP)), side=:sign
+            -Reaction(r) + Reaction(s); equal_sign = first(string($OP)), side = :sign
         )
     end
 
     @eval @doc """
         $($OP)(r::Reaction, s::Reaction)
-
+    
     Dynamically generated reaction operator method for chemical equations using the '$($OP)' symbol.
-
+    
     This method:
     1. Takes two Reaction objects (r and s)
     2. Reverses the first reaction (r → -r)
@@ -1404,16 +1410,16 @@ for OP in Symbol.(EQUAL_OPS)
         - The combined species from both reactions
         - The equality operator set to '$($OP)'
         - Species split by sign (reactants vs products)
-
+    
     This allows writing chemical equations with natural notation.
-
+    
     # Arguments
     - `r`: First reaction (will be reversed in the operation)
     - `s`: Second reaction (will be added as-is)
-
+    
     # Returns
     - A new Reaction object combining both reactions with the '$($OP)' operator
-
+    
     # See also
     All supported operators: →, ↣, ↦, ⇾, ⟶, ⟼, ⥟, ⇀, ⇁, ⇒, ⟾, ←, ↢, ↤, ⇽, ⟵, ⟻, ⥚, ⥞, ↼, ↽, ⇐, ⟽, ↔, ⟷,     ⇄, ⇆, ⇌, ⇋, ⇔, ⟺, ≔, ⩴, ≕
     """ $OP
@@ -1440,7 +1446,7 @@ julia> Reaction("H2 + O2 = H2O")
 ```
 """
 function Base.show(io::IO, r::Reaction)
-    print(io, equation(r))
+    return print(io, equation(r))
 end
 
 """
@@ -1492,7 +1498,7 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
     end
     pr = length(properties(r)) > 0 ? println : print
     pr(io, lpad("charge", pad), ": $(charge(r))")
-    if length(properties(r)) > 0
+    return if length(properties(r)) > 0
         print(
             io,
             lpad("properties", pad),
@@ -1564,7 +1570,7 @@ function pprint(r::Reaction)
             join(["$k = $v" for (k, v) in properties(r)], "\n" * repeat(" ", pad + 2)),
         )
     end
-    println()
+    return println()
 end
 
 """
@@ -1584,46 +1590,46 @@ Apply a function to all species and coefficients in a reaction.
   - A new Reaction with transformed species and coefficients
 """
 function apply(
-    func::Function, r::Reaction{SR,TR,SP,TP}, args...; kwargs...
-) where {SR<:AbstractSpecies,TR<:Number,SP<:AbstractSpecies,TP<:Number}
+        func::Function, r::Reaction{SR, TR, SP, TP}, args...; kwargs...
+    ) where {SR <: AbstractSpecies, TR <: Number, SP <: AbstractSpecies, TP <: Number}
     tryfunc(v) =
-        if v isa Quantity
-            (
-                try
-                    func(ustrip(v), args...; kwargs...) *
+    if v isa Quantity
+        (
+            try
+                func(ustrip(v), args...; kwargs...) *
                     func(dimension(v), args...; kwargs...)
-                catch
-                    try
-                        func(ustrip(v), args...; kwargs...) * dimension(v)
-                    catch
-                        v
-                    end
-                end
-            )
-        else
-            (
+            catch
                 try
-                    func(v, args...; kwargs...)
+                    func(ustrip(v), args...; kwargs...) * dimension(v)
                 catch
                     v
                 end
-            )
-        end
-    reac = OrderedDict{SR,TR}(
+            end
+        )
+    else
+        (
+            try
+                func(v, args...; kwargs...)
+            catch
+                v
+            end
+        )
+    end
+    reac = OrderedDict{SR, TR}(
         apply(func, k, args...; kwargs...) => tryfunc(v) for (k, v) in reactants(r)
     )
-    prod = OrderedDict{SP,TP}(
+    prod = OrderedDict{SP, TP}(
         apply(func, k, args...; kwargs...) => tryfunc(v) for (k, v) in products(r)
     )
     newReaction = Reaction(
         reac,
         prod;
-        symbol=get(kwargs, :symbol, symbol(r)),
-        equal_sign=get(kwargs, :equal_sign, equal_sign(r)),
-        properties=OrderedDict{Symbol,PropertyType}(
+        symbol = get(kwargs, :symbol, symbol(r)),
+        equal_sign = get(kwargs, :equal_sign, equal_sign(r)),
+        properties = OrderedDict{Symbol, PropertyType}(
             k => v for (k, v) in get(kwargs, :properties, properties(r))
         ),
-        side=get(kwargs, :side, :none),
+        side = get(kwargs, :side, :none),
     )
     for (k, v) in properties(r)
         newReaction[k] = tryfunc(v)

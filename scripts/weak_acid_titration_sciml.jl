@@ -86,29 +86,29 @@ p = [:ΔₐG⁰ => getproperty.(dep_comp, :ΔₐG⁰),
 
 prob = EquilibriumProblem(A, μ, _n0(p)[indices], ub=_ub(p), p=p)
 opt = IpoptOptimizer(
-    acceptable_tol = 1e-12,
-    dual_inf_tol = 1e-12,
+    acceptable_tol = 1e-8,
+    dual_inf_tol = 1e-8,
     acceptable_iter = 100,
-    constr_viol_tol = 1e-12,
+    constr_viol_tol = 1e-8,
     # compl_inf_tol = 1e-4,
     # mu_strategy = "adaptive",
     warm_start_init_point = "yes",
     # expect_infeasible_problem = "yes",
 )
-sol = exp.(solve(prob, Val(:log), opt, verbose=5, abstol=1e-10, reltol=1e-10))
-sol = solve(prob, Val(:linear), opt, verbose=5, abstol=1e-10, reltol=1e-10)
+sol = exp.(solve(prob, opt; variable_space=Val(:log), verbose=5, abstol=1e-8, reltol=1e-8))
+sol = solve(prob, opt; variable_space=Val(:linear), verbose=5, abstol=1e-8, reltol=1e-8)
 
 function numpH(p, Vb)
     idx = findfirst(x -> first(x) === :Vb, p)
     if idx !== nothing p[idx] = :Vb => Vb end
     prob = EquilibriumProblem(A, μ, _n0(p)[indices], p=p)
-    sol = solve(prob, Val(:linear), opt, verbose=0, abstol=1e-12, reltol=1e-12)
+    sol = solve(prob, opt; variable_space=Val(:linear), verbose=0, abstol=1e-8, reltol=1e-8)
     pp = NamedTuple(p)
     Va, Vb = pp.Va, pp.Vb
     pHsol = sol.u[5]>sol.u[1] ?
             -log10(max(sol.u[5], pp.ϵ)/(Va+Vb)) :
             14+log10(max(sol.u[1], pp.ϵ)/(Va+Vb))
-    pHsol = -log10(max(sol.u[5], pp.ϵ)/(Va+Vb))
+    # pHsol = -log10(max(sol.u[5], pp.ϵ)/(Va+Vb))
     if !SciMLBase.successful_retcode(sol.retcode)
         println("Vb = ", Vb,", pH = ", pHsol," → success = ", SciMLBase.successful_retcode(sol.retcode), " → retcode = ", sol.retcode)
         println("  sol = ", sol.u)

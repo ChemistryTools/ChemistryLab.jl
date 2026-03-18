@@ -20,7 +20,7 @@ construct a new `ChemicalSystem`.
   - `CSM`: canonical stoichiometric matrix.
   - `SM`: stoichiometric matrix with respect to primaries.
 """
-struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S} <: AbstractVector{T}
+struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S} <: AbstractVector{T}
     species::Vector{T}
     dict_species::Dict{String, T}               # fast O(1) lookup by symbol
 
@@ -76,13 +76,13 @@ true
 ```
 """
 function ChemicalSystem(
-    species::AbstractVector{T},
-    primaries::AbstractVector{<:AbstractSpecies}=species;
-    reactions::AbstractVector{R}=AbstractReaction[],
-) where {T<:AbstractSpecies, R<:AbstractReaction}
+        species::AbstractVector{T},
+        primaries::AbstractVector{<:AbstractSpecies} = species;
+        reactions::AbstractVector{R} = AbstractReaction[],
+    ) where {T <: AbstractSpecies, R <: AbstractReaction}
     idx(f) = findall(f, species)
     CSM = CanonicalStoichMatrix(species)
-    SM  = StoichMatrix(species, primaries)
+    SM = StoichMatrix(species, primaries)
     return ChemicalSystem{T, R, typeof(CSM), typeof(SM)}(
         collect(T, species),                            # owned Vector{T}
         Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
@@ -120,13 +120,13 @@ julia> symbol.(cs.SM.primaries)
 ```
 """
 function ChemicalSystem(
-    species::AbstractVector{T},
-    primaries::AbstractVector{<:AbstractString};
-    reactions::AbstractVector{R}=AbstractReaction[],
-) where {T<:AbstractSpecies, R<:AbstractReaction}
+        species::AbstractVector{T},
+        primaries::AbstractVector{<:AbstractString};
+        reactions::AbstractVector{R} = AbstractReaction[],
+    ) where {T <: AbstractSpecies, R <: AbstractReaction}
     # Resolve string symbols to species objects, preserving order
     primaries_species = species[symbol.(species) .∈ Ref(primaries)]
-    return ChemicalSystem(species, primaries_species; reactions=reactions)
+    return ChemicalSystem(species, primaries_species; reactions = reactions)
 end
 
 # ── AbstractVector interface ──────────────────────────────────────────────────
@@ -241,7 +241,7 @@ function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
 
     # Append only species from cs2 not already present in cs1 (cs1 wins on conflict)
     extra_species = filter(s -> symbol(s) ∉ existing_symbols, cs2.species)
-    all_species   = vcat(cs1.species, extra_species)
+    all_species = vcat(cs1.species, extra_species)
 
     # Union of primaries: cs1 first, then new ones from cs2 not already present
     existing_primary_symbols = Set(symbol.(cs1.SM.primaries))
@@ -258,10 +258,10 @@ function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
     # Union of reactions by symbol — cs1 wins on conflict
     existing_reaction_symbols = Set(symbol.(cs1.reactions))
     extra_reactions = filter(r -> symbol(r) ∉ existing_reaction_symbols, cs2.reactions)
-    all_reactions   = vcat(cs1.reactions, extra_reactions)
+    all_reactions = vcat(cs1.reactions, extra_reactions)
 
     # Construct a new ChemicalSystem — all derived fields rebuilt from scratch
-    return ChemicalSystem(all_species, all_primaries; reactions=all_reactions)
+    return ChemicalSystem(all_species, all_primaries; reactions = all_reactions)
 end
 
 """

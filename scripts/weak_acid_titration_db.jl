@@ -92,8 +92,8 @@ opt = IpoptOptimizer(
     warm_start_init_point = "no",
     # expect_infeasible_problem = "yes",
 )
-sol = exp.(solve(prob, opt, Val(:log), verbose=5, abstol=1e-10, reltol=1e-10))
-sol = solve(prob, opt, Val(:linear), verbose=5, abstol=1e-10, reltol=1e-10)
+sol = exp.(solve(prob, opt; variable_space=Val(:log), verbose=5, abstol=1e-10, reltol=1e-10))
+sol = solve(prob, opt; variable_space=Val(:log), verbose=5, abstol=1e-10, reltol=1e-10)
 
 idxOH⁻ = order_species["OH-"]
 idxH⁺ = order_species["H+"]
@@ -102,7 +102,7 @@ function numpH(p, Vb)
     idx = findfirst(x -> first(x) === :Vb, p)
     if idx !== nothing p[idx] = :Vb => Vb end
     prob = EquilibriumProblem(SM.A, μ, n0(p), ub=ub(p), p=p)
-    sol = solve(prob, opt, Val(:linear), verbose=0, abstol=1e-12, reltol=1e-12)
+    sol = solve(prob, opt; variable_space=Val(:log), verbose=0, abstol=1e-12, reltol=1e-12)
     pp = NamedTuple(p)
     Va, Vb = pp.Va, pp.Vb
     V = Va + Vb

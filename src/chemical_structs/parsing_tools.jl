@@ -27,20 +27,20 @@ julia> stoich_coef_round(3.14159)
 3.14159
 ```
 """
-function stoich_coef_round(x::T; tol=1e-3) where {T<:Real}
+function stoich_coef_round(x::T; tol = 1.0e-3) where {T <: Real}
     try
-        if isapprox(x, round(x); atol=tol)
+        if isapprox(x, round(x); atol = tol)
             return Int(round(x))
         end
 
-        rat = rationalize(x; tol=tol)
-        if isapprox(x, float(rat); atol=tol)
+        rat = rationalize(x; tol = tol)
+        if isapprox(x, float(rat); atol = tol)
             if 1 < denominator(rat) < 10
                 return rat
             end
         end
 
-        return round(x; digits=5)
+        return round(x; digits = 5)
     catch e
         return x
     end
@@ -114,7 +114,7 @@ function phreeqc_to_unicode(s::AbstractString)
 
     ind_sign = findall(
         i ->
-            chars[i] in keys(dict_normal_to_sub) &&
+        chars[i] in keys(dict_normal_to_sub) &&
             i > 1 &&
             chars[i - 1] != ' ' &&
             !(chars[i - 1] in keys(dict_normal_to_sub)),
@@ -238,7 +238,7 @@ Generate a terminal-colored representation of a chemical formula.
 
   - String with ANSI color codes for terminal display.
 """
-function colored_formula(s::AbstractString; colorcharge=true)
+function colored_formula(s::AbstractString; colorcharge = true)
     superscript_digits = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁺", "⁻"]
 
     colored_graph = merge_upper_lower(collect(graphemes(s)))
@@ -298,7 +298,7 @@ OrderedDict{Symbol, Int64} with 3 entries:
 ```
 """
 function parse_formula(formula::AbstractString)
-    function safe_nextind(s::AbstractString, i::Integer, n::Integer=1)
+    function safe_nextind(s::AbstractString, i::Integer, n::Integer = 1)
         last_i = lastindex(s)
         idx = i
         for _ in 1:n
@@ -315,7 +315,7 @@ function parse_formula(formula::AbstractString)
     formula = replace(formula, r"\|" => "")
     formula = unicode_to_phreeqc(String(formula))
 
-    counts = OrderedDict{Symbol,Number}()
+    counts = OrderedDict{Symbol, Number}()
 
     i = firstindex(formula)
     while i <= lastindex(formula)
@@ -452,8 +452,8 @@ OrderedDict{Symbol, Int64} with 3 entries:
 
   - [`CEMENT_TO_MENDELEEV`](@ref)
 """
-function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
-    result = OrderedDict{Symbol,Number}()
+function to_mendeleev(oxides::AbstractDict{Symbol, T}) where {T <: Number}
+    result = OrderedDict{Symbol, Number}()
     for (ox, coef) in oxides
         if ox ∉ [:Zz, :Zz⁺, :e, :e⁻]
             idx = findfirst(p -> p.first == ox, CEMENT_TO_MENDELEEV)
@@ -513,7 +513,7 @@ function parse_equation(equation::AbstractString)
 
     function parse_side(side::AbstractString)
         terms = split(side, " +")
-        result = OrderedDict{String,Real}()
+        result = OrderedDict{String, Real}()
 
         for term in terms
             t = strip(term)
@@ -544,12 +544,12 @@ function parse_equation(equation::AbstractString)
     end
 
     reactants = if left_side == "∅" || left_side == ""
-        OrderedDict{String,Int}()
+        OrderedDict{String, Int}()
     else
         parse_side(left_side)
     end
     products = if right_side == "∅" || right_side == ""
-        OrderedDict{String,Int}()
+        OrderedDict{String, Int}()
     else
         parse_side(right_side)
     end
@@ -577,15 +577,17 @@ function colored_equation(equation::AbstractString)
     else
         join(
             [
-                string(COL_STOICH_EXT(
-                    if isone(v)
-                        ""
-                    elseif v < 0
-                        "($(v))"
-                    else
-                        string(v)
-                    end,
-                )) * colored_formula(k) for (k, v) in reactants
+                string(
+                        COL_STOICH_EXT(
+                            if isone(v)
+                                ""
+                        elseif v < 0
+                                "($(v))"
+                        else
+                                string(v)
+                        end,
+                        )
+                    ) * colored_formula(k) for (k, v) in reactants
             ],
             " + ",
         )
@@ -595,15 +597,17 @@ function colored_equation(equation::AbstractString)
     else
         join(
             [
-                string(COL_STOICH_EXT(
-                    if isone(v)
-                        ""
-                    elseif v < 0
-                        "($(v))"
-                    else
-                        string(v)
-                    end,
-                )) * colored_formula(k) for (k, v) in products
+                string(
+                        COL_STOICH_EXT(
+                            if isone(v)
+                                ""
+                        elseif v < 0
+                                "($(v))"
+                        else
+                                string(v)
+                        end,
+                        )
+                    ) * colored_formula(k) for (k, v) in products
             ],
             " + ",
         )
@@ -635,7 +639,7 @@ julia> format_equation(coeffs)
 "2H2 + O2 = 2H2O"
 ```
 """
-function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
+function format_equation(coeffs::AbstractDict; scaling = 1, equal_sign = '=')
     # Separate reactants and products
     reactants = String[]
     products = String[]
@@ -648,7 +652,7 @@ function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
 
             # Format the coefficient
             abs_coeff = coeff < 0 ? -coeff : coeff
-            coeff_str = if isapprox(abs_coeff, 1; atol=1e-6)
+            coeff_str = if isapprox(abs_coeff, 1; atol = 1.0e-6)
                 ""
             elseif isinteger(abs_coeff)
                 string(Int(abs_coeff))
@@ -686,7 +690,7 @@ function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
     charge_diff = total_charge_right + total_charge_left
 
     # Balance charges if necessary
-    if !isapprox(charge_diff, 0; atol=1e-6)
+    if !isapprox(charge_diff, 0; atol = 1.0e-6)
         needed_e = stoich_coef_round(abs(charge_diff))
         e_term = needed_e == 1 ? "e⁻" : "$needed_e" * "e⁻"
 

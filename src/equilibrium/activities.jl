@@ -38,23 +38,23 @@ All quantities are dimensionless — units are stripped at construction time.
 """
 function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
 
-    idx_solvent  = only(cs.idx_solvent)
-    idx_solutes  = cs.idx_solutes
-    idx_crystal  = cs.idx_crystal
-    idx_gas      = cs.idx_gas
+    idx_solvent = only(cs.idx_solvent)
+    idx_solutes = cs.idx_solutes
+    idx_crystal = cs.idx_crystal
+    idx_gas = cs.idx_gas
 
-    M_solvent    = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
-    ρ_solvent    = 1.0
-    c_solvent    = ρ_solvent / M_solvent
+    M_solvent = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
+    ρ_solvent = 1.0
+    c_solvent = ρ_solvent / M_solvent
     ln_c_solvent = log(c_solvent)
 
     function lna(n::AbstractVector, p)
-        ϵ  = p.ϵ
+        ϵ = p.ϵ
         _n = max.(n, ϵ)     # ϵ::Float64 — promotion vers Dual automatique si n est Dual
 
         out = zeros(eltype(_n), length(_n))
 
-        n_aqueous = _n[idx_solvent] + sum((_n[i] for i in idx_solutes); init=0.0)
+        n_aqueous = _n[idx_solvent] + sum((_n[i] for i in idx_solutes); init = 0.0)
         if !iszero(ustrip(n_aqueous))
             out[idx_solvent] = log(_n[idx_solvent] / n_aqueous)
             for i in idx_solutes
@@ -62,7 +62,7 @@ function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
             end
         end
 
-        n_gas = sum((_n[i] for i in idx_gas); init=0.0)
+        n_gas = sum((_n[i] for i in idx_gas); init = 0.0)
         if !iszero(ustrip(n_gas))
             for i in idx_gas
                 out[i] = log(_n[i] / n_gas)
