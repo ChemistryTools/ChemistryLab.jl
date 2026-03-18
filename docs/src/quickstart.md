@@ -25,9 +25,9 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 `build_species` reads the database file and returns a `Vector{Species}` with compiled thermodynamic functions. `speciation` then filters this list to the species whose atomic composition is a subset of the seed atoms (here Ca, C, H and O from `Cal`, `H2O@` and `CO2`):
 
 ```@example from_scratch
-using ChemistryLab #hide
+using ChemistryLab
 
-all_species = build_species("../../data/cemdata18-thermofun.json") #hide
+all_species = build_species("../../data/cemdata18-thermofun.json")
 species_calcite = speciation(all_species, split("Cal H2O@ CO2");
                              aggregate_state=[AS_AQUEOUS],
                              exclude_species=split("H2@ O2@ CH4@"))

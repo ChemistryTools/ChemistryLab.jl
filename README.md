@@ -48,16 +48,16 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 ```julia
 using ChemistryLab
 
-filebasename = "cemdata18-thermofun.json"
-df_elements, df_substances, df_reactions = read_thermofun_database("data/" * filebasename)
+all_species = build_species("data/cemdata18-thermofun.json")
 ```
 
 The chemical species likely to appear during calcite equilibrium in water are obtained in the following way:
 
 ```julia
-df_calcite = get_compatible_species(df_substances, split("Cal H2O@ CO2");
-                        aggregate_states=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"), union=true)
-dict_species_calcite = Dict(symbol(s) => s for s in build_species(df_calcite))
+species_calcite = speciation(all_species, split("Cal H2O@ CO2");
+                             aggregate_state=[AS_AQUEOUS],
+                             exclude_species=split("H2@ O2@ CH4@"))
+dict_species_calcite = Dict(symbol(s) => s for s in species_calcite)
 ```
 
 The output of `dict_species_calcite` reads:
@@ -93,13 +93,18 @@ Species{Int64}
 aggregate_state: AS_CRYSTAL
           class: SC_COMPONENT
      properties: M = 0.10008599996541243 kg mol⁻¹
-                 Tref = 298.15
-                 Pref = 100000.0
-                 Cp⁰ = 104.5163192749 + 0.02192415855825T + -2.59408e6 / (T^2) ◆ T=298.15
-                 ΔₐH⁰ = -1.2482415842895252e6 + 104.5163192749T + 2.59408e6 / T + 0.010962079279125(T^2) ◆ T=298.15
-                 S⁰ = -523.9438829693111 + 0.02192415855825T + 104.5163192749log(T) + 1.29704e6 / (T^2) ◆ T=298.15
-                 ΔₐG⁰ = -1.1423813547027335e6 + 628.460202244211T + 1.29704e6 / T - 0.010962079279125(T^2) - 104.5163192749T*log(T) ◆ T=298.15
-                 V⁰ = 3.6933999061584
+                 Tref = 298.15 K
+                 Pref = 100000.0 m⁻¹ kg s⁻²
+                 Cp⁰ = 104.5163192749 + 0.02192415855825T + -2.59408e6 / (T^2) [m² kg s⁻² K⁻¹ mol⁻¹] ◆ T=298.15 K
+                 ΔₐH⁰ = -1.2482415842895252e6 + 104.5163192749T + 2.59408e6 / T + 0.010962079279125(T^2) [m² kg s⁻² mol⁻¹] ◆ T=298.15 K    
+                 S⁰ = -523.9438829693111 + 0.02192415855825T + 104.5163192749log(T) + 1.29704e6 / (T^2) [m² kg s⁻² K⁻¹ mol⁻¹] ◆ T=298.15 K 
+                 ΔₐG⁰ = -1.1423813547027335e6 + 628.460202244211T + 1.29704e6 / T - 0.010962079279125(T^2) - 104.5163192749T*log(T) [m² kg s⁻² mol⁻¹] ◆ T=298.15 K
+                 V⁰ = 3.6933999061584004e-5 [m³ mol⁻¹]
+                 Cp⁰_Tref = 81.87109375 m² kg s⁻² K⁻¹ mol⁻¹
+                 ΔₐH⁰_Tref = -1.207405e6 m² kg s⁻² mol⁻¹
+                 S⁰_Tref = 92.675598144531 m² kg s⁻² K⁻¹ mol⁻¹
+                 ΔₐG⁰_Tref = -1.129176e6 m² kg s⁻² mol⁻¹
+                 V⁰_Tref = 3.6933999061584004e-5 m³ mol⁻¹
 
 ```
 
@@ -146,15 +151,10 @@ dict_reactions_calcite["Cal"].logK⁰
 ```
 
 ```
-Dict{String, Reaction{Species{Int64}, Int64, Species{Int64}, Int64, Int64}} with 8 entries:
-  "Ca(CO3)@"  => CO₃²⁻ + Ca²⁺ = CaCO₃@
-  "Cal"       => CO₃²⁻ + Ca²⁺ = CaCO₃
-  "OH-"       => H₂O@ = OH⁻ + H⁺
-  "CaOH+"     => H₂O@ + Ca²⁺ = Ca(OH)⁺ + H⁺
-  "CO2@"      => 2H⁺ + CO₃²⁻ = CO₂@ + H₂O@
-  "HCO3-"     => H⁺ + CO₃²⁻ = HCO₃⁻
-  "CO2"       => 2H⁺ + CO₃²⁻ = CO₂ + H₂O@
-  "Ca(HCO3)+" => H⁺ + CO₃²⁻ + Ca²⁺ = Ca(HCO₃)⁺
+ThermoFunction:
+  Expression: (-1.29704e6 + 125345.63212888106T - 2666.9195440882527(T^2) + 424.77184295654104(T^2)*log(T) + 0.010962079279125T*(T^2)) / (19.144757680815896(T^2)) [m² kg s⁻² mol⁻¹]
+  References: T=298.15 K
+  Variables: T
 
 ```
 
