@@ -23,6 +23,7 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 - **Stoichiometric matrices**: Automatic construction of matrices for reaction and equilibrium analysis.
 - **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
+- **Chemical equilibrium**: Compute thermodynamic equilibrium compositions from initial states using Gibbs energy minimization (`equilibrate`, `ChemicalSystem`, `ChemicalState`).
 
 ## Installation
 
@@ -51,6 +52,7 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 
 ```julia
 using ChemistryLab
+using DynamicQuantities
 
 all_species = build_species("data/cemdata18-thermofun.json")
 ```
@@ -168,6 +170,35 @@ plot!(p1, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100,
 ```
 
 ![pcoa plot](assets/solubility_product_calcite.png)
+
+### Chemical equilibrium
+
+Once the chemical system is defined, the equilibrium composition can be computed directly from an initial state. A `ChemicalSystem` groups all species and pre-computes the conservation matrix; a `ChemicalState` holds the mole amounts, temperature, and pressure.
+
+```julia
+# Build the chemical system from the species returned by speciation
+cs = ChemicalSystem(collect(values(dict_species_calcite)))
+
+# Define an initial state: dissolve 1e-3 mol of calcite in 1 kg of water (≈ 55.5 mol) at 25 °C
+state0 = ChemicalState(cs; T = 298.15u"K", P = 1u"bar")
+set_quantity!(state0, "H2O@", 55.5u"mol")
+set_quantity!(state0, "Cal",  1e-3u"mol")
+set_quantity!(state0, "H+",   1e-7u"mol")
+set_quantity!(state0, "OH-",  1e-7u"mol")
+
+# Compute thermodynamic equilibrium (Gibbs energy minimization)
+state_eq = equilibrate(state0)
+```
+
+Key results can then be inspected directly:
+
+```julia
+pH(state_eq)          # equilibrium pH
+moles(state_eq)       # mole amounts by phase (liquid / solid / gas / total)
+moles(state_eq, "Ca+2")  # moles of a specific species
+```
+
+The `equilibrate` function uses `IpoptOptimizer` under the hood (via Optimization.jl) and accepts optional keyword arguments to tune the solver (`abstol`, `reltol`, `variable_space`, …).
 
 ## Usage
 
