@@ -26,7 +26,7 @@ the organic database provides acetic acid and acetate.
 The primaries `H2O@`, `H+`, `Ace-`, `Na+` form a basis for the system.
 Every other species is expressed as a linear combination of these four.
 
-```@example titration_acetic_setup
+```@setup titration_acetic_setup
 using ChemistryLab
 using DynamicQuantities
 
@@ -42,12 +42,29 @@ species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- AceH@ Ace-"
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 ```
 
+```julia
+using ChemistryLab
+using DynamicQuantities
+
+substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
+substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+
+dict_all_species = merge(
+    Dict(symbol(s) => s for s in substances_inorg),
+    Dict(symbol(s) => s for s in substances_org),
+)
+species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- AceH@ Ace-")]
+
+cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
+# pprint(cs.SM) #  for pretty-printing the stoichiometric matrix
+```
+
 !!! note "Restricting the species set"
     This example uses a hand-picked list of species for efficiency.
     To include all compatible species from the databases automatically, use `speciation`:
     ```julia
-    aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-");  aggregate_state=[AS_AQUEOUS])
-    ace_species = speciation(substances_org,   split("AceH@ Ace-");              aggregate_state=[AS_AQUEOUS])
+    aq_species  = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state=[AS_AQUEOUS])
+    ace_species = speciation(substances_org, split("AceH@ Ace-"); aggregate_state=[AS_AQUEOUS])
     species     = unique(s -> symbol(s), vcat(aq_species, ace_species))
     ```
     Note that equilibrium calculations may be more expensive, and that the results
@@ -61,13 +78,13 @@ The pKₐ is derived from the standard Gibbs energies of the dissociation reacti
 CH₃COOH ⇌ CH₃COO⁻ + H⁺:
 
 ```@example titration_acetic_setup
-R  = ustrip(Constants.R)
-T  = 298.15   # K
+R  = Constants.R
+T  = 25ua"degC" # equivalent to 298.15u"K"
 RT = R * T
 
 sp = Dict(symbol(s) => s for s in cs.species)
 
-Ka  = exp(-(sp["Ace-"].ΔₐG⁰(T = T) + sp["H+"].ΔₐG⁰(T = T) - sp["AceH@"].ΔₐG⁰(T = T)) / RT)
+Ka  = exp(-(sp["Ace-"].ΔₐG⁰(T=T, unit=true) + sp["H+"].ΔₐG⁰(T=T, unit=true) - sp["AceH@"].ΔₐG⁰(T=T, unit=true)) / RT)
 pKa = -log10(Ka)
 println("Ka  = ", Ka)
 println("pKa = ", round(pKa, digits = 2))
@@ -75,7 +92,7 @@ println("pKa = ", round(pKa, digits = 2))
 
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each titration point:
 
-```@example titration_acetic_setup
+```julia
 using OptimizationIpopt
 
 solver = EquilibriumSolver(
@@ -110,6 +127,8 @@ nAH = ca * Va  # total moles of CH₃COOH = 10 mmol
 Vbeq = nAH / cb   # equivalence volume, L
 V_eq = Vbeq * 1e3  # equivalence volume, mL
 
+ρ_water = 1.   # kg/L
+
 volumes_NaOH = range(0, 2 * V_eq; length = 100)   # mL
 pH_vals = Float64[]
 
@@ -121,7 +140,7 @@ for V_mL in volumes_NaOH
 
     set_quantity!(s, "AceH@", nAH    * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
-    set_quantity!(s, "H2O@",  V_total * u"kg")
+    set_quantity!(s, "H2O@",  ρ_water * V_total * u"kg")
 
     V_liq = volume(s).liquid
     set_quantity!(s, "H+",  1e-7u"mol/L" * V_liq)   # pH-neutral seed
@@ -149,7 +168,7 @@ In the buffer zone (before the equivalence point), the Henderson–Hasselbalch e
 beyond the equivalence point, the pH is controlled by the excess NaOH concentration.
 
 ```julia
-using Plots #hide
+using Plots
 
 function ana_pH(Vb_mL)
     Vb = Vb_mL * 1e-3
@@ -188,27 +207,6 @@ scatter!(p, [0, V_eq], [pH0, pHeq];
 )
 vline!(p, [V_eq]; linestyle = :dash, color = :red,  label = "PE ($(round(V_eq, digits=1)) mL)")
 hline!(p, [pKa];  linestyle = :dot,  color = :grey, label = "pKₐ = $(round(pKa, digits=2)) at V = 50 mL")
-p
 ```
 
 ![Acetic acid titration curve](../assets/acetic_titration.png)
-
----
-
-## Analysis
-
-| Zone | V(NaOH) | Dominant species | pH |
-|------|---------|------------------|----|
-| Initial state | 0 mL | CH₃COOH | ≈ ½(pKₐ − log cₐ) ≈ 2.88 |
-| Buffer zone | 0–100 mL | CH₃COOH / CH₃COO⁻ | ≈ pKₐ ≈ 4.76 at V = 50 mL |
-| Equivalence point (PE) | 100 mL | CH₃COO⁻ | Inflection, weakly basic |
-| Excess base | > 100 mL | CH₃COO⁻ + OH⁻ | Controlled by excess NaOH |
-
-- **V = 0 mL** — pH ≈ ½(pKₐ − log cₐ) = ½(4.76 + 1) ≈ 2.88.
-- **V = 50 mL (half-equivalence)** — Equal concentrations of CH₃COOH and CH₃COO⁻; pH ≈ pKₐ ≈ 4.76 (Henderson–Hasselbalch condition).
-- **V = 100 mL (PE)** — The acid is fully neutralised; CH₃COO⁻ acts as a weak base, giving a slightly basic pH.
-- **V > 100 mL** — pH rises steeply, controlled by the concentration of free OH⁻ from excess NaOH.
-
-!!! note "Monoprotic vs. diprotic acids"
-    Because acetic acid has only one ionisable proton, the titration curve shows a **single** inflection point.
-    Compare with the [maleic acid example](@ref sec-titration-maleic), which has two well-separated equivalence points.

@@ -23,7 +23,7 @@ the organic database provides maleic acid and its conjugate bases.
 | `OH-`    | OH⁻ | aqueous solute |
 | `H2O@`   | H₂O | aqueous solvent |
 
-```@example titration_setup
+```@setup titration_setup
 using ChemistryLab
 using DynamicQuantities
 
@@ -34,12 +34,41 @@ dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(sy
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
+```
 
+```julia
+using ChemistryLab
+using DynamicQuantities
+
+substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
+substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+
+dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
+species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
+
+cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 ```
 
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each of the 66 titration points:
 
-```@example titration_setup
+```@setup titration_setup
+using OptimizationIpopt
+
+solver = EquilibriumSolver(
+    cs,
+    DiluteSolutionModel(),
+    IpoptOptimizer(
+        mu_strategy = "adaptive",
+    );
+    variable_space = Val(:linear),
+    abstol  = 1e-8,
+    reltol  = 1e-8,
+    maxiters = 100,
+    verbose = 0,
+)
+```
+
+```julia
 using OptimizationIpopt
 
 solver = EquilibriumSolver(
@@ -69,6 +98,8 @@ c_acid = 0.1     # maleic acid concentration, mol/L
 c_base = 2     # NaOH concentration, mol/L
 n_H2A  = V_acid * c_acid   # total moles of H₂A = 2.5 mmol
 
+ρ_water = 1.   # kg/L
+
 volumes_NaOH = range(0, 15; length = 101)   # mL
 pH_vals = Float64[]
 
@@ -80,7 +111,7 @@ for V_mL in volumes_NaOH
 
     set_quantity!(s, "MalH2@", n_H2A   * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
-    set_quantity!(s, "H2O@",   V_total * u"kg")
+    set_quantity!(s, "H2O@",   ρ_water * V_total * u"kg")
 
     V_liq = volume(s).liquid
     set_quantity!(s, "H+",  1e-7u"mol/L" * V_liq)   # pH-neutral seed
@@ -125,7 +156,6 @@ vline!(p, [V_eq1]; linestyle = :dash, color = :red,    label = "PE₁ ($(round(V
 vline!(p, [V_eq2]; linestyle = :dash, color = :blue,   label = "PE₂ ($(round(V_eq2,digits = 1)) mL)")
 hline!(p, [pKa1];  linestyle = :dot,  color = :orange, label = "pKₐ₁ = $pKa1")
 hline!(p, [pKa2];  linestyle = :dot,  color = :green,  label = "pKₐ₂ = $pKa2")
-p
 ```
 
 ![Maleitric titration curve](../assets/maleic_titration.png)

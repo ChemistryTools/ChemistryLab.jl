@@ -47,6 +47,8 @@ nAH  = ca * Va # total moles of CH₃COOH = 10 mmol
 Vbeq = nAH / cb          # equivalence volume, L
 V_eq = Vbeq * 1e3        # equivalence volume, mL
 
+ρ_water = 1.   # kg/L
+
 volumes_NaOH = range(0, 2 * V_eq; length = 200)   # mL
 pH_vals = Float64[]
 
@@ -59,7 +61,7 @@ s = ChemicalState(cs)
 
     set_quantity!(s, "AceH@", nAH    * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
-    set_quantity!(s, "H2O@",  V_total * u"kg")
+    set_quantity!(s, "H2O@",  ρ_water * V_total * u"kg")
 
     V_liq = volume(s).liquid
     set_quantity!(s, "H+",  1e-7u"mol/L" * V_liq)   # pH-neutral seed

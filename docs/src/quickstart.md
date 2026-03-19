@@ -26,6 +26,7 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 
 ```@example from_scratch
 using ChemistryLab
+using DynamicQuantities # for unit management
 
 all_species = build_species("../../data/cemdata18-thermofun.json")
 species_calcite = speciation(all_species, split("Cal H2O@ CO2");
@@ -43,8 +44,8 @@ dict_species_calcite["Cal"]
 ```@example from_scratch
 using Plots
 
-p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite \nas a function of temperature")
-plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
+p1 = plot(xlabel="Temperature [°C]", ylabel="Cp⁰ [J/mol/K]", title="Heat capacity of calcite \nas a function of temperature")
+plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = θ*ua"degC"), 0:0.1:100, label="Cp⁰")
 ```
 
 Obtaining stoichiometric matrices requires the choice of a species-independent basis.
@@ -69,8 +70,8 @@ dict_reactions_calcite["Cal"].logK⁰
 ```
 
 ```@example from_scratch
-p2 = plot(xlabel="Temperature [K]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
-plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = 273.15+θ), 0:0.1:100, label="pKs")
+p2 = plot(xlabel="Temperature [°C]", ylabel="pKs", title="Solubility product (pKs) of calcite \nas a function of temperature")
+plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = θ*ua"degC"), 0:0.1:100, label="pKs")
 ```
 
 ## Equilibrium solving
