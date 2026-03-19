@@ -1499,7 +1499,8 @@ end
 Populate thermodynamic properties (`Cp⁰`, `ΔₐH⁰`, `S⁰`, `ΔₐG⁰`, `V⁰`) from parameters in `s.properties`.
 
 If `thermo_params` dictionary is present in `properties`, it initializes thermodynamic functions
-using specified methods (e.g., `:Cp_method`, `:V_method`) or defaults.
+using `:thermo_method` (e.g., `"cp_ft_equation"`, `"solute_hkf88_reaktoro"`) or scalar defaults.
+New thermodynamic models are registered by dispatching `build_thermo_functions(Val(:model_name), params)`.
 """
 function complete_thermo_functions!(s::AbstractSpecies)
     if haskey(properties(s), :thermo_params)
@@ -1507,12 +1508,12 @@ function complete_thermo_functions!(s::AbstractSpecies)
         dict_params = Dict(params)
         s.Tref = dict_params[:T]
         s.Pref = dict_params[:P]
-        if haskey(properties(s), :Cp_method)
-            dtf = build_thermo_functions(Symbol(s[:Cp_method]), params)
+        if haskey(properties(s), :thermo_method)
+            dtf = build_thermo_functions(Symbol(s[:thermo_method]), params)
             for (k, v) in dtf
                 s[k] = v
             end
-            delete!(s.properties, :Cp_method)
+            delete!(s.properties, :thermo_method)
         else
             if !haskey(properties(s), :Cp⁰) &&
                     haskey(dict_params, :Cp⁰) &&

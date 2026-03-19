@@ -56,6 +56,110 @@ Abstract type for objects that can be called like functions.
 abstract type Callable end
 
 """
+    ClosureThermoFunction{F, R, Q} <: Callable
+
+Closure-backed thermodynamic function for models that cannot be represented as symbolic
+expressions (e.g. HKF, or any other numeric model).
+Calling convention is identical to `ThermoFunction`: `f(; T=..., P=..., unit=false)`.
+
+When `T` or `P` are omitted, defaults are read from `refs`; if absent from `refs` too,
+the standard reference state (298.15 K, 1×10⁵ Pa) is used as fallback.
+
+# Fields
+
+  - `f`: closure `(T::Real, P::Real) → value` in SI units.
+  - `refs`: `NamedTuple` of default variable values (typically `(T=..., P=...)`).
+  - `unit`: output unit (DynamicQuantities `Quantity`).
+"""
+struct ClosureThermoFunction{F, R <: NamedTuple, Q} <: Callable
+    f::F
+    refs::R
+    unit::Q
+end
+
+"""
+    ClosureThermoFunction(f, unit)
+
+Construct a `ClosureThermoFunction` with no default refs (fallback to 298.15 K, 1×10⁵ Pa).
+"""
+ClosureThermoFunction(f, unit) = ClosureThermoFunction(f, NamedTuple(), unit)
+
+@inline function (ctf::ClosureThermoFunction)(; kwargs...)
+    T_val = ustrip(get(kwargs, :T, get(ctf.refs, :T, 298.15)))
+    P_val = ustrip(get(kwargs, :P, get(ctf.refs, :P, 1.0e5)))
+    val   = ctf.f(T_val, P_val)
+    return get(kwargs, :unit, false) ? val * ctf.unit : val
+end
+
+function Base.show(io::IO, ctf::ClosureThermoFunction)
+    print(io, "ClosureThermoFunction [", dimension(ctf.unit), "]")
+    return if !isempty(ctf.refs)
+        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(ctf.refs)], ", "))
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", ctf::ClosureThermoFunction)
+    println(io, "ClosureThermoFunction:")
+    print(io, "  Unit: [", dimension(ctf.unit), "]")
+    return if !isempty(ctf.refs)
+        print(io, "\n  Refs: ", join(["$k=$v" for (k, v) in pairs(ctf.refs)], ", "))
+    end
+end
+
+# ---------------------------------------------------------------------------
+# Arithmetic for ClosureThermoFunction
+# refs are merged (second operand takes precedence) or inherited from the
+# ClosureThermoFunction side for mixed operations.
+# ---------------------------------------------------------------------------
+
+Base.:-(ctf::ClosureThermoFunction) = ClosureThermoFunction((T, P) -> -ctf.f(T, P), ctf.refs, ctf.unit)
+
+# ClosureThermoFunction op ClosureThermoFunction
+function Base.:+(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) + ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit + ctf2.unit))
+end
+function Base.:-(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) - ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit + ctf2.unit))
+end
+function Base.:*(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) * ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit * ctf2.unit))
+end
+function Base.:/(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) / ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit / ctf2.unit))
+end
+
+# ClosureThermoFunction op Number (and vice versa)
+# For +/- with a scalar: unit unchanged (scalar assumed dimensionally compatible)
+function Base.:+(ctf::ClosureThermoFunction, x::Number)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) + ustrip(x), ctf.refs, ctf.unit)
+end
+function Base.:+(x::Number, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ustrip(x) + ctf.f(T, P), ctf.refs, ctf.unit)
+end
+function Base.:-(ctf::ClosureThermoFunction, x::Number)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) - ustrip(x), ctf.refs, ctf.unit)
+end
+function Base.:-(x::Number, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ustrip(x) - ctf.f(T, P), ctf.refs, ctf.unit)
+end
+# For */÷ with a scalar: unit algebra applies
+function Base.:*(ctf::ClosureThermoFunction, x::Number)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) * ustrip(x), ctf.refs, oneunit(ctf.unit * x))
+end
+function Base.:*(x::Number, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ustrip(x) * ctf.f(T, P), ctf.refs, oneunit(x * ctf.unit))
+end
+function Base.:/(ctf::ClosureThermoFunction, x::Number)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) / ustrip(x), ctf.refs, oneunit(ctf.unit / x))
+end
+function Base.:/(x::Number, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> ustrip(x) / ctf.f(T, P), ctf.refs, oneunit(x / ctf.unit))
+end
+
+# Backward-compatibility alias
+const HKFThermoFunction = ClosureThermoFunction
+
+"""
     ThermoFunction
 
 Thermodynamic function with symbolic expression and compiled evaluation.
@@ -340,6 +444,34 @@ for op in (:+, :-, :*, :/, :^)
 end
 
 Base.:-(tf::ThermoFunction) = apply_symbolic(-, tf)
+
+# Cross-type: ClosureThermoFunction and ThermoFunction
+# The ThermoFunction is evaluated as a closure (T, P) -> tf(; T=T, P=P).
+# refs are inherited from the ClosureThermoFunction side.
+function Base.:+(ctf::ClosureThermoFunction, tf::ThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) + tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit + tf.unit))
+end
+function Base.:+(tf::ThermoFunction, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) + ctf.f(T, P), ctf.refs, oneunit(tf.unit + ctf.unit))
+end
+function Base.:-(ctf::ClosureThermoFunction, tf::ThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) - tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit + tf.unit))
+end
+function Base.:-(tf::ThermoFunction, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) - ctf.f(T, P), ctf.refs, oneunit(tf.unit + ctf.unit))
+end
+function Base.:*(ctf::ClosureThermoFunction, tf::ThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) * tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit * tf.unit))
+end
+function Base.:*(tf::ThermoFunction, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) * ctf.f(T, P), ctf.refs, oneunit(tf.unit * ctf.unit))
+end
+function Base.:/(ctf::ClosureThermoFunction, tf::ThermoFunction)
+    return ClosureThermoFunction((T, P) -> ctf.f(T, P) / tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit / tf.unit))
+end
+function Base.:/(tf::ThermoFunction, ctf::ClosureThermoFunction)
+    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) / ctf.f(T, P), ctf.refs, oneunit(tf.unit / ctf.unit))
+end
 
 for f in [ADIM_MATH_FUNCTIONS; :sqrt; :abs]
     if isdefined(Base, f)
