@@ -33,9 +33,9 @@ for f in ADIM_MATH_FUNCTIONS
     end
 end
 
-abstract type Callable end
+abstract type AbstractFunc end
 
-struct ThermoFunction{N, R<:NamedTuple, T, D} <: Callable
+struct SymbolicFunc{N, R<:NamedTuple, T, D} <: AbstractFunc
     symbolic::Num
     vars::NTuple{N, Symbol}
     refs::R
@@ -44,7 +44,7 @@ struct ThermoFunction{N, R<:NamedTuple, T, D} <: Callable
 end
 
 # OPTIMIZED callable - specialized for 1, 2, 3+ variables
-@inline function (tf::ThermoFunction{1})(; kwargs...)
+@inline function (tf::SymbolicFunc{1})(; kwargs...)
     # Single variable - specialized, zero allocation
     v = tf.vars[1]
     val = haskey(kwargs, v) ? kwargs[v] : tf.refs[v]
@@ -53,7 +53,7 @@ end
                        tf.compiled(ustrip(val))
 end
 
-@inline function (tf::ThermoFunction{2})(; kwargs...)
+@inline function (tf::SymbolicFunc{2})(; kwargs...)
     # Two variables - specialized
     v1, v2 = tf.vars
     val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
@@ -63,7 +63,7 @@ end
                        tf.compiled(ustrip(val1), ustrip(val2))
 end
 
-@inline function (tf::ThermoFunction{3})(; kwargs...)
+@inline function (tf::SymbolicFunc{3})(; kwargs...)
     # Three variables - specialized
     v1, v2, v3 = tf.vars
     val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
@@ -74,7 +74,7 @@ end
                        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
 end
 
-@inline function (tf::ThermoFunction{N})(; kwargs...) where N
+@inline function (tf::SymbolicFunc{N})(; kwargs...) where N
     # General case - fallback for 4+ variables
     if isempty(kwargs)
         # Fast path: no overrides, use refs directly
@@ -169,18 +169,18 @@ function (factory::ThermoFactory)(; kwargs...)
         (simplified, compiled)
     end
 
-    return ThermoFunction(simplified, Tuple(keys(factory.vars)), refs, compiled, unit)
+    return SymbolicFunc(simplified, Tuple(keys(factory.vars)), refs, compiled, unit)
 end
 
-function Base.show(io::IO, tf::ThermoFunction)
+function Base.show(io::IO, tf::SymbolicFunc)
     print(io, tf.symbolic, " [", dimension(tf.unit), "]")
     if !isempty(tf.refs)
         print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(tf.refs)], ", "))
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
-    println(io, "ThermoFunction:")
+function Base.show(io::IO, ::MIME"text/plain", tf::SymbolicFunc)
+    println(io, "SymbolicFunc:")
     print(io, "  Expression: ")
     println(io, tf.symbolic, " [", dimension(tf.unit), "]")
 

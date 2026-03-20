@@ -48,129 +48,257 @@ for f in ADIM_MATH_FUNCTIONS
     end
 end
 
+# ── Abstract type ──────────────────────────────────────────────────────────────
+
 """
-    Callable
+    AbstractFunc
 
 Abstract type for objects that can be called like functions.
 """
-abstract type Callable end
+abstract type AbstractFunc end
+
+# ── NumericFunc ────────────────────────────────────────────────────────────────
 
 """
-    ClosureThermoFunction{F, R, Q} <: Callable
+    NumericFunc{N, F, R, Q} <: AbstractFunc
 
 Closure-backed thermodynamic function for models that cannot be represented as symbolic
 expressions (e.g. HKF, or any other numeric model).
-Calling convention is identical to `ThermoFunction`: `f(; T=..., P=..., unit=false)`.
+Calling convention is identical to `SymbolicFunc`: `f(; T=..., P=..., unit=false)`.
 
-When `T` or `P` are omitted, defaults are read from `refs`; if absent from `refs` too,
-the standard reference state (298.15 K, 1×10⁵ Pa) is used as fallback.
+Variable values are resolved in order: `kwarg > refs > _NF_DEFAULT_REFS`.
+`refs` stores `Quantity` values so that unit information is preserved.
 
 # Fields
 
-  - `f`: closure `(T::Real, P::Real) → value` in SI units.
-  - `refs`: `NamedTuple` of default variable values (typically `(T=..., P=...)`).
+  - `compiled`: closure `(vars...) → value` in SI units.
+  - `vars`: names of the positional arguments (e.g. `(:T, :P)`).
+  - `refs`: `NamedTuple` of default variable values as `Quantity` (e.g. `(T=298.15u"K", P=1e5u"Pa")`).
   - `unit`: output unit (DynamicQuantities `Quantity`).
 """
-struct ClosureThermoFunction{F, R <: NamedTuple, Q} <: Callable
-    f::F
+struct NumericFunc{N, F, R <: NamedTuple, Q} <: AbstractFunc
+    compiled::F
+    vars::NTuple{N, Symbol}
     refs::R
     unit::Q
 end
 
-"""
-    ClosureThermoFunction(f, unit)
+# Global fallback for vars absent from refs
+const _NF_DEFAULT_REFS = (T = 298.15u"K", P = 1.0e5u"Pa")
 
-Construct a `ClosureThermoFunction` with no default refs (fallback to 298.15 K, 1×10⁵ Pa).
 """
-ClosureThermoFunction(f, unit) = ClosureThermoFunction(f, NamedTuple(), unit)
+    NumericFunc(f, vars, unit)
 
-@inline function (ctf::ClosureThermoFunction)(; kwargs...)
-    T_val = ustrip(get(kwargs, :T, get(ctf.refs, :T, 298.15)))
-    P_val = ustrip(get(kwargs, :P, get(ctf.refs, :P, 1.0e5)))
-    val   = ctf.f(T_val, P_val)
-    return get(kwargs, :unit, false) ? val * ctf.unit : val
+Construct a `NumericFunc` with no refs (fallback to `_NF_DEFAULT_REFS`).
+"""
+NumericFunc(f, vars::NTuple{N, Symbol}, unit) where {N} =
+    NumericFunc(f, vars, NamedTuple(), unit)
+
+"""
+    NumericFunc(f, unit)
+
+Backward-compatible constructor: assumes `vars = (:T, :P)` and empty refs.
+"""
+NumericFunc(f, unit) = NumericFunc(f, (:T, :P), NamedTuple(), unit)
+
+@inline function (nf::NumericFunc{N})(; kwargs...) where {N}
+    vals = ntuple(N) do i
+        v = nf.vars[i]
+        raw = haskey(kwargs, v) ? kwargs[v] :
+              get(nf.refs, v, get(_NF_DEFAULT_REFS, v, nothing))
+        ustrip(raw)   # Quantities must already be in SI; plain numbers are passed through
+    end
+    val = nf.compiled(vals...)
+    return get(kwargs, :unit, false) ? val * nf.unit : val
 end
 
-function Base.show(io::IO, ctf::ClosureThermoFunction)
-    print(io, "ClosureThermoFunction [", dimension(ctf.unit), "]")
-    return if !isempty(ctf.refs)
-        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(ctf.refs)], ", "))
+function Base.show(io::IO, nf::NumericFunc)
+    print(io, "NumericFunc [", dimension(nf.unit), "]")
+    if !isempty(nf.vars)
+        print(io, " ◆ vars=(", join(nf.vars, ", "), ")")
+    end
+    return if !isempty(nf.refs)
+        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(nf.refs)], ", "))
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ctf::ClosureThermoFunction)
-    println(io, "ClosureThermoFunction:")
-    print(io, "  Unit: [", dimension(ctf.unit), "]")
-    return if !isempty(ctf.refs)
-        print(io, "\n  Refs: ", join(["$k=$v" for (k, v) in pairs(ctf.refs)], ", "))
+function Base.show(io::IO, ::MIME"text/plain", nf::NumericFunc)
+    println(io, "NumericFunc:")
+    print(io, "  Unit: [", dimension(nf.unit), "]")
+    print(io, "\n  Variables: ", join(nf.vars, ", "))
+    return if !isempty(nf.refs)
+        print(io, "\n  References: ", join(["$k=$v" for (k, v) in pairs(nf.refs)], ", "))
     end
 end
 
 # ---------------------------------------------------------------------------
-# Arithmetic for ClosureThermoFunction
-# refs are merged (second operand takes precedence) or inherited from the
-# ClosureThermoFunction side for mixed operations.
+# Arithmetic for NumericFunc
 # ---------------------------------------------------------------------------
 
-Base.:-(ctf::ClosureThermoFunction) = ClosureThermoFunction((T, P) -> -ctf.f(T, P), ctf.refs, ctf.unit)
-
-# ClosureThermoFunction op ClosureThermoFunction
-function Base.:+(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) + ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit + ctf2.unit))
-end
-function Base.:-(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) - ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit + ctf2.unit))
-end
-function Base.:*(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) * ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit * ctf2.unit))
-end
-function Base.:/(ctf1::ClosureThermoFunction, ctf2::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf1.f(T, P) / ctf2.f(T, P), merge(ctf1.refs, ctf2.refs), oneunit(ctf1.unit / ctf2.unit))
+# Index-mapping helpers (used by binary NF-NF and cross-type operations)
+@inline function _nf_call_from_combined(nf::NumericFunc, idx, args)
+    vals = ntuple(i -> args[idx[i]], length(nf.vars))
+    return nf.compiled(vals...)
 end
 
-# ClosureThermoFunction op Number (and vice versa)
-# For +/- with a scalar: unit unchanged (scalar assumed dimensionally compatible)
-function Base.:+(ctf::ClosureThermoFunction, x::Number)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) + ustrip(x), ctf.refs, ctf.unit)
-end
-function Base.:+(x::Number, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ustrip(x) + ctf.f(T, P), ctf.refs, ctf.unit)
-end
-function Base.:-(ctf::ClosureThermoFunction, x::Number)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) - ustrip(x), ctf.refs, ctf.unit)
-end
-function Base.:-(x::Number, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ustrip(x) - ctf.f(T, P), ctf.refs, ctf.unit)
-end
-# For */÷ with a scalar: unit algebra applies
-function Base.:*(ctf::ClosureThermoFunction, x::Number)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) * ustrip(x), ctf.refs, oneunit(ctf.unit * x))
-end
-function Base.:*(x::Number, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ustrip(x) * ctf.f(T, P), ctf.refs, oneunit(x * ctf.unit))
-end
-function Base.:/(ctf::ClosureThermoFunction, x::Number)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) / ustrip(x), ctf.refs, oneunit(ctf.unit / x))
-end
-function Base.:/(x::Number, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> ustrip(x) / ctf.f(T, P), ctf.refs, oneunit(x / ctf.unit))
+_combined_nf_vars(nf1::NumericFunc, nf2::NumericFunc) =
+    Tuple(union(nf1.vars, nf2.vars))
+
+_var_indices(src_vars, combined_vars) =
+    ntuple(i -> findfirst(==(src_vars[i]), combined_vars)::Int, length(src_vars))
+
+# Unary
+Base.:-(nf::NumericFunc) =
+    NumericFunc((args...) -> -nf.compiled(args...), nf.vars, nf.refs, nf.unit)
+
+# NF op NF — vars are united, refs are merged (second operand takes precedence)
+function _combine_nf(op, nf1::NumericFunc, nf2::NumericFunc)
+    new_vars = _combined_nf_vars(nf1, nf2)
+    idx1 = _var_indices(nf1.vars, new_vars)
+    idx2 = _var_indices(nf2.vars, new_vars)
+    combined = (args...) -> op(
+        _nf_call_from_combined(nf1, idx1, args),
+        _nf_call_from_combined(nf2, idx2, args),
+    )
+    return NumericFunc(
+        combined, new_vars, merge(nf1.refs, nf2.refs), oneunit(op(nf1.unit, nf2.unit))
+    )
 end
 
-# Backward-compatibility alias
-const HKFThermoFunction = ClosureThermoFunction
+for op in (:+, :-, :*, :/)
+    @eval Base.$op(nf1::NumericFunc, nf2::NumericFunc) =
+        _combine_nf($op, nf1, nf2)
+end
+
+# NF op Number (and vice versa)
+# For +/-: result unit = nf.unit (scalar assumed dimensionally compatible)
+# For *//: result unit from unit algebra
+function _combine_nf_scalar(op, nf::NumericFunc, x::Number, result_unit)
+    return NumericFunc(
+        (args...) -> op(nf.compiled(args...), ustrip(x)), nf.vars, nf.refs, result_unit
+    )
+end
+
+function _combine_scalar_nf(op, x::Number, nf::NumericFunc, result_unit)
+    return NumericFunc(
+        (args...) -> op(ustrip(x), nf.compiled(args...)), nf.vars, nf.refs, result_unit
+    )
+end
+
+for op in (:+, :-)
+    @eval begin
+        Base.$op(nf::NumericFunc, x::Number) =
+            _combine_nf_scalar($op, nf, x, nf.unit)
+        Base.$op(x::Number, nf::NumericFunc) =
+            _combine_scalar_nf($op, x, nf, nf.unit)
+    end
+end
+
+for op in (:*, :/)
+    @eval begin
+        Base.$op(nf::NumericFunc, x::Number) =
+            _combine_nf_scalar($op, nf, x, oneunit(Base.$op(nf.unit, x)))
+        Base.$op(x::Number, nf::NumericFunc) =
+            _combine_scalar_nf($op, x, nf, oneunit(Base.$op(x, nf.unit)))
+    end
+end
+
+# ── SymbolicFunc ───────────────────────────────────────────────────────────────
 
 """
-    ThermoFunction
+    SymbolicFunc
 
 Thermodynamic function with symbolic expression and compiled evaluation.
 """
-struct ThermoFunction{N, R <: NamedTuple, T, D} <: Callable
+struct SymbolicFunc{N, R <: NamedTuple, T, D} <: AbstractFunc
     symbolic::Num
     vars::NTuple{N, Symbol}
     refs::R
     compiled::RuntimeGeneratedFunction
     unit::Quantity{T, D}
 end
+
+# Call methods — specializations for N = 1, 2, 3 avoid runtime tuple dispatch overhead
+
+@inline function (sf::SymbolicFunc{1})(; kwargs...)
+    v = sf.vars[1]
+    val = haskey(kwargs, v) ? kwargs[v] : sf.refs[v]
+    return if get(kwargs, :unit, false)
+        sf.compiled(ustrip(val)) * sf.unit
+    else
+        sf.compiled(ustrip(val))
+    end
+end
+
+@inline function (sf::SymbolicFunc{2})(; kwargs...)
+    v1, v2 = sf.vars
+    val1 = haskey(kwargs, v1) ? kwargs[v1] : get(sf.refs, v1, nothing)
+    val2 = haskey(kwargs, v2) ? kwargs[v2] : get(sf.refs, v2, nothing)
+    return if get(kwargs, :unit, false)
+        sf.compiled(ustrip(val1), ustrip(val2)) * sf.unit
+    else
+        sf.compiled(ustrip(val1), ustrip(val2))
+    end
+end
+
+@inline function (sf::SymbolicFunc{3})(; kwargs...)
+    v1, v2, v3 = sf.vars
+    val1 = haskey(kwargs, v1) ? kwargs[v1] : get(sf.refs, v1, nothing)
+    val2 = haskey(kwargs, v2) ? kwargs[v2] : get(sf.refs, v2, nothing)
+    val3 = haskey(kwargs, v3) ? kwargs[v3] : get(sf.refs, v3, nothing)
+    return if get(kwargs, :unit, false)
+        sf.compiled(ustrip(val1), ustrip(val2), ustrip(val3)) * sf.unit
+    else
+        sf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
+    end
+end
+
+@inline function (sf::SymbolicFunc{N})(; kwargs...) where {N}
+    if isempty(kwargs)
+        var_values = ntuple(i -> ustrip(sf.refs[sf.vars[i]]), N)
+        return sf.compiled(var_values...)
+    else
+        merged = merge(sf.refs, kwargs)
+        var_values = ntuple(i -> ustrip(merged[sf.vars[i]]), N)
+        return if get(kwargs, :unit, false)
+            sf.compiled(var_values...) * sf.unit
+        else
+            sf.compiled(var_values...)
+        end
+    end
+end
+
+"""
+    Base.show(io::IO, sf::SymbolicFunc)
+
+Compact string representation of a SymbolicFunc.
+"""
+function Base.show(io::IO, sf::SymbolicFunc)
+    print(io, sf.symbolic, " [", dimension(sf.unit), "]")
+    if !isempty(sf.vars)
+        print(io, " ◆ vars=(", join(sf.vars, ", "), ")")
+    end
+    return if !isempty(sf.refs)
+        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(sf.refs)], ", "))
+    end
+end
+
+"""
+    Base.show(io::IO, ::MIME"text/plain", sf::SymbolicFunc)
+
+Detailed string representation of a SymbolicFunc.
+"""
+function Base.show(io::IO, ::MIME"text/plain", sf::SymbolicFunc)
+    println(io, "SymbolicFunc:")
+    print(io, "  Expression: ")
+    print(io, sf.symbolic, " [", dimension(sf.unit), "]")
+    print(io, "\n  Variables: ", join(sf.vars, ", "))
+    return if !isempty(sf.refs)
+        print(io, "\n  References: ", join(["$k=$v" for (k, v) in pairs(sf.refs)], ", "))
+    end
+end
+
+# ── ThermoFactory ──────────────────────────────────────────────────────────────
 
 """
     extract_vars_params(expr, vars) -> (Vector{Symbol}, Vector{Symbol})
@@ -208,9 +336,22 @@ function extract_vars_params(expr, vars)
 end
 
 """
+    compile_symbolic(symbolic_expr, var_symbols)
+
+Compile a symbolic expression to RuntimeGeneratedFunction.
+"""
+function compile_symbolic(symbolic_expr, var_symbols)
+    return if length(var_symbols) == 1
+        build_function(symbolic_expr, var_symbols[1]; expression = Val(false))
+    else
+        build_function(symbolic_expr, var_symbols...; expression = Val(false))
+    end
+end
+
+"""
     ThermoFactory
 
-Factory for creating ThermoFunctions from expressions.
+Factory for creating `SymbolicFunc` instances from expressions.
 """
 struct ThermoFactory
     symbolic::Num
@@ -289,7 +430,7 @@ end
 """
     (factory::ThermoFactory)(; kwargs...)
 
-Create a ThermoFunction with caching for optimal performance.
+Create a `SymbolicFunc` with caching for optimal performance.
 """
 function (factory::ThermoFactory)(; kwargs...)
     param_vals = Dict{Symbol, Any}(p => get(kwargs, p, 0.0) for p in keys(factory.params))
@@ -313,201 +454,7 @@ function (factory::ThermoFactory)(; kwargs...)
         (simplified, compiled)
     end
 
-    return ThermoFunction(simplified, Tuple(keys(factory.vars)), refs, compiled, unit)
-end
-
-"""
-    compile_symbolic(symbolic_expr, var_symbols)
-
-Compile a symbolic expression to RuntimeGeneratedFunction.
-"""
-function compile_symbolic(symbolic_expr, var_symbols)
-    return if length(var_symbols) == 1
-        build_function(symbolic_expr, var_symbols[1]; expression = Val(false))
-    else
-        build_function(symbolic_expr, var_symbols...; expression = Val(false))
-    end
-end
-
-@inline function (tf::ThermoFunction{1})(; kwargs...)
-    v = tf.vars[1]
-    val = haskey(kwargs, v) ? kwargs[v] : tf.refs[v]
-    return if get(kwargs, :unit, false)
-        tf.compiled(ustrip(val)) * tf.unit
-    else
-        tf.compiled(ustrip(val))
-    end
-end
-
-@inline function (tf::ThermoFunction{2})(; kwargs...)
-    v1, v2 = tf.vars
-    val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
-    val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
-    return if get(kwargs, :unit, false)
-        tf.compiled(ustrip(val1), ustrip(val2)) * tf.unit
-    else
-        tf.compiled(ustrip(val1), ustrip(val2))
-    end
-end
-
-@inline function (tf::ThermoFunction{3})(; kwargs...)
-    v1, v2, v3 = tf.vars
-    val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
-    val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
-    val3 = haskey(kwargs, v3) ? kwargs[v3] : get(tf.refs, v3, nothing)
-    return if get(kwargs, :unit, false)
-        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3)) * tf.unit
-    else
-        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
-    end
-end
-
-@inline function (tf::ThermoFunction{N})(; kwargs...) where {N}
-    if isempty(kwargs)
-        var_values = ntuple(i -> ustrip(tf.refs[tf.vars[i]]), N)
-        return tf.compiled(var_values...)
-    else
-        merged = merge(tf.refs, kwargs)
-        var_values = ntuple(i -> ustrip(merged[tf.vars[i]]), N)
-        return if get(kwargs, :unit, false)
-            tf.compiled(var_values...) * tf.unit
-        else
-            tf.compiled(var_values...)
-        end
-    end
-end
-
-"""
-    combine_symbolic(op, tf1::ThermoFunction, tf2::ThermoFunction)
-
-Combine two ThermoFunctions.
-"""
-function combine_symbolic(op, tf1::ThermoFunction, tf2::ThermoFunction)
-    all_vars = Tuple(union(tf1.vars, tf2.vars))
-    refs = merge(tf1.refs, tf2.refs)
-
-    combined = op(tf1.symbolic, tf2.symbolic)
-    simplified = Symbolics.simplify(Symbolics.expand(combined))
-    compiled = compile_symbolic(simplified, all_vars)
-
-    return ThermoFunction(
-        simplified, all_vars, refs, compiled, oneunit(op(tf1.unit, tf2.unit))
-    )
-end
-
-"""
-    combine_symbolic(op, tf::ThermoFunction, x::Number)
-
-Combine ThermoFunction with scalar.
-"""
-function combine_symbolic(op, tf::ThermoFunction, x::Number)
-    combined = op(tf.symbolic, ustrip(x))
-    simplified = Symbolics.simplify(Symbolics.expand(combined))
-    compiled = compile_symbolic(simplified, collect(tf.vars))
-
-    return ThermoFunction(simplified, tf.vars, tf.refs, compiled, oneunit(op(tf.unit, x)))
-end
-
-"""
-    combine_symbolic(op, x::Number, tf::ThermoFunction)
-
-Combine scalar with ThermoFunction.
-"""
-function combine_symbolic(op, x::Number, tf::ThermoFunction)
-    combined = op(ustrip(x), tf.symbolic)
-    simplified = Symbolics.simplify(Symbolics.expand(combined))
-    compiled = compile_symbolic(simplified, collect(tf.vars))
-
-    return ThermoFunction(simplified, tf.vars, tf.refs, compiled, oneunit(op(x, tf.unit)))
-end
-
-"""
-    apply_symbolic(op, tf::ThermoFunction)
-
-Apply unary operation.
-"""
-function apply_symbolic(op, tf::ThermoFunction)
-    combined = op(tf.symbolic)
-    simplified = Symbolics.simplify(Symbolics.expand(combined))
-    compiled = compile_symbolic(simplified, collect(tf.vars))
-
-    return ThermoFunction(simplified, tf.vars, tf.refs, compiled, oneunit(op(tf.unit)))
-end
-
-# Binary operations
-for op in (:+, :-, :*, :/, :^)
-    @eval begin
-        Base.$op(tf1::ThermoFunction, tf2::ThermoFunction) = combine_symbolic($op, tf1, tf2)
-        Base.$op(tf::ThermoFunction, x::Number) = combine_symbolic($op, tf, x)
-        Base.$op(x::Number, tf::ThermoFunction) = combine_symbolic($op, x, tf)
-    end
-end
-
-Base.:-(tf::ThermoFunction) = apply_symbolic(-, tf)
-
-# Cross-type: ClosureThermoFunction and ThermoFunction
-# The ThermoFunction is evaluated as a closure (T, P) -> tf(; T=T, P=P).
-# refs are inherited from the ClosureThermoFunction side.
-function Base.:+(ctf::ClosureThermoFunction, tf::ThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) + tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit + tf.unit))
-end
-function Base.:+(tf::ThermoFunction, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) + ctf.f(T, P), ctf.refs, oneunit(tf.unit + ctf.unit))
-end
-function Base.:-(ctf::ClosureThermoFunction, tf::ThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) - tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit + tf.unit))
-end
-function Base.:-(tf::ThermoFunction, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) - ctf.f(T, P), ctf.refs, oneunit(tf.unit + ctf.unit))
-end
-function Base.:*(ctf::ClosureThermoFunction, tf::ThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) * tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit * tf.unit))
-end
-function Base.:*(tf::ThermoFunction, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) * ctf.f(T, P), ctf.refs, oneunit(tf.unit * ctf.unit))
-end
-function Base.:/(ctf::ClosureThermoFunction, tf::ThermoFunction)
-    return ClosureThermoFunction((T, P) -> ctf.f(T, P) / tf(; T = T, P = P), ctf.refs, oneunit(ctf.unit / tf.unit))
-end
-function Base.:/(tf::ThermoFunction, ctf::ClosureThermoFunction)
-    return ClosureThermoFunction((T, P) -> tf(; T = T, P = P) / ctf.f(T, P), ctf.refs, oneunit(tf.unit / ctf.unit))
-end
-
-for f in [ADIM_MATH_FUNCTIONS; :sqrt; :abs]
-    if isdefined(Base, f)
-        @eval Base.$f(tf::ThermoFunction) = apply_symbolic($f, tf)
-    end
-end
-
-"""
-    Base.show(io::IO, tf::ThermoFunction)
-
-Compact string representation of a ThermoFunction.
-"""
-function Base.show(io::IO, tf::ThermoFunction)
-    print(io, tf.symbolic, " [", dimension(tf.unit), "]")
-    return if !isempty(tf.refs)
-        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(tf.refs)], ", "))
-    end
-end
-
-"""
-    Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
-
-Detailed string representation of a ThermoFunction.
-"""
-function Base.show(io::IO, ::MIME"text/plain", tf::ThermoFunction)
-    println(io, "ThermoFunction:")
-    print(io, "  Expression: ")
-    println(io, tf.symbolic, " [", dimension(tf.unit), "]")
-
-    if !isempty(tf.refs)
-        print(io, "  References: ")
-        println(io, join(["$k=$v" for (k, v) in pairs(tf.refs)], ", "))
-    end
-
-    print(io, "  Variables: ")
-    return print(io, join(tf.vars, ", "))
+    return SymbolicFunc(simplified, Tuple(keys(factory.vars)), refs, compiled, unit)
 end
 
 """
@@ -544,51 +491,169 @@ function Base.show(io::IO, ::MIME"text/plain", factory::ThermoFactory)
     return print(io, join(sort(collect(keys(factory.vars))), ", "))
 end
 
-# Constructors
-"""
-    ThermoFunction(sym::Symbol; kwargs...) -> ThermoFunction
+# ── SymbolicFunc convenience constructors ──────────────────────────────────────
+# (placed after ThermoFactory since they use it)
 
-Create a `ThermoFunction` from a single symbol.
 """
-function ThermoFunction(sym::Symbol; kwargs...)
+    SymbolicFunc(sym::Symbol; kwargs...) -> SymbolicFunc
+
+Create a `SymbolicFunc` from a single symbol.
+"""
+function SymbolicFunc(sym::Symbol; kwargs...)
     factory = ThermoFactory(sym, [sym]; kwargs...)
     return factory(; kwargs...)
 end
 
 """
-    ThermoFunction(expr::Expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...) -> ThermoFunction
+    SymbolicFunc(expr::Expr, vars=[:T, :P, :t, :x, :y, :z]; kwargs...) -> SymbolicFunc
 
-Create a `ThermoFunction` from an expression.
+Create a `SymbolicFunc` from an expression.
 """
-function ThermoFunction(expr::Expr, vars = [:T, :P, :t, :x, :y, :z]; kwargs...)
+function SymbolicFunc(expr::Expr, vars = [:T, :P, :t, :x, :y, :z]; kwargs...)
     factory = ThermoFactory(expr, vars; kwargs...)
     return factory(; kwargs...)
 end
 
 """
-    ThermoFunction(x::Quantity) -> ThermoFunction
+    SymbolicFunc(x::Quantity) -> SymbolicFunc
 
-Create a constant `ThermoFunction` from a quantity.
+Create a constant `SymbolicFunc` from a quantity.
 """
-function ThermoFunction(x::Quantity)
+function SymbolicFunc(x::Quantity)
     x = uexpand(x)
     factory = ThermoFactory(:c; units = [:c => oneunit(x)])
     return factory(; c = x)
 end
 
 """
-    ThermoFunction(x::Number) -> ThermoFunction
+    SymbolicFunc(x::Number) -> SymbolicFunc
 
-Create a constant `ThermoFunction` from a number (unitless).
+Create a constant `SymbolicFunc` from a number (unitless).
 """
-function ThermoFunction(x::Number)
+function SymbolicFunc(x::Number)
     factory = ThermoFactory(:c)
     return factory(; c = x)
 end
 
-# function ThermoFunction(symexpr::Union{SymbolicUtils.BasicSymbolic, Num}; kwargs...)
+# function SymbolicFunc(symexpr::Union{SymbolicUtils.BasicSymbolic, Num}; kwargs...)
 #     vars = Symbol.(get_variables(symexpr))
 #     refs = NamedTuple([v => kwargs[v] for v in vars if haskey(kwargs, v)])
 #     compiled = compile_symbolic(symexpr, collect(vars))
-#     return ThermoFunction(Num(symexpr), Tuple(vars), refs, compiled, ModelingToolkitBase.get_unit(symexpr))
+#     return SymbolicFunc(Num(symexpr), Tuple(vars), refs, compiled, ModelingToolkitBase.get_unit(symexpr))
 # end
+
+# ── SymbolicFunc arithmetic ────────────────────────────────────────────────────
+
+"""
+    combine_symbolic(op, sf1::SymbolicFunc, sf2::SymbolicFunc)
+
+Combine two SymbolicFuncs.
+"""
+function combine_symbolic(op, sf1::SymbolicFunc, sf2::SymbolicFunc)
+    all_vars = Tuple(union(sf1.vars, sf2.vars))
+    refs = merge(sf1.refs, sf2.refs)
+
+    combined = op(sf1.symbolic, sf2.symbolic)
+    simplified = Symbolics.simplify(Symbolics.expand(combined))
+    compiled = compile_symbolic(simplified, all_vars)
+
+    return SymbolicFunc(
+        simplified, all_vars, refs, compiled, oneunit(op(sf1.unit, sf2.unit))
+    )
+end
+
+"""
+    combine_symbolic(op, sf::SymbolicFunc, x::Number)
+
+Combine SymbolicFunc with scalar.
+"""
+function combine_symbolic(op, sf::SymbolicFunc, x::Number)
+    combined = op(sf.symbolic, ustrip(x))
+    simplified = Symbolics.simplify(Symbolics.expand(combined))
+    compiled = compile_symbolic(simplified, collect(sf.vars))
+
+    return SymbolicFunc(simplified, sf.vars, sf.refs, compiled, oneunit(op(sf.unit, x)))
+end
+
+"""
+    combine_symbolic(op, x::Number, sf::SymbolicFunc)
+
+Combine scalar with SymbolicFunc.
+"""
+function combine_symbolic(op, x::Number, sf::SymbolicFunc)
+    combined = op(ustrip(x), sf.symbolic)
+    simplified = Symbolics.simplify(Symbolics.expand(combined))
+    compiled = compile_symbolic(simplified, collect(sf.vars))
+
+    return SymbolicFunc(simplified, sf.vars, sf.refs, compiled, oneunit(op(x, sf.unit)))
+end
+
+"""
+    apply_symbolic(op, sf::SymbolicFunc)
+
+Apply unary operation.
+"""
+function apply_symbolic(op, sf::SymbolicFunc)
+    combined = op(sf.symbolic)
+    simplified = Symbolics.simplify(Symbolics.expand(combined))
+    compiled = compile_symbolic(simplified, collect(sf.vars))
+
+    return SymbolicFunc(simplified, sf.vars, sf.refs, compiled, oneunit(op(sf.unit)))
+end
+
+# Binary operations (SymbolicFunc op SymbolicFunc, SymbolicFunc op Number)
+for op in (:+, :-, :*, :/, :^)
+    @eval begin
+        Base.$op(sf1::SymbolicFunc, sf2::SymbolicFunc) = combine_symbolic($op, sf1, sf2)
+        Base.$op(sf::SymbolicFunc, x::Number) = combine_symbolic($op, sf, x)
+        Base.$op(x::Number, sf::SymbolicFunc) = combine_symbolic($op, x, sf)
+    end
+end
+
+# Unary
+Base.:-(sf::SymbolicFunc) = apply_symbolic(-, sf)
+
+# Math functions (dimensionless)
+for f in [ADIM_MATH_FUNCTIONS; :sqrt; :abs]
+    if isdefined(Base, f)
+        @eval Base.$f(sf::SymbolicFunc) = apply_symbolic($f, sf)
+    end
+end
+
+# ── Cross-type: NumericFunc × SymbolicFunc ─────────────────────────────────────
+# vars are the union of both sides; nf args are extracted by index mapping,
+# sf is called via NamedTuple kwargs (it ignores keys it does not own).
+# refs: nf.refs take precedence over sf.refs.
+
+function _cross_type_nf_sf(op, nf::NumericFunc, sf::SymbolicFunc, result_unit)
+    new_vars = Tuple(union(nf.vars, sf.vars))
+    new_refs = merge(sf.refs, nf.refs)   # nf.refs take precedence
+    nf_idx   = _var_indices(nf.vars, new_vars)
+    function combined(args...)
+        nf_vals = ntuple(i -> args[nf_idx[i]], length(nf.vars))
+        kw      = NamedTuple{new_vars}(args)
+        return op(nf.compiled(nf_vals...), sf(; pairs(kw)...))
+    end
+    return NumericFunc(combined, new_vars, new_refs, result_unit)
+end
+
+function _cross_type_sf_nf(op, sf::SymbolicFunc, nf::NumericFunc, result_unit)
+    new_vars = Tuple(union(nf.vars, sf.vars))
+    new_refs = merge(sf.refs, nf.refs)   # nf.refs take precedence
+    nf_idx   = _var_indices(nf.vars, new_vars)
+    function combined(args...)
+        nf_vals = ntuple(i -> args[nf_idx[i]], length(nf.vars))
+        kw      = NamedTuple{new_vars}(args)
+        return op(sf(; pairs(kw)...), nf.compiled(nf_vals...))
+    end
+    return NumericFunc(combined, new_vars, new_refs, result_unit)
+end
+
+for op in (:+, :-, :*, :/)
+    @eval begin
+        Base.$op(nf::NumericFunc, sf::SymbolicFunc) =
+            _cross_type_nf_sf($op, nf, sf, oneunit(Base.$op(nf.unit, sf.unit)))
+        Base.$op(sf::SymbolicFunc, nf::NumericFunc) =
+            _cross_type_sf_nf($op, sf, nf, oneunit(Base.$op(sf.unit, nf.unit)))
+    end
+end

@@ -103,7 +103,7 @@ const THERMO_MODELS = Dict(
     THERMO_FACTORIES
 
 Dictionary storing compiled `ThermoFactory` objects for each model.
-Used to efficiently generate `ThermoFunction` instances.
+Used to efficiently generate `SymbolicFunc` instances.
 """
 const THERMO_FACTORIES = Dict{Symbol, AbstractDict}()
 
@@ -148,7 +148,7 @@ function build_thermo_functions(::Val{M}, params) where {M}
     δS⁰ = STref - S(; T = Tref, unit = true)
     S⁰ = S + δS⁰
 
-    T = ThermoFunction(:T; units = [:T => "K"])
+    T = SymbolicFunc(:T; units = [:T => "K"])
     if haskey(dict_factories, :G)
         G = dict_factories[:G](; params...)
         ΔₐG⁰ = (G - T * δS⁰) + (GTref - G(; T = Tref, unit = true) + Tref * δS⁰)
@@ -210,9 +210,14 @@ function _build_hkf_thermo_functions(params)
     Hf  = _strip(get(dp, :ΔₐH⁰, get(dp, :ΔfH⁰, 0.0)))
     Gf  = _strip(get(dp, :ΔₐG⁰, get(dp, :ΔfG⁰, 0.0)))
 
-    Tref_val = _strip(get(dp, :T, _HKF_Tr))
-    Pref_val = _strip(get(dp, :P, _HKF_Pr))
-    refs = (T = Tref_val, P = Pref_val)
+    # Build refs as Quantities in SI (consistent with SymbolicFunc.refs)
+    T_raw = get(dp, :T, _HKF_Tr)
+    P_raw = get(dp, :P, _HKF_Pr)
+    refs = (
+        T = T_raw isa AbstractQuantity ? force_uconvert(u"K",  T_raw) : T_raw * u"K",
+        P = P_raw isa AbstractQuantity ? force_uconvert(u"Pa", P_raw) : P_raw * u"Pa",
+    )
+    vars = (:T, :P)
 
     Tr = _HKF_Tr
     Pr = _HKF_Pr
@@ -287,11 +292,11 @@ function _build_hkf_thermo_functions(params)
     end
 
     return OrderedDict(
-        :Cp⁰  => ClosureThermoFunction(_Cp, refs, u"J/(mol*K)"),
-        :ΔₐH⁰ => ClosureThermoFunction(_H,  refs, u"J/mol"),
-        :S⁰   => ClosureThermoFunction(_S,  refs, u"J/(mol*K)"),
-        :ΔₐG⁰ => ClosureThermoFunction(_G,  refs, u"J/mol"),
-        :V⁰   => ClosureThermoFunction(_V,  refs, u"m^3/mol"),
+        :Cp⁰  => NumericFunc(_Cp, vars, refs, u"J/(mol*K)"),
+        :ΔₐH⁰ => NumericFunc(_H,  vars, refs, u"J/mol"),
+        :S⁰   => NumericFunc(_S,  vars, refs, u"J/(mol*K)"),
+        :ΔₐG⁰ => NumericFunc(_G,  vars, refs, u"J/mol"),
+        :V⁰   => NumericFunc(_V,  vars, refs, u"m^3/mol"),
     )
 end
 

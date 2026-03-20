@@ -5,6 +5,8 @@ Pages = ["thermo_functions.md"]
 ```
 
 ```@docs
-ThermoFunction
+SymbolicFunc
+NumericFunc
+AbstractFunc
 ThermoFactory
 ```

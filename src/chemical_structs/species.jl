@@ -41,7 +41,7 @@ const PropertyType = Union{
     AbstractVector{<:Number},
     AbstractVector{<:Pair{Symbol}},
     Function,
-    Callable,
+    AbstractFunc,
     AbstractString,
     Missing,
 }
@@ -1527,19 +1527,19 @@ function complete_thermo_functions!(s::AbstractSpecies)
             end
             # for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
             #     if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
-            #         s[k] = ThermoFunction(dict_params[k])
+            #         s[k] = SymbolicFunc(dict_params[k])
             #     end
             # end
         end
         if haskey(properties(s), :V_method)
-            s[:V⁰] = ThermoFunction(dict_params[:V⁰])
+            s[:V⁰] = SymbolicFunc(dict_params[:V⁰])
             delete!(s.properties, :V_method)
         else
             for k in [:V⁰]
                 if !haskey(properties(s), k) &&
                         haskey(dict_params, k) &&
                         !ismissing(dict_params[k])
-                    s[k] = ThermoFunction(dict_params[k])
+                    s[k] = SymbolicFunc(dict_params[k])
                 end
             end
         end
@@ -1547,7 +1547,7 @@ function complete_thermo_functions!(s::AbstractSpecies)
             if haskey(dict_params, k) && !ismissing(dict_params[k])
                 s[Symbol(k, "_Tref")] = dict_params[k]
                 if !haskey(properties(s), k)
-                    s[k] = ThermoFunction(dict_params[k])
+                    s[k] = SymbolicFunc(dict_params[k])
                 end
             end
         end

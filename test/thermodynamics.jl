@@ -29,30 +29,30 @@
         @test factories[:Cp] isa ThermoFactory
     end
 
-    @testsection "ThermoFunction from constant Number" begin
-        tf = ThermoFunction(42.0)
-        @test tf isa ThermoFunction
+    @testsection "SymbolicFunc from constant Number" begin
+        tf = SymbolicFunc(42.0)
+        @test tf isa SymbolicFunc
         @test tf() ≈ 42.0
     end
 
-    @testsection "ThermoFunction from constant Quantity" begin
-        tf = ThermoFunction(100.0u"J/mol")
-        @test tf isa ThermoFunction
+    @testsection "SymbolicFunc from constant Quantity" begin
+        tf = SymbolicFunc(100.0u"J/mol")
+        @test tf isa SymbolicFunc
         val = tf(; unit=true)
         @test val isa AbstractQuantity
     end
 
-    @testsection "ThermoFunction from expression" begin
+    @testsection "SymbolicFunc from expression" begin
         # Simple linear function: f(T) = 2*T
-        tf = ThermoFunction(:(2 * T), [:T])
-        @test tf isa ThermoFunction
+        tf = SymbolicFunc(:(2 * T), [:T])
+        @test tf isa SymbolicFunc
         @test tf(; T=3.0) ≈ 6.0
         @test tf(; T=10.0) ≈ 20.0
     end
 
-    @testsection "ThermoFunction arithmetic" begin
-        tf1 = ThermoFunction(:(2 * T), [:T])
-        tf2 = ThermoFunction(:(3 * T), [:T])
+    @testsection "SymbolicFunc arithmetic" begin
+        tf1 = SymbolicFunc(:(2 * T), [:T])
+        tf2 = SymbolicFunc(:(3 * T), [:T])
 
         # Addition
         tf_sum = tf1 + tf2
@@ -80,7 +80,7 @@
 
         # Instantiate with parameters
         tf = factory(; a=2.0, b=5.0)
-        @test tf isa ThermoFunction
+        @test tf isa SymbolicFunc
         @test tf(; T=10.0) ≈ 25.0   # 2*10 + 5
     end
 
@@ -129,7 +129,7 @@
         @test haskey(thermo, :S⁰)
         @test haskey(thermo, :ΔₐG⁰)
 
-        @test thermo[:Cp⁰] isa ThermoFunction
+        @test thermo[:Cp⁰] isa SymbolicFunc
 
         # Cp at Tref should be ≈ 75 J/(mol·K) (only constant term a₀)
         cp_val = thermo[:Cp⁰](; T=298.15)

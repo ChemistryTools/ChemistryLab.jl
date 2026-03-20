@@ -219,7 +219,7 @@ Return the properties dictionary of the reaction.
 
 ```jldoctest
 julia> properties(Reaction("H2 + O2 = H2O"))
-OrderedDict{Symbol, Union{Missing, ChemistryLab.Callable, AbstractString, Function, Number, AbstractVector{<:Number}, AbstractVector{<:Pair{Symbol}}}}()
+OrderedDict{Symbol, Union{Missing, ChemistryLab.AbstractFunc, AbstractString, Function, Number, AbstractVector{<:Number}, AbstractVector{<:Pair{Symbol}}}}()
 ```
 """
 properties(r::Reaction) = r.properties
@@ -453,7 +453,7 @@ function complete_thermo_functions!(r::Reaction)
         if all(x -> haskey(x, :ΔₐG⁰), species_list)
             g = sum(ν * s.ΔₐG⁰ for (s, ν) in r)
             r.ΔᵣG⁰ = g
-            r.logK⁰ = -g / ((ustrip(Constants.R) * log(10)) * ThermoFunction(:T))
+            r.logK⁰ = -g / ((ustrip(Constants.R) * log(10)) * SymbolicFunc(:T))
         end
         if all(x -> haskey(x, :V⁰), species_list)
             r.ΔᵣV⁰ = sum(ν * s.V⁰ for (s, ν) in r)
@@ -476,7 +476,7 @@ function complete_thermo_functions!(r::Reaction)
             if haskey(dict_params, k) && !ismissing(dict_params[k])
                 r[Symbol(k, "_Tref")] = dict_params[k]
                 if !haskey(properties(r), k)
-                    r[k] = ThermoFunction(dict_params[k])
+                    r[k] = SymbolicFunc(dict_params[k])
                 end
             end
         end

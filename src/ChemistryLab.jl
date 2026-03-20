@@ -135,10 +135,10 @@ module ChemistryLab
     include("equilibrium/equilibrium_problems.jl")
     include("equilibrium/equilibrium_solver.jl")
 
-    export ThermoFunction,
+    export SymbolicFunc,
         ThermoFactory,
-        ClosureThermoFunction,
-        HKFThermoFunction,
+        NumericFunc,
+        AbstractFunc,
         infer_unit
 
     export WaterThermoProps,

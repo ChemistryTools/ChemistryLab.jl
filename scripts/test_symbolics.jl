@@ -158,7 +158,7 @@ function symbolic_to_expr(exp)
     end
 end
 
-struct ThermoFunction{P,U,F,R}
+struct SymbolicFunc{P,U,F,R}
     expr::Num
     parameters::P
     var::Num
@@ -167,7 +167,7 @@ struct ThermoFunction{P,U,F,R}
     ref::R
 end
 
-function ThermoFunction(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+function SymbolicFunc(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
     symexpr = Num(symexpr)
     varofexpr = Symbol.(get_variables(symexpr))
     if isnothing(var)
@@ -184,10 +184,10 @@ function ThermoFunction(symexpr, params_unit::NamedTuple, var=nothing; ref=(T=29
     nounitfunc = [f(var) => 1 for f in [log, log10, log2, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh, exp]]
     unit = promote_type(typeof.(values(params_unit))...) <: Quantity ?
                    Quantity(1, dimension(substitute(symexpr, [[eval(k)=>v for (k,v) in pairs(params_unit)] ; nounitfunc ; var=>getfield(ref, Symbol(var))]))) : 1
-    return ThermoFunction(symexpr, params_unit, var, unit, func, ref)
+    return SymbolicFunc(symexpr, params_unit, var, unit, func, ref)
 end
 
-function ThermoFunction(expr::Expr, params::AbstractVector{<:Number}, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+function SymbolicFunc(expr::Expr, params::AbstractVector{<:Number}, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
     v = extract_vars(expr)
     if isnothing(var)
         vars = [:T, :t]
@@ -202,7 +202,7 @@ function ThermoFunction(expr::Expr, params::AbstractVector{<:Number}, var=nothin
     symexpr = substitute(eval(expr), subszeros)
     nonzeros = (!iszero).(params)
     params_unit = NamedTuple{Tuple(v[CartesianIndices(params)][nonzeros])}(Tuple(params[nonzeros]))
-    return ThermoFunction(symexpr, params_unit, var; ref=ref)
+    return SymbolicFunc(symexpr, params_unit, var; ref=ref)
 end
 
 const thermo_function_library = Dict(
@@ -210,21 +210,21 @@ const thermo_function_library = Dict(
     :logKr => :(A₀ + A₁*T + A₂/T + A₃*log(T) + A₄/T^2 + A₅*T^2 + A₆*√T)
 )
 
-function ThermoFunction(sym::Symbol, params::AbstractVector{<:Number}, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
-    return ThermoFunction(thermo_function_library[sym], params, var; ref=ref)
+function SymbolicFunc(sym::Symbol, params::AbstractVector{<:Number}, var=nothing; ref=(T=298.15u"K", P=1u"bar", t=0u"s"))
+    return SymbolicFunc(thermo_function_library[sym], params, var; ref=ref)
 end
 
-function (tf::ThermoFunction)(T)
+function (tf::SymbolicFunc)(T)
     return tf.func(T)
 end
 
-function (tf::ThermoFunction)(T::Quantity)
+function (tf::SymbolicFunc)(T::Quantity)
     return tf.func(ustrip(T))*tf.unit
 end
 
 import Base: +, -, *, /
 
-function +(tf::ThermoFunction, x::Number)
+function +(tf::SymbolicFunc, x::Number)
     indexcst = findfirst(a->iszero(expand_derivatives(Differential(tf.var)(Differential(eval(a))(tf.expr)))), keys(tf.parameters))
     if isnothing(indexcst)
         cst = :cst
@@ -234,30 +234,30 @@ function +(tf::ThermoFunction, x::Number)
         end
         @eval @parameters $(cst)
         expr = eval(cst) + tf.expr
-        return ThermoFunction(expand(expr), merge((NamedTuple{(cst,)}(x)), tf.parameters), tf.var; ref=tf.ref)
+        return SymbolicFunc(expand(expr), merge((NamedTuple{(cst,)}(x)), tf.parameters), tf.var; ref=tf.ref)
     else
         cst = keys(tf.parameters)[indexcst]
-        return ThermoFunction(tf.expr, merge(tf.parameters, NamedTuple{(cst,)}((getfield(tf.parameters, cst)+x,))), tf.var; ref=tf.ref)
+        return SymbolicFunc(tf.expr, merge(tf.parameters, NamedTuple{(cst,)}((getfield(tf.parameters, cst)+x,))), tf.var; ref=tf.ref)
     end
 end
 
-+(x::Number, tf::ThermoFunction) = +(tf, x)
++(x::Number, tf::SymbolicFunc) = +(tf, x)
 
--(tf::ThermoFunction, x::Number) = +(tf, -1*x)
+-(tf::SymbolicFunc, x::Number) = +(tf, -1*x)
 
--(tf::ThermoFunction) = ThermoFunction(-1*tf.expr, tf.parameters, tf.var; ref=tf.ref)
+-(tf::SymbolicFunc) = SymbolicFunc(-1*tf.expr, tf.parameters, tf.var; ref=tf.ref)
 
-*(tf::ThermoFunction, x::Number) = ThermoFunction(x*tf.expr, tf.parameters, tf.var; ref=tf.ref)
+*(tf::SymbolicFunc, x::Number) = SymbolicFunc(x*tf.expr, tf.parameters, tf.var; ref=tf.ref)
 
-*(x::Number, tf::ThermoFunction) = *(tf, x)
+*(x::Number, tf::SymbolicFunc) = *(tf, x)
 
-/(tf::ThermoFunction, x::Number) = ThermoFunction(tf.expr/x, tf.parameters, tf.var; ref=tf.ref)
+/(tf::SymbolicFunc, x::Number) = SymbolicFunc(tf.expr/x, tf.parameters, tf.var; ref=tf.ref)
 
-∂(tf::ThermoFunction, var=tf.var) = ThermoFunction(expand(expand_derivatives(Differential(var)(tf.expr))), tf.parameters, tf.var; ref=tf.ref)
+∂(tf::SymbolicFunc, var=tf.var) = SymbolicFunc(expand(expand_derivatives(Differential(var)(tf.expr))), tf.parameters, tf.var; ref=tf.ref)
 
-∫(tf::ThermoFunction, var=tf.var) = ThermoFunction(expand(expand_derivatives(integrate(tf.expr, var; symbolic=true, detailed=false))), tf.parameters, tf.var; ref=tf.ref)
+∫(tf::SymbolicFunc, var=tf.var) = SymbolicFunc(expand(expand_derivatives(integrate(tf.expr, var; symbolic=true, detailed=false))), tf.parameters, tf.var; ref=tf.ref)
 
-function Base.show(io::IO, tf::ThermoFunction)
+function Base.show(io::IO, tf::SymbolicFunc)
     print(io, tf.expr)
     print(io, " with {")
     print(io, replace(string(tf.parameters), "("=>"", ")"=>"", " = "=>"="))
@@ -267,10 +267,10 @@ end
 expr = :(a₀ + a₁*T + a₂/T^2 + a₃/√T + a₄*T^2 + a₅*T^3 + a₆*T^4 + a₇/T^3 + a₈/T + a₉*√T + a₁₀*log(T))
 params = [210.0u"J/K/mol", 0.0u"J/mol/K^2", -3.07e6u"J*K/mol", 0.10u"J/mol/√K"]
 
-tf = ThermoFunction(expr, params)
+tf = SymbolicFunc(expr, params)
 
-tf2 = ThermoFunction(expand(expand_derivatives(Differential(T)(tf.expr))), tf.parameters)
+tf2 = SymbolicFunc(expand(expand_derivatives(Differential(T)(tf.expr))), tf.parameters)
 
-tf = ThermoFunction(:((c₁+c₂*t)/(c₃+c₄*t^2)), [1u"J",2u"J/s",3,4u"1/s^2"]; ref=(t=0u"s",))
+tf = SymbolicFunc(:((c₁+c₂*t)/(c₃+c₄*t^2)), [1u"J",2u"J/s",3,4u"1/s^2"]; ref=(t=0u"s",))
 
-Cp = ThermoFunction(dict_cp_ft_equation[:Cp], params)
+Cp = SymbolicFunc(dict_cp_ft_equation[:Cp], params)

@@ -87,9 +87,9 @@ Return `true` if species `s` has a standard molar volume `V⁰` available.
 _has_molar_volume(s::AbstractSpecies) = haskey(s, :V⁰)
 
 """
-    _molar_volume(s::AbstractSpecies) -> ThermoFunction
+    _molar_volume(s::AbstractSpecies) -> SymbolicFunc
 
-Return the standard molar volume ThermoFunction of species `s`.
+Return the standard molar volume SymbolicFunc of species `s`.
 Must be called as `_molar_volume(s)(T=T, P=P; unit=true)` to get a quantity.
 """
 _molar_volume(s::AbstractSpecies) = s[:V⁰]

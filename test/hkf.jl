@@ -67,13 +67,19 @@ end
     @test haskey(thermo, :ΔₐG⁰)
     @test haskey(thermo, :V⁰)
 
-    @test thermo[:Cp⁰]  isa ClosureThermoFunction
-    @test thermo[:ΔₐG⁰] isa ClosureThermoFunction
+    @test thermo[:Cp⁰]  isa NumericFunc
+    @test thermo[:ΔₐG⁰] isa NumericFunc
 
-    # refs must store T=298.15, P=1e5 (from params)
+    # vars must be (:T, :P)
+    @test thermo[:Cp⁰].vars == (:T, :P)
+
+    # refs must store T and P as Quantities in SI
     @test haskey(thermo[:Cp⁰].refs, :T)
     @test haskey(thermo[:Cp⁰].refs, :P)
-    @test thermo[:Cp⁰].refs.T ≈ 298.15
+    @test thermo[:Cp⁰].refs.T isa AbstractQuantity
+    @test thermo[:Cp⁰].refs.P isa AbstractQuantity
+    @test ustrip(thermo[:Cp⁰].refs.T) ≈ 298.15
+    @test ustrip(thermo[:Cp⁰].refs.P) ≈ 1.0e5
 
     # Cp at (Tr, Pr) must match database value ≈ 40.87 J/(mol·K)
     @test isapprox(thermo[:Cp⁰](; T = 298.15, P = 1.0e5), 40.87; rtol = 1e-2)
@@ -113,7 +119,7 @@ end
     @test isapprox(dG_dT, -S_val; rtol = 1e-3)
 end
 
-@testsection "ClosureThermoFunction arithmetic — scalar" begin
+@testsection "NumericFunc arithmetic — scalar" begin
     params = [
         :a1   =>  0.24940000474453 * 4.184e-5,
         :a2   => -169.08999633789  * 4.184,
@@ -136,21 +142,21 @@ end
 
     # Unary negation
     neg = -G
-    @test neg isa ClosureThermoFunction
+    @test neg isa NumericFunc
     @test neg(; T = T0, P = P0) ≈ -G0
 
     # Scalar multiplication (stoichiometric coefficient)
     scaled = 2 * G
-    @test scaled isa ClosureThermoFunction
+    @test scaled isa NumericFunc
     @test scaled(; T = T0, P = P0) ≈ 2 * G0
 
     scaled2 = G * 3.0
-    @test scaled2 isa ClosureThermoFunction
+    @test scaled2 isa NumericFunc
     @test scaled2(; T = T0, P = P0) ≈ 3.0 * G0
 
     # Scalar division
     div_hkf = G / 2.0
-    @test div_hkf isa ClosureThermoFunction
+    @test div_hkf isa NumericFunc
     @test div_hkf(; T = T0, P = P0) ≈ G0 / 2.0
 
     # Scalar addition/subtraction (offset in same unit)
@@ -161,7 +167,7 @@ end
     @test sub_hkf(; T = T0, P = P0) ≈ G0 - offset
 end
 
-@testsection "ClosureThermoFunction arithmetic — HKF op HKF" begin
+@testsection "NumericFunc arithmetic — HKF op HKF" begin
     params = [
         :a1   =>  0.24940000474453 * 4.184e-5,
         :a2   => -169.08999633789  * 4.184,
@@ -185,20 +191,20 @@ end
     H0 = H(; T = T0, P = P0)
 
     sum_hkf = G + H
-    @test sum_hkf isa ClosureThermoFunction
+    @test sum_hkf isa NumericFunc
     @test sum_hkf(; T = T0, P = P0) ≈ G0 + H0
 
     diff_hkf = G - H
-    @test diff_hkf isa ClosureThermoFunction
+    @test diff_hkf isa NumericFunc
     @test diff_hkf(; T = T0, P = P0) ≈ G0 - H0
 
     # Linear combination (reaction-like)
     lc = 2 * G + (-1) * H
-    @test lc isa ClosureThermoFunction
+    @test lc isa NumericFunc
     @test lc(; T = T0, P = P0) ≈ 2 * G0 - H0
 end
 
-@testsection "ClosureThermoFunction arithmetic — cross-type with ThermoFunction" begin
+@testsection "NumericFunc arithmetic — cross-type with SymbolicFunc" begin
     params = [
         :a1   =>  0.24940000474453 * 4.184e-5,
         :a2   => -169.08999633789  * 4.184,
@@ -221,22 +227,22 @@ end
     G0 = G(; T = T0, P = P0)
     S0 = S(; T = T0, P = P0)
 
-    # ThermoFunction representing a constant (must carry same unit as G for +/-)
-    tf_const = ThermoFunction(-898292.0u"J/mol")
+    # SymbolicFunc representing a constant (must carry same unit as G for +/-)
+    tf_const = SymbolicFunc(-898292.0u"J/mol")
 
     add_cross = G + tf_const
-    @test add_cross isa ClosureThermoFunction
+    @test add_cross isa NumericFunc
     @test add_cross(; T = T0, P = P0) ≈ G0 + (-898292.0)
 
     diff_cross = tf_const - G
-    @test diff_cross isa ClosureThermoFunction
+    @test diff_cross isa NumericFunc
     @test diff_cross(; T = T0, P = P0) ≈ -898292.0 - G0
 
-    # Division of HKF by a ThermoFunction of T (as in logK computation)
+    # Division of HKF by a SymbolicFunc of T (as in logK computation)
     R_log10 = ustrip(DynamicQuantities.Constants.R) * log(10)
-    tf_T = R_log10 * ThermoFunction(:T; units = [:T => "K"])
+    tf_T = R_log10 * SymbolicFunc(:T; units = [:T => "K"])
     logK = -G / tf_T
-    @test logK isa ClosureThermoFunction
+    @test logK isa NumericFunc
     # logK = -G / (R*ln10*T), numerical check
     expected_logK = -G0 / (R_log10 * T0)
     @test isapprox(logK(; T = T0, P = P0), expected_logK; rtol = 1e-6)

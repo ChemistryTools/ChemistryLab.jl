@@ -13,7 +13,7 @@ using ChemistryLab
 all_species = build_species("../../../data/cemdata18-merged.json")
 ```
 
-Each species already carries its molar mass and temperature-dependent thermodynamic functions (Cp⁰, ΔₐH⁰, ΔₐS⁰, ΔₐG⁰, logK⁰) as `ThermoFunction`s.
+Each species already carries its molar mass and temperature-dependent thermodynamic functions (Cp⁰, ΔₐH⁰, ΔₐS⁰, ΔₐG⁰, logK⁰) as `SymbolicFunc`s and `NumericFunc`s.
 
 !!! note "Low-level access"
     If you need the raw DataFrames (e.g. to inspect metadata or filter on database columns), the lower-level function `read_thermofun_database` is still available and returns three DataFrames `(df_elements, df_substances, df_reactions)`:

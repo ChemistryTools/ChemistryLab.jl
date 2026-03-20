@@ -21,7 +21,7 @@ params = [:a₀ => 210.0, :a₁ => 0.12, :a₂ => -3.07e6, :a₃ => 0.0, :T => 2
 factoryCp = THERMO_FACTORIES[:cp_ft_equation][:Cp]
 Cp⁰ = factoryCp(; params...)
 H = integrate(Cp⁰.symbolic, only(@variables T); symbolic = true, detailed = false)
-fH = ThermoFunction(H; T=298.15)
+fH = SymbolicFunc(H; T=298.15)
 
 dtf = build_thermo_functions(:cp_ft_equation, params)
 display(dtf)

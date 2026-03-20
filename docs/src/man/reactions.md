@@ -101,7 +101,7 @@ When the species involved in a reaction carry thermodynamic data (loaded from a 
 | `r.ΔᵣG⁰`  | Gibbs free energy of reaction (J mol⁻¹) |
 | `r.logK⁰` | Decimal logarithm of the equilibrium constant |
 
-Each property is a `ThermoFunction` callable with a keyword argument `T` (temperature in K):
+Each property is a `SymbolicFunc` callable with a keyword argument `T` (temperature in K):
 
 ```julia
 using ChemistryLab
