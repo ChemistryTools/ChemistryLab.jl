@@ -15,12 +15,12 @@ The JSON unit metadata for a3 and a4 is incorrect (missing `/bar`), hence this e
 | wref   | cal/mol                 | J/mol               | 4.184      |
 """
 const HKF_SI_CONVERSIONS = OrderedDict{Symbol, Float64}(
-    :a1   => 4.184e-5,
-    :a2   => 4.184,
-    :a3   => 4.184e-5,
-    :a4   => 4.184,
-    :c1   => 4.184,
-    :c2   => 4.184,
+    :a1 => 4.184e-5,
+    :a2 => 4.184,
+    :a3 => 4.184e-5,
+    :a4 => 4.184,
+    :c1 => 4.184,
+    :c2 => 4.184,
     :wref => 4.184,
 )
 
@@ -128,8 +128,8 @@ function complete_species_with_thermo_model!(species, row; verbose = false)
             elseif method_type == "solute_hkf88_reaktoro" && haskey(method, :eos_hkf_coeffs)
                 species[:thermo_method] = "solute_hkf88_reaktoro"
                 coeffs = method.eos_hkf_coeffs
-                vals   = float.(coeffs.values)
-                names  = [:a1, :a2, :a3, :a4, :c1, :c2, :wref]
+                vals = float.(coeffs.values)
+                names = [:a1, :a2, :a3, :a4, :c1, :c2, :wref]
                 hkf_params = [
                     names[i] => vals[i] * HKF_SI_CONVERSIONS[names[i]] for
                         i in 1:min(length(vals), length(names))

@@ -172,8 +172,8 @@ const _HKF_Tr = 298.15   # reference temperature (K)
 const _HKF_Pr = 1.0e+5   # reference pressure    (Pa)
 const _HKF_Zr = -1.278055636e-2  # Born function Z at (Tr, Pr)
 const _HKF_Yr = -5.795424563e-5  # Born function Y at (Tr, Pr)
-const _HKF_θ  = 228.0    # θ constant (K)
-const _HKF_Ψ  = 2.6e+8   # Ψ constant (Pa)
+const _HKF_θ = 228.0    # θ constant (K)
+const _HKF_Ψ = 2.6e+8   # Ψ constant (Pa)
 
 """
     _build_hkf_thermo_functions(params) -> OrderedDict
@@ -197,106 +197,108 @@ function _build_hkf_thermo_functions(params)
     _strip(x::AbstractQuantity) = ustrip(uexpand(x))
     _strip(x::Real) = Float64(x)
 
-    a1   = _strip(dp[:a1])
-    a2   = _strip(dp[:a2])
-    a3   = _strip(dp[:a3])
-    a4   = _strip(dp[:a4])
-    c1   = _strip(dp[:c1])
-    c2   = _strip(dp[:c2])
+    a1 = _strip(dp[:a1])
+    a2 = _strip(dp[:a2])
+    a3 = _strip(dp[:a3])
+    a4 = _strip(dp[:a4])
+    c1 = _strip(dp[:c1])
+    c2 = _strip(dp[:c2])
     wref = _strip(dp[:wref])
-    z    = _strip(dp[:z])
+    z = _strip(dp[:z])
 
-    Sr  = _strip(get(dp, :S⁰,   get(dp, :Sr,   0.0)))
-    Hf  = _strip(get(dp, :ΔₐH⁰, get(dp, :ΔfH⁰, 0.0)))
-    Gf  = _strip(get(dp, :ΔₐG⁰, get(dp, :ΔfG⁰, 0.0)))
+    Sr = _strip(get(dp, :S⁰, get(dp, :Sr, 0.0)))
+    Hf = _strip(get(dp, :ΔₐH⁰, get(dp, :ΔfH⁰, 0.0)))
+    Gf = _strip(get(dp, :ΔₐG⁰, get(dp, :ΔfG⁰, 0.0)))
 
     # Build refs as Quantities in SI (consistent with SymbolicFunc.refs)
     T_raw = get(dp, :T, _HKF_Tr)
     P_raw = get(dp, :P, _HKF_Pr)
     refs = (
-        T = T_raw isa AbstractQuantity ? force_uconvert(u"K",  T_raw) : T_raw * u"K",
+        T = T_raw isa AbstractQuantity ? force_uconvert(u"K", T_raw) : T_raw * u"K",
         P = P_raw isa AbstractQuantity ? force_uconvert(u"Pa", P_raw) : P_raw * u"Pa",
     )
     vars = (:T, :P)
 
     Tr = _HKF_Tr
     Pr = _HKF_Pr
-    θ  = _HKF_θ
-    Ψ  = _HKF_Ψ
+    θ = _HKF_θ
+    Ψ = _HKF_Ψ
     Zr = _HKF_Zr
     Yr = _HKF_Yr
 
     # -- Closures (T in K, P in Pa) --
 
     function _Cp(T::Real, P::Real)
-        wtp  = water_thermo_props(T, P)
-        wep  = water_electro_props_jn(T, P, wtp)
-        gs   = hkf_g_function(T, P, wtp)
-        ae   = species_electro_props_hkf(gs, z, wref)
-        Tth  = T - θ
+        wtp = water_thermo_props(T, P)
+        wep = water_electro_props_jn(T, P, wtp)
+        gs = hkf_g_function(T, P, wtp)
+        ae = species_electro_props_hkf(gs, z, wref)
+        Tth = T - θ
         return c1 + c2 / (Tth * Tth) -
-               2 * T / (Tth^3) * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) +
-               ae.w * T * wep.bornX + 2 * T * wep.bornY * ae.wT +
-               T * (wep.bornZ + 1) * ae.wTT
+            2 * T / (Tth^3) * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) +
+            ae.w * T * wep.bornX + 2 * T * wep.bornY * ae.wT +
+            T * (wep.bornZ + 1) * ae.wTT
     end
 
     function _H(T::Real, P::Real)
-        wtp  = water_thermo_props(T, P)
-        wep  = water_electro_props_jn(T, P, wtp)
-        gs   = hkf_g_function(T, P, wtp)
-        ae   = species_electro_props_hkf(gs, z, wref)
-        Tth  = T - θ
+        wtp = water_thermo_props(T, P)
+        wep = water_electro_props_jn(T, P, wtp)
+        gs = hkf_g_function(T, P, wtp)
+        ae = species_electro_props_hkf(gs, z, wref)
+        Tth = T - θ
         Tth2 = Tth * Tth
         return Hf + c1 * (T - Tr) - c2 * (1 / Tth - 1 / (Tr - θ)) +
-               a1 * (P - Pr) + a2 * log((Ψ + P) / (Ψ + Pr)) +
-               (2 * T - θ) / Tth2 * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) -
-               ae.w * (wep.bornZ + 1) + ae.w * T * wep.bornY +
-               T * (wep.bornZ + 1) * ae.wT + wref * (Zr + 1) - wref * Tr * Yr
+            a1 * (P - Pr) + a2 * log((Ψ + P) / (Ψ + Pr)) +
+            (2 * T - θ) / Tth2 * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) -
+            ae.w * (wep.bornZ + 1) + ae.w * T * wep.bornY +
+            T * (wep.bornZ + 1) * ae.wT + wref * (Zr + 1) - wref * Tr * Yr
     end
 
     function _S(T::Real, P::Real)
-        wtp  = water_thermo_props(T, P)
-        wep  = water_electro_props_jn(T, P, wtp)
-        gs   = hkf_g_function(T, P, wtp)
-        ae   = species_electro_props_hkf(gs, z, wref)
-        Tth  = T - θ
+        wtp = water_thermo_props(T, P)
+        wep = water_electro_props_jn(T, P, wtp)
+        gs = hkf_g_function(T, P, wtp)
+        ae = species_electro_props_hkf(gs, z, wref)
+        Tth = T - θ
         Tth2 = Tth * Tth
         return Sr + c1 * log(T / Tr) -
-               c2 / θ * (1 / Tth - 1 / (Tr - θ) + log(Tr / T * Tth / (Tr - θ)) / θ) +
-               1 / Tth2 * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) +
-               ae.w * wep.bornY + (wep.bornZ + 1) * ae.wT - wref * Yr
+            c2 / θ * (1 / Tth - 1 / (Tr - θ) + log(Tr / T * Tth / (Tr - θ)) / θ) +
+            1 / Tth2 * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) +
+            ae.w * wep.bornY + (wep.bornZ + 1) * ae.wT - wref * Yr
     end
 
     function _G(T::Real, P::Real)
-        wtp  = water_thermo_props(T, P)
-        wep  = water_electro_props_jn(T, P, wtp)
-        gs   = hkf_g_function(T, P, wtp)
-        ae   = species_electro_props_hkf(gs, z, wref)
-        Tth  = T - θ
+        wtp = water_thermo_props(T, P)
+        wep = water_electro_props_jn(T, P, wtp)
+        gs = hkf_g_function(T, P, wtp)
+        ae = species_electro_props_hkf(gs, z, wref)
+        Tth = T - θ
         return Gf - Sr * (T - Tr) - c1 * (T * log(T / Tr) - T + Tr) +
-               a1 * (P - Pr) + a2 * log((Ψ + P) / (Ψ + Pr)) -
-               c2 * ((1 / Tth - 1 / (Tr - θ)) * (θ - T) / θ -
-                     T / (θ * θ) * log(Tr / T * Tth / (Tr - θ))) +
-               1 / Tth * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) -
-               ae.w * (wep.bornZ + 1) + wref * (Zr + 1) + wref * Yr * (T - Tr)
+            a1 * (P - Pr) + a2 * log((Ψ + P) / (Ψ + Pr)) -
+            c2 * (
+            (1 / Tth - 1 / (Tr - θ)) * (θ - T) / θ -
+                T / (θ * θ) * log(Tr / T * Tth / (Tr - θ))
+        ) +
+            1 / Tth * (a3 * (P - Pr) + a4 * log((Ψ + P) / (Ψ + Pr))) -
+            ae.w * (wep.bornZ + 1) + wref * (Zr + 1) + wref * Yr * (T - Tr)
     end
 
     function _V(T::Real, P::Real)
-        wtp  = water_thermo_props(T, P)
-        wep  = water_electro_props_jn(T, P, wtp)
-        gs   = hkf_g_function(T, P, wtp)
-        ae   = species_electro_props_hkf(gs, z, wref)
-        Tth  = T - θ
+        wtp = water_thermo_props(T, P)
+        wep = water_electro_props_jn(T, P, wtp)
+        gs = hkf_g_function(T, P, wtp)
+        ae = species_electro_props_hkf(gs, z, wref)
+        Tth = T - θ
         return a1 + a2 / (Ψ + P) + (a3 + a4 / (Ψ + P)) / Tth -
-               ae.w * wep.bornQ - (wep.bornZ + 1) * ae.wP
+            ae.w * wep.bornQ - (wep.bornZ + 1) * ae.wP
     end
 
     return OrderedDict(
-        :Cp⁰  => NumericFunc(_Cp, vars, refs, u"J/(mol*K)"),
-        :ΔₐH⁰ => NumericFunc(_H,  vars, refs, u"J/mol"),
-        :S⁰   => NumericFunc(_S,  vars, refs, u"J/(mol*K)"),
-        :ΔₐG⁰ => NumericFunc(_G,  vars, refs, u"J/mol"),
-        :V⁰   => NumericFunc(_V,  vars, refs, u"m^3/mol"),
+        :Cp⁰ => NumericFunc(_Cp, vars, refs, u"J/(mol*K)"),
+        :ΔₐH⁰ => NumericFunc(_H, vars, refs, u"J/mol"),
+        :S⁰ => NumericFunc(_S, vars, refs, u"J/(mol*K)"),
+        :ΔₐG⁰ => NumericFunc(_G, vars, refs, u"J/mol"),
+        :V⁰ => NumericFunc(_V, vars, refs, u"m^3/mol"),
     )
 end
 

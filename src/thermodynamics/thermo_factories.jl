@@ -105,7 +105,7 @@ NumericFunc(f, unit) = NumericFunc(f, (:T, :P), NamedTuple(), unit)
     vals = ntuple(N) do i
         v = nf.vars[i]
         raw = haskey(kwargs, v) ? kwargs[v] :
-              get(nf.refs, v, get(_NF_DEFAULT_REFS, v, nothing))
+            get(nf.refs, v, get(_NF_DEFAULT_REFS, v, nothing))
         ustrip(raw)   # Quantities must already be in SI; plain numbers are passed through
     end
     val = nf.compiled(vals...)
@@ -628,10 +628,10 @@ end
 function _cross_type_nf_sf(op, nf::NumericFunc, sf::SymbolicFunc, result_unit)
     new_vars = Tuple(union(nf.vars, sf.vars))
     new_refs = merge(sf.refs, nf.refs)   # nf.refs take precedence
-    nf_idx   = _var_indices(nf.vars, new_vars)
+    nf_idx = _var_indices(nf.vars, new_vars)
     function combined(args...)
         nf_vals = ntuple(i -> args[nf_idx[i]], length(nf.vars))
-        kw      = NamedTuple{new_vars}(args)
+        kw = NamedTuple{new_vars}(args)
         return op(nf.compiled(nf_vals...), sf(; pairs(kw)...))
     end
     return NumericFunc(combined, new_vars, new_refs, result_unit)
@@ -640,10 +640,10 @@ end
 function _cross_type_sf_nf(op, sf::SymbolicFunc, nf::NumericFunc, result_unit)
     new_vars = Tuple(union(nf.vars, sf.vars))
     new_refs = merge(sf.refs, nf.refs)   # nf.refs take precedence
-    nf_idx   = _var_indices(nf.vars, new_vars)
+    nf_idx = _var_indices(nf.vars, new_vars)
     function combined(args...)
         nf_vals = ntuple(i -> args[nf_idx[i]], length(nf.vars))
-        kw      = NamedTuple{new_vars}(args)
+        kw = NamedTuple{new_vars}(args)
         return op(sf(; pairs(kw)...), nf.compiled(nf_vals...))
     end
     return NumericFunc(combined, new_vars, new_refs, result_unit)
