@@ -13,7 +13,7 @@ crystal
 gas
 solutes
 solvent
-components
+components(cs::ChemicalSystem)
 gasfluid
 get_reaction
 ```

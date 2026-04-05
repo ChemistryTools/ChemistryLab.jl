@@ -142,3 +142,124 @@ dict_reactions = Dict(r.symbol => r for r in list_reactions)
 Each reaction symbol matches the dependent species it describes. Temperature-dependent thermodynamic functions are computed automatically when the constituent species carry thermodynamic data.
 
 ---
+
+## Algebraic reaction balancing
+
+The null space of the stoichiometric matrix automatically yields **balanced chemical reactions** — no manual coefficient guessing needed. This is the algebraic counterpart to the chemical insight that mass must be conserved.
+
+### Principle
+
+Given a set of species, `ChemicalSystem` builds the stoichiometric matrix **A** (rows = elements, columns = species). Any vector **ν** in the null space of **A** satisfies **Aν = 0**, i.e. it represents a balanced reaction. `reactions(cs.SM)` extracts one independent balanced reaction per dependent species.
+
+### Example: combustion of methane
+
+```@example combustion
+using ChemistryLab
+
+# Declare gas-phase species
+CH4 = Species("CH4"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+O2  = Species("O2";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+CO2 = Species("CO2"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+H2O = Species("H2O"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+
+# Primary species fix the independent components: C (via CO2), H (via H2O), O (via O2)
+primaries = [CO2, H2O, O2]
+cs = ChemicalSystem([CH4, O2, CO2, H2O], primaries)
+
+rxns = reactions(cs.SM)
+pprint(rxns[1])
+```
+
+!!! note "Reading the matrix"
+    The stoichiometric matrix for this system (elements as rows, species as columns) is:
+
+    |       | C | H | O |
+    |-------|---|---|---|
+    | CH₄   | 1 | 4 | 0 |
+    | O₂    | 0 | 0 | 2 |
+    | CO₂   | 1 | 0 | 2 |
+    | H₂O   | 0 | 2 | 1 |
+
+    The null-space vector satisfying **Aν = 0** is **ν = (1, 2, −1, −2)**, giving CH₄ + 2 O₂ → CO₂ + 2 H₂O.
+
+### Example: combustion of alkanes (CₙH₂ₙ₊₂)
+
+```@example combustion_alkanes
+using ChemistryLab
+
+C2H6 = Species("C2H6"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+C3H8 = Species("C3H8"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+O2   = Species("O2";   aggregate_state = AS_GAS, class = SC_GASFLUID)
+CO2  = Species("CO2";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+H2O  = Species("H2O";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+
+primaries = [CO2, H2O, O2]
+
+# Ethane: C₂H₆ + 7/2 O₂ → 2 CO₂ + 3 H₂O
+cs_ethane = ChemicalSystem([C2H6, O2, CO2, H2O], primaries)
+pprint(reactions(cs_ethane.SM)[1])
+```
+
+```@example combustion_alkanes
+# Propane: C₃H₈ + 5 O₂ → 3 CO₂ + 4 H₂O
+cs_propane = ChemicalSystem([C3H8, O2, CO2, H2O], primaries)
+pprint(reactions(cs_propane.SM)[1])
+```
+
+The general formula for saturated alkanes CₙH₂ₙ₊₂ is:
+`CₙH₂ₙ₊₂ + (3n+1)/2 O₂ → n CO₂ + (n+1) H₂O`
+
+### Example: combustion of alkenes (CₙH₂ₙ)
+
+```@example combustion_alkenes
+using ChemistryLab
+
+C2H4 = Species("C2H4"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+C3H6 = Species("C3H6"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+O2   = Species("O2";   aggregate_state = AS_GAS, class = SC_GASFLUID)
+CO2  = Species("CO2";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+H2O  = Species("H2O";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+
+primaries = [CO2, H2O, O2]
+
+# Ethylene: C₂H₄ + 3 O₂ → 2 CO₂ + 2 H₂O
+cs_ethylene = ChemicalSystem([C2H4, O2, CO2, H2O], primaries)
+pprint(reactions(cs_ethylene.SM)[1])
+```
+
+```@example combustion_alkenes
+# Propylene: C₃H₆ + 9/2 O₂ → 3 CO₂ + 3 H₂O
+cs_propylene = ChemicalSystem([C3H6, O2, CO2, H2O], primaries)
+pprint(reactions(cs_propylene.SM)[1])
+```
+
+Alkenes CₙH₂ₙ follow: `CₙH₂ₙ + 3n/2 O₂ → n CO₂ + n H₂O`.
+
+### Example: multiple simultaneous reactions
+
+When more than one dependent species is present, `reactions(cs.SM)` returns one balanced equation per dependent species:
+
+```@example multi_rxns
+using ChemistryLab
+
+CH4  = Species("CH4";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+C2H6 = Species("C2H6"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+C2H4 = Species("C2H4"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+O2   = Species("O2";   aggregate_state = AS_GAS, class = SC_GASFLUID)
+CO2  = Species("CO2";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+H2O  = Species("H2O";  aggregate_state = AS_GAS, class = SC_GASFLUID)
+
+primaries = [CO2, H2O, O2]
+cs = ChemicalSystem([CH4, C2H6, C2H4, O2, CO2, H2O], primaries)
+
+rxns = reactions(cs.SM)
+for r in rxns
+    println(r.equation)
+end
+```
+
+!!! tip "When to use algebraic balancing"
+    Algebraic balancing via `reactions(cs.SM)` is most useful when:
+    - The system has many species and manual balancing would be error-prone.
+    - You load species from a database and want all independent reactions automatically.
+    - You want to verify that a set of species is stoichiometrically consistent.

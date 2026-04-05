@@ -20,7 +20,8 @@ atoms(s::AbstractSpecies)
 atoms_charge(s::AbstractSpecies)
 oxides
 oxides_charge
-components
+components(s::Species)
+components(s::CemSpecies)
 aggregate_state(s::AbstractSpecies)
 class(s::AbstractSpecies)
 properties(s::AbstractSpecies)

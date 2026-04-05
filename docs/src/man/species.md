@@ -83,47 +83,95 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 
 ## Species properties
 
-The molar mass is systematically calculated and integrated into the species properties. The heat capacity function is also integrated as a predefined function of the `Species` structure. This function is expressed as follows:
+The molar mass is automatically calculated and stored in the species `properties` dict under the key `:M`. Beyond that, the properties dict is open: any value of type `Number`, `AbstractVector{<:Number}`, `Function`, or `AbstractString` can be added at any time.
 
-$a_0 + a_1 * T + a_2 * T^{-2} + a_3 * T^{-0.5} + a_4 * T^2 + a_5 * T^3 + a_6 * T^4 + a_7 * T^{-3} + a_8 * T^{-1} + a_9 * T^{0.5} + a_{10} * log(T)$
+**Predefined property:**
 
-Other species properties are open and left to the discretion of users. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
+| Key | Type | Description |
+| --- | --- | --- |
+| `:M` | `Quantity` (g/mol) | Molar mass, computed automatically from the formula |
 
-Imagine, for example, that we wanted to construct the $\text{CO}_2$ molecule in a gaseous state with some of its thermodynamic properties. The thermodynamic properties of the molecule, which can be found for example on the website [thermoddem](https://thermoddem.brgm.fr/), are as follows at 298 K and 1 atm:
+**Common user-added thermodynamic properties (loaded from databases or set manually):**
 
-- heat capacity ${\text{C}_p}^°$: 37.14 $\text{J}.\text{mol}^{-1}.\text{K}^{-1}$
-- molar volume $\text{V}^°$: 25.3 $\text{m}^3.\text{mol}^{-1}$
-- enthalpy of formation $\Delta_a {\text{H}^°}$: -393510 $\text{J}.\text{mol}^{-1}$
-- entropy $\text{S}^°$: 213.785 $\text{J}.\text{mol}^{-1}.\text{K}^{-1}$ 
-- Gibbs free energy of formation $\Delta_a {\text{G}^°}$: -394373 $\text{J}.\text{mol}^{-1}$
+| Key | Type | Description |
+| --- | --- | --- |
+| `:Cp⁰` | `SymbolicFunc(T)` | Standard heat capacity (J mol⁻¹ K⁻¹) |
+| `:ΔₐH⁰` | `SymbolicFunc(T)` | Standard enthalpy of formation (J mol⁻¹) |
+| `:S⁰` | `SymbolicFunc(T)` | Standard entropy (J mol⁻¹ K⁻¹) |
+| `:ΔₐG⁰` | `SymbolicFunc(T)` | Standard Gibbs free energy of formation (J mol⁻¹) |
+| `:V⁰` | `Quantity` or `Function` | Molar volume (m³ mol⁻¹) |
 
-Furthermore, as explained above, heat capacity is a function of temperature. The parameters $a_0$, $a_1$, $a_2$, and $a_3$ can also be found on the same website. For $\text{CO}_2$, the values ​​are as follows: $a_0 = 33.98$, $a_1 = 23.88e-3$, $a_2 = 0$ et $a_3 = 0$. 
+Properties are accessed and mutated via `[]`:
 
-```julia
-using DynamicQuantities, ModelingToolkit
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m^3/mol")
-coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K")
+```@example props_simple
+using ChemistryLab
+using DynamicQuantities
+
+H2O = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+
+# Molar mass is always available
+H2O[:M]
 ```
 
-!!! note "Heat capacity function"
-    Although the function describing heat capacity has many parameters, it is of course possible to use only some of them. Here, only the parameters $a_0$ and $a_1$ are non-zero. The expression therefore becomes: $a_0 + a_1 * T$.
+```@example props_simple
+# Add a scalar property
+H2O[:V⁰] = 18.07e-6u"m^3/mol"
+H2O[:V⁰]
+```
 
+```@example props_simple
+# Add a string annotation
+H2O[:source] = "CRC Handbook 2024"
+H2O[:source]
+```
 
-!!! danger "Reference temperature"
-    It is important to define the reference temperature at which the thermodynamic properties are measured.
-    ```julia
-    T_ref = Dict(:T => 298.15u"K")
-    ```
+### Attaching temperature-dependent thermodynamic functions
 
-#### Heat capacity, enthalpy and free energy as a function of temperature
-
-Reference thermodynamical properties and temperature being defined, a simple call to `build_thermo_functions` allows the thermodynamic functions, such as heat capacity, entropy, enthalpy, and free enthalpy to be built as a function of temperature.
+The standard workflow uses [`build_thermo_functions`](@ref) to construct callable `SymbolicFunc` objects from reference data and Cp polynomial coefficients, then assigns them to the species:
 
 ```@example CO2
-using DynamicQuantities, ModelingToolkit #hide
-th_prop_0_CO2 = Dict(:Cp⁰ => 37.14u"J/K/mol", :ΔₐH⁰ => -393510u"J/mol", :S⁰ => 213.785u"J/K/mol", :ΔₐG⁰ => -394373u"J/mol", :V⁰ => 25.3e-3u"m^3/mol") #hide
-coeffs = Dict(:a₀ => 33.98u"J/K/mol", :a₁ => 23.88e-3u"J/mol/K^2", :a₂ => 0.0u"J*K/mol", :a₃ => 0.0u"J/mol/√K") #hide
-T_ref = Dict(:T => 298.15u"K") #hide
-params_Cp_CO2 = merge(th_prop_0_CO2, coeffs, T_ref)
+using ChemistryLab
+using DynamicQuantities
+
+CO₂ = Species("CO2"; name = "Carbon dioxide", aggregate_state = AS_GAS, class = SC_GASFLUID)
+
+# Reference data at 298.15 K (from e.g. thermoddem.brgm.fr)
+params_Cp_CO2 = Dict(
+    :S⁰   => 213.785u"J/K/mol",
+    :ΔₐH⁰ => -393510u"J/mol",
+    :ΔₐG⁰ => -394373u"J/mol",
+    :a₀   => 33.98u"J/K/mol",       # Cp polynomial: only a₀ and a₁ non-zero here
+    :a₁   => 23.88e-3u"J/(mol*K^2)",
+    :a₂   => 0.0u"J*K/mol",
+    :a₃   => 0.0u"J/(mol*K^0.5)",
+    :T    => 298.15u"K",             # reference temperature
+)
+
 dtf_CO2 = build_thermo_functions(:cp_ft_equation, params_Cp_CO2)
 ```
+
+```@example CO2
+# Assign each function to the species
+for (k, v) in dtf_CO2
+    CO₂[k] = v
+end
+
+# Evaluate at different temperatures
+CO₂[:Cp⁰](T = 298.15)    # J/mol/K at 25 °C
+```
+
+```@example CO2
+CO₂[:Cp⁰](T = 500.0)     # J/mol/K at 227 °C
+```
+
+```@example CO2
+CO₂[:ΔₐG⁰](T = 500.0u"K", unit = true)   # Gibbs energy at 227 °C with units
+```
+
+!!! note "Cp polynomial"
+    The built-in `:cp_ft_equation` model uses a 10-term polynomial:
+    $\text{Cp}°(T) = a_0 + a_1 T + a_2 T^{-2} + a_3 T^{-0.5} + \ldots + a_{10} \log T$
+    Unused coefficients should be set to `0.0` with appropriate units. Only non-zero terms affect the result. See the [Thermodynamic Functions](@ref sec-thermodynamics) tutorial for the full list of models and parameters.
+
+!!! danger "Reference temperature"
+    Always include `:T => reference_temperature` in the parameter dict. The functions are adjusted so that S°(T_ref), ΔₐH°(T_ref), ΔₐG°(T_ref) match the provided reference values exactly.

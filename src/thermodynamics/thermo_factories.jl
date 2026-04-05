@@ -510,7 +510,7 @@ end
 Create a `SymbolicFunc` from an expression.
 """
 function SymbolicFunc(expr::Expr, vars = [:T, :P, :t, :x, :y, :z]; kwargs...)
-    factory = ThermoFactory(expr, vars; kwargs...)
+    factory = ThermoFactory(expr, vars)
     return factory(; kwargs...)
 end
 

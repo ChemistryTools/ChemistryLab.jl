@@ -24,8 +24,9 @@ Enumeration for species chemical classes.
   - `SC_AQSOLUTE`: aqueous solute.
   - `SC_COMPONENT`: component.
   - `SC_GASFLUID`: gas or fluid.
+  - `SC_SSENDMEMBER`: end-member of a solid solution phase.
 """
-@enum Class SC_UNDEF SC_AQSOLVENT SC_AQSOLUTE SC_COMPONENT SC_GASFLUID
+@enum Class SC_UNDEF SC_AQSOLVENT SC_AQSOLUTE SC_COMPONENT SC_GASFLUID SC_SSENDMEMBER
 
 """
     abstract type AbstractSpecies end

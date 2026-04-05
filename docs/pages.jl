@@ -8,6 +8,8 @@ pages = [
         "man/databases.md",
         "man/stoich_matrices.md",
         "man/reactions.md",
+        "man/thermodynamics.md",
+        "man/chemical_system_state.md",
         "man/equilibrium.md",
         "man/advanced.md",
     ],

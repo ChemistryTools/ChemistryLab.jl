@@ -94,6 +94,7 @@ module ChemistryLab
     using CSV
     using DataFrames
     using DynamicQuantities
+    using ForwardDiff
     using JSON
     using LinearAlgebra
     using ModelingToolkit
@@ -121,6 +122,7 @@ module ChemistryLab
     include("chemical_structs/parsing_tools.jl")
     include("chemical_structs/formulas.jl")
     include("chemical_structs/species.jl")
+    include("chemical_structs/solid_solutions.jl")
     include("chemical_structs/reactions.jl")
     include("chemical_structs/speciation.jl")
     include("chemical_structs/stoich_matrices.jl")
@@ -196,7 +198,8 @@ module ChemistryLab
         SC_AQSOLVENT,
         SC_AQSOLUTE,
         SC_COMPONENT,
-        SC_GASFLUID
+        SC_GASFLUID,
+        SC_SSENDMEMBER
 
     export AbstractSpecies,
         Species,
@@ -233,6 +236,14 @@ module ChemistryLab
         mass_matrix,
         reactions
 
+    export AbstractSolidSolutionModel,
+        IdealSolidSolutionModel,
+        RedlichKisterModel,
+        AbstractSolidSolutionPhase,
+        SolidSolutionPhase,
+        end_members,
+        model
+
     export ChemicalSystem,
         aqueous,
         crystal,
@@ -241,7 +252,8 @@ module ChemistryLab
         solvent,
         components,
         gasfluid,
-        get_reaction
+        get_reaction,
+        solid_solutions
 
     export ChemicalState,
         temperature,
@@ -269,8 +281,13 @@ module ChemistryLab
 
     export AbstractActivityModel,
         DiluteSolutionModel,
+        HKFActivityModel,
+        DaviesActivityModel,
         activity_model,
-        build_potentials
+        build_potentials,
+        REJ_HKF,
+        REJ_CHARGE_DEFAULT,
+        hkf_debye_huckel_params
 
     export EquilibriumProblem
 

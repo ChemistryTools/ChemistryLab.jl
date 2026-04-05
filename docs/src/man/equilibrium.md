@@ -214,14 +214,108 @@ plot(p1, p2, layout = (1, 2), size = (700, 350))
 
 ## Activity models
 
-All activity models inherit from [`AbstractActivityModel`](@ref). The only built-in model is [`DiluteSolutionModel`](@ref), which implements:
+All activity models inherit from [`AbstractActivityModel`](@ref). Three built-in
+models are provided, covering ideal behaviour through to the extended Debye-Hückel
+level used by standard geochemical codes.
+
+### Choosing a model
+
+| Model | Formula | Valid range | Parameters needed |
+| --- | --- | --- | --- |
+| [`DiluteSolutionModel`](@ref) | Raoult / Henry | I ≪ 1 mol/kg | none |
+| [`HKFActivityModel`](@ref) | B-dot extended Debye-Hückel | I ≲ 1 mol/kg | `A`, `B`, `Ḃ` (defaults at 25 °C) |
+| [`DaviesActivityModel`](@ref) | Davies equation | I ≲ 0.5 mol/kg | `A`, `b` (defaults at 25 °C) |
+
+---
+
+### `DiluteSolutionModel` (ideal dilute solution)
 
 | Phase | Law | Expression |
-|-------|-----|-----------|
+| --- | --- | --- |
 | Solvent (H₂O) | Raoult | `ln a = ln xₛ` |
 | Aqueous solutes | Henry | `ln a = ln(cᵢ / c°)`, `c° = 1 mol/L` |
 | Crystals | Pure solid | `ln a = 0` |
 | Gas | Ideal mixture | `ln a = ln xᵢ` |
+
+```julia
+state_eq = equilibrate(state)   # DiluteSolutionModel is the default
+```
+
+---
+
+### `HKFActivityModel` (extended Debye-Hückel B-dot)
+
+Implements the extended Debye-Hückel model of Helgeson (1969) and
+Helgeson, Kirkham & Flowers (1981), identical to the model used by
+PHREEQC and EQ3/6.
+
+**Ion activity coefficient:**
+```
+log₁₀ γᵢ = −A zᵢ² √I / (1 + B åᵢ √I)  +  Ḃ I
+```
+
+**Neutral aqueous species (salting-out):**
+```
+log₁₀ γᵢ = Kₙ I
+```
+
+**Water activity** is computed from the osmotic coefficient via Gibbs-Duhem
+(not Raoult), which is accurate up to `I ≈ 1 mol/kg`.
+
+**Ionic radius lookup** (priority order):
+1. `sp[:å]` — explicit value set in species properties.
+2. [`REJ_HKF`](@ref) — Helgeson et al. (1981) Table 3 (27 common ions).
+3. [`REJ_CHARGE_DEFAULT`](@ref) — fallback by formal charge.
+4. `model.å_default` (default: 3.72 Å).
+
+**Usage:**
+
+```julia
+# Fixed A, B at 25 °C / 1 bar (fast — suitable for isothermal calculations)
+state_eq = equilibrate(state; model=HKFActivityModel())
+
+# Temperature-dependent A and B (recomputed from T, P at each equilibrium solve)
+state_eq = equilibrate(state; model=HKFActivityModel(temperature_dependent=true))
+
+# Custom parameters
+model = HKFActivityModel(A=0.52, B=0.33, Ḃ=0.04)
+```
+
+The A and B parameters depend on the water dielectric constant and density
+and can be computed explicitly via [`hkf_debye_huckel_params`](@ref):
+
+```julia
+ab = hkf_debye_huckel_params(298.15, 1e5)   # → (A=0.5114, B=0.3288)
+```
+
+!!! note "Valid range"
+    The B-dot model is reliable for `I ≲ 1 mol/kg`. For higher ionic
+    strengths (brines, evaporites), use the Pitzer model (planned future extension).
+
+---
+
+### `DaviesActivityModel` (Davies equation)
+
+Simpler alternative with no species-specific ionic radii. Suitable when
+ionic radii data are unavailable or for rapid screening calculations.
+
+**Ion activity coefficient:**
+```
+log₁₀ γᵢ = −A zᵢ² (√I / (1 + √I)  −  b I)
+```
+
+**Water activity** uses the Raoult (mole fraction) approximation.
+
+```julia
+state_eq = equilibrate(state; model=DaviesActivityModel())
+
+# Temperature-dependent A
+state_eq = equilibrate(state; model=DaviesActivityModel(temperature_dependent=true))
+```
+
+---
+
+### Custom activity models
 
 To implement a custom activity model, define a new subtype and extend `activity_model`:
 
@@ -230,11 +324,20 @@ struct MyModel <: AbstractActivityModel
     # model parameters
 end
 
-function ChemistryLab.activity_model(::ChemicalSystem, ::MyModel)
-    # return a closure lna(n, p) -> Vector{Float64}
-    return (_, _) -> begin
-        # compute and return log-activities
+function ChemistryLab.activity_model(cs::ChemicalSystem, ::MyModel)
+    # Precompute species indices and constants here (called once)
+    idx_solvent = only(cs.idx_solvent)
+    # ...
+
+    # Return a closure lna(n, p) -> Vector compatible with ForwardDiff
+    function lna(n::AbstractVector, p)
+        # p contains at minimum: p.ΔₐG⁰overT, p.T, p.P, p.ϵ
+        # n is dimensionless mole vector, same indexing as cs.species
+        out = zeros(eltype(n), length(n))
+        # ... fill log-activities ...
+        return out
     end
+    return lna
 end
 ```
 
@@ -243,3 +346,77 @@ Pass your model to `equilibrate` or `EquilibriumSolver`:
 ```julia
 state_eq = equilibrate(state; model=MyModel(...))
 ```
+
+---
+
+## Solid solutions
+
+Pure crystalline species have activity `ln a = 0`. **Solid solutions** are mineral phases
+with variable composition (e.g. C-S-H, AFm, hydrogarnet), where the activity of each
+end-member depends on its mole fraction within the phase.
+
+### Defining end-members and phases
+
+End-member species must carry `aggregate_state = AS_CRYSTAL` and `class = SC_SSENDMEMBER`:
+
+```julia
+using ChemistryLab
+
+em_ms = Species("Ms"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER)  # monosulfoaluminate
+em_mc = Species("Mc"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER)  # monocarboaluminate
+
+ss_afm = SolidSolutionPhase("AFm", [em_ms, em_mc])   # ideal mixing (default)
+```
+
+Then pass `solid_solutions` as a keyword to `ChemicalSystem`:
+
+```julia
+cs = ChemicalSystem(
+    [H2O_sp, em_ms, em_mc, ...],
+    ["H2O@", "Al+3", ...];           # primaries
+    solid_solutions = [ss_afm],
+)
+```
+
+### Activity models for solid solutions
+
+| Model | Formula | Notes |
+| --- | --- | --- |
+| [`IdealSolidSolutionModel`](@ref) | `ln aᵢ = ln xᵢ` | Default, any number of end-members |
+| [`RedlichKisterModel`](@ref) | `ln aᵢ = ln xᵢ + ln γᵢ` (Margules) | Binary only (2 end-members), parameters in J/mol |
+
+The solid-solution activity is computed **inside** the aqueous activity closure — no
+separate activity model is needed. The existing `equilibrate(state)` call handles
+solid solutions automatically.
+
+### Ideal solid solution
+
+```julia
+ss = SolidSolutionPhase("AFm", [em_ms, em_mc])   # IdealSolidSolutionModel() by default
+cs = ChemicalSystem([...]; solid_solutions=[ss])
+state_eq = equilibrate(state)
+```
+
+### Non-ideal binary: Redlich-Kister
+
+```julia
+# Interaction parameter for monosulfoaluminate-monocarboaluminate (example values)
+rk = RedlichKisterModel(a0 = 3000.0, a1 = 500.0)   # J/mol
+ss = SolidSolutionPhase("AFm", [em_ms, em_mc]; model=rk)
+```
+
+Activity coefficients (Guggenheim convention):
+
+```math
+ln γ₁ = (x₂²/RT)[a₀ + a₁(3x₁ − x₂)]
+ln γ₂ = (x₁²/RT)[a₀ − a₁(3x₂ − x₁)]
+```
+
+!!! note "Valid range"
+    `RedlichKisterModel` requires exactly 2 end-members. For ternary or
+    higher-order solid solutions, use the ideal model (`IdealSolidSolutionModel`).
+
+!!! note "Integration with aqueous models"
+    Solid-solution activities are computed independently of the aqueous activity model.
+    You can combine `HKFActivityModel()` for the aqueous phase with any solid-solution
+    model — the same `equilibrate` call handles both.

@@ -40,6 +40,11 @@ end
     include("hkf.jl")
 end
 
+@testsection "Equilibrium tests" begin
+    include("activities.jl")
+    include("solid_solutions.jl")
+end
+
 @testsection "Utils tests" begin
     include("utils.jl")
 end

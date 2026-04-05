@@ -69,9 +69,20 @@ end
 """
     _build_params(state::ChemicalState; ϵ=1e-16) -> NamedTuple
 
-Extract dimensionless parameters `p = (ΔₐG⁰overT, ϵ)` from a `ChemicalState`.
+Extract dimensionless parameters from a `ChemicalState`.
 `ΔₐG⁰overT` is evaluated at the current `T` and `P` of the state.
 Units are stripped — compatible with ForwardDiff dual numbers.
+
+# Returned fields
+
+  - `ΔₐG⁰overT`: vector of standard Gibbs energies divided by RT (dimensionless).
+  - `T`: temperature in K (plain number, Dual-safe).
+  - `P`: pressure in Pa (plain number, Dual-safe).
+  - `ϵ`: regularisation floor (default `1e-16`).
+
+`T` and `P` are included so that temperature-dependent activity models
+(e.g. [`HKFActivityModel`](@ref) with `temperature_dependent=true`) can
+recompute their parameters inside the potential closure.
 """
 function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
     T = temperature(state)
@@ -85,7 +96,10 @@ function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
             for s in state.system.species
     ]
 
-    return (ΔₐG⁰overT = ΔₐG⁰overT, ϵ = ϵ)
+    T_K  = ustrip(us"K",  T)   # Quantity{Dual} → Dual, Float64 → Float64
+    P_Pa = ustrip(us"Pa", P)
+
+    return (ΔₐG⁰overT = ΔₐG⁰overT, T = T_K, P = P_Pa, ϵ = ϵ)
 end
 
 """

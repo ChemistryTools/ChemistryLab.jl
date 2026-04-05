@@ -1,5 +1,51 @@
 # Stoichiometric Matrix
 
+## Concept
+
+A stoichiometric matrix encodes how each chemical species is composed of elements (or oxide components). Each row corresponds to a species; each column to an element. The entry `A[i, j]` is the number of atoms of element `j` in species `i`.
+
+For example, three species:
+
+| Species | H | O | C |
+| ------- | - | - | - |
+| H₂O    | 2 | 1 | 0 |
+| H⁺     | 1 | 0 | 0 |
+| CO₂    | 0 | 2 | 1 |
+
+This 3×3 matrix has rank 3, so all three species are linearly independent and can each serve as a "primary" (independent component). Any additional species in the system (e.g. HCO₃⁻, CO₃²⁻) can be written as a linear combination of these primaries — which is precisely a balanced chemical reaction.
+
+```@example concept
+using ChemistryLab
+
+H2O = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+Hp  = Species("H+";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+CO2 = Species("CO2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+
+CSM = CanonicalStoichMatrix([H2O, Hp, CO2])
+pprint(CSM; label = :symbol)
+```
+
+Adding a dependent species:
+
+```@example concept
+HCO3 = Species("HCO3-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+CO3  = Species("CO3-2";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+
+primaries = [H2O, Hp, CO2]
+SM = StoichMatrix([H2O, Hp, CO2, HCO3, CO3], primaries)
+pprint(SM; label = :symbol)
+```
+
+```@example concept
+# Balanced reactions are extracted from the null space of SM
+rxns = reactions(SM)
+for r in rxns
+    println(r.equation)
+end
+```
+
+---
+
 From the definition of species, it is possible to construct a stoichiometric matrix that establishes the relationship between species and chemical elements for species or oxides for cement species. This is called canonical decomposition.
 
 ```@setup database_stoichiometry

@@ -1,5 +1,5 @@
 """
-    struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S} <: AbstractVector{T}
+    struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S, SS} <: AbstractVector{T}
 
 An immutable, fully typed collection of chemical species and reactions
 with derived index structures and stoichiometric matrices.
@@ -19,8 +19,14 @@ construct a new `ChemicalSystem`.
   - `dict_reactions`: fast O(1) lookup by reaction symbol.
   - `CSM`: canonical stoichiometric matrix.
   - `SM`: stoichiometric matrix with respect to primaries.
+  - `solid_solutions`: `Nothing` when no solid solutions are present, or a concrete
+    `Vector{<:AbstractSolidSolutionPhase}` describing each solid-solution phase and
+    its end-members. Populated via the `solid_solutions` keyword constructor.
+  - `ss_groups`: for each solid solution, the indices of its end-members in `species`.
+  - `idx_ssendmembers`: union of all end-member indices (flattened `ss_groups`).
 """
-struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S} <: AbstractVector{T}
+struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S, SS} <:
+       AbstractVector{T}
     species::Vector{T}
     dict_species::Dict{String, T}               # fast O(1) lookup by symbol
 
@@ -40,15 +46,20 @@ struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S} <: Abst
 
     CSM::C                                      # canonical stoichiometric matrix — typed for performance
     SM::S                                       # stoichiometric matrix w.r.t. primaries — typed for performance
+
+    # Solid solutions — SS = Nothing (no SS) or Vector{<:AbstractSolidSolutionPhase}
+    solid_solutions::SS
+    ss_groups::Vector{Vector{Int}}              # per-SS end-member indices
+    idx_ssendmembers::Vector{Int}               # all end-member indices (flattened)
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
 
 """
-    ChemicalSystem(species, primaries=species; reactions) -> ChemicalSystem
+    ChemicalSystem(species, primaries=species; reactions, solid_solutions=nothing) -> ChemicalSystem
 
 Construct a fully typed `ChemicalSystem` from a vector of species,
-an optional vector of primary species, and an optional vector of reactions.
+an optional vector of primary species, optional reactions, and optional solid-solution phases.
 
 All derived fields are computed once at construction time and remain
 consistent for the lifetime of the object.
@@ -58,6 +69,9 @@ consistent for the lifetime of the object.
   - `species`: vector of `AbstractSpecies`.
   - `primaries`: subset used as independent components (default: all species).
   - `reactions`: vector of `AbstractReaction` (default: empty).
+  - `solid_solutions`: vector of [`SolidSolutionPhase`](@ref) (default: `nothing`).
+    When provided, end-members must already appear in `species` (matched by symbol) and
+    must carry `aggregate_state = AS_CRYSTAL` and `class = SC_SSENDMEMBER`.
 
 # Examples
 ```jldoctest
@@ -74,30 +88,91 @@ julia> length(cs)
 julia> cs["H2O"] == sp[1]
 true
 ```
+
+```jldoctest
+julia> em1 = Species("AFm1"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+
+julia> em2 = Species("AFm2"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+
+julia> ss = SolidSolutionPhase("AFm", [em1, em2]);
+
+julia> cs = ChemicalSystem([em1, em2]; solid_solutions=[ss]);
+
+julia> cs.ss_groups
+1-element Vector{Vector{Int64}}:
+ [1, 2]
+
+julia> cs.idx_ssendmembers
+2-element Vector{Int64}:
+ 1
+ 2
+```
 """
 function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractSpecies} = species;
         reactions::AbstractVector{R} = AbstractReaction[],
+        solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
     ) where {T <: AbstractSpecies, R <: AbstractReaction}
     idx(f) = findall(f, species)
     CSM = CanonicalStoichMatrix(species)
-    SM = StoichMatrix(species, primaries)
-    return ChemicalSystem{T, R, typeof(CSM), typeof(SM)}(
-        collect(T, species),                            # owned Vector{T}
-        Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
-        idx(s -> aggregate_state(s) == AS_AQUEOUS),
-        idx(s -> aggregate_state(s) == AS_CRYSTAL),
-        idx(s -> aggregate_state(s) == AS_GAS),
-        idx(s -> class(s) == SC_AQSOLUTE),
-        idx(s -> class(s) == SC_AQSOLVENT),
-        idx(s -> class(s) == SC_COMPONENT),
-        idx(s -> class(s) == SC_GASFLUID),
-        collect(R, reactions),                          # owned Vector{R}
-        Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
-        CSM,
-        SM,
-    )
+    SM  = StoichMatrix(species, primaries)
+
+    if isnothing(solid_solutions)
+        return ChemicalSystem{T, R, typeof(CSM), typeof(SM), Nothing}(
+            collect(T, species),                                    # owned Vector{T}
+            Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
+            idx(s -> aggregate_state(s) == AS_AQUEOUS),
+            idx(s -> aggregate_state(s) == AS_CRYSTAL),
+            idx(s -> aggregate_state(s) == AS_GAS),
+            idx(s -> class(s) == SC_AQSOLUTE),
+            idx(s -> class(s) == SC_AQSOLVENT),
+            idx(s -> class(s) == SC_COMPONENT),
+            idx(s -> class(s) == SC_GASFLUID),
+            collect(R, reactions),                                  # owned Vector{R}
+            Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
+            CSM,
+            SM,
+            nothing,        # solid_solutions — SS = Nothing
+            Vector{Int}[],  # ss_groups
+            Int[],          # idx_ssendmembers
+        )
+    else
+        # Build ss_groups: for each solid solution, find the indices of its end-members
+        # in the species vector (by symbol matching).
+        ss_groups = map(solid_solutions) do ss
+            map(end_members(ss)) do em
+                idx_em = findfirst(s -> symbol(s) == symbol(em), species)
+                idx_em === nothing &&
+                    error(
+                        "SolidSolutionPhase \"$(name(ss))\": end-member \"$(symbol(em))\" " *
+                        "not found in the species list. Add it to the species vector first.",
+                    )
+                idx_em
+            end
+        end
+        idx_ssendmembers = isempty(ss_groups) ? Int[] : vcat(ss_groups...)
+        ss = collect(solid_solutions)
+
+        return ChemicalSystem{T, R, typeof(CSM), typeof(SM), typeof(ss)}(
+            collect(T, species),                                    # owned Vector{T}
+            Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
+            idx(s -> aggregate_state(s) == AS_AQUEOUS),
+            idx(s -> aggregate_state(s) == AS_CRYSTAL),
+            idx(s -> aggregate_state(s) == AS_GAS),
+            idx(s -> class(s) == SC_AQSOLUTE),
+            idx(s -> class(s) == SC_AQSOLVENT),
+            idx(s -> class(s) == SC_COMPONENT),
+            idx(s -> class(s) == SC_GASFLUID),
+            collect(R, reactions),                                  # owned Vector{R}
+            Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
+            CSM,
+            SM,
+            ss,
+            ss_groups,
+            idx_ssendmembers,
+        )
+    end
 end
 
 """
@@ -123,11 +198,41 @@ function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractString};
         reactions::AbstractVector{R} = AbstractReaction[],
+        solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
     ) where {T <: AbstractSpecies, R <: AbstractReaction}
     # Resolve string symbols to species objects, preserving order
     primaries_species = species[symbol.(species) .∈ Ref(primaries)]
-    return ChemicalSystem(species, primaries_species; reactions = reactions)
+    return ChemicalSystem(
+        species, primaries_species; reactions = reactions, solid_solutions = solid_solutions
+    )
 end
+
+# ── Solid solution accessor ───────────────────────────────────────────────────
+
+"""
+    solid_solutions(cs::ChemicalSystem) -> Nothing | Vector{<:AbstractSolidSolutionPhase}
+
+Return the registered solid-solution phases, or `nothing` if none were declared.
+
+# Examples
+```jldoctest
+julia> em1 = Species("Em1"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+
+julia> em2 = Species("Em2"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+
+julia> cs = ChemicalSystem(
+           [em1, em2];
+           solid_solutions=[SolidSolutionPhase("SS", [em1, em2])],
+       );
+
+julia> solid_solutions(cs) isa Vector
+true
+
+julia> length(solid_solutions(cs))
+1
+```
+"""
+solid_solutions(cs::ChemicalSystem) = cs.solid_solutions
 
 # ── AbstractVector interface ──────────────────────────────────────────────────
 
