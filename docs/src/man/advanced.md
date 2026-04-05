@@ -22,17 +22,19 @@ f_scaled = apply(x -> x * 2, f)
 
 ### Arithmetic with fractional stoichiometry
 
-ChemistryLab preserves rational coefficients when parsing fractional formulas (use `//` for rational notation) and when doing arithmetic:
+ChemistryLab preserves rational coefficients when parsing fractional formulas (use `//` for rational notation) and when doing arithmetic.
+
+As an example, Rankinite (Ca₃Si₂O₇) can be written as a half-unit formula where each coefficient is a ratio:
 
 ```@example advanced
 using ChemistryLab #hide
-f = Formula("H1//2O")
-composition(f)  # OrderedDict(:H => 1//2, :O => 1)
+f = Formula("Ca3//2Si1O7//2")   # half the formula unit of Rankinite (Ca₃Si₂O₇)
+composition(f)  # OrderedDict(:Ca => 3//2, :Si => 1, :O => 7//2)
 ```
 
 ```@example advanced
-f2 = f * 2
-composition(f2) # OrderedDict(:H => 1, :O => 2)  — now simplified to integers
+f2 = f * 2   # full Rankinite formula
+composition(f2)  # rational coefficients become integer-valued Rationals; plain integers stay Int
 ```
 
 ### Converting between notations

@@ -162,8 +162,8 @@ O2  = Species("O2";  aggregate_state = AS_GAS, class = SC_GASFLUID)
 CO2 = Species("CO2"; aggregate_state = AS_GAS, class = SC_GASFLUID)
 H2O = Species("H2O"; aggregate_state = AS_GAS, class = SC_GASFLUID)
 
-# Primary species fix the independent components: C (via CO2), H (via H2O), O (via O2)
-primaries = [CO2, H2O, O2]
+# CH4, O2, H2O are the primary (independent) components; CO2 is the derived species
+primaries = [CH4, O2, H2O]
 cs = ChemicalSystem([CH4, O2, CO2, H2O], primaries)
 
 rxns = reactions(cs.SM)
@@ -180,7 +180,9 @@ pprint(rxns[1])
     | CO₂   | 1 | 0 | 2 |
     | H₂O   | 0 | 2 | 1 |
 
-    The null-space vector satisfying **Aν = 0** is **ν = (1, 2, −1, −2)**, giving CH₄ + 2 O₂ → CO₂ + 2 H₂O.
+    With CH₄, O₂, H₂O as primaries, CO₂ is the dependent species.
+    `reactions(cs.SM)` expresses CO₂ as: CO₂ = CH₄ + 2 O₂ − 2 H₂O,
+    yielding the balanced equation CH₄ + 2 O₂ → CO₂ + 2 H₂O.
 
 ### Example: combustion of alkanes (CₙH₂ₙ₊₂)
 
@@ -196,14 +198,15 @@ H2O  = Species("H2O";  aggregate_state = AS_GAS, class = SC_GASFLUID)
 primaries = [CO2, H2O, O2]
 
 # Ethane: C₂H₆ + 7/2 O₂ → 2 CO₂ + 3 H₂O
+# reactions(SM) returns the reverse here; negate to get the forward combustion direction
 cs_ethane = ChemicalSystem([C2H6, O2, CO2, H2O], primaries)
-pprint(reactions(cs_ethane.SM)[1])
+pprint(-reactions(cs_ethane.SM)[1])
 ```
 
 ```@example combustion_alkanes
 # Propane: C₃H₈ + 5 O₂ → 3 CO₂ + 4 H₂O
 cs_propane = ChemicalSystem([C3H8, O2, CO2, H2O], primaries)
-pprint(reactions(cs_propane.SM)[1])
+pprint(-reactions(cs_propane.SM)[1])
 ```
 
 The general formula for saturated alkanes CₙH₂ₙ₊₂ is:
@@ -223,14 +226,15 @@ H2O  = Species("H2O";  aggregate_state = AS_GAS, class = SC_GASFLUID)
 primaries = [CO2, H2O, O2]
 
 # Ethylene: C₂H₄ + 3 O₂ → 2 CO₂ + 2 H₂O
+# reactions(SM) returns the reverse here; negate to get the forward combustion direction
 cs_ethylene = ChemicalSystem([C2H4, O2, CO2, H2O], primaries)
-pprint(reactions(cs_ethylene.SM)[1])
+pprint(-reactions(cs_ethylene.SM)[1])
 ```
 
 ```@example combustion_alkenes
 # Propylene: C₃H₆ + 9/2 O₂ → 3 CO₂ + 3 H₂O
 cs_propylene = ChemicalSystem([C3H6, O2, CO2, H2O], primaries)
-pprint(reactions(cs_propylene.SM)[1])
+pprint(-reactions(cs_propylene.SM)[1])
 ```
 
 Alkenes CₙH₂ₙ follow: `CₙH₂ₙ + 3n/2 O₂ → n CO₂ + n H₂O`.
@@ -254,7 +258,7 @@ cs = ChemicalSystem([CH4, C2H6, C2H4, O2, CO2, H2O], primaries)
 
 rxns = reactions(cs.SM)
 for r in rxns
-    println(r.equation)
+    println((-r).equation)
 end
 ```
 
