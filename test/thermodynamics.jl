@@ -38,7 +38,7 @@
     @testsection "SymbolicFunc from constant Quantity" begin
         tf = SymbolicFunc(100.0u"J/mol")
         @test tf isa SymbolicFunc
-        val = tf(; unit=true)
+        val = tf(; unit = true)
         @test val isa AbstractQuantity
     end
 
@@ -46,8 +46,8 @@
         # Simple linear function: f(T) = 2*T
         tf = SymbolicFunc(:(2 * T), [:T])
         @test tf isa SymbolicFunc
-        @test tf(; T=3.0) ≈ 6.0
-        @test tf(; T=10.0) ≈ 20.0
+        @test tf(; T = 3.0) ≈ 6.0
+        @test tf(; T = 10.0) ≈ 20.0
     end
 
     @testsection "SymbolicFunc arithmetic" begin
@@ -56,19 +56,19 @@
 
         # Addition
         tf_sum = tf1 + tf2
-        @test tf_sum(; T=1.0) ≈ 5.0
+        @test tf_sum(; T = 1.0) ≈ 5.0
 
         # Subtraction
         tf_diff = tf2 - tf1
-        @test tf_diff(; T=1.0) ≈ 1.0
+        @test tf_diff(; T = 1.0) ≈ 1.0
 
         # Scalar multiplication
         tf_scaled = tf1 * 2.0
-        @test tf_scaled(; T=1.0) ≈ 4.0
+        @test tf_scaled(; T = 1.0) ≈ 4.0
 
         # Unary negation
         tf_neg = -tf1
-        @test tf_neg(; T=1.0) ≈ -2.0
+        @test tf_neg(; T = 1.0) ≈ -2.0
     end
 
     @testsection "ThermoFactory construction and call" begin
@@ -79,9 +79,9 @@
         @test haskey(factory.vars, :T)
 
         # Instantiate with parameters
-        tf = factory(; a=2.0, b=5.0)
+        tf = factory(; a = 2.0, b = 5.0)
         @test tf isa SymbolicFunc
-        @test tf(; T=10.0) ≈ 25.0   # 2*10 + 5
+        @test tf(; T = 10.0) ≈ 25.0   # 2*10 + 5
     end
 
     @testsection "add_thermo_model" begin
@@ -106,19 +106,19 @@
     @testsection "build_thermo_functions" begin
         # Build thermodynamic functions from cp_ft_equation with minimal parameters
         params = [
-            :a₀  => 75.0u"J/(mol*K)",
-            :a₁  => 0.0u"J/(mol*K^2)",
-            :a₂  => 0.0u"J*K/mol",
-            :a₃  => 0.0u"J/(mol*K^0.5)",
-            :a₄  => 0.0u"J/(mol*K^3)",
-            :a₅  => 0.0u"J/(mol*K^4)",
-            :a₆  => 0.0u"J/(mol*K^5)",
-            :a₇  => 0.0u"J*K^2/mol",
-            :a₈  => 0.0u"J/mol",
-            :a₉  => 0.0u"J/(mol*K^1.5)",
+            :a₀ => 75.0u"J/(mol*K)",
+            :a₁ => 0.0u"J/(mol*K^2)",
+            :a₂ => 0.0u"J*K/mol",
+            :a₃ => 0.0u"J/(mol*K^0.5)",
+            :a₄ => 0.0u"J/(mol*K^3)",
+            :a₅ => 0.0u"J/(mol*K^4)",
+            :a₆ => 0.0u"J/(mol*K^5)",
+            :a₇ => 0.0u"J*K^2/mol",
+            :a₈ => 0.0u"J/mol",
+            :a₉ => 0.0u"J/(mol*K^1.5)",
             :a₁₀ => 0.0u"J/(mol*K)",
-            :T   => 298.15u"K",
-            :S⁰  => 70.0u"J/(mol*K)",
+            :T => 298.15u"K",
+            :S⁰ => 70.0u"J/(mol*K)",
             :ΔfH⁰ => -285.8u"kJ/mol",
             :ΔfG⁰ => -237.1u"kJ/mol",
         ]
@@ -132,7 +132,7 @@
         @test thermo[:Cp⁰] isa SymbolicFunc
 
         # Cp at Tref should be ≈ 75 J/(mol·K) (only constant term a₀)
-        cp_val = thermo[:Cp⁰](; T=298.15)
-        @test isapprox(cp_val, 75.0; rtol=1e-6)
+        cp_val = thermo[:Cp⁰](; T = 298.15)
+        @test isapprox(cp_val, 75.0; rtol = 1.0e-6)
     end
 end

@@ -55,7 +55,7 @@ using LinearAlgebra
 
         # Mass conservation: each column (species) sums to 1.0 (normalised mass)
         h2o_idx = findfirst(s -> s == h2o, species)
-        @test sum(A[:, h2o_idx]) ≈ 1.0 atol = 1e-10
+        @test sum(A[:, h2o_idx]) ≈ 1.0 atol = 1.0e-10
     end
 
     @testsection "CemSpecies handling" begin

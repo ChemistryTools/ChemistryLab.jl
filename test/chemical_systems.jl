@@ -1,11 +1,11 @@
 @testsection "ChemicalSystem" begin
     # ── Shared fixtures ──────────────────────────────────────────────────────
-    h2o   = Species("H2O";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
-    hplus = Species("H+";   aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
-    oh    = Species("OH-";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
-    nacl  = Species("NaCl"; aggregate_state=AS_CRYSTAL)
-    co2g  = Species("CO2";  aggregate_state=AS_GAS,     class=SC_GASFLUID)
-    sio2  = Species("SiO2"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+    h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+    hplus = Species("H+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    oh = Species("OH-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    nacl = Species("NaCl"; aggregate_state = AS_CRYSTAL)
+    co2g = Species("CO2"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+    sio2 = Species("SiO2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
 
     @testsection "Basic construction" begin
         cs = ChemicalSystem([h2o, hplus, oh])
@@ -35,7 +35,7 @@
         @test length(gas(cs)) == 1       # co2g
         @test all(s -> aggregate_state(s) == AS_AQUEOUS, aqueous(cs))
         @test all(s -> aggregate_state(s) == AS_CRYSTAL, crystal(cs))
-        @test all(s -> aggregate_state(s) == AS_GAS,     gas(cs))
+        @test all(s -> aggregate_state(s) == AS_GAS, gas(cs))
     end
 
     @testsection "Views by class" begin
@@ -70,8 +70,8 @@
     end
 
     @testsection "Reactions and get_reaction" begin
-        r_diss = Reaction("H2O = H+ + OH-"; symbol="water_diss")
-        cs = ChemicalSystem([h2o, hplus, oh]; reactions=[r_diss])
+        r_diss = Reaction("H2O = H+ + OH-"; symbol = "water_diss")
+        cs = ChemicalSystem([h2o, hplus, oh]; reactions = [r_diss])
         @test length(cs.reactions) == 1
         @test symbol(get_reaction(cs, "water_diss")) == "water_diss"
         @test_throws KeyError get_reaction(cs, "nonexistent_rxn")
@@ -80,11 +80,11 @@
     @testsection "merge two systems" begin
         cs1 = ChemicalSystem(
             [h2o, hplus];
-            reactions=[Reaction("H2O = H+ + OH-"; symbol="water_diss")],
+            reactions = [Reaction("H2O = H+ + OH-"; symbol = "water_diss")],
         )
         cs2 = ChemicalSystem(
             [oh, h2o];   # h2o duplicate — cs1 wins
-            reactions=[Reaction("CO2 + H2O = H2CO3"; symbol="co2_hyd")],
+            reactions = [Reaction("CO2 + H2O = H2CO3"; symbol = "co2_hyd")],
         )
         cs = merge(cs1, cs2)
         @test length(cs) == 3             # H2O, H+, OH- (no duplicate H2O)

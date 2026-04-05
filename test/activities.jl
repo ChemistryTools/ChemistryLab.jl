@@ -5,9 +5,9 @@ using LinearAlgebra: norm
 
 function _nacl_system()
     h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    na  = Species("Na+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
-    cl  = Species("Cl-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
-    cs  = ChemicalSystem([h2o, na, cl])
+    na = Species("Na+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    cl = Species("Cl-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    cs = ChemicalSystem([h2o, na, cl])
     return cs, h2o, na, cl
 end
 
@@ -69,14 +69,14 @@ end
 # ── REJ_HKF table ─────────────────────────────────────────────────────────────
 
 @testsection "REJ_HKF" begin
-    @test REJ_HKF["H+"]    ≈ 3.08
-    @test REJ_HKF["Na+"]   ≈ 1.91
-    @test REJ_HKF["K+"]    ≈ 2.27
-    @test REJ_HKF["Ca+2"]  ≈ 2.87
-    @test REJ_HKF["Mg+2"]  ≈ 2.54
-    @test REJ_HKF["Al+3"]  ≈ 3.33
-    @test REJ_HKF["Cl-"]   ≈ 1.81
-    @test REJ_HKF["OH-"]   ≈ 1.40
+    @test REJ_HKF["H+"] ≈ 3.08
+    @test REJ_HKF["Na+"] ≈ 1.91
+    @test REJ_HKF["K+"] ≈ 2.27
+    @test REJ_HKF["Ca+2"] ≈ 2.87
+    @test REJ_HKF["Mg+2"] ≈ 2.54
+    @test REJ_HKF["Al+3"] ≈ 3.33
+    @test REJ_HKF["Cl-"] ≈ 1.81
+    @test REJ_HKF["OH-"] ≈ 1.4
     @test REJ_HKF["SO4-2"] ≈ 3.15
     @test REJ_HKF["CO3-2"] ≈ 2.81
 end
@@ -97,10 +97,10 @@ end
 
 @testsection "HKFActivityModel constructors" begin
     m = HKFActivityModel()
-    @test m.A         ≈ 0.5114
-    @test m.B         ≈ 0.3288
-    @test m.Ḃ         ≈ 0.041
-    @test m.Kₙ        ≈ 0.1
+    @test m.A ≈ 0.5114
+    @test m.B ≈ 0.3288
+    @test m.Ḃ ≈ 0.041
+    @test m.Kₙ ≈ 0.1
     @test m.å_default ≈ 3.72
     @test !m.temperature_dependent
 
@@ -118,8 +118,8 @@ end
 
 @testsection "DaviesActivityModel constructors" begin
     m = DaviesActivityModel()
-    @test m.A  ≈ 0.5114
-    @test m.b  ≈ 0.3
+    @test m.A ≈ 0.5114
+    @test m.b ≈ 0.3
     @test m.bₙ ≈ 0.1
     @test !m.temperature_dependent
 
@@ -133,12 +133,12 @@ end
 @testsection "HKF: dilution limit" begin
     cs, h2o, na, cl = _nacl_system()
     model = HKFActivityModel()
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
     # Very dilute: 1 kg water (≈ 55.5 mol), 1e-6 mol NaCl
     n_w = 1.0 / M_W
-    n   = [n_w, 1.0e-6, 1.0e-6]
-    p   = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n = [n_w, 1.0e-6, 1.0e-6]
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # ln aᵢ ≈ ln(mᵢ) as I → 0 (activity coefficient → 1)
@@ -155,18 +155,18 @@ end
 @testsection "HKF: NaCl 0.1 mol/kg" begin
     cs, h2o, na, cl = _nacl_system()
     model = HKFActivityModel()
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
-    m     = 0.1
-    n_w   = 1.0 / M_W
-    n     = _moles_from_molality(m, n_w)
-    p     = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
-    out   = lna(n, p)
+    m = 0.1
+    n_w = 1.0 / M_W
+    n = _moles_from_molality(m, n_w)
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    out = lna(n, p)
 
     A, B, Ḃ = 0.5114, 0.3288, 0.041
-    I        = m   # NaCl 1:1 electrolyte: I = ½ × 2m = m
-    sqI      = sqrt(I)
-    ln10     = log(10.0)
+    I = m   # NaCl 1:1 electrolyte: I = ½ × 2m = m
+    sqI = sqrt(I)
+    ln10 = log(10.0)
 
     for (i, (åᵢ, key)) in enumerate([(REJ_HKF["Na+"], 2), (REJ_HKF["Cl-"], 3)])
         log10γ = -A * sqI / (1 + B * åᵢ * sqI) + Ḃ * I   # z=1
@@ -181,23 +181,23 @@ end
 # ── HKF: neutral species salting-out ─────────────────────────────────────────
 
 @testsection "HKF: neutral CO2 salting-out" begin
-    h2o = Species("H2O";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    na  = Species("Na+";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
-    cl  = Species("Cl-";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
-    co2 = Species("CO2";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)   # neutral
+    h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+    na = Species("Na+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    cl = Species("Cl-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    co2 = Species("CO2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)   # neutral
 
     cs = ChemicalSystem([h2o, na, cl, co2])
     model = HKFActivityModel(Kₙ = 0.1)
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
     m_NaCl = 0.5
-    m_co2  = 0.01
-    n_w    = 1.0 / M_W
-    n      = [n_w, m_NaCl * n_w * M_W, m_NaCl * n_w * M_W, m_co2 * n_w * M_W]
-    p      = (ΔₐG⁰overT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
-    out    = lna(n, p)
+    m_co2 = 0.01
+    n_w = 1.0 / M_W
+    n = [n_w, m_NaCl * n_w * M_W, m_NaCl * n_w * M_W, m_co2 * n_w * M_W]
+    p = (ΔₐG⁰overT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    out = lna(n, p)
 
-    I    = m_NaCl   # 1:1 electrolyte
+    I = m_NaCl   # 1:1 electrolyte
     ln10 = log(10.0)
     @test isapprox(out[4], ln10 * 0.1 * I + log(m_co2); rtol = 1.0e-6)
 end
@@ -234,7 +234,7 @@ end
     # If Formula parsing gives a different result, we check REJ_CHARGE_DEFAULT[Int(charge(sp_exotic))]
     z_exotic = Int(charge(sp_exotic))
     expected = haskey(REJ_CHARGE_DEFAULT, z_exotic) ?
-               REJ_CHARGE_DEFAULT[z_exotic] : model.å_default
+        REJ_CHARGE_DEFAULT[z_exotic] : model.å_default
     @test ChemistryLab._hkf_lookup_å(sp_exotic, model) ≈ expected
 end
 
@@ -244,7 +244,7 @@ end
     # Use Ca+2 then modify formula to a fictitious species (not in REJ_HKF)
     # Use Mg+2 already in REJ_HKF for comparison
     h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    ca  = Species("Ca+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    ca = Species("Ca+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
     # verify Ca+2 IS in REJ_HKF (priority 2)
     model = HKFActivityModel()
     @test ChemistryLab._hkf_lookup_å(ca, model) ≈ REJ_HKF["Ca+2"]
@@ -253,7 +253,7 @@ end
     # We use formula "Sr+2" which IS in REJ_HKF — let's verify Sr+2 lookup
     sr = Species("Sr+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
     @test ChemistryLab._hkf_lookup_å(sr, model) ≈ REJ_HKF["Sr+2"]
-    @test REJ_HKF["Sr+2"] ≈ 3.00
+    @test REJ_HKF["Sr+2"] ≈ 3.0
 end
 
 # ── HKF: temperature-dependent mode ──────────────────────────────────────────
@@ -261,15 +261,15 @@ end
 @testsection "HKF: temperature-dependent mode" begin
     cs, h2o, na, cl = _nacl_system()
     model_fixed = HKFActivityModel(temperature_dependent = false)
-    model_tdep  = HKFActivityModel(temperature_dependent = true)
-    lna_fixed   = activity_model(cs, model_fixed)
-    lna_tdep    = activity_model(cs, model_tdep)
+    model_tdep = HKFActivityModel(temperature_dependent = true)
+    lna_fixed = activity_model(cs, model_fixed)
+    lna_tdep = activity_model(cs, model_tdep)
 
-    m   = 0.5
+    m = 0.5
     n_w = 1.0 / M_W
-    n   = _moles_from_molality(m, n_w)
+    n = _moles_from_molality(m, n_w)
 
-    p25  = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p25 = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     p100 = (ΔₐG⁰overT = zeros(3), T = 373.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # At 25 °C, fixed A/B ≈ T-dependent (same values)
@@ -288,15 +288,15 @@ end
 @testsection "Gibbs-Duhem consistency (HKF)" begin
     cs, h2o, na, cl = _nacl_system()
     model = HKFActivityModel()
-    μ     = build_potentials(cs, model)
+    μ = build_potentials(cs, model)
 
-    m   = 0.3
+    m = 0.3
     n_w = 1.0 / M_W
-    n0  = _moles_from_molality(m, n_w)
-    p   = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n0 = _moles_from_molality(m, n_w)
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # Finite-difference perturbation along NaCl dissolution direction
-    δ  = 1.0e-6
+    δ = 1.0e-6
     dn = [0.0, δ, -δ]
     μ0 = μ(n0, p)
     μ1 = μ(n0 + dn, p)
@@ -314,16 +314,16 @@ end
 # ── Gas phase: ideal mixture ──────────────────────────────────────────────────
 
 @testsection "Gas phase: ideal mixture (HKF)" begin
-    h2o = Species("H2O";  aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    co2 = Species("CO2g"; aggregate_state = AS_GAS,     class = SC_GASFLUID)
-    n2  = Species("N2g";  aggregate_state = AS_GAS,     class = SC_GASFLUID)
-    cs  = ChemicalSystem([h2o, co2, n2])
+    h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+    co2 = Species("CO2g"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+    n2 = Species("N2g"; aggregate_state = AS_GAS, class = SC_GASFLUID)
+    cs = ChemicalSystem([h2o, co2, n2])
     model = HKFActivityModel()
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
     n_w = 1.0 / M_W
-    n   = [n_w, 0.3, 0.7]
-    p   = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n = [n_w, 0.3, 0.7]
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     @test isapprox(out[2], log(0.3 / 1.0); rtol = 1.0e-8)   # ln(x_CO2)
@@ -335,17 +335,17 @@ end
 @testsection "build_potentials with HKF" begin
     cs, h2o, na, cl = _nacl_system()
     model = HKFActivityModel()
-    μ     = build_potentials(cs, model)
-    lna   = activity_model(cs, model)
+    μ = build_potentials(cs, model)
+    lna = activity_model(cs, model)
 
-    m   = 0.1
+    m = 0.1
     n_w = 1.0 / M_W
-    n   = _moles_from_molality(m, n_w)
-    ΔG  = [-95.0, -4.0, -2.0]
-    p   = (ΔₐG⁰overT = ΔG, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n = _moles_from_molality(m, n_w)
+    ΔG = [-95.0, -4.0, -2.0]
+    p = (ΔₐG⁰overT = ΔG, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     expected = ΔG .+ lna(n, p)
-    result   = μ(n, p)
+    result = μ(n, p)
     @test isapprox(result, expected; rtol = 1.0e-10)
 end
 
@@ -353,7 +353,7 @@ end
 
 @testsection "ForwardDiff AD compatibility" begin
     # _hkf_sigma: gradient finite at x=0 (Taylor branch) and x=1 (exact branch)
-    σ  = ChemistryLab._hkf_sigma
+    σ = ChemistryLab._hkf_sigma
     gσ_0 = ForwardDiff.derivative(σ, 0.0)
     gσ_1 = ForwardDiff.derivative(σ, 1.0)
     @test isfinite(gσ_0)
@@ -368,12 +368,12 @@ end
     # activity_model(HKF): gradient of ln(a_Na) w.r.t. mole vector
     cs, h2o, na, cl = _nacl_system()
     model = HKFActivityModel()
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
-    m   = 0.3
+    m = 0.3
     n_w = 1.0 / M_W
-    n0  = _moles_from_molality(m, n_w)
-    p   = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n0 = _moles_from_molality(m, n_w)
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     g = ForwardDiff.gradient(n -> lna(n, p)[2], n0)
     @test all(isfinite, g)
@@ -388,18 +388,18 @@ end
 @testsection "DaviesActivityModel basic" begin
     cs, h2o, na, cl = _nacl_system()
     model = DaviesActivityModel()
-    lna   = activity_model(cs, model)
+    lna = activity_model(cs, model)
 
-    m   = 0.1
+    m = 0.1
     n_w = 1.0 / M_W
-    n   = _moles_from_molality(m, n_w)
-    p   = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    n = _moles_from_molality(m, n_w)
+    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # Verify analytical Davies formula for NaCl: z=1, I=m
-    A    = 0.5114
-    I    = m
-    sqI  = sqrt(I)
+    A = 0.5114
+    I = m
+    sqI = sqrt(I)
     ln10 = log(10.0)
     log10γ = -A * (sqI / (1 + sqI) - 0.3 * I)   # b=0.3, z=1
     @test isapprox(out[2], ln10 * log10γ + log(m); rtol = 1.0e-6)

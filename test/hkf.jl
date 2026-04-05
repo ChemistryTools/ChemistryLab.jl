@@ -4,7 +4,7 @@ using ForwardDiff
     wtp = water_thermo_props(298.15, 1.0e5)
 
     # Liquid water density at 25°C, 1 bar ≈ 997 kg/m³
-    @test isapprox(wtp.D, 997.0; rtol = 1e-2)
+    @test isapprox(wtp.D, 997.0; rtol = 1.0e-2)
 
     # DT should be negative (water expands when heated)
     @test wtp.DT < 0
@@ -18,10 +18,10 @@ end
     wep = water_electro_props_jn(298.15, 1.0e5, wtp)
 
     # Dielectric constant of water at 25°C ≈ 78.4
-    @test isapprox(wep.epsilon, 78.4; rtol = 1e-2)
+    @test isapprox(wep.epsilon, 78.4; rtol = 1.0e-2)
 
     # Born function Z = -1/ε
-    @test isapprox(wep.bornZ, -1 / wep.epsilon; rtol = 1e-6)
+    @test isapprox(wep.bornZ, -1 / wep.epsilon; rtol = 1.0e-6)
 
     # Y = εT/ε² should be negative (ε decreases with T)
     @test wep.bornY < 0
@@ -29,14 +29,14 @@ end
 
 @testsection "HKF g-function (Shock 1992)" begin
     wtp = water_thermo_props(298.15, 1.0e5)
-    gs  = hkf_g_function(298.15, 1.0e5, wtp)
+    gs = hkf_g_function(298.15, 1.0e5, wtp)
 
     # g ≈ 0 at reference conditions (density ~997, well inside validity range)
-    @test isapprox(gs.g, 0.0; atol = 1e-2)
+    @test isapprox(gs.g, 0.0; atol = 1.0e-2)
 
     # Outside validity range → zero state
     wtp_bad = WaterThermoProps(1100.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    gs_bad  = hkf_g_function(298.15, 1.0e5, wtp_bad)
+    gs_bad = hkf_g_function(298.15, 1.0e5, wtp_bad)
     @test iszero(gs_bad.g)
 end
 
@@ -44,19 +44,19 @@ end
     # Parameters for Al(OH)2+ from aq17-thermofun.json, converted to SI
     # SUPCRT values × HKF_SI_CONVERSIONS factors
     params = [
-        :a1   =>  0.24940000474453 * 4.184e-5,
-        :a2   => -169.08999633789  * 4.184,
-        :a3   =>  6.4145998954773  * 4.184e-5,
-        :a4   => -27091.0          * 4.184,
-        :c1   =>  16.743900299072  * 4.184,
-        :c2   => -10465.0          * 4.184,
-        :wref =>  53240.0          * 4.184,
-        :z    =>  1.0,
+        :a1 => 0.24940000474453 * 4.184e-5,
+        :a2 => -169.08999633789 * 4.184,
+        :a3 => 6.4145998954773 * 4.184e-5,
+        :a4 => -27091.0 * 4.184,
+        :c1 => 16.743900299072 * 4.184,
+        :c2 => -10465.0 * 4.184,
+        :wref => 53240.0 * 4.184,
+        :z => 1.0,
         :ΔₐG⁰ => -898292.0u"J/mol",
         :ΔₐH⁰ => -995581.0u"J/mol",
-        :S⁰   => -27.53u"J/(mol*K)",
-        :T    => 298.15u"K",
-        :P    => 1.0e5u"Pa",
+        :S⁰ => -27.53u"J/(mol*K)",
+        :T => 298.15u"K",
+        :P => 1.0e5u"Pa",
     ]
 
     thermo = build_thermo_functions(:solute_hkf88_reaktoro, params)
@@ -67,7 +67,7 @@ end
     @test haskey(thermo, :ΔₐG⁰)
     @test haskey(thermo, :V⁰)
 
-    @test thermo[:Cp⁰]  isa NumericFunc
+    @test thermo[:Cp⁰] isa NumericFunc
     @test thermo[:ΔₐG⁰] isa NumericFunc
 
     # vars must be (:T, :P)
@@ -82,14 +82,14 @@ end
     @test ustrip(thermo[:Cp⁰].refs.P) ≈ 1.0e5
 
     # Cp at (Tr, Pr) must match database value ≈ 40.87 J/(mol·K)
-    @test isapprox(thermo[:Cp⁰](; T = 298.15, P = 1.0e5), 40.87; rtol = 1e-2)
+    @test isapprox(thermo[:Cp⁰](; T = 298.15, P = 1.0e5), 40.87; rtol = 1.0e-2)
 
     # Calling without kwargs must use refs and give the same result
-    @test isapprox(thermo[:Cp⁰](), thermo[:Cp⁰](; T = 298.15, P = 1.0e5); rtol = 1e-10)
+    @test isapprox(thermo[:Cp⁰](), thermo[:Cp⁰](; T = 298.15, P = 1.0e5); rtol = 1.0e-10)
 
     # G at (Tr, Pr) must match Gf
-    @test isapprox(thermo[:ΔₐG⁰](; T = 298.15, P = 1.0e5), -898292.0; rtol = 1e-3)
-    @test isapprox(thermo[:ΔₐG⁰](), -898292.0; rtol = 1e-3)
+    @test isapprox(thermo[:ΔₐG⁰](; T = 298.15, P = 1.0e5), -898292.0; rtol = 1.0e-3)
+    @test isapprox(thermo[:ΔₐG⁰](), -898292.0; rtol = 1.0e-3)
 
     # unit=true returns a Quantity
     @test thermo[:Cp⁰](; T = 298.15, P = 1.0e5, unit = true) isa AbstractQuantity
@@ -97,43 +97,43 @@ end
 
 @testsection "HKF ForwardDiff compatibility" begin
     params = [
-        :a1   =>  0.24940000474453 * 4.184e-5,
-        :a2   => -169.08999633789  * 4.184,
-        :a3   =>  6.4145998954773  * 4.184e-5,
-        :a4   => -27091.0          * 4.184,
-        :c1   =>  16.743900299072  * 4.184,
-        :c2   => -10465.0          * 4.184,
-        :wref =>  53240.0          * 4.184,
-        :z    =>  1.0,
+        :a1 => 0.24940000474453 * 4.184e-5,
+        :a2 => -169.08999633789 * 4.184,
+        :a3 => 6.4145998954773 * 4.184e-5,
+        :a4 => -27091.0 * 4.184,
+        :c1 => 16.743900299072 * 4.184,
+        :c2 => -10465.0 * 4.184,
+        :wref => 53240.0 * 4.184,
+        :z => 1.0,
         :ΔₐG⁰ => -898292.0u"J/mol",
         :ΔₐH⁰ => -995581.0u"J/mol",
-        :S⁰   => -27.53u"J/(mol*K)",
-        :T    => 298.15u"K",
-        :P    => 1.0e5u"Pa",
+        :S⁰ => -27.53u"J/(mol*K)",
+        :T => 298.15u"K",
+        :P => 1.0e5u"Pa",
     ]
     thermo = build_thermo_functions(:solute_hkf88_reaktoro, params)
 
     # ∂G/∂T = -S (thermodynamic identity)
     dG_dT = ForwardDiff.derivative(T -> thermo[:ΔₐG⁰](; T = T, P = 1.0e5), 298.15)
-    S_val  = thermo[:S⁰](; T = 298.15, P = 1.0e5)
-    @test isapprox(dG_dT, -S_val; rtol = 1e-3)
+    S_val = thermo[:S⁰](; T = 298.15, P = 1.0e5)
+    @test isapprox(dG_dT, -S_val; rtol = 1.0e-3)
 end
 
 @testsection "NumericFunc arithmetic — scalar" begin
     params = [
-        :a1   =>  0.24940000474453 * 4.184e-5,
-        :a2   => -169.08999633789  * 4.184,
-        :a3   =>  6.4145998954773  * 4.184e-5,
-        :a4   => -27091.0          * 4.184,
-        :c1   =>  16.743900299072  * 4.184,
-        :c2   => -10465.0          * 4.184,
-        :wref =>  53240.0          * 4.184,
-        :z    =>  1.0,
+        :a1 => 0.24940000474453 * 4.184e-5,
+        :a2 => -169.08999633789 * 4.184,
+        :a3 => 6.4145998954773 * 4.184e-5,
+        :a4 => -27091.0 * 4.184,
+        :c1 => 16.743900299072 * 4.184,
+        :c2 => -10465.0 * 4.184,
+        :wref => 53240.0 * 4.184,
+        :z => 1.0,
         :ΔₐG⁰ => -898292.0u"J/mol",
         :ΔₐH⁰ => -995581.0u"J/mol",
-        :S⁰   => -27.53u"J/(mol*K)",
-        :T    => 298.15u"K",
-        :P    => 1.0e5u"Pa",
+        :S⁰ => -27.53u"J/(mol*K)",
+        :T => 298.15u"K",
+        :P => 1.0e5u"Pa",
     ]
     thermo = build_thermo_functions(:solute_hkf88_reaktoro, params)
     G = thermo[:ΔₐG⁰]
@@ -169,23 +169,23 @@ end
 
 @testsection "NumericFunc arithmetic — HKF op HKF" begin
     params = [
-        :a1   =>  0.24940000474453 * 4.184e-5,
-        :a2   => -169.08999633789  * 4.184,
-        :a3   =>  6.4145998954773  * 4.184e-5,
-        :a4   => -27091.0          * 4.184,
-        :c1   =>  16.743900299072  * 4.184,
-        :c2   => -10465.0          * 4.184,
-        :wref =>  53240.0          * 4.184,
-        :z    =>  1.0,
+        :a1 => 0.24940000474453 * 4.184e-5,
+        :a2 => -169.08999633789 * 4.184,
+        :a3 => 6.4145998954773 * 4.184e-5,
+        :a4 => -27091.0 * 4.184,
+        :c1 => 16.743900299072 * 4.184,
+        :c2 => -10465.0 * 4.184,
+        :wref => 53240.0 * 4.184,
+        :z => 1.0,
         :ΔₐG⁰ => -898292.0u"J/mol",
         :ΔₐH⁰ => -995581.0u"J/mol",
-        :S⁰   => -27.53u"J/(mol*K)",
-        :T    => 298.15u"K",
-        :P    => 1.0e5u"Pa",
+        :S⁰ => -27.53u"J/(mol*K)",
+        :T => 298.15u"K",
+        :P => 1.0e5u"Pa",
     ]
     thermo = build_thermo_functions(:solute_hkf88_reaktoro, params)
-    G  = thermo[:ΔₐG⁰]
-    H  = thermo[:ΔₐH⁰]
+    G = thermo[:ΔₐG⁰]
+    H = thermo[:ΔₐH⁰]
     T0, P0 = 298.15, 1.0e5
     G0 = G(; T = T0, P = P0)
     H0 = H(; T = T0, P = P0)
@@ -206,23 +206,23 @@ end
 
 @testsection "NumericFunc arithmetic — cross-type with SymbolicFunc" begin
     params = [
-        :a1   =>  0.24940000474453 * 4.184e-5,
-        :a2   => -169.08999633789  * 4.184,
-        :a3   =>  6.4145998954773  * 4.184e-5,
-        :a4   => -27091.0          * 4.184,
-        :c1   =>  16.743900299072  * 4.184,
-        :c2   => -10465.0          * 4.184,
-        :wref =>  53240.0          * 4.184,
-        :z    =>  1.0,
+        :a1 => 0.24940000474453 * 4.184e-5,
+        :a2 => -169.08999633789 * 4.184,
+        :a3 => 6.4145998954773 * 4.184e-5,
+        :a4 => -27091.0 * 4.184,
+        :c1 => 16.743900299072 * 4.184,
+        :c2 => -10465.0 * 4.184,
+        :wref => 53240.0 * 4.184,
+        :z => 1.0,
         :ΔₐG⁰ => -898292.0u"J/mol",
         :ΔₐH⁰ => -995581.0u"J/mol",
-        :S⁰   => -27.53u"J/(mol*K)",
-        :T    => 298.15u"K",
-        :P    => 1.0e5u"Pa",
+        :S⁰ => -27.53u"J/(mol*K)",
+        :T => 298.15u"K",
+        :P => 1.0e5u"Pa",
     ]
     thermo = build_thermo_functions(:solute_hkf88_reaktoro, params)
-    G  = thermo[:ΔₐG⁰]
-    S  = thermo[:S⁰]
+    G = thermo[:ΔₐG⁰]
+    S = thermo[:S⁰]
     T0, P0 = 298.15, 1.0e5
     G0 = G(; T = T0, P = P0)
     S0 = S(; T = T0, P = P0)
@@ -245,5 +245,5 @@ end
     @test logK isa NumericFunc
     # logK = -G / (R*ln10*T), numerical check
     expected_logK = -G0 / (R_log10 * T0)
-    @test isapprox(logK(; T = T0, P = P0), expected_logK; rtol = 1e-6)
+    @test isapprox(logK(; T = T0, P = P0), expected_logK; rtol = 1.0e-6)
 end

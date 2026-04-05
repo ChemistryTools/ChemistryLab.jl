@@ -111,7 +111,7 @@ SolidSolutionPhase{Species{Int64}, IdealSolidSolutionModel}
 ```
 """
 struct SolidSolutionPhase{T <: AbstractSpecies, M <: AbstractSolidSolutionModel} <:
-       AbstractSolidSolutionPhase
+    AbstractSolidSolutionPhase
     name::String
     end_members::Vector{T}
     model::M
@@ -130,21 +130,21 @@ function SolidSolutionPhase(
     for sp in end_members
         aggregate_state(sp) == AS_CRYSTAL ||
             error(
-                "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
+            "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
                 "aggregate_state = AS_CRYSTAL (got $(aggregate_state(sp)))",
-            )
+        )
         class(sp) == SC_SSENDMEMBER ||
             error(
-                "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
+            "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
                 "class = SC_SSENDMEMBER (got $(class(sp)))",
-            )
+        )
     end
     if model isa RedlichKisterModel
         length(end_members) == 2 ||
             error(
-                "RedlichKisterModel requires exactly 2 end-members, " *
+            "RedlichKisterModel requires exactly 2 end-members, " *
                 "got $(length(end_members))",
-            )
+        )
     end
     T = eltype(end_members)
     return SolidSolutionPhase{T, typeof(model)}(
@@ -182,5 +182,5 @@ function Base.show(io::IO, ss::SolidSolutionPhase{T, M}) where {T, M}
     println(io, "SolidSolutionPhase{$T, $M}")
     println(io, "  name: $(ss.name)")
     println(io, "  end-members ($(length(ss.end_members))): $em_names")
-    print(io, "  model: $M")
+    return print(io, "  model: $M")
 end

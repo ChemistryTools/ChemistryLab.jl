@@ -365,9 +365,9 @@ function add_thermo_model(model_name, Cpexpr::Expr, units = nothing)
     else
         d = Dict{Symbol, Any}(units)
         get!(d, :Cp, "J/mol/K")
-        get!(d, :S,  "J/mol/K")
-        get!(d, :H,  "J/mol")
-        get!(d, :G,  "J/mol")
+        get!(d, :S, "J/mol/K")
+        get!(d, :H, "J/mol")
+        get!(d, :G, "J/mol")
         collect(pairs(d))   # convert back to a vector of Pairs for ThermoFactory
     end
 

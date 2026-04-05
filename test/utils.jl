@@ -11,7 +11,7 @@
 
     @testsection "safe_uconvert" begin
         result = ChemistryLab.safe_uconvert(us"m", 5u"cm")
-        @test isapprox(ustrip(result), 0.05; rtol=1e-10)
+        @test isapprox(ustrip(result), 0.05; rtol = 1.0e-10)
 
         # Plain number → returned unchanged
         @test ChemistryLab.safe_uconvert(us"m", 3.0) == 3.0
@@ -43,8 +43,8 @@
     end
 
     @testsection "print_title does not error" begin
-        @test_nowarn ChemistryLab.print_title("Test"; style=:none)
-        @test_nowarn ChemistryLab.print_title("Test"; style=:underline)
-        @test_nowarn ChemistryLab.print_title("Test"; style=:box)
+        @test_nowarn ChemistryLab.print_title("Test"; style = :none)
+        @test_nowarn ChemistryLab.print_title("Test"; style = :underline)
+        @test_nowarn ChemistryLab.print_title("Test"; style = :box)
     end
 end

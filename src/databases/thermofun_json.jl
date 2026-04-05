@@ -419,12 +419,12 @@ function build_solid_solutions(
             missing_str = join(missing_syms, ", ")
             if skip_missing
                 @warn "build_solid_solutions: skipping \"$ss_name\" — " *
-                      "end-members not found in dict_species: $missing_str"
+                    "end-members not found in dict_species: $missing_str"
                 continue
             else
                 error(
                     "build_solid_solutions: end-members not found for \"$ss_name\": " *
-                    missing_str,
+                        missing_str,
                 )
             end
         end
@@ -444,7 +444,7 @@ function build_solid_solutions(
             IdealSolidSolutionModel()
         else
             @warn "build_solid_solutions: unknown model \"$model_str\" for " *
-                  "\"$ss_name\", defaulting to ideal"
+                "\"$ss_name\", defaulting to ideal"
             IdealSolidSolutionModel()
         end
 

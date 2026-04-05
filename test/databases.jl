@@ -46,7 +46,7 @@ using TOML
         CaCO3 = Ca+2 + CO3-2
         -log_K -8.48
         -analytical_expression 1.23 -4.56 7.89
-
+        
         Portlandite
         Ca(OH)2 = Ca+2 + 2OH-
         -log_K -5.2
@@ -71,8 +71,8 @@ end
         "TobH" => _make("TobH"),
         "JenH" => _make("JenH"),
         "JenD" => _make("JenD"),
-        "Ms"   => _make("Ms"),
-        "Mc"   => _make("Mc"),
+        "Ms" => _make("Ms"),
+        "Mc" => _make("Mc"),
     )
 
     # ── Write a temp TOML ────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ end
     name        = "CSHQ"
     end_members = ["TobD", "TobH", "JenH", "JenD"]
     model       = "ideal"
-
+    
     [[solid_solution]]
     name        = "AFm"
     end_members = ["Ms", "Mc"]
@@ -89,7 +89,7 @@ end
     a0          = 3000.0
     a1          = 500.0
     a2          = 0.0
-
+    
     [[solid_solution]]
     name        = "Missing_phase"
     end_members = ["NonExistent1", "NonExistent2"]
@@ -103,7 +103,7 @@ end
         @test length(phases) == 2       # Missing_phase skipped
 
         cshq = first(filter(ss -> name(ss) == "CSHQ", phases))
-        afm  = first(filter(ss -> name(ss) == "AFm",  phases))
+        afm = first(filter(ss -> name(ss) == "AFm", phases))
 
         @test length(end_members(cshq)) == 4
         @test model(cshq) isa IdealSolidSolutionModel
@@ -140,7 +140,7 @@ end
         @test haskey(data, "solid_solution")
         @test length(data["solid_solution"]) >= 2
         @test any(e -> e["name"] == "CSHQ", data["solid_solution"])
-        @test any(e -> e["name"] == "AFm",  data["solid_solution"])
+        @test any(e -> e["name"] == "AFm", data["solid_solution"])
     end
 
     rm(tmp; force = true)

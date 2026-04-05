@@ -26,7 +26,7 @@ construct a new `ChemicalSystem`.
   - `idx_ssendmembers`: union of all end-member indices (flattened `ss_groups`).
 """
 struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S, SS} <:
-       AbstractVector{T}
+    AbstractVector{T}
     species::Vector{T}
     dict_species::Dict{String, T}               # fast O(1) lookup by symbol
 
@@ -116,7 +116,7 @@ function ChemicalSystem(
     ) where {T <: AbstractSpecies, R <: AbstractReaction}
     idx(f) = findall(f, species)
     CSM = CanonicalStoichMatrix(species)
-    SM  = StoichMatrix(species, primaries)
+    SM = StoichMatrix(species, primaries)
 
     if isnothing(solid_solutions)
         return ChemicalSystem{T, R, typeof(CSM), typeof(SM), Nothing}(
@@ -145,9 +145,9 @@ function ChemicalSystem(
                 idx_em = findfirst(s -> symbol(s) == symbol(em), species)
                 idx_em === nothing &&
                     error(
-                        "SolidSolutionPhase \"$(name(ss))\": end-member \"$(symbol(em))\" " *
+                    "SolidSolutionPhase \"$(name(ss))\": end-member \"$(symbol(em))\" " *
                         "not found in the species list. Add it to the species vector first.",
-                    )
+                )
                 idx_em
             end
         end

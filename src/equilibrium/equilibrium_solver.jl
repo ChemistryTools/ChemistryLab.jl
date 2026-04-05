@@ -96,7 +96,7 @@ function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
             for s in state.system.species
     ]
 
-    T_K  = ustrip(us"K",  T)   # Quantity{Dual} → Dual, Float64 → Float64
+    T_K = ustrip(us"K", T)   # Quantity{Dual} → Dual, Float64 → Float64
     P_Pa = ustrip(us"Pa", P)
 
     return (ΔₐG⁰overT = ΔₐG⁰overT, T = T_K, P = P_Pa, ϵ = ϵ)

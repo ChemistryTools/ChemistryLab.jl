@@ -42,10 +42,10 @@ All quantities are dimensionless — units are stripped at construction time.
 """
 function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
 
-    has_aqueous  = !isempty(cs.idx_solvent)
-    idx_solvent  = has_aqueous ? only(cs.idx_solvent) : 0
-    idx_solutes  = cs.idx_solutes
-    idx_gas      = cs.idx_gas
+    has_aqueous = !isempty(cs.idx_solvent)
+    idx_solvent = has_aqueous ? only(cs.idx_solvent) : 0
+    idx_solutes = cs.idx_solutes
+    idx_gas = cs.idx_gas
 
     ln_c_solvent = if has_aqueous
         M_solvent = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
@@ -55,12 +55,12 @@ function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
     end
 
     ss_groups = cs.ss_groups
-    has_ss    = !isempty(ss_groups)
-    has_gas   = !isempty(idx_gas)
+    has_ss = !isempty(ss_groups)
+    has_gas = !isempty(idx_gas)
     ss_models = has_ss ? map(ss -> ss.model, cs.solid_solutions) : nothing
 
     function lna(n::AbstractVector, p)
-        ϵ  = p.ϵ
+        ϵ = p.ϵ
         _n = max.(n, ϵ)     # ϵ::Float64 — promotion vers Dual automatique si n est Dual
 
         out = zeros(eltype(_n), length(_n))
@@ -155,13 +155,13 @@ Used by [`HKFActivityModel`](@ref) with priority 2 in the radius lookup chain:
 See also: [`REJ_CHARGE_DEFAULT`](@ref), [`HKFActivityModel`](@ref).
 """
 const REJ_HKF = Dict{String, Float64}(
-    "H+"    => 3.08,  "Li+"   => 1.64,  "Na+"   => 1.91,  "K+"    => 2.27,
-    "Rb+"   => 2.41,  "Cs+"   => 2.61,  "NH4+"  => 2.31,  "Ag+"   => 2.20,
-    "Mg+2"  => 2.54,  "Ca+2"  => 2.87,  "Sr+2"  => 3.00,  "Ba+2"  => 3.22,
-    "Fe+2"  => 2.62,  "Al+3"  => 3.33,  "Fe+3"  => 3.46,  "La+3"  => 3.96,
-    "F-"    => 1.33,  "Cl-"   => 1.81,  "Br-"   => 1.96,  "I-"    => 2.20,
-    "OH-"   => 1.40,  "HS-"   => 1.84,  "NO3-"  => 2.81,  "HCO3-" => 2.10,
-    "HSO4-" => 2.37,  "SO4-2" => 3.15,  "CO3-2" => 2.81,
+    "H+" => 3.08, "Li+" => 1.64, "Na+" => 1.91, "K+" => 2.27,
+    "Rb+" => 2.41, "Cs+" => 2.61, "NH4+" => 2.31, "Ag+" => 2.2,
+    "Mg+2" => 2.54, "Ca+2" => 2.87, "Sr+2" => 3.0, "Ba+2" => 3.22,
+    "Fe+2" => 2.62, "Al+3" => 3.33, "Fe+3" => 3.46, "La+3" => 3.96,
+    "F-" => 1.33, "Cl-" => 1.81, "Br-" => 1.96, "I-" => 2.2,
+    "OH-" => 1.4, "HS-" => 1.84, "NO3-" => 2.81, "HCO3-" => 2.1,
+    "HSO4-" => 2.37, "SO4-2" => 3.15, "CO3-2" => 2.81,
 )
 
 """
@@ -176,8 +176,8 @@ Used by [`HKFActivityModel`](@ref) with priority 3 in the radius lookup chain:
 See also: [`REJ_HKF`](@ref), [`HKFActivityModel`](@ref).
 """
 const REJ_CHARGE_DEFAULT = Dict{Int, Float64}(
-    -3 => 4.20,  -2 => 3.00,  -1 => 1.81,
-     1 => 2.31,   2 => 2.80,   3 => 3.60,   4 => 4.50,
+    -3 => 4.2, -2 => 3.0, -1 => 1.81,
+    1 => 2.31, 2 => 2.8, 3 => 3.6, 4 => 4.5,
 )
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -237,12 +237,12 @@ true
 """
 function hkf_debye_huckel_params(T_K, P_Pa)
     T_K, P_Pa = promote(T_K, P_Pa)
-    wtp   = water_thermo_props(T_K, P_Pa)
-    wep   = water_electro_props_jn(T_K, P_Pa, wtp)
+    wtp = water_thermo_props(T_K, P_Pa)
+    wep = water_electro_props_jn(T_K, P_Pa, wtp)
     ρ_gcm3 = wtp.D / 1000                       # kg/m³ → g/cm³
-    εT     = wep.epsilon * T_K                   # dimensionless × K
+    εT = wep.epsilon * T_K                   # dimensionless × K
     A = 1.824829238e6 * sqrt(ρ_gcm3) / εT^(3 // 2)
-    B = 50.29158649   * sqrt(ρ_gcm3) / sqrt(εT)
+    B = 50.29158649 * sqrt(ρ_gcm3) / sqrt(εT)
     return (A = A, B = B)
 end
 
@@ -350,13 +350,13 @@ Construct an [`HKFActivityModel`](@ref) with the given parameters.
 Default values are from Helgeson et al. (1981), Table 1, at 25 °C / 1 bar.
 """
 function HKFActivityModel(;
-    A::Real = 0.5114,
-    B::Real = 0.3288,
-    Ḃ::Real = 0.041,
-    Kₙ::Real = 0.1,
-    å_default::Real = 3.72,
-    temperature_dependent::Bool = false,
-)
+        A::Real = 0.5114,
+        B::Real = 0.3288,
+        Ḃ::Real = 0.041,
+        Kₙ::Real = 0.1,
+        å_default::Real = 3.72,
+        temperature_dependent::Bool = false,
+    )
     vals = promote(A, B, Ḃ, Kₙ, å_default)
     return HKFActivityModel{eltype(vals)}(vals..., temperature_dependent)
 end
@@ -382,43 +382,43 @@ AD-compatible: all closure computations accept `ForwardDiff.Dual` inputs.
 function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
     # ── Precompute at closure-construction time ────────────────────────────
-    idx_solvent  = only(cs.idx_solvent)
-    idx_solutes  = cs.idx_solutes
-    idx_gas      = cs.idx_gas
+    idx_solvent = only(cs.idx_solvent)
+    idx_solutes = cs.idx_solutes
+    idx_gas = cs.idx_gas
 
     ss_groups = cs.ss_groups
-    has_ss    = !isempty(ss_groups)
-    has_gas   = !isempty(idx_gas)
+    has_ss = !isempty(ss_groups)
+    has_gas = !isempty(idx_gas)
     ss_models = has_ss ? map(ss -> ss.model, cs.solid_solutions) : nothing
 
-    M_w  = ustrip(us"kg/mol", cs.species[idx_solvent][:M])   # kg/mol, e.g. 0.018015
+    M_w = ustrip(us"kg/mol", cs.species[idx_solvent][:M])   # kg/mol, e.g. 0.018015
 
-    A_fixed  = model.A
-    B_fixed  = model.B
-    Ḃ        = model.Ḃ
-    Kₙ       = model.Kₙ
+    A_fixed = model.A
+    B_fixed = model.B
+    Ḃ = model.Ḃ
+    Kₙ = model.Kₙ
     temp_dep = model.temperature_dependent
 
     # Per-species data (Float64 — not differentiated).
-    zv   = Int8[charge(sp) for sp in cs.species]
-    åv   = Float64[
+    zv = Int8[charge(sp) for sp in cs.species]
+    åv = Float64[
         iszero(zv[i]) ? 0.0 : _hkf_lookup_å(cs.species[i], model)
-        for i in eachindex(zv)
+            for i in eachindex(zv)
     ]
     n_sp = lastindex(zv)
 
-    idx_ions     = [i for i in idx_solutes if !iszero(zv[i])]
+    idx_ions = [i for i in idx_solutes if !iszero(zv[i])]
     idx_neutrals = [i for i in idx_solutes if  iszero(zv[i])]
 
     ln10 = log(10.0)
 
     function lna(n::AbstractVector, p)
-        ϵ  = p.ϵ
+        ϵ = p.ϵ
         _n = max.(n, ϵ)
 
         # ── A and B (fixed or T,P-dependent) ──────────────────────────────
         if temp_dep && hasproperty(p, :T) && hasproperty(p, :P)
-            AB   = hkf_debye_huckel_params(p.T, p.P)
+            AB = hkf_debye_huckel_params(p.T, p.P)
             A, B = AB.A, AB.B
         else
             A, B = A_fixed, B_fixed
@@ -427,16 +427,16 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         out = zeros(eltype(_n), n_sp)
 
         # ── Molality: mᵢ = nᵢ / (n_w × M_w) [mol/kg] ─────────────────────
-        n_w  = _n[idx_solvent]
+        n_w = _n[idx_solvent]
         denom_mol = n_w * M_w             # kg of solvent
 
         # ── Ionic strength I = ½ Σ mⱼ zⱼ² ────────────────────────────────
         I = zero(eltype(_n))
         for i in idx_solutes
             mᵢ = _n[i] / denom_mol
-            I  = I + mᵢ * zv[i]^2
+            I = I + mᵢ * zv[i]^2
         end
-        I     = I / 2
+        I = I / 2
         sqrtI = sqrt(I + ϵ)              # regularised to avoid Dual NaN at I=0
 
         # ── Effective radius å_eff for osmotic coefficient ─────────────────
@@ -444,23 +444,23 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         for i in idx_ions
             sum_mz2a = sum_mz2a + (_n[i] / denom_mol) * zv[i]^2 * åv[i]
         end
-        sum_mz2  = 2 * I                 # Σ mⱼ zⱼ² = 2I by definition
+        sum_mz2 = 2 * I                 # Σ mⱼ zⱼ² = 2I by definition
         # Smooth blend: avoids branching on Dual values at ionic-strength ≈ 0
-        å_eff    = (sum_mz2a + model.å_default * ϵ) / (sum_mz2 + ϵ)
+        å_eff = (sum_mz2a + model.å_default * ϵ) / (sum_mz2 + ϵ)
 
         # ── Ion log-activity coefficients ──────────────────────────────────
         for i in idx_ions
-            denom_dh   = 1 + B * åv[i] * sqrtI
-            log10γᵢ    = -A * zv[i]^2 * sqrtI / denom_dh + Ḃ * I
-            mᵢ         = _n[i] / denom_mol
-            out[i]     = ln10 * log10γᵢ + log(mᵢ + ϵ)
+            denom_dh = 1 + B * åv[i] * sqrtI
+            log10γᵢ = -A * zv[i]^2 * sqrtI / denom_dh + Ḃ * I
+            mᵢ = _n[i] / denom_mol
+            out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
 
         # ── Neutral solute log-activities ──────────────────────────────────
         for i in idx_neutrals
             log10γᵢ = Kₙ * I
-            mᵢ      = _n[i] / denom_mol
-            out[i]  = ln10 * log10γᵢ + log(mᵢ + ϵ)
+            mᵢ = _n[i] / denom_mol
+            out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
 
         # ── Water activity via osmotic coefficient (Gibbs-Duhem) ───────────
@@ -468,10 +468,10 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         for i in idx_solutes
             sum_m = sum_m + _n[i] / denom_mol
         end
-        x_arg      = B * å_eff * sqrtI
-        σ          = _hkf_sigma(x_arg)
-        φ          = 1 - (A * ln10 / 3) * (sum_mz2 / (sum_m + ϵ)) * sqrtI * σ +
-                     (Ḃ * ln10 / 2) * I
+        x_arg = B * å_eff * sqrtI
+        σ = _hkf_sigma(x_arg)
+        φ = 1 - (A * ln10 / 3) * (sum_mz2 / (sum_m + ϵ)) * sqrtI * σ +
+            (Ḃ * ln10 / 2) * I
         out[idx_solvent] = -M_w * sum_m * φ
 
         # ── Gas: ideal mixture ─────────────────────────────────────────────
@@ -541,11 +541,11 @@ end
 Construct a [`DaviesActivityModel`](@ref).
 """
 function DaviesActivityModel(;
-    A::Real = 0.5114,
-    b::Real = 0.3,
-    bₙ::Real = 0.1,
-    temperature_dependent::Bool = false,
-)
+        A::Real = 0.5114,
+        b::Real = 0.3,
+        bₙ::Real = 0.1,
+        temperature_dependent::Bool = false,
+    )
     vals = promote(A, b, bₙ)
     return DaviesActivityModel{eltype(vals)}(vals..., temperature_dependent)
 end
@@ -560,31 +560,31 @@ AD-compatible: all closure computations accept `ForwardDiff.Dual` inputs.
 """
 function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
 
-    idx_solvent  = only(cs.idx_solvent)
-    idx_solutes  = cs.idx_solutes
-    idx_gas      = cs.idx_gas
+    idx_solvent = only(cs.idx_solvent)
+    idx_solutes = cs.idx_solutes
+    idx_gas = cs.idx_gas
 
     ss_groups = cs.ss_groups
-    has_ss    = !isempty(ss_groups)
-    has_gas   = !isempty(idx_gas)
+    has_ss = !isempty(ss_groups)
+    has_gas = !isempty(idx_gas)
     ss_models = has_ss ? map(ss -> ss.model, cs.solid_solutions) : nothing
 
-    M_w  = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
+    M_w = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
 
-    A_fixed  = model.A
-    b        = model.b
-    bₙ       = model.bₙ
+    A_fixed = model.A
+    b = model.b
+    bₙ = model.bₙ
     temp_dep = model.temperature_dependent
 
-    zv           = Int8[charge(sp) for sp in cs.species]
-    n_sp         = lastindex(zv)
-    idx_ions     = [i for i in idx_solutes if !iszero(zv[i])]
+    zv = Int8[charge(sp) for sp in cs.species]
+    n_sp = lastindex(zv)
+    idx_ions = [i for i in idx_solutes if !iszero(zv[i])]
     idx_neutrals = [i for i in idx_solutes if  iszero(zv[i])]
 
     ln10 = log(10.0)
 
     function lna(n::AbstractVector, p)
-        ϵ  = p.ϵ
+        ϵ = p.ϵ
         _n = max.(n, ϵ)
 
         A = if temp_dep && hasproperty(p, :T) && hasproperty(p, :P)
@@ -595,7 +595,7 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
 
         out = zeros(eltype(_n), n_sp)
 
-        n_w       = _n[idx_solvent]
+        n_w = _n[idx_solvent]
         denom_mol = n_w * M_w
 
         # Ionic strength
@@ -603,20 +603,20 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
         for i in idx_solutes
             I = I + (_n[i] / denom_mol) * zv[i]^2
         end
-        I     = I / 2
+        I = I / 2
         sqrtI = sqrt(I + ϵ)
-        dI    = sqrtI / (1 + sqrtI)     # √I / (1 + √I)
+        dI = sqrtI / (1 + sqrtI)     # √I / (1 + √I)
 
         # Ions
         for i in idx_ions
             log10γᵢ = -A * zv[i]^2 * (dI - b * I)
-            mᵢ      = _n[i] / denom_mol
-            out[i]  = ln10 * log10γᵢ + log(mᵢ + ϵ)
+            mᵢ = _n[i] / denom_mol
+            out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
 
         # Neutral solutes
         for i in idx_neutrals
-            mᵢ     = _n[i] / denom_mol
+            mᵢ = _n[i] / denom_mol
             out[i] = ln10 * bₙ * I + log(mᵢ + ϵ)
         end
 

@@ -59,10 +59,10 @@
 
     @testsection "speciation by atom list" begin
         all_sp = [
-            Species("H2O";   aggregate_state=AS_AQUEOUS),
-            Species("NaCl";  aggregate_state=AS_CRYSTAL),
-            Species("CO2";   aggregate_state=AS_GAS),
-            Species("CaCO3"; aggregate_state=AS_CRYSTAL),
+            Species("H2O"; aggregate_state = AS_AQUEOUS),
+            Species("NaCl"; aggregate_state = AS_CRYSTAL),
+            Species("CO2"; aggregate_state = AS_GAS),
+            Species("CaCO3"; aggregate_state = AS_CRYSTAL),
         ]
 
         # Filter to species containing only H and O atoms
@@ -81,12 +81,12 @@
 
     @testsection "speciation by aggregate_state filter" begin
         all_sp = [
-            Species("H2O";  aggregate_state=AS_AQUEOUS),
-            Species("NaCl"; aggregate_state=AS_CRYSTAL),
-            Species("CO2";  aggregate_state=AS_GAS),
+            Species("H2O"; aggregate_state = AS_AQUEOUS),
+            Species("NaCl"; aggregate_state = AS_CRYSTAL),
+            Species("CO2"; aggregate_state = AS_GAS),
         ]
         # Include only aqueous species (H2O has only H and O)
-        filtered = speciation(all_sp, [:H, :O, :Na, :Cl, :C]; aggregate_state=[AS_AQUEOUS])
+        filtered = speciation(all_sp, [:H, :O, :Na, :Cl, :C]; aggregate_state = [AS_AQUEOUS])
         syms = symbol.(filtered)
         @test "H2O" in syms
         @test "NaCl" ∉ syms
@@ -95,13 +95,13 @@
 
     @testsection "speciation by seed species list" begin
         all_sp = [
-            Species("H2O";   aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
-            Species("Na+";   aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
-            Species("CaCO3"; aggregate_state=AS_CRYSTAL),
-            Species("Mg+2";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
+            Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT),
+            Species("Na+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE),
+            Species("CaCO3"; aggregate_state = AS_CRYSTAL),
+            Species("Mg+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE),
         ]
         # Seed with Na+ — should include species made of Na (and/or Zz)
-        seed = [Species("Na+"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)]
+        seed = [Species("Na+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)]
         filtered = speciation(all_sp, seed)
         # Na+ must be in the filtered set (it's a seed)
         @test any(s -> symbol(s) == "Na+", filtered)

@@ -100,7 +100,7 @@ julia> safe_ustrip(u"m", 3.0)
 ```
 """
 function safe_ustrip(unit::UnionAbstractQuantity, q::UnionAbstractQuantity)
-    dimension(unit) == dimension(q) ? ustrip(unit, q) : ustrip(q)
+    return dimension(unit) == dimension(q) ? ustrip(unit, q) : ustrip(q)
 end
 
 safe_ustrip(::UnionAbstractQuantity, q) = ustrip(q)
