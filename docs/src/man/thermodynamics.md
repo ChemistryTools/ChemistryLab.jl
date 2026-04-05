@@ -267,7 +267,7 @@ using ChemistryLab
 using DynamicQuantities
 
 # Linear Cp = a + b·T — register with explicit units so build_thermo_functions works
-add_thermo_model(:linear_Cp, :(a + b * T), [:T => u"K", :a => u"J/mol/K", :b => u"J/(mol*K^2)"])
+add_thermo_model(:linear_Cp, :(a + b * T), [:T => "K", :a => "J/mol/K", :b => "J/(mol*K^2)"])
 
 # Build functions for a hypothetical species
 params = Dict(
@@ -298,7 +298,7 @@ using DynamicQuantities
 
 # Cp = Cp0 — constant, independent of T
 # Use :(Cp0 * T^0) so the expression is an Expr (not a bare Symbol) and T stays in the vars list
-add_thermo_model(:const_Cp, :(Cp0 * T^0), [:T => u"K", :Cp0 => u"J/mol/K"])
+add_thermo_model(:const_Cp, :(Cp0 * T^0), [:T => "K", :Cp0 => "J/mol/K"])
 
 params = Dict(
     :Cp0  => 75.3u"J/mol/K",       # water
