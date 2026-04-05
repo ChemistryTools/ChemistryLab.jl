@@ -175,3 +175,51 @@ CO₂[:ΔₐG⁰](T = 500.0u"K", unit = true)   # Gibbs energy at 227 °C with u
 
 !!! danger "Reference temperature"
     Always include `:T => reference_temperature` in the parameter dict. The functions are adjusted so that S°(T_ref), ΔₐH°(T_ref), ΔₐG°(T_ref) match the provided reference values exactly.
+
+---
+
+## Requalifying a species: `with_class`
+
+`Species` is an **immutable** struct — none of its fields can be modified after construction.
+When species are loaded from a database their `class` is set by the database
+(typically `SC_COMPONENT`), which prevents them from being used directly as end-members
+of a [`SolidSolutionPhase`](@ref) (which requires `SC_SSENDMEMBER`).
+
+[`with_class`](@ref) returns a **copy** of the species with only the `class` field changed.
+All other fields — name, symbol, formula, aggregate state, properties and thermodynamic
+functions — are shared by reference and unchanged.
+
+```@example with_class
+using ChemistryLab
+
+# A crystal species with the class that databases typically assign
+cal = Species("CaCO3"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+
+println("before: ", class(cal))        # SC_COMPONENT
+
+em = with_class(cal, SC_SSENDMEMBER)
+
+println("after:  ", class(em))         # SC_SSENDMEMBER
+println("formula preserved: ", formula(em) == formula(cal))
+```
+
+The typical workflow is to load species from a database, build a lookup dict, then
+requalify selected species before assembling a solid solution:
+
+```julia
+substances = build_species("data/cemdata18-thermofun.json")
+dict = Dict(symbol(s) => s for s in substances)
+
+# Requalify each end-member manually
+em_tobd = with_class(dict["CSHQ-TobD"], SC_SSENDMEMBER)
+em_tobh = with_class(dict["CSHQ-TobH"], SC_SSENDMEMBER)
+em_jenh = with_class(dict["CSHQ-JenH"], SC_SSENDMEMBER)
+em_jend = with_class(dict["CSHQ-JenD"], SC_SSENDMEMBER)
+
+cshq = SolidSolutionPhase("CSHQ", [em_tobd, em_tobh, em_jenh, em_jend])
+```
+
+!!! tip "Automating multiple solid solution phases"
+    For multiple solid solution phases at once, prefer the automated
+    [`build_solid_solutions`](@ref) function described in the
+    [Databases](@ref sec-databases) tutorial.

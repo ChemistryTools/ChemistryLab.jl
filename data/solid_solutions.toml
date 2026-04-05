@@ -1,0 +1,50 @@
+# Solid solution phases for ChemistryLab.jl
+#
+# Each [[solid_solution]] entry defines one SolidSolutionPhase:
+#   name        – name of the phase
+#   end_members – symbols of species in the database (must have AS_CRYSTAL)
+#   model       – mixing model: "ideal" | "redlich_kister"
+#   a0, a1, a2  – Redlich-Kister parameters (J/mol), only for model = "redlich_kister"
+#   source      – literature reference
+#
+# Sources
+#   Lothenbach2019 : Lothenbach et al., Cement and Concrete Research 115 (2019) 472-506
+#   Lothenbach2015 : Lothenbach & Nonat, Cement and Concrete Research 78 (2015) 57-70
+
+# ── C-S-H gel (CSHQ) — 4 end-members, ideal mixing ───────────────────────────
+[[solid_solution]]
+name        = "CSHQ"
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+model       = "ideal"
+source      = "Lothenbach2015"
+
+# ── AFm phases (monosulfate / monocarbonate) — binary Redlich-Kister ─────────
+[[solid_solution]]
+name        = "AFm"
+end_members = ["Ms", "Mc"]
+model       = "redlich_kister"
+a0          = 3000.0   # J/mol
+a1          = 500.0    # J/mol
+a2          = 0.0      # J/mol
+source      = "Lothenbach2019"
+
+# ── Hydrogarnet (C3AH6 / C3FH6) — binary ideal ───────────────────────────────
+[[solid_solution]]
+name        = "Hydrogarnet"
+end_members = ["C3AH6", "C3FH6"]
+model       = "ideal"
+source      = "Lothenbach2019"
+
+# ── Ettringite solid solution ─────────────────────────────────────────────────
+[[solid_solution]]
+name        = "Ettringite_ss"
+end_members = ["ettringite", "ettringite30"]
+model       = "ideal"
+source      = "Lothenbach2019"
+
+# ── Hydrotalcite (OH/CO3) — binary ideal ─────────────────────────────────────
+[[solid_solution]]
+name        = "Hydrotalcite"
+end_members = ["Ht_OH", "Ht_CO3"]
+model       = "ideal"
+source      = "Lothenbach2019"

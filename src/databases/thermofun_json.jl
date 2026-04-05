@@ -360,3 +360,95 @@ function get_compatible_species(
         return df_compat
     end
 end
+
+"""
+    build_solid_solutions(toml_file, dict_species; skip_missing=true) -> Vector{SolidSolutionPhase}
+
+Load solid solution phase definitions from a TOML file and assemble
+[`SolidSolutionPhase`](@ref) objects from an existing species dictionary.
+
+Each end-member species is automatically requalified to `SC_SSENDMEMBER` via
+[`with_class`](@ref), regardless of the class stored in the database.
+
+# Arguments
+
+  - `toml_file`: path to a TOML file with `[[solid_solution]]` entries (see
+    `data/solid_solutions.toml` for the format).
+  - `dict_species`: `Dict{String, <:AbstractSpecies}` mapping symbol → species
+    (typically built from `Dict(symbol(s) => s for s in build_species(...))`).
+  - `skip_missing`: if `true` (default), silently skip phases whose end-members
+    are not all present in `dict_species`; if `false`, throw an error.
+
+# TOML format
+
+```toml
+[[solid_solution]]
+name        = "CSHQ"
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+model       = "ideal"          # or "redlich_kister"
+# For redlich_kister only:
+a0          = 3000.0           # J/mol
+a1          = 500.0            # J/mol
+a2          = 0.0              # J/mol
+```
+
+# Example
+
+```julia
+substances = build_species("data/cemdata18-thermofun.json")
+dict       = Dict(symbol(s) => s for s in substances)
+ss_phases  = build_solid_solutions("data/solid_solutions.toml", dict)
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES; solid_solutions = ss_phases)
+```
+"""
+function build_solid_solutions(
+        toml_file::AbstractString,
+        dict_species::AbstractDict;
+        skip_missing::Bool = true,
+    )
+    data = TOML.parsefile(toml_file)
+    entries = get(data, "solid_solution", [])
+    phases = SolidSolutionPhase[]
+    for entry in entries
+        ss_name = entry["name"]
+        em_symbols = entry["end_members"]
+
+        # Check all end-members are available
+        missing_syms = filter(sym -> !haskey(dict_species, sym), em_symbols)
+        if !isempty(missing_syms)
+            missing_str = join(missing_syms, ", ")
+            if skip_missing
+                @warn "build_solid_solutions: skipping \"$ss_name\" — " *
+                      "end-members not found in dict_species: $missing_str"
+                continue
+            else
+                error(
+                    "build_solid_solutions: end-members not found for \"$ss_name\": " *
+                    missing_str,
+                )
+            end
+        end
+
+        # Requalify end-members to SC_SSENDMEMBER
+        em_species = [with_class(dict_species[sym], SC_SSENDMEMBER) for sym in em_symbols]
+
+        # Build mixing model
+        model_str = get(entry, "model", "ideal")
+        mixing_model = if model_str == "redlich_kister"
+            RedlichKisterModel(;
+                a0 = Float64(get(entry, "a0", 0.0)),
+                a1 = Float64(get(entry, "a1", 0.0)),
+                a2 = Float64(get(entry, "a2", 0.0)),
+            )
+        elseif model_str == "ideal"
+            IdealSolidSolutionModel()
+        else
+            @warn "build_solid_solutions: unknown model \"$model_str\" for " *
+                  "\"$ss_name\", defaulting to ideal"
+            IdealSolidSolutionModel()
+        end
+
+        push!(phases, SolidSolutionPhase(ss_name, em_species; model = mixing_model))
+    end
+    return phases
+end

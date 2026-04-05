@@ -1,4 +1,4 @@
-# Database Interoperability
+# [Database Interoperability](@id sec-databases)
 
 So far, we have looked at the possibility of creating and manipulating any species, whether they exist or not. If we wanted to create a H₂O⁺⁴ molecule, it would not be a problem. However, you will admit that it is a little strange...
 
@@ -68,6 +68,75 @@ It is also possible to retrieve primary species from the Cemdata18 database. Pri
 ```julia
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 show(df_primaries, allcols=true, allrows=true)
+```
+
+---
+
+## Building solid solution phases from a TOML file
+
+Solid solution phases (e.g. C-S-H gel, AFm) group several end-member species with a
+mixing model. Because database species carry `class = SC_COMPONENT` rather than
+`class = SC_SSENDMEMBER`, they cannot be passed directly to [`SolidSolutionPhase`](@ref).
+
+[`build_solid_solutions`](@ref) automates the full pipeline:
+
+1. Reads phase definitions from a TOML file.
+2. Looks up each end-member in a pre-built species dictionary.
+3. Requalifies end-members to `SC_SSENDMEMBER` via [`with_class`](@ref).
+4. Constructs and returns a `Vector{SolidSolutionPhase}`.
+
+### TOML format
+
+Each `[[solid_solution]]` entry specifies a phase name, the list of end-member
+symbols (as they appear in the database), and the mixing model:
+
+```toml
+# Ideal solid solution (any number of end-members)
+[[solid_solution]]
+name        = "CSHQ"
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+model       = "ideal"
+source      = "Lothenbach2015"
+
+# Binary Redlich-Kister (exactly 2 end-members, parameters in J/mol)
+[[solid_solution]]
+name        = "AFm"
+end_members = ["Ms", "Mc"]
+model       = "redlich_kister"
+a0          = 3000.0
+a1          = 500.0
+a2          = 0.0
+source      = "Lothenbach2019"
+```
+
+The file `data/solid_solutions.toml` shipped with ChemistryLab.jl contains
+pre-calibrated entries for the main cemdata18 solid solutions (CSHQ, AFm, Hydrogarnet,
+Ettringite_ss, Hydrotalcite).
+
+### Usage
+
+```julia
+using ChemistryLab, DynamicQuantities
+
+substances = build_species("../../../data/cemdata18-thermofun.json")
+dict       = Dict(symbol(s) => s for s in substances)
+
+# Build all solid solution phases defined in the TOML
+ss_phases = build_solid_solutions("../../../data/solid_solutions.toml", dict)
+
+# Use them directly in ChemicalSystem
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES; solid_solutions = ss_phases)
+```
+
+Phases whose end-members are not found in `dict` are skipped with a warning
+(pass `skip_missing = false` to raise an error instead).
+
+!!! note "Manual requalification"
+    If you only need one or two end-members, you can requalify them individually
+    with [`with_class`](@ref) instead of going through the TOML file:
+
+```julia
+em = with_class(dict["CSHQ-TobD"], SC_SSENDMEMBER)
 ```
 
 ---

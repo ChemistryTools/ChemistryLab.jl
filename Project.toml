@@ -22,6 +22,7 @@ RuntimeGeneratedFunctions = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [compat]
@@ -43,6 +44,7 @@ RuntimeGeneratedFunctions = "0.5.16"
 SciMLBase = "2"
 SymbolicNumericIntegration = "1.10.0"
 TimerOutputs = "0.5.29"
+TOML = "1"
 Unicode = "1"
 julia = "1.12"
 

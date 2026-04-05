@@ -1556,3 +1556,30 @@ function complete_thermo_functions!(s::AbstractSpecies)
     end
     return s
 end
+
+"""
+    with_class(s::Species, c::Class) -> Species
+
+Return a copy of `s` with its class set to `c`. All other fields (name, symbol,
+formula, aggregate state, properties) are preserved unchanged.
+
+Useful to requalify database species as `SC_SSENDMEMBER` before grouping them
+into a [`SolidSolutionPhase`](@ref), since `Species` is immutable.
+
+# Examples
+
+```jldoctest
+julia> s = Species("CaCO3"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT);
+
+julia> class(s)
+SC_COMPONENT::Class = 3
+
+julia> s2 = with_class(s, SC_SSENDMEMBER);
+
+julia> class(s2)
+SC_SSENDMEMBER::Class = 5
+```
+"""
+function with_class(s::Species{T}, c::Class) where {T}
+    return Species{T}(s.name, s.symbol, s.formula, s.aggregate_state, c, s.properties)
+end

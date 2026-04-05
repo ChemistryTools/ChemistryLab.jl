@@ -24,6 +24,7 @@ components(s::Species)
 components(s::CemSpecies)
 aggregate_state(s::AbstractSpecies)
 class(s::AbstractSpecies)
+with_class
 properties(s::AbstractSpecies)
 check_mendeleev(s::AbstractSpecies)
 apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}

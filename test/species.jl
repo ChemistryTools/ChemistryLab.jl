@@ -84,3 +84,42 @@
     @test c3s == c3s_copy
     @test hash(c3s) == hash(c3s_copy)
 end
+
+@testsection "with_class" begin
+    # Base case: SC_COMPONENT → SC_SSENDMEMBER
+    s = Species("CaCO3"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    s2 = with_class(s, SC_SSENDMEMBER)
+
+    @test class(s2) == SC_SSENDMEMBER
+    @test class(s) == SC_COMPONENT          # original unchanged
+
+    # All other fields preserved
+    @test name(s2) == name(s)
+    @test symbol(s2) == symbol(s)
+    @test formula(s2) == formula(s)
+    @test aggregate_state(s2) == aggregate_state(s)
+    @test properties(s2) === properties(s)  # same dict object (shared by reference)
+
+    # Round-trip: any class can be set
+    s3 = with_class(s2, SC_AQSOLUTE)
+    @test class(s3) == SC_AQSOLUTE
+    @test class(s2) == SC_SSENDMEMBER       # s2 still unchanged
+
+    # Works with a species carrying properties
+    sp = Species("Ca+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    sp[:custom] = 42
+    sp2 = with_class(sp, SC_UNDEF)
+    @test class(sp2) == SC_UNDEF
+    @test sp2[:custom] == 42
+
+    # The result can be used in a SolidSolutionPhase
+    em1 = with_class(
+        Species("Em1"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT),
+        SC_SSENDMEMBER,
+    )
+    em2 = with_class(
+        Species("Em2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT),
+        SC_SSENDMEMBER,
+    )
+    @test_nowarn SolidSolutionPhase("SS", [em1, em2])
+end

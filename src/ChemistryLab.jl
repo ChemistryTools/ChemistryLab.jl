@@ -94,6 +94,7 @@ module ChemistryLab
     using CSV
     using DataFrames
     using DynamicQuantities
+    using TOML
     using ForwardDiff
     using JSON
     using LinearAlgebra
@@ -243,7 +244,8 @@ module ChemistryLab
         AbstractSolidSolutionPhase,
         SolidSolutionPhase,
         end_members,
-        model
+        model,
+        with_class
 
     export ChemicalSystem,
         aqueous,
@@ -276,6 +278,7 @@ module ChemistryLab
     export read_thermofun_database,
         build_species,
         build_reactions,
+        build_solid_solutions,
         get_compatible_species,
         HKF_SI_CONVERSIONS
 
