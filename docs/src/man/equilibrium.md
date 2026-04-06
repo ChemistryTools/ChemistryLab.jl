@@ -82,6 +82,45 @@ end
 
 ---
 
+## Scaling and normalisation
+
+It is often useful to express a composition relative to a reference amount — per mole, per kilogram, or per cubic metre of system. Two mechanisms are provided.
+
+### Scalar multiplication
+
+A [`ChemicalState`](@ref) can be multiplied or divided by a real number. All molar amounts are scaled proportionally; temperature, pressure, and the chemical system are unchanged. The operation is **non-mutating** — a new state is returned:
+
+```julia
+state2  = state_eq * 2.0    # double all amounts
+state_m = state_eq / 1000   # millimolar scale
+```
+
+### `rescale!` — rescale to a target total
+
+[`rescale!`](@ref) scales all molar amounts **in-place** so that the total of the matching physical quantity equals `target`:
+
+| `target` dimension | Quantity brought to `target` |
+|--------------------|------------------------------|
+| mol                | `moles(state).total`         |
+| kg (mass)          | `mass(state).total`          |
+| m³ (volume)        | `volume(state).total`        |
+
+All derived quantities (pH, porosity, volume, …) are recomputed automatically after scaling.
+
+```@example eq_setup
+# Express the equilibrium composition per kilogram of total system
+state_pkg = copy(state_eq)
+rescale!(state_pkg, 1.0u"kg")
+
+println("Ca²⁺ = ", moles(state_pkg, "Ca+2"), "  mol/kg")
+println("pH   = ", pH(state_pkg))   # intensive quantities are invariant
+```
+
+!!! note "Intensive quantities"
+    pH, porosity, and saturation are **intensive** — they are invariant under homothety and remain unchanged after `rescale!` or scalar multiplication.
+
+---
+
 ## Controlling the solver
 
 ### Variable space: `:linear` vs `:log`

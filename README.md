@@ -19,10 +19,12 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 ## Features
 
 - **Chemical formula handling**: Create, convert, and display formulas with charge management and Unicode/Phreeqc notation.
-- **Chemical species management**: `Species` and `CemSpecies` types to represent solution and solid phase species.
+- **Chemical species management**: `Species` and `CemSpecies` types to represent solution and solid phase species; `with_class` to requalify a species without modifying the original.
 - **Stoichiometric matrices**: Automatic construction of matrices for reaction and equilibrium analysis.
-- **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data.
+- **Database interoperability**: Import and merge ThermoFun (.json) and Cemdata (.dat) data; load solid solution definitions from a TOML file with `build_solid_solutions`.
 - **Parsing tools**: Convert chemical notations, extract charges, calculate molar mass, and more.
+- **Solid solutions**: Define ideal (`IdealSolidSolutionModel`) or non-ideal binary (`RedlichKisterModel`) mineral mixing phases via `SolidSolutionPhase`; end-members are automatically requalified at construction time.
+- **Activity models**: Built-in aqueous activity models for equilibrium: `DiluteSolutionModel` (ideal), `HKFActivityModel` (extended Debye-Hückel B-dot), and `DaviesActivityModel`.
 - **Chemical equilibrium**: Compute thermodynamic equilibrium compositions from initial states using Gibbs energy minimization (`equilibrate`, `ChemicalSystem`, `ChemicalState`).
 
 ## Installation
@@ -157,7 +159,7 @@ dict_reactions_calcite["Cal"].logK⁰
 ```
 
 ```
-ThermoFunction:
+SymbolicFunc:
   Expression: (-1.29704e6 + 125345.63212888106T - 2666.9195440882527(T^2) + 424.77184295654104(T^2)*log(T) + 0.010962079279125T*(T^2)) / (19.144757680815896(T^2)) [m² kg s⁻² mol⁻¹]
   References: T=298.15 K
   Variables: T
@@ -198,7 +200,49 @@ moles(state_eq)       # mole amounts by phase (liquid / solid / gas / total)
 moles(state_eq, "Ca+2")  # moles of a specific species
 ```
 
-The `equilibrate` function uses `IpoptOptimizer` under the hood (via Optimization.jl) and accepts optional keyword arguments to tune the solver (`abstol`, `reltol`, `variable_space`, …).
+The `equilibrate` function uses `IpoptOptimizer` under the hood (via Optimization.jl) and accepts optional keyword arguments to tune the solver (`abstol`, `reltol`, `variable_space`, …), as well as an `model` keyword for the aqueous activity model:
+
+```julia
+state_eq = equilibrate(state0; model = HKFActivityModel())   # extended Debye-Hückel
+state_eq = equilibrate(state0; model = DaviesActivityModel()) # Davies equation
+```
+
+#### Solid solutions
+
+Mineral solid solutions (e.g. C-S-H, AFm) are modelled by grouping end-member species into a `SolidSolutionPhase`. Database species with `SC_COMPONENT` class can be passed directly — requalification to `SC_SSENDMEMBER` is handled automatically:
+
+```julia
+substances = build_species("data/cemdata18-thermofun.json")
+dict = Dict(symbol(s) => s for s in substances)
+
+# Ideal solid solution (any number of end-members)
+cshq = SolidSolutionPhase("CSHQ", [dict["CSHQ-TobD"], dict["CSHQ-TobH"],
+                                    dict["CSHQ-JenH"], dict["CSHQ-JenD"]])
+
+# Non-ideal binary: Redlich-Kister (parameters in J/mol)
+afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]];
+          model = RedlichKisterModel(a0 = 3000.0, a1 = 500.0))
+
+# Or load all solid solution phases at once from a TOML file
+ss_phases = build_solid_solutions("data/solid_solutions.toml", dict)
+
+cs = ChemicalSystem(species_list, primaries; solid_solutions = ss_phases)
+```
+
+A pre-built `data/solid_solutions.toml` (CSHQ, AFm, Hydrogarnet, Ettringite_ss, Hydrotalcite) is shipped with ChemistryLab for use with the cemdata18 database.
+
+#### Scaling and normalisation
+
+A `ChemicalState` supports scalar multiplication and in-place rescaling to a target total:
+
+```julia
+state2 = state_eq * 2.0         # double all amounts (non-mutating)
+state_h = state_eq / 1000       # millimolar scale  (non-mutating)
+
+rescale!(state_eq, 1.0u"mol")   # total moles  → 1 mol  (in-place)
+rescale!(state_eq, 1.0u"kg")    # total mass   → 1 kg   (in-place)
+rescale!(state_eq, 1.0u"m^3")   # total volume → 1 m³   (in-place)
+```
 
 ## Usage
 

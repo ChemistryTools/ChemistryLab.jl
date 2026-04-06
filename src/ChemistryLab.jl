@@ -266,6 +266,7 @@ module ChemistryLab
         set_pressure!,
         moles,
         set_quantity!,
+        rescale!,
         mass,
         volume,
         pH,

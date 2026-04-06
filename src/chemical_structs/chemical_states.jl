@@ -805,6 +805,113 @@ julia> ustrip(moles(state, "H2O"))
 set_quantity!(state::ChemicalState, sym::AbstractString, n::AbstractQuantity) =
     set_quantity!(state, state.system[sym], n)
 
+# ── Scaling ───────────────────────────────────────────────────────────────────
+
+"""
+    Base.:*(state::ChemicalState, α::Real) -> ChemicalState
+
+Return a new `ChemicalState` with all molar amounts scaled by `α`.
+Temperature, pressure, and the underlying `ChemicalSystem` are unchanged.
+The operation is non-mutating — a copy is returned.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> state = ChemicalState(cs, [2.0u"mol"]);
+
+julia> s2 = state * 3.0;
+
+julia> ustrip(moles(s2, "H2O"))
+6.0
+
+julia> ustrip(moles(state, "H2O"))   # original unchanged
+2.0
+```
+"""
+function Base.:*(state::ChemicalState, α::Real)
+    new_state = copy(state)
+    new_state.n .*= α
+    _update_derived!(new_state)
+    return new_state
+end
+
+"""
+    Base.:*(α::Real, state::ChemicalState) -> ChemicalState
+
+Equivalent to `state * α`.
+"""
+Base.:*(α::Real, state::ChemicalState) = state * α
+
+"""
+    Base.:/(state::ChemicalState, α::Real) -> ChemicalState
+
+Return a new `ChemicalState` with all molar amounts divided by `α`.
+The operation is non-mutating — a copy is returned.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> state = ChemicalState(cs, [4.0u"mol"]);
+
+julia> s = state / 2.0;
+
+julia> ustrip(moles(s, "H2O"))
+2.0
+```
+"""
+function Base.:/(state::ChemicalState, α::Real)
+    iszero(α) && error("ChemicalState: cannot divide by zero")
+    return state * inv(α)
+end
+
+"""
+    rescale!(state::ChemicalState, target::AbstractQuantity) -> ChemicalState
+
+Scale all molar amounts **in-place** so that the total quantity of the matching
+physical dimension equals `target`.
+
+| `target` dimension | Quantity brought to `target`  |
+|--------------------|-------------------------------|
+| mol                | `moles(state).total`          |
+| kg (mass)          | `mass(state).total`           |
+| m³ (volume)        | `volume(state).total`         |
+
+All derived quantities (pH, volume, porosity, …) are recomputed after scaling.
+Returns `state` for chaining.
+
+# Examples
+```julia
+rescale!(state, 1.0u"mol")    # total moles  → 1 mol
+rescale!(state, 1.0u"kg")     # total mass   → 1 kg
+rescale!(state, 1.0u"m^3")    # total volume → 1 m³
+rescale!(state, 500u"g")      # total mass   → 500 g
+```
+"""
+function rescale!(state::ChemicalState, target::AbstractQuantity)
+    if dimension(target) == dimension(u"mol")
+        current = moles(state).total
+        factor = ustrip(us"mol", target) / ustrip(us"mol", current)
+    elseif dimension(target) == dimension(u"kg")
+        current = mass(state).total
+        factor = ustrip(us"kg", target) / ustrip(us"kg", current)
+    elseif dimension(target) == dimension(u"m^3")
+        current = volume(state).total
+        factor = ustrip(us"m^3", target) / ustrip(us"m^3", current)
+    else
+        error(
+            "rescale!: target must have dimensions of amount (mol), " *
+                "mass (kg), or volume (m³), got $(dimension(target))",
+        )
+    end
+    iszero(ustrip(current)) &&
+        error("rescale!: current total is zero — cannot rescale")
+    state.n .*= factor
+    _update_derived!(state)
+    return state
+end
+
 # ── Clone ─────────────────────────────────────────────────────────────────────
 
 """

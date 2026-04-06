@@ -28,6 +28,7 @@ set_temperature!
 set_pressure!
 moles
 set_quantity!
+rescale!
 mass
 volume
 pH

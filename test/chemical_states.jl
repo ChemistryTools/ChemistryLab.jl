@@ -130,4 +130,68 @@
 
         @test ustrip(n_after) > ustrip(n_before)
     end
+
+    @testsection "scaling: Base.* and Base./" begin
+        state = ChemicalState(cs_basic, [2.0u"mol", 1.0u"mol", 0.0u"mol"])
+
+        # state * α returns a new state
+        s2 = state * 3.0
+        @test ustrip(moles(s2, "H2O")) ≈ 6.0
+        @test ustrip(moles(s2, "H+")) ≈ 3.0
+        @test ustrip(moles(state, "H2O")) ≈ 2.0   # original unchanged
+
+        # α * state
+        s3 = 2.0 * state
+        @test ustrip(moles(s3, "H2O")) ≈ 4.0
+
+        # state / α
+        s_half = state / 2.0
+        @test ustrip(moles(s_half, "H2O")) ≈ 1.0
+
+        # divide by zero raises
+        @test_throws ErrorException state / 0.0
+
+        # derived quantities are recomputed (total moles consistent)
+        @test ustrip(moles(s2).total) ≈ ustrip(moles(state).total) * 3.0
+    end
+
+    @testsection "scaling: rescale! (mol)" begin
+        state = ChemicalState(cs_basic, [2.0u"mol", 1.0u"mol", 0.0u"mol"])
+        rescale!(state, 6.0u"mol")
+        @test ustrip(us"mol", moles(state).total) ≈ 6.0
+        # Ratios are preserved
+        @test ustrip(moles(state, "H2O")) ≈ 4.0
+        @test ustrip(moles(state, "H+")) ≈ 2.0
+    end
+
+    @testsection "scaling: rescale! (kg)" begin
+        state = ChemicalState(cs_basic, [1.0u"mol", 0.0u"mol", 0.0u"mol"])
+        m0 = ustrip(us"kg", mass(state).total)   # ≈ 0.018015 kg
+        rescale!(state, 1.0u"kg")
+        @test isapprox(ustrip(us"kg", mass(state).total), 1.0; rtol = 1.0e-6)
+        # Factor is the inverse of m0
+        @test isapprox(ustrip(moles(state, "H2O")), 1.0 / m0; rtol = 1.0e-6)
+    end
+
+    @testsection "scaling: rescale! (volume)" begin
+        h2o_v = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+        # V⁰ must be a callable with signature (T, P; unit) — use NumericFunc
+        h2o_v[:V⁰] = NumericFunc((T, P) -> 18.07e-6, 1u"m^3/mol")
+        cs_v = ChemicalSystem([h2o_v])
+        state_v = ChemicalState(cs_v, [1.0u"mol"])
+        # volume of 1 mol H2O ≈ 18.07e-6 m³; rescale to 1 m³
+        rescale!(state_v, 1.0u"m^3")
+        @test isapprox(ustrip(us"m^3", volume(state_v).total), 1.0; rtol = 1.0e-5)
+    end
+
+    @testsection "scaling: rescale! error cases" begin
+        state = ChemicalState(cs_basic, [2.0u"mol", 0.0u"mol", 0.0u"mol"])
+
+        # Bad dimension
+        @test_throws ErrorException rescale!(state, 1.0u"s")
+
+        # Zero state
+        s_zero = ChemicalState(cs_basic)   # all n = 0
+        @test_throws ErrorException rescale!(s_zero, 1.0u"mol")
+    end
 end
