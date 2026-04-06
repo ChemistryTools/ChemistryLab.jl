@@ -15,17 +15,15 @@ cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 # ── Initial state ──────────────────────────────────────────────────────────────
 state = ChemicalState(cs)
 compo = ["C3S" => 67.8/100, "C2S" => 16.6/100, "C3A" => 4/100, "C4AF" => 7.2/100, "Gp" => 2.8/100]
-c     = sum(last.(compo))
-wc    = 0.4
-w     = wc * c
-mtot  = c + w
 for x in compo
-    set_quantity!(state, x.first, x.second / mtot * u"kg")
+    set_quantity!(state, x.first, x.second * u"kg")
 end
-set_quantity!(state, "H2O@", w / mtot * u"kg")
+w = 0.4 * sum(last.(compo))
+set_quantity!(state, "H2O@", w * u"kg")
 V = volume(state)
 set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
 set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
+rescale!(state, 1.0u"kg")
 
 # ── Equilibrate ─────────────────────────────────────────────────────────────────
 state_eq = equilibrate(state; variable_space=Val(:linear), verbose=5)
