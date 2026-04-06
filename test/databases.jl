@@ -46,7 +46,7 @@ using TOML
         CaCO3 = Ca+2 + CO3-2
         -log_K -8.48
         -analytical_expression 1.23 -4.56 7.89
-        
+
         Portlandite
         Ca(OH)2 = Ca+2 + 2OH-
         -log_K -5.2
@@ -75,13 +75,13 @@ end
         "Mc" => _make("Mc"),
     )
 
-    # ── Write a temp TOML ────────────────────────────────────────────────────
-    toml_content = """
+    # ── Two temp TOMLs: one clean, one with a missing phase ─────────────────
+    toml_clean = """
     [[solid_solution]]
     name        = "CSHQ"
     end_members = ["TobD", "TobH", "JenH", "JenD"]
     model       = "ideal"
-    
+
     [[solid_solution]]
     name        = "AFm"
     end_members = ["Ms", "Mc"]
@@ -89,18 +89,23 @@ end
     a0          = 3000.0
     a1          = 500.0
     a2          = 0.0
-    
-    [[solid_solution]]
-    name        = "Missing_phase"
-    end_members = ["NonExistent1", "NonExistent2"]
-    model       = "ideal"
     """
+    toml_with_missing = toml_clean * """
+        [[solid_solution]]
+        name        = "Missing_phase"
+        end_members = ["NonExistent1", "NonExistent2"]
+        model       = "ideal"
+        """
     tmp = tempname() * ".toml"
-    write(tmp, toml_content)
+    tmp_missing = tempname() * ".toml"
+    write(tmp, toml_clean)
+    write(tmp_missing, toml_with_missing)
 
-    @testset "load two phases, skip missing" begin
-        phases = build_solid_solutions(tmp, dict; skip_missing = true)
-        @test length(phases) == 2       # Missing_phase skipped
+    # Pre-build phases from the clean TOML (no warnings, reused across sub-tests)
+    phases = build_solid_solutions(tmp, dict)
+
+    @testset "load two phases" begin
+        @test length(phases) == 2
 
         cshq = first(filter(ss -> name(ss) == "CSHQ", phases))
         afm = first(filter(ss -> name(ss) == "AFm", phases))
@@ -115,7 +120,6 @@ end
     end
 
     @testset "end-members requalified to SC_SSENDMEMBER" begin
-        phases = build_solid_solutions(tmp, dict; skip_missing = true)
         for ss in phases
             for em in end_members(ss)
                 @test class(em) == SC_SSENDMEMBER
@@ -124,13 +128,21 @@ end
     end
 
     @testset "original dict species class untouched" begin
-        build_solid_solutions(tmp, dict; skip_missing = true)
-        # with_class returns a copy; dict values must still be SC_COMPONENT
+        # SolidSolutionPhase requalifies internally; dict values must be unchanged
         @test all(class(s) == SC_COMPONENT for s in values(dict))
     end
 
+    @testset "skip_missing = true warns and skips" begin
+        phases_skip = @test_logs (:warn, r"skipping.*Missing_phase") match_mode = :any build_solid_solutions(
+            tmp_missing, dict; skip_missing = true
+        )
+        @test length(phases_skip) == 2   # Missing_phase skipped
+    end
+
     @testset "skip_missing = false raises on missing end-members" begin
-        @test_throws ErrorException build_solid_solutions(tmp, dict; skip_missing = false)
+        @test_throws ErrorException build_solid_solutions(
+            tmp_missing, dict; skip_missing = false
+        )
     end
 
     @testset "data/solid_solutions.toml parses without error" begin
@@ -144,4 +156,5 @@ end
     end
 
     rm(tmp; force = true)
+    rm(tmp_missing; force = true)
 end
