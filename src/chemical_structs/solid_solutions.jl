@@ -83,7 +83,10 @@ abstract type AbstractSolidSolutionPhase end
             <: AbstractSolidSolutionPhase
 
 A solid-solution phase consisting of `end_members` (species with `AS_CRYSTAL` aggregate
-state and `SC_SSENDMEMBER` class) mixing according to `model`.
+state) mixing according to `model`.
+
+End-members are automatically requalified to `SC_SSENDMEMBER` at construction time,
+so database species with `SC_COMPONENT` can be passed directly.
 
 # Construction
 
@@ -93,21 +96,24 @@ SolidSolutionPhase(name, end_members; model = IdealSolidSolutionModel())
 ```
 
 Validation at construction time:
-- All end-members must have `aggregate_state == AS_CRYSTAL` and `class == SC_SSENDMEMBER`.
+- All end-members must have `aggregate_state == AS_CRYSTAL`.
 - [`RedlichKisterModel`](@ref) requires exactly 2 end-members.
 
 # Example
 
 ```jldoctest
-julia> em1 = Species("Ca2SiO4"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+julia> em1 = Species("Ca2SiO4"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT);
 
-julia> em2 = Species("Ca3Si2O7"; aggregate_state=AS_CRYSTAL, class=SC_SSENDMEMBER);
+julia> em2 = Species("Ca3Si2O7"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT);
 
 julia> ss = SolidSolutionPhase("CSH", [em1, em2])
 SolidSolutionPhase{Species{Int64}, IdealSolidSolutionModel}
   name: CSH
   end-members (2): Ca2SiO4, Ca3Si2O7
   model: IdealSolidSolutionModel
+
+julia> class(end_members(ss)[1])
+SC_SSENDMEMBER::Class = 5
 ```
 """
 struct SolidSolutionPhase{T <: AbstractSpecies, M <: AbstractSolidSolutionModel} <:
@@ -121,6 +127,10 @@ end
     SolidSolutionPhase(name, end_members; model=IdealSolidSolutionModel())
 
 Construct and validate a [`SolidSolutionPhase`](@ref).
+
+End-members whose `class` is not already `SC_SSENDMEMBER` are automatically
+requalified via [`with_class`](@ref). Passing database species with
+`SC_COMPONENT` therefore works directly, without a prior call to `with_class`.
 """
 function SolidSolutionPhase(
         name::AbstractString,
@@ -133,11 +143,6 @@ function SolidSolutionPhase(
             "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
                 "aggregate_state = AS_CRYSTAL (got $(aggregate_state(sp)))",
         )
-        class(sp) == SC_SSENDMEMBER ||
-            error(
-            "SolidSolutionPhase: end-member \"$(symbol(sp))\" must have " *
-                "class = SC_SSENDMEMBER (got $(class(sp)))",
-        )
     end
     if model isa RedlichKisterModel
         length(end_members) == 2 ||
@@ -146,9 +151,13 @@ function SolidSolutionPhase(
                 "got $(length(end_members))",
         )
     end
-    T = eltype(end_members)
+    qualified = [
+        class(sp) == SC_SSENDMEMBER ? sp : with_class(sp, SC_SSENDMEMBER)
+            for sp in end_members
+    ]
+    T = eltype(qualified)
     return SolidSolutionPhase{T, typeof(model)}(
-        String(name), collect(T, end_members), model
+        String(name), collect(T, qualified), model
     )
 end
 

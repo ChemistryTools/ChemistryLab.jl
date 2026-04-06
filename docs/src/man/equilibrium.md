@@ -357,11 +357,11 @@ end-member depends on its mole fraction within the phase.
 
 ### Defining end-members and phases
 
-End-member species must carry `aggregate_state = AS_CRYSTAL` and `class = SC_SSENDMEMBER`.
-Species loaded from a database typically come in with `class = SC_COMPONENT`, so they need
-to be requalified before use. Two workflows are available.
+End-member species must carry `aggregate_state = AS_CRYSTAL`.
+[`SolidSolutionPhase`](@ref) automatically requalifies any end-member whose class is not
+already `SC_SSENDMEMBER`, so database species with `SC_COMPONENT` can be passed directly.
 
-**Workflow A — manual requalification with [`with_class`](@ref):**
+**Workflow A — pass database species directly:**
 
 ```julia
 using ChemistryLab
@@ -369,17 +369,14 @@ using ChemistryLab
 substances = build_species("data/cemdata18-thermofun.json")
 dict = Dict(symbol(s) => s for s in substances)
 
-# Requalify: SC_COMPONENT → SC_SSENDMEMBER
-em_ms = with_class(dict["Ms"], SC_SSENDMEMBER)   # monosulfoaluminate
-em_mc = with_class(dict["Mc"], SC_SSENDMEMBER)   # monocarboaluminate
-
-ss_afm = SolidSolutionPhase("AFm", [em_ms, em_mc])   # ideal mixing (default)
+# SolidSolutionPhase requalifies SC_COMPONENT → SC_SSENDMEMBER automatically
+ss_afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]])
 ```
 
 **Workflow B — automated via [`build_solid_solutions`](@ref) and a TOML file:**
 
 ```julia
-# Load all phases defined in the TOML (requalification is automatic)
+# Load all phases defined in the TOML
 ss_phases = build_solid_solutions("data/solid_solutions.toml", dict)
 ```
 
@@ -390,7 +387,7 @@ Then pass `solid_solutions` as a keyword to `ChemicalSystem`:
 
 ```julia
 cs = ChemicalSystem(
-    [H2O_sp, em_ms, em_mc, ...],
+    [H2O_sp, dict["Ms"], dict["Mc"], ...],
     ["H2O@", "Al+3", ...];           # primaries
     solid_solutions = [ss_afm],      # or solid_solutions = ss_phases
 )

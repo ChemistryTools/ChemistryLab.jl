@@ -68,9 +68,11 @@ end
     em_bad = Species("Bad"; aggregate_state = AS_AQUEOUS, class = SC_SSENDMEMBER)
     @test_throws ErrorException SolidSolutionPhase("Bad", [em_bad])
 
-    # Error: wrong class
-    em_bad2 = Species("Bad2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    @test_throws ErrorException SolidSolutionPhase("Bad2", [em_bad2])
+    # Auto-requalification: SC_COMPONENT end-members are silently promoted to SC_SSENDMEMBER
+    em_comp = Species("Comp"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    ss_auto = @test_nowarn SolidSolutionPhase("Auto", [em_comp])
+    @test class(end_members(ss_auto)[1]) == SC_SSENDMEMBER
+    @test class(em_comp) == SC_COMPONENT   # original unchanged
 
     # Error: Redlich-Kister with != 2 end-members
     em3 = _ss_em("Em3")

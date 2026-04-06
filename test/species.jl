@@ -112,7 +112,7 @@ end
     @test class(sp2) == SC_UNDEF
     @test sp2[:custom] == 42
 
-    # The result can be used in a SolidSolutionPhase
+    # with_class result can be used in a SolidSolutionPhase
     em1 = with_class(
         Species("Em1"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT),
         SC_SSENDMEMBER,
@@ -122,4 +122,10 @@ end
         SC_SSENDMEMBER,
     )
     @test_nowarn SolidSolutionPhase("SS", [em1, em2])
+
+    # SolidSolutionPhase also accepts SC_COMPONENT directly (auto-requalifies)
+    raw1 = Species("Raw1"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    raw2 = Species("Raw2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    ss_auto = @test_nowarn SolidSolutionPhase("SSAuto", [raw1, raw2])
+    @test class(end_members(ss_auto)[1]) == SC_SSENDMEMBER
 end

@@ -181,10 +181,6 @@ CO₂[:ΔₐG⁰](T = 500.0u"K", unit = true)   # Gibbs energy at 227 °C with u
 ## Requalifying a species: `with_class`
 
 `Species` is an **immutable** struct — none of its fields can be modified after construction.
-When species are loaded from a database their `class` is set by the database
-(typically `SC_COMPONENT`), which prevents them from being used directly as end-members
-of a [`SolidSolutionPhase`](@ref) (which requires `SC_SSENDMEMBER`).
-
 [`with_class`](@ref) returns a **copy** of the species with only the `class` field changed.
 All other fields — name, symbol, formula, aggregate state, properties and thermodynamic
 functions — are shared by reference and unchanged.
@@ -203,23 +199,20 @@ println("after:  ", class(em))         # SC_SSENDMEMBER
 println("formula preserved: ", formula(em) == formula(cal))
 ```
 
-The typical workflow is to load species from a database, build a lookup dict, then
-requalify selected species before assembling a solid solution:
+!!! note "Solid solutions: no requalification needed"
+    [`SolidSolutionPhase`](@ref) automatically promotes end-members to `SC_SSENDMEMBER`
+    at construction time. Database species with `SC_COMPONENT` can therefore be passed
+    directly — no prior call to `with_class` is required:
 
-```julia
-substances = build_species("data/cemdata18-thermofun.json")
-dict = Dict(symbol(s) => s for s in substances)
+    ```julia
+    substances = build_species("data/cemdata18-thermofun.json")
+    dict = Dict(symbol(s) => s for s in substances)
 
-# Requalify each end-member manually
-em_tobd = with_class(dict["CSHQ-TobD"], SC_SSENDMEMBER)
-em_tobh = with_class(dict["CSHQ-TobH"], SC_SSENDMEMBER)
-em_jenh = with_class(dict["CSHQ-JenH"], SC_SSENDMEMBER)
-em_jend = with_class(dict["CSHQ-JenD"], SC_SSENDMEMBER)
+    # Pass database species directly — SolidSolutionPhase requalifies internally
+    cshq = SolidSolutionPhase("CSHQ", [dict["CSHQ-TobD"], dict["CSHQ-TobH"],
+                                        dict["CSHQ-JenH"], dict["CSHQ-JenD"]])
+    ```
 
-cshq = SolidSolutionPhase("CSHQ", [em_tobd, em_tobh, em_jenh, em_jend])
-```
-
-!!! tip "Automating multiple solid solution phases"
-    For multiple solid solution phases at once, prefer the automated
-    [`build_solid_solutions`](@ref) function described in the
-    [Databases](@ref sec-databases) tutorial.
+    `with_class` is still useful when you need to track the requalified object
+    explicitly (e.g. to inspect its class, or for types other than solid solution
+    end-members).

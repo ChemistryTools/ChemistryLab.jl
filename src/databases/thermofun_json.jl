@@ -429,8 +429,7 @@ function build_solid_solutions(
             end
         end
 
-        # Requalify end-members to SC_SSENDMEMBER
-        em_species = [with_class(dict_species[sym], SC_SSENDMEMBER) for sym in em_symbols]
+        em_species = [dict_species[sym] for sym in em_symbols]
 
         # Build mixing model
         model_str = get(entry, "model", "ideal")
