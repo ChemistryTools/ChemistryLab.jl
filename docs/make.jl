@@ -22,7 +22,7 @@ makedocs(;
     authors="Jean-François Barthélémy and Anthony Soive",
     sitename="ChemistryLab.jl",
     format=Documenter.HTML(;
-        canonical="https://jfbarthelemy.github.io/ChemistryLab.jl",
+        canonical="https://ChemistryTools.github.io/ChemistryLab.jl",
         edit_link="main",
         assets=["assets/favicon.ico", "assets/custom.css"],
         prettyurls=(get(ENV, "CI", nothing) == "true"),
@@ -33,4 +33,4 @@ makedocs(;
     draft=false,
 )
 
-deploydocs(; repo="github.com/jfbarthelemy/ChemistryLab.jl", devbranch="main")
+deploydocs(; repo="github.com/ChemistryTools/ChemistryLab.jl", devbranch="main")

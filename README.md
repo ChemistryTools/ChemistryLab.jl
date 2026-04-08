@@ -4,10 +4,10 @@
 
 # ChemistryLab
 
-[![Build Status](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Build Status](https://github.com/ChemistryTools/ChemistryLab.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ChemistryTools/ChemistryLab.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/)
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jfbarthelemy.github.io/ChemistryLab.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ChemistryTools.github.io/ChemistryLab.jl/dev/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ChemistryTools.github.io/ChemistryLab.jl/stable/)
 
 [![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-pink)](https://github.com/fredrikekre/Runic.jl)
 
@@ -246,7 +246,7 @@ rescale!(state_eq, 1.0u"m^3")   # total volume → 1 m³   (in-place)
 
 ## Usage
 
-See the [documentation and tutorials](https://jfbarthelemy.github.io/ChemistryLab.jl) for examples on formula creation, species management, reaction parsing, and database merging.
+See the [documentation and tutorials](https://ChemistryTools.github.io/ChemistryLab.jl) for examples on formula creation, species management, reaction parsing, and database merging.
 
 ## License
 
@@ -265,7 +265,7 @@ See [CITATION.cff](CITATION.cff) for citation details.
   authors = {Barthélémy, Jean-François and Soive, Anthony},
   title = {ChemistryLab.jl: Numerical laboratory for computational chemistry},
   doi = {10.5281/zenodo.17756074},
-  url = {https://github.com/jfbarthelemy/ChemistryLab.jl}
+  url = {https://github.com/ChemistryTools/ChemistryLab.jl}
 }
 ```
 

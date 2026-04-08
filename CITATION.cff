@@ -20,6 +20,6 @@ keywords:
   - "cement"
 version: "0.2.3"
 doi: "10.5281/zenodo.17756074"
-url: "https://github.com/jfbarthelemy/ChemistryLab.jl"
-repository-code: "https://github.com/jfbarthelemy/ChemistryLab.jl"
+url: "https://github.com/ChemistryTools/ChemistryLab.jl"
+repository-code: "https://github.com/ChemistryTools/ChemistryLab.jl"
 license: "MIT"
