@@ -454,16 +454,19 @@ state_eq = equilibrate(state)
 ### Non-ideal binary: Redlich-Kister
 
 ```julia
-# Interaction parameter for monosulfoaluminate-monocarboaluminate (example values)
-rk = RedlichKisterModel(a0 = 3000.0, a1 = 500.0)   # J/mol
+# Interaction parameters for monosulfoaluminate-monocarboaluminate (example values)
+rk = RedlichKisterModel(a0 = 3000.0, a1 = 500.0)          # a2 defaults to 0.0
+# or 3-parameter:  RedlichKisterModel(a0 = 3000.0, a1 = 500.0, a2 = 50.0)
 ss = SolidSolutionPhase("AFm", [em_ms, em_mc]; model=rk)
 ```
 
-Activity coefficients (Guggenheim convention):
+Activity coefficients (Guggenheim / ThermoCalc convention):
 
 ```math
-ln γ₁ = (x₂²/RT)[a₀ + a₁(3x₁ − x₂)]
-ln γ₂ = (x₁²/RT)[a₀ − a₁(3x₂ − x₁)]
+\begin{aligned}
+\ln \gamma_1 &= \frac{x_2^2}{RT}\bigl[a_0 + a_1(3x_1 - x_2) + a_2(x_1 - x_2)(5x_1 - x_2)\bigr] \\[4pt]
+\ln \gamma_2 &= \frac{x_1^2}{RT}\bigl[a_0 - a_1(3x_2 - x_1) + a_2(x_2 - x_1)(5x_2 - x_1)\bigr]
+\end{aligned}
 ```
 
 !!! note "Valid range"

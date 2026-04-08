@@ -241,6 +241,6 @@ function _default_ipopt_solver()
         dual_inf_tol = 1.0e-12,
         acceptable_iter = 1000,
         constr_viol_tol = 1.0e-12,
-        warm_start_init_point = "no",
+        warm_start_init_point = "yes",
     )
 end
