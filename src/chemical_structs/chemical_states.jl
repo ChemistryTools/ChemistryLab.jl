@@ -29,8 +29,8 @@ the underlying `ChemicalSystem`.
   - `V_phases`: volume per phase `(liquid, solid, gas, total)` — `PhaseQuantities{Q}`.
   - `pH`: pH of the liquid phase, or `nothing` if H⁺ is absent — `Float64 | Nothing`.
   - `pOH`: pOH of the liquid phase, or `nothing` if OH⁻ is absent — `Float64 | Nothing`.
-  - `porosity`: `(V_liquid + V_gas) / V_total`, or `nothing` if volumes unavailable — `Float64 | Nothing`.
-  - `saturation`: `V_liquid / (V_liquid + V_gas)`, or `nothing` if pore volume is zero — `Float64 | Nothing`.
+  - `porosity`: `(V_liquid + V_gas) / V_total`, or `NaN` if volumes unavailable — `Float64`.
+  - `saturation`: `V_liquid / (V_liquid + V_gas)`, or `NaN` if pore volume is zero — `Float64`.
 
 # Examples
 ```jldoctest
@@ -63,8 +63,8 @@ struct ChemicalState{C, S, Q <: AbstractQuantity}
     V_phases::Vector{PhaseQuantities{Q}}     # volume per phase — 1-element Vector for mutability
     pH::Vector{Union{Float64, Nothing}}      # dimensionless — Float64 or nothing
     pOH::Vector{Union{Float64, Nothing}}     # dimensionless — Float64 or nothing
-    porosity::Vector{Union{Float64, Nothing}}    # dimensionless ratio — V_pore / V_total
-    saturation::Vector{Union{Float64, Nothing}}  # dimensionless ratio — V_liq / V_pore
+    porosity::Vector{Float64}    # dimensionless ratio — V_pore / V_total (NaN if unavailable)
+    saturation::Vector{Float64}  # dimensionless ratio — V_liq / V_pore (NaN if pore volume zero)
 end
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -164,27 +164,27 @@ function _compute_V_phases(system::ChemicalSystem, n::AbstractVector, T, P)
 end
 
 """
-    _compute_porosity(V_phases) -> Union{Float64, Nothing}
+    _compute_porosity(V_phases) -> Float64
 
 Compute porosity = (V_liquid + V_gas) / V_total.
-Returns `nothing` if total volume is zero.
+Returns `NaN` if total volume is zero.
 """
 function _compute_porosity(V_phases)
     V_tot = V_phases.total
-    iszero(ustrip(V_tot)) && return nothing
-    return (V_phases.liquid + V_phases.gas) / V_tot   # dimensionless
+    iszero(ustrip(V_tot)) && return NaN
+    return ustrip((V_phases.liquid + V_phases.gas) / V_tot)
 end
 
 """
-    _compute_saturation(V_phases) -> Union{Float64, Nothing}
+    _compute_saturation(V_phases) -> Float64
 
 Compute saturation = V_liquid / (V_liquid + V_gas).
-Returns `nothing` if pore volume is zero.
+Returns `NaN` if pore volume is zero.
 """
 function _compute_saturation(V_phases)
     V_pore = V_phases.liquid + V_phases.gas
-    iszero(ustrip(V_pore)) && return nothing
-    return V_phases.liquid / V_pore                   # dimensionless
+    iszero(ustrip(V_pore)) && return NaN
+    return ustrip(V_phases.liquid / V_pore)
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
@@ -256,8 +256,8 @@ function ChemicalState(
         PhaseQuantities{Q}[V_ph],
         Union{Float64, Nothing}[_pH],
         Union{Float64, Nothing}[_pOH],
-        Union{Float64, Nothing}[_porosity],
-        Union{Float64, Nothing}[_saturation],
+        Float64[_porosity],
+        Float64[_saturation],
     )
 end
 
@@ -625,10 +625,10 @@ true
 pOH(state::ChemicalState) = state.pOH[]
 
 """
-    porosity(state::ChemicalState) -> Union{Float64, Nothing}
+    porosity(state::ChemicalState) -> Float64
 
 Return the porosity `(V_liquid + V_gas) / V_total`,
-or `nothing` if total volume is zero.
+or `NaN` if total volume is zero (no molar volumes available).
 
 # Examples
 ```jldoctest
@@ -639,17 +639,17 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
 
-julia> porosity(state) isa Union{Float64, Nothing}
+julia> porosity(state) isa Float64
 true
 ```
 """
 porosity(state::ChemicalState) = state.porosity[]
 
 """
-    saturation(state::ChemicalState) -> Union{Float64, Nothing}
+    saturation(state::ChemicalState) -> Float64
 
 Return the saturation `V_liquid / (V_liquid + V_gas)`,
-or `nothing` if pore volume is zero.
+or `NaN` if pore volume is zero.
 
 # Examples
 ```jldoctest
@@ -660,7 +660,7 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
 
-julia> saturation(state) isa Union{Float64, Nothing}
+julia> saturation(state) isa Float64
 true
 ```
 """
@@ -1125,15 +1125,15 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     println(io, _hhline())
 
     # ── Diagnostics ───────────────────────────────────────────────────────────
-    any_diag = !isnothing(state.pH[])       ||
-        !isnothing(state.pOH[])      ||
-        !isnothing(state.porosity[]) ||
-        !isnothing(state.saturation[])
+    any_diag = !isnothing(state.pH[])        ||
+        !isnothing(state.pOH[])       ||
+        !isnan(state.porosity[])  ||
+        !isnan(state.saturation[])
     if any_diag
-        isnothing(state.pH[])         || println(io, _full_row("pH", _fmt4(state.pH[])))
-        isnothing(state.pOH[])        || println(io, _full_row("pOH", _fmt4(state.pOH[])))
-        isnothing(state.porosity[])   || println(io, _full_row("porosity", _fmt6(state.porosity[])))
-        isnothing(state.saturation[]) || println(io, _full_row("saturation", _fmt6(state.saturation[])))
+        isnothing(state.pH[])          || println(io, _full_row("pH", _fmt4(state.pH[])))
+        isnothing(state.pOH[])         || println(io, _full_row("pOH", _fmt4(state.pOH[])))
+        isnan(state.porosity[])    || println(io, _full_row("porosity", _fmt6(state.porosity[])))
+        isnan(state.saturation[])  || println(io, _full_row("saturation", _fmt6(state.saturation[])))
     end
 
     return println(io, _botline())

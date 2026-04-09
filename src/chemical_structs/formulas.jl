@@ -624,11 +624,7 @@ true
 ```
 """
 function check_mendeleev(f::Formula)
-    # nonatoms = filter(x -> x ∉ keys(elements.bysymbol) && x != :Zz, keys(composition(f)))
-    keys_comp = collect(keys(composition(f)))
-    mask = .!in.(keys_comp, Ref(keys(elements.bysymbol))) .&& (keys_comp .!= :Zz)
-    nonatoms = keys_comp[mask]
-    # isempty(nonatoms) ? true : error("Invalid atoms $(join(nonatoms," ")) in $f")
+    nonatoms = filter(k -> k ∉ keys(elements.bysymbol) && k != :Zz, keys(composition(f)))
     return isempty(nonatoms)
 end
 
@@ -653,11 +649,9 @@ julia> calculate_molar_mass(OrderedDict(:H => 2, :O => 1))
 ```
 """
 function calculate_molar_mass(atoms::AbstractDict{Symbol, T}) where {T <: Number}
-    # return sum(cnt * ustrip(elements[element].atomic_mass) for (element, cnt) in atoms if haskey(elements, element); init=0) * u"g/mol"
-    # return uconvert(u"g/mol", sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
     molar_masses = [
-        cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass) for
-            (element, cnt) in atoms if haskey(elements, element)
+        cnt * convert(DynamicQuantities.Quantity, elements[element].atomic_mass)
+            for (element, cnt) in atoms if haskey(elements, element)
     ]
-    return length(molar_masses) > 0 ? sum(molar_masses) * Constants.N_A : 0u"g/mol"
+    return isempty(molar_masses) ? 0.0u"kg/mol" : sum(molar_masses) * Constants.N_A
 end

@@ -313,10 +313,10 @@ Used by `build_thermo_factories` to populate `ThermoFactory.output_unit`
 without relying on symbolic unit propagation.
 """
 const _THERMO_OUTPUT_UNITS = Dict{Symbol, AbstractQuantity}(
-    :Cp    => u"J/(mol*K)",
-    :S     => u"J/(mol*K)",
-    :H     => u"J/mol",
-    :G     => u"J/mol",
+    :Cp => u"J/(mol*K)",
+    :S => u"J/(mol*K)",
+    :H => u"J/mol",
+    :G => u"J/mol",
     :logKr => u"1",
 )
 
@@ -328,11 +328,11 @@ Helper function to build `ThermoFactory` objects from a model dictionary.
 function build_thermo_factories(dict_expr)
     return Dict(
         k => ThermoFactory(
-            v,
-            [:T, :P];
-            units = get(dict_expr, :units, nothing),
-            output_unit = get(_THERMO_OUTPUT_UNITS, k, u"1"),
-        ) for (k, v) in dict_expr if k != :units
+                v,
+                [:T, :P];
+                units = get(dict_expr, :units, nothing),
+                output_unit = get(_THERMO_OUTPUT_UNITS, k, u"1"),
+            ) for (k, v) in dict_expr if k != :units
     )
 end
 
@@ -358,4 +358,3 @@ function add_thermo_model(model_name, dict_model::AbstractDict)
     THERMO_MODELS[model_name] = dict_model
     return THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end
-

@@ -1403,9 +1403,9 @@ for OP in Symbol.(EQUAL_OPS)
 
     @eval @doc """
         $($OP)(r::Reaction, s::Reaction)
-
+    
     Dynamically generated reaction operator method for chemical equations using the '$($OP)' symbol.
-
+    
     This method:
     1. Takes two Reaction objects (r and s)
     2. Reverses the first reaction (r → -r)
@@ -1414,16 +1414,16 @@ for OP in Symbol.(EQUAL_OPS)
         - The combined species from both reactions
         - The equality operator set to '$($OP)'
         - Species split by sign (reactants vs products)
-
+    
     This allows writing chemical equations with natural notation.
-
+    
     # Arguments
     - `r`: First reaction (will be reversed in the operation)
     - `s`: Second reaction (will be added as-is)
-
+    
     # Returns
     - A new Reaction object combining both reactions with the '$($OP)' operator
-
+    
     # See also
     All supported operators: →, ↣, ↦, ⇾, ⟶, ⟼, ⥟, ⇀, ⇁, ⇒, ⟾, ←, ↢, ↤, ⇽, ⟵, ⟻, ⥚, ⥞, ↼, ↽, ⇐, ⟽, ↔, ⟷,     ⇄, ⇆, ⇌, ⇋, ⇔, ⟺, ≔, ⩴, ≕
     """ $OP

@@ -102,11 +102,11 @@
         @test isnothing(pOH(state))
     end
 
-    @testsection "porosity and saturation return nothing without V⁰" begin
+    @testsection "porosity and saturation return NaN without V⁰" begin
         state = ChemicalState(cs_basic, [55.5u"mol", 0.0u"mol", 0.0u"mol"])
-        # Without V⁰ all volumes are zero → porosity = nothing
-        @test isnothing(porosity(state)) || porosity(state) isa Number
-        @test isnothing(saturation(state)) || saturation(state) isa Number
+        # Without V⁰ all volumes are zero → porosity = NaN
+        @test isnan(porosity(state))
+        @test isnan(saturation(state))
     end
 
     @testsection "copy — independent mutable state" begin

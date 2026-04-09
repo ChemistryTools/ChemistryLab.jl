@@ -72,14 +72,14 @@ function activity_model(cs::ChemicalSystem, ::DiluteSolutionModel)
             # n_aqueous ≥ ϵ > 0 always (because _n[i] ≥ ϵ), so no iszero guard needed
             n_aqueous = _n[idx_solvent] + sum((_n[i] for i in idx_solutes); init = zero(eltype(_n)))
             out[idx_solvent] = log(_n[idx_solvent] / n_aqueous)
-            for i in idx_solutes
+            @inbounds for i in idx_solutes
                 out[i] = log(_n[i] / _n[idx_solvent]) + ln_c_solvent
             end
         end
 
         if has_gas
             n_gas = sum((_n[i] for i in idx_gas); init = zero(eltype(_n)))
-            for i in idx_gas
+            @inbounds for i in idx_gas
                 out[i] = log(_n[i] / n_gas)
             end
         end
@@ -435,7 +435,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
         # ── Ionic strength I = ½ Σ mⱼ zⱼ² ────────────────────────────────
         I = zero(eltype(_n))
-        for i in idx_solutes
+        @inbounds for i in idx_solutes
             mᵢ = _n[i] / denom_mol
             I = I + mᵢ * zv[i]^2
         end
@@ -444,7 +444,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
         # ── Effective radius å_eff for osmotic coefficient ─────────────────
         sum_mz2a = zero(eltype(_n))
-        for i in idx_ions
+        @inbounds for i in idx_ions
             sum_mz2a = sum_mz2a + (_n[i] / denom_mol) * zv[i]^2 * åv[i]
         end
         sum_mz2 = 2 * I                 # Σ mⱼ zⱼ² = 2I by definition
@@ -452,7 +452,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         å_eff = (sum_mz2a + model.å_default * ϵ) / (sum_mz2 + ϵ)
 
         # ── Ion log-activity coefficients ──────────────────────────────────
-        for i in idx_ions
+        @inbounds for i in idx_ions
             denom_dh = 1 + B * åv[i] * sqrtI
             log10γᵢ = -A * zv[i]^2 * sqrtI / denom_dh + Ḃ * I
             mᵢ = _n[i] / denom_mol
@@ -460,7 +460,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         end
 
         # ── Neutral solute log-activities ──────────────────────────────────
-        for i in idx_neutrals
+        @inbounds for i in idx_neutrals
             log10γᵢ = Kₙ * I
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
@@ -468,7 +468,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
         # ── Water activity via osmotic coefficient (Gibbs-Duhem) ───────────
         sum_m = zero(eltype(_n))
-        for i in idx_solutes
+        @inbounds for i in idx_solutes
             sum_m = sum_m + _n[i] / denom_mol
         end
         x_arg = B * å_eff * sqrtI
@@ -480,7 +480,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         # ── Gas: ideal mixture ─────────────────────────────────────────────
         if has_gas
             n_gas = sum((_n[i] for i in idx_gas); init = zero(eltype(_n)))
-            for i in idx_gas
+            @inbounds for i in idx_gas
                 out[i] = log(_n[i] / n_gas)
             end
         end
@@ -603,7 +603,7 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
 
         # Ionic strength
         I = zero(eltype(_n))
-        for i in idx_solutes
+        @inbounds for i in idx_solutes
             I = I + (_n[i] / denom_mol) * zv[i]^2
         end
         I = I / 2
@@ -611,14 +611,14 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
         dI = sqrtI / (1 + sqrtI)     # √I / (1 + √I)
 
         # Ions
-        for i in idx_ions
+        @inbounds for i in idx_ions
             log10γᵢ = -A * zv[i]^2 * (dI - b * I)
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
 
         # Neutral solutes
-        for i in idx_neutrals
+        @inbounds for i in idx_neutrals
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * bₙ * I + log(mᵢ + ϵ)
         end
@@ -631,7 +631,7 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
         # Gas: ideal mixture
         if has_gas
             n_gas = sum((_n[i] for i in idx_gas); init = zero(eltype(_n)))
-            for i in idx_gas
+            @inbounds for i in idx_gas
                 out[i] = log(_n[i] / n_gas)
             end
         end
@@ -689,11 +689,18 @@ Fill `out[i]` with `ln aᵢ = ln xᵢ + ln γᵢ` for all solid-solution end-mem
 
 ForwardDiff-compatible.
 """
-function _solid_solution_lna!(out, _n, ss_groups, ss_models, T, ϵ)
+function _solid_solution_lna!(
+        out::AbstractVector, _n::AbstractVector{ET},
+        ss_groups::Vector{Vector{Int}}, ss_models, T, ϵ
+    ) where {ET}
     for (grp, mdl) in zip(ss_groups, ss_models)
         n_total = sum(_n[i] for i in grp) + ϵ
-        x = [_n[i] / n_total for i in grp]
-        for (k, i) in enumerate(grp)
+        # ET follows eltype(_n) — AD-compatible (Dual when differentiating)
+        x = Vector{ET}(undef, length(grp))
+        @inbounds for (j, i) in enumerate(grp)
+            x[j] = _n[i] / n_total
+        end
+        @inbounds for (k, i) in enumerate(grp)
             out[i] = log(x[k] + ϵ) + _excess_ln_gamma(mdl, k, x, T)
         end
     end

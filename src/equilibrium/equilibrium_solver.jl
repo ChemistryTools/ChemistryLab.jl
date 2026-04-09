@@ -149,7 +149,6 @@ state_eq = equilibrate(state)
 function equilibrate(args...; kwargs...)
     return error(
         "equilibrate requires Optimization.jl and OptimizationIpopt.jl to be loaded.\n" *
-        "Add `using Optimization, OptimizationIpopt` before calling this function.",
+            "Add `using Optimization, OptimizationIpopt` before calling this function.",
     )
 end
-

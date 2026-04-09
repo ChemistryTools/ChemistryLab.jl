@@ -38,7 +38,7 @@ struct StoichMatrix{
     } <: AbstractMatrix{T}
     A::M
     primaries::V
-    species::AbstractVector{S}
+    species::Vector{S}
     N::M
 end
 
@@ -51,14 +51,14 @@ function StoichMatrix(
     ) where {M <: AbstractMatrix, S <: AbstractSpecies}
     indices_in = [findfirst(x -> x == p, species) for p in primaries]
     if any(x -> isnothing(x), indices_in)
-        return StoichMatrix(A, primaries, species, similar(A, 0, 0))
+        return StoichMatrix(A, primaries, Vector(species), similar(A, 0, 0))
     else
         p, n = size(A)
         N = similar(A, n, n - p)
         indices_out = setdiff(eachindex(species), indices_in)
         N[indices_out, :] .= Diagonal(ones(eltype(A), length(indices_out)))
         N[indices_in, :] .= -A[:, indices_out]
-        return StoichMatrix(A, primaries, species, N)
+        return StoichMatrix(A, primaries, Vector(species), N)
     end
 end
 
@@ -219,7 +219,7 @@ function CanonicalStoichMatrix(species::AbstractVector{<:AbstractSpecies})
         end
     end
 
-    return StoichMatrix(A, involved_atoms, species, similar(A, 0, 0))
+    return StoichMatrix(A, involved_atoms, Vector(species), similar(A, 0, 0))
 end
 
 """
