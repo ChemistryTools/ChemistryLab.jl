@@ -15,6 +15,7 @@ The convenience function [`equilibrate`](@ref) handles everything with sensible 
 The example below computes the equilibrium state of calcite (CaCO₃) dissolving in mildly acidic water — a standard geochemical benchmark.
 
 ```@example eq_setup
+using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
@@ -156,7 +157,7 @@ state_eq_tight = equilibrate(state; abstol=1e-12, reltol=1e-12)
 For batch calculations where many different initial states share the same system and activity model, construct an [`EquilibriumSolver`](@ref) once and reuse it:
 
 ```julia
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 opt = IpoptOptimizer(
     acceptable_tol        = 1e-12,
@@ -179,7 +180,7 @@ solver = EquilibriumSolver(
 Once built, `solver` is called with any compatible `ChemicalState`:
 
 ```@example eq_setup
-using OptimizationIpopt #hide
+using Optimization, OptimizationIpopt #hide
 
 opt = IpoptOptimizer( #hide
     acceptable_tol        = 1e-12, #hide

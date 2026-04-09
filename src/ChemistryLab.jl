@@ -91,23 +91,22 @@ module ChemistryLab
     import Base: ==, +, -, *, /, //, ^
 
     using Crayons
-    using CSV
     using DataFrames
     using DynamicQuantities
-    using TOML
     using ForwardDiff
     using JSON
     using LinearAlgebra
     using ModelingToolkit
-    using Optimization
-    using OptimizationIpopt
     using OrderedCollections
+    using Tables
     using PeriodicTable
     using PrettyTables
     using ProgressMeter
     using RuntimeGeneratedFunctions
     using SciMLBase
     using SymbolicNumericIntegration
+    using TOML
+    import OptimaSolver: OptimaOptimizer
     using Unicode
 
     RuntimeGeneratedFunctions.init(@__MODULE__)

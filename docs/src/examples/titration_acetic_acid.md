@@ -93,7 +93,7 @@ println("pKa = ", round(pKa, digits = 2))
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each titration point:
 
 ```julia
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 solver = EquilibriumSolver(
     cs,

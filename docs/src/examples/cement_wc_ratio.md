@@ -52,7 +52,7 @@ c     = sum(last.(compo))   # cement mass fraction (= 0.984 here)
 A single [`EquilibriumSolver`](@ref) is compiled once and reused for every w/c point:
 
 ```@example wc_setup
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 opt = IpoptOptimizer(
     acceptable_tol        = 1e-10,

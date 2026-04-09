@@ -1,14 +1,15 @@
 using Pkg
 Pkg.activate(@__DIR__)
 
-if !haskey(Pkg.project().dependencies, "Optima")
-    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "Optima.jl"))
+if !haskey(Pkg.project().dependencies, "OptimaSolver")
+    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "OptimaSolver.jl"))
 end
 
 using Revise
 using ChemistryLab
+using Optimization, OptimizationIpopt
+using OptimaSolver
 using DynamicQuantities
-using Optima
 
 substances = build_species("data/cemdata18-thermofun.json")
 input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@")
@@ -29,10 +30,10 @@ set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
 set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
 rescale!(state, 1.0u"kg")
 
-# ── Equilibrate with Optima ────────────────────────────────────────────────
+# ── Equilibrate with OptimaSolver ────────────────────────────────────────────────
 state_eq = equilibrate(
     state;
-    solver         = OptimaOptimizer(tol = 1e-8, verbose = true),
+    solver         = OptimaOptimizer(tol = 1e-9, verbose = true),
     variable_space = Val(:linear),
 )
 

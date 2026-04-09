@@ -70,7 +70,7 @@ cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 A single solver is compiled once and reused for all calculations.
 
 ```@example carbonation_setup
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 opt = IpoptOptimizer(
     acceptable_tol        = 1e-10,

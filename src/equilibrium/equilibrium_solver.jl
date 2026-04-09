@@ -112,135 +112,97 @@ function _build_n0(state::ChemicalState)
     return ustrip.(us"mol", state.n)    # no Float64 cast — type follows eltype(state.n)
 end
 
-# ── solve(EquilibriumSolver, ChemicalState) ───────────────────────────────────
-
-"""
-    solve(esolver::EquilibriumSolver, state::ChemicalState; ϵ=1e-16) -> ChemicalState
-
-Solve a chemical equilibrium problem from an initial `ChemicalState`.
-
-The conservation matrix `A` is taken from `state.system.SM.A`.
-The initial mole vector `n0` and thermodynamic parameters `ΔₐG⁰/RT`
-are extracted from `state` at its current `T` and `P`.
-
-Returns a new `ChemicalState` with equilibrium mole amounts,
-sharing the same `ChemicalSystem` as the input.
-
-# Arguments
-
-  - `esolver`: the `EquilibriumSolver` to use.
-  - `state`: initial state — defines `T`, `P`, and initial composition.
-  - `ϵ`: regularization floor (default: `1e-16`).
-
-# Examples
-```julia
-solver = EquilibriumSolver(cs, DiluteSolutionModel(), IpoptOptimizer();
-                           variable_space=Val(:log), abstol=1e-10)
-state0 = ChemicalState(cs, n0; T=298.15u"K", P=1u"bar")
-state_eq = solve(solver, state0)
-```
-"""
-function SciMLBase.solve(
-        esolver::EquilibriumSolver,
-        state::ChemicalState;
-        ϵ::Float64 = 1.0e-16,
-    )
-    cs = state.system
-
-    # Extract dimensionless inputs from state
-    n0 = _build_n0(state)
-    p = _build_params(state; ϵ = ϵ)
-
-    # Ensure initial guess is positive (critical for log variables)
-    n0 = max.(n0, ϵ)
-
-    # Build and solve the optimization problem
-    prob = EquilibriumProblem(cs.SM.A, esolver.μ, n0; p = p)
-    sol = solve(prob, esolver.solver; variable_space = esolver.variable_space, esolver.kwargs...)
-
-    # Wrap result back into a ChemicalState — same system, same T and P
-    state_eq = copy(state)                      # shares ChemicalSystem, copies n/T/P
-    for (i, nᵢ) in enumerate(sol.u)
-        state_eq.n[i] = max(nᵢ, ϵ) * u"mol"   # reattach units, enforce floor
-    end
-    _update_derived!(state_eq)                  # recompute phases, pH, porosity...
-
-    return state_eq
-end
+# ── equilibrate(ChemicalState) ────────────────────────────────────────────────
 
 """
     equilibrate(state::ChemicalState;
-                model    = DiluteSolutionModel(),
-                solver   = IpoptOptimizer(...),
-                variable_space  = Val(:log),
-                ϵ        = 1e-16,
+                model          = DiluteSolutionModel(),
+                solver         = IpoptOptimizer(...),
+                variable_space = Val(:linear),
+                ϵ              = 1e-16,
                 kwargs...) -> ChemicalState
 
 Compute the chemical equilibrium state from an initial `ChemicalState`.
 
-This is a high-level convenience function that wraps `EquilibriumSolver` and
-`solve` with sensible defaults. It is intended for users who do not need to
-fine-tune the solver.
+Requires `Optimization` and `OptimizationIpopt` to be loaded:
+
+```julia
+using Optimization, OptimizationIpopt
+using ChemistryLab
+state_eq = equilibrate(state)
+```
 
 # Arguments
 
   - `state`: initial `ChemicalState` — defines the system, T, P, and composition.
   - `model`: activity model (default: `DiluteSolutionModel()`).
   - `solver`: SciML-compatible solver (default: `IpoptOptimizer` with tight tolerances).
-  - `variable_space`: variable space — `Val(:linear)` or `Val(:log)` (default).
-    `Val(:log)` is more robust for systems spanning many orders of magnitude.
+  - `variable_space`: `Val(:linear)` (default) or `Val(:log)`.
   - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
   - `kwargs...`: additional keyword arguments forwarded to the solver.
-
-# Returns
-
-A new `ChemicalState` at thermodynamic equilibrium, with all derived quantities
-(pH, pOH, volumes, porosity, saturation) already computed.
-
-# Examples
-```julia
-# Minimal usage — all defaults
-state_eq = equilibrate(state)
-
-# Custom temperature-dependent run
-set_temperature!(state, 350.0u"K")
-state_eq = equilibrate(state)
-
-# Custom solver tolerance
-state_eq = equilibrate(state; abstol=1e-12, reltol=1e-12)
-
-# Custom activity model (future)
-state_eq = equilibrate(state; model=DebyeHuckelModel(A=0.51, B=3.28))
-```
 """
-function equilibrate(
-        state::ChemicalState;
-        model::AbstractActivityModel = DiluteSolutionModel(),
-        solver = _default_ipopt_solver(),
-        variable_space::Val = Val(:linear),
-        ϵ::Float64 = 1.0e-16,
-        kwargs...,
+function equilibrate(args...; kwargs...)
+    return error(
+        "equilibrate requires Optimization.jl and OptimizationIpopt.jl to be loaded.\n" *
+        "Add `using Optimization, OptimizationIpopt` before calling this function.",
     )
-    esolver = EquilibriumSolver(
-        state.system, model, solver;
-        variable_space = variable_space,
-        kwargs...,
+end
+
+# ── solve(EquilibriumSolver{OptimaOptimizer}, ChemicalState) ──────────────────
+# Available whenever OptimaSolver is loaded (direct dependency).
+# Uses SciMLBase.OptimizationFunction with NoAD — OptimaOptimizer handles
+# gradients internally via ForwardDiff.
+
+function _build_optima_opt_prob(ep::EquilibriumProblem, μ, ::Val{:linear})
+    f_gibbs(x, q) = LinearAlgebra.dot(x, μ(x, q))
+    cons!(res, x, _) = LinearAlgebra.mul!(res, ep.A, x) .-= ep.b
+    optf = SciMLBase.OptimizationFunction{true}(f_gibbs; cons = cons!)
+    return SciMLBase.OptimizationProblem(
+        optf, ep.u0, ep.p;
+        lb = ep.lb, ub = ep.ub,
+        lcons = zeros(size(ep.A, 1)),
+        ucons = zeros(size(ep.A, 1)),
     )
-    return solve(esolver, state; ϵ = ϵ)
+end
+
+function _build_optima_opt_prob(ep::EquilibriumProblem, μ, ::Val{:log})
+    f_gibbs(x, q) = (n = exp.(x); LinearAlgebra.dot(n, μ(n, q)))
+    cons!(res, x, _) = (n = exp.(x); LinearAlgebra.mul!(res, ep.A, n); res .-= ep.b)
+    optf = SciMLBase.OptimizationFunction{true}(f_gibbs; cons = cons!)
+    return SciMLBase.OptimizationProblem(
+        optf, log.(ep.u0), ep.p;
+        lb = log.(ep.lb), ub = log.(ep.ub),
+        lcons = zeros(size(ep.A, 1)),
+        ucons = zeros(size(ep.A, 1)),
+    )
 end
 
 """
-    _default_ipopt_solver() -> IpoptOptimizer
+    SciMLBase.solve(esolver::EquilibriumSolver{F,<:OptimaOptimizer,V},
+                   state::ChemicalState; ϵ=1e-16) -> ChemicalState
 
-Return an `IpoptOptimizer` instance with tight tolerances suitable for
-chemical equilibrium calculations.
+Solve a chemical equilibrium problem using an `OptimaOptimizer` solver.
+Available without loading `Optimization.jl` / `OptimizationIpopt.jl`.
 """
-function _default_ipopt_solver()
-    return IpoptOptimizer(
-        acceptable_tol = 1.0e-12,
-        dual_inf_tol = 1.0e-12,
-        acceptable_iter = 1000,
-        constr_viol_tol = 1.0e-12,
-        warm_start_init_point = "yes",
-    )
+function SciMLBase.solve(
+        esolver::EquilibriumSolver{F, <:OptimaOptimizer, V},
+        state::ChemicalState;
+        ϵ::Float64 = 1.0e-16,
+    ) where {F, V}
+    n0 = max.(_build_n0(state), ϵ)
+    p = _build_params(state; ϵ = ϵ)
+
+    prob = EquilibriumProblem(state.system.SM.A, esolver.μ, n0; p = p)
+    opt_prob = _build_optima_opt_prob(prob, esolver.μ, esolver.variable_space)
+
+    sol = SciMLBase.solve(opt_prob, esolver.solver; esolver.kwargs...)
+    transform = _solution_transform(esolver.variable_space)
+
+    state_eq = copy(state)
+    for (i, nᵢ) in enumerate(sol.u)
+        state_eq.n[i] = max(transform(nᵢ), ϵ) * u"mol"
+    end
+    _update_derived!(state_eq)
+
+    return state_eq
 end

@@ -1,15 +1,16 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))   # active l'environnement ChemistryLab.jl
+Pkg.activate(@__DIR__)
 
-if !haskey(Pkg.project().dependencies, "Optima")
-    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "Optima.jl"))
+if !haskey(Pkg.project().dependencies, "OptimaSolver")
+    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "OptimaSolver.jl"))
 end
 
+using Revise
 using ChemistryLab
+using Optimization, OptimizationIpopt
+using OptimaSolver
 using DynamicQuantities
 using ProgressMeter
-using SciMLBase: solve   # needed: Optima does not re-export SciMLBase.solve
-using Optima
 
 substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
 substances_org = build_species("data/slop98-organic-thermofun.json")
@@ -22,7 +23,7 @@ species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 
-# ── Solver : Optima with warm-start ────────────────────────────────────────
+# ── Solver : OptimaSolver with warm-start ────────────────────────────────────────
 solver = EquilibriumSolver(
     cs,
     DiluteSolutionModel(),
@@ -81,7 +82,7 @@ plt = plot(
     collect(volumes_NaOH), pH_vals;
     xlabel = "V(NaOH) (mL)",
     ylabel = "pH",
-    label = "Titration curve (Optima)",
+    label = "Titration curve (OptimaSolver)",
     linewidth = 2,
     marker = :circle,
     markersize = 3,

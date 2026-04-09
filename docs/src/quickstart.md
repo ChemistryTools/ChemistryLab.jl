@@ -87,6 +87,7 @@ Three objects are needed:
 | `equilibrate` | Convenience function that wraps a `ChemicalSystem` + `ChemicalState` into an optimisation problem and solves it. Returns a new equilibrated `ChemicalState`. |
 
 ```@example from_scratch
+using Optimization, OptimizationIpopt
 using DynamicQuantities
 
 # ChemicalSystem: declare the species and which four are the independent basis

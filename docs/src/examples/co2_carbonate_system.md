@@ -31,6 +31,7 @@ The three primary species `H2O@`, `H+`, `CO3-2` form a basis for the whole syste
 every other aqueous species is a linear combination of these three.
 
 ```@example carbonate_setup
+using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
@@ -92,7 +93,7 @@ println("pKw  (H₂O    / H⁺+OH⁻) = ", round(pKw,  digits = 2), "   (lit. 14
 A single [`EquilibriumSolver`](@ref) is compiled once and reused for every point of the scan:
 
 ```@example carbonate_setup
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 solver = EquilibriumSolver(
     cs,

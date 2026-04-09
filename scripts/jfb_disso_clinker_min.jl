@@ -3,6 +3,7 @@ Pkg.activate(@__DIR__)
 
 using Revise
 using ChemistryLab
+using Optimization, OptimizationIpopt
 using DynamicQuantities
 using Optimization, OptimizationMOI, OptimizationOptimJL, OptimizationIpopt
 

@@ -1,15 +1,17 @@
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))   # active l'environnement ChemistryLab.jl
+Pkg.activate(@__DIR__)
 
-if !haskey(Pkg.project().dependencies, "Optima")
-    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "Optima.jl"))
+if !haskey(Pkg.project().dependencies, "OptimaSolver")
+    Pkg.develop(path = joinpath(@__DIR__, "..", "..", "OptimaSolver.jl"))
 end
 
+using Revise
 using ChemistryLab
+using Optimization, OptimizationIpopt
+using OptimaSolver
 using DynamicQuantities
 using ProgressMeter
-using SciMLBase: solve   # needed: Optima does not re-export SciMLBase.solve
-using Optima
+
 
 substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
 substances_org = build_species("data/slop98-organic-thermofun.json")
@@ -33,7 +35,7 @@ pKa = -log10(Ka)
 println("Ka  = ", Ka)
 println("pKa = ", round(pKa, digits = 2))
 
-# ── Solver : Optima with warm-start ────────────────────────────────────────
+# ── Solver : OptimaSolver with warm-start ────────────────────────────────────────
 # warm_start=true reuses the previous equilibrium as initial guess at each step
 # → ~3× fewer iterations on a smooth titration curve.
 solver = EquilibriumSolver(
@@ -106,7 +108,7 @@ plt = plot(
     collect(volumes_NaOH), pH_vals;
     xlabel = "V(NaOH) (mL)",
     ylabel = "pH",
-    label = "Numerical (ChemistryLab + Optima)",
+    label = "Numerical (ChemistryLab + OptimaSolver)",
     linewidth = 0,
     marker = :circle,
     markersize = 3,

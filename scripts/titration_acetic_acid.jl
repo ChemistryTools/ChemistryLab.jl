@@ -1,4 +1,8 @@
+using Pkg
+Pkg.activate(@__DIR__)
+
 using ChemistryLab
+using Optimization, OptimizationIpopt
 using DynamicQuantities
 using ProgressMeter
 

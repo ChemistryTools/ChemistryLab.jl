@@ -52,7 +52,7 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 Build the [`EquilibriumSolver`](@ref) once — it is reused for each of the 66 titration points:
 
 ```@setup titration_setup
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 solver = EquilibriumSolver(
     cs,
@@ -69,7 +69,7 @@ solver = EquilibriumSolver(
 ```
 
 ```julia
-using OptimizationIpopt
+using Optimization, OptimizationIpopt
 
 solver = EquilibriumSolver(
     cs,

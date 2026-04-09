@@ -267,7 +267,7 @@ using ChemistryLab
 using DynamicQuantities
 
 # Linear Cp = a + b·T — register with explicit units so build_thermo_functions works
-add_thermo_model(:linear_Cp, :(a + b * T), [:T => "K", :a => "J/mol/K", :b => "J/(mol*K^2)"])
+add_thermo_model(:linear_Cp, :(a + b * T), [:T => u"K", :a => u"J/mol/K", :b => u"J/(mol*K^2)"])
 
 # Build functions for a hypothetical species
 params = Dict(
@@ -298,7 +298,7 @@ using DynamicQuantities
 
 # Cp = Cp0 — constant, independent of T
 # Use :(Cp0 * T^0) so the expression is an Expr (not a bare Symbol) and T stays in the vars list
-add_thermo_model(:const_Cp, :(Cp0 * T^0), [:T => "K", :Cp0 => "J/mol/K"])
+add_thermo_model(:const_Cp, :(Cp0 * T^0), [:T => u"K", :Cp0 => u"J/mol/K"])
 
 params = Dict(
     :Cp0  => 75.3u"J/mol/K",       # water
@@ -323,13 +323,14 @@ For maximum control, supply all four expressions directly:
 
 ```julia
 using ChemistryLab
+using DynamicQuantities
 
 add_thermo_model(:my_model, Dict(
     :Cp => :(a + b * T + c / T^2),
     :H  => :(a * T + b * T^2 / 2 - c / T),
     :S  => :(a * log(T) + b * T - c / (2 * T^2)),
     :G  => :(-(a * T * log(T) - a * T) - b * T^2 / 2 - c / (2 * T)),
-    :units => [:a => "J/mol/K", :b => "J/(mol*K^2)", :c => "J*K/mol", :T => "K"],
+    :units => [:a => u"J/mol/K", :b => u"J/(mol*K^2)", :c => u"J*K/mol", :T => u"K"],
 ))
 ```
 
