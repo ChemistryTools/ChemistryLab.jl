@@ -4,7 +4,7 @@ This example is equivalent to quickstart except that no database is needed.
 
 Let us recall the example which consisted of studying the dissolution of calcite in water.
 
-$\text{CaCO}_3 \rightleftharpoons \text{Ca}^{2+} + {\text{CO}_3}^{2-}$
+$\ce{CaCO3 <=> Ca^2+ + CO3^2-}$
 
 
 It is possible to calculate the thermodynamic properties of the reaction, in particular the solubility constant of the reaction ($\ln K$) which is related to the Gibbs free energy of the reaction ($\Delta_r G^°$). This solubility constant is a function of temperature and the calculation is performed at a reference temperature of 298 K and at a pressure of 1 Atm using the following equation:
@@ -122,14 +122,14 @@ plot!(p1, θ -> calcite.ΔₐG⁰(T = 273.15+θ), 0:0.1:100, label="ΔₐG⁰ of
 ```
 
 
-Similarly, we can provide information on the thermal capacity of species $Ca^{2+}$ and ${CO_3}^{2-}$, as proposed in the thermoddem database:
+Similarly, we can provide information on the thermal capacity of species $\ce{Ca^2+}$ and $\ce{CO3^2-}$, as proposed in the thermoddem database:
 
 ![Figure](../assets/ca_properties_thermoddem.png)
 
 ![Figure](../assets/co3_properties_thermoddem.png)
 
 
-These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $Ca^{2+}$ and ${CO_3}^{-2}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers (HKF) equation for Cp(T) of aqueous ions. The HKF Cp(T) model is not currently available as a built-in thermodynamic model in ChemistryLab; we therefore use the constant value at 25 °C given in Thermoddem, that is -26.38 and -276.88 J mol⁻¹ K⁻¹ respectively.
+These new properties are also functions of temperature. However, unlike calcite, the heat capacities of $\ce{Ca^2+}$ and $\ce{CO3^2-}$ as a function of temperature are expressed using the Helgeson-Kirkham-Flowers (HKF) equation for Cp(T) of aqueous ions. The HKF Cp(T) model is not currently available as a built-in thermodynamic model in ChemistryLab; we therefore use the constant value at 25 °C given in Thermoddem, that is -26.38 and -276.88 J mol⁻¹ K⁻¹ respectively.
 
 
 ```@example example1

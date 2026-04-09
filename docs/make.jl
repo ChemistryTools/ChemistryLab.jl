@@ -23,6 +23,10 @@ makedocs(;
     authors="Jean-François Barthélémy and Anthony Soive",
     sitename="ChemistryLab.jl",
     format=Documenter.HTML(;
+        mathengine=Documenter.MathJax3(Dict(
+            :loader => Dict("load" => ["[tex]/mhchem"]),
+            :tex    => Dict("packages" => Dict("[+]" => ["mhchem"])),
+        )),
         canonical="https://ChemistryTools.github.io/ChemistryLab.jl",
         edit_link="main",
         assets=["assets/favicon.ico", "assets/custom.css"],

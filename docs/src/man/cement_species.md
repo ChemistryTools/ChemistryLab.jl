@@ -30,7 +30,7 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name="Ferrite", symbol="C₄A
 ```
 
 !!! warning "Warning"
-    Not every molecule can be used to build a cement species. It is necessary for this molecule to decompose into a combination of the oxides present in the manufacturers' cement sheet (e.g. $CaO$, $SiO_2$, $Fe_2O_3$, $Al_2O_3$) and water. Thus, the following code will return an error.
+    Not every molecule can be used to build a cement species. It is necessary for this molecule to decompose into a combination of the oxides present in the manufacturers' cement sheet (e.g. $\ce{CaO}$, $\ce{SiO2}$, $\ce{Fe2O3}$, $\ce{Al2O3}$) and water. Thus, the following code will return an error.
     ```julia
     CemSpecies(Species("Ca(OH)"))
     ```

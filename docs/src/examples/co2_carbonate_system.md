@@ -55,9 +55,9 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "CO3-2"])
 
 The two acid–base equilibria of the carbonate system are:
 
-$$\text{CO}_2(\text{aq}) + \text{H}_2\text{O} \rightleftharpoons \text{H}^+ + \text{HCO}_3^- \qquad \text{pK}_{a1} \approx 6.35$$
+$$\ce{CO2(aq) + H2O <=> H+ + HCO3-} \qquad \text{pK}_{a1} \approx 6.35$$
 
-$$\text{HCO}_3^- \rightleftharpoons \text{H}^+ + \text{CO}_3^{2-} \qquad \text{pK}_{a2} \approx 10.33$$
+$$\ce{HCO3- <=> H+ + CO3^2-} \qquad \text{pK}_{a2} \approx 10.33$$
 
 Both constants are computed from standard Gibbs energies of formation at 25 °C,
 exactly as in the acetic acid titration example:
@@ -207,11 +207,11 @@ p1
 The distribution of carbonate species as a function of pH follows from the two pKₐ values.
 Using the computed constants, the analytical mole fractions are:
 
-$$\alpha_0(\text{CO}_2) = \frac{[\text{H}^+]^2}{[\text{H}^+]^2 + K_{a1}[\text{H}^+] + K_{a1}K_{a2}}$$
+$$\alpha_0(\ce{CO2}) = \frac{[\ce{H+}]^2}{[\ce{H+}]^2 + K_{a1}[\ce{H+}] + K_{a1}K_{a2}}$$
 
-$$\alpha_1(\text{HCO}_3^-) = \frac{K_{a1}[\text{H}^+]}{[\text{H}^+]^2 + K_{a1}[\text{H}^+] + K_{a1}K_{a2}}$$
+$$\alpha_1(\ce{HCO3-}) = \frac{K_{a1}[\ce{H+}]}{[\ce{H+}]^2 + K_{a1}[\ce{H+}] + K_{a1}K_{a2}}$$
 
-$$\alpha_2(\text{CO}_3^{2-}) = \frac{K_{a1}K_{a2}}{[\text{H}^+]^2 + K_{a1}[\text{H}^+] + K_{a1}K_{a2}}$$
+$$\alpha_2(\ce{CO3^2-}) = \frac{K_{a1}K_{a2}}{[\ce{H+}]^2 + K_{a1}[\ce{H+}] + K_{a1}K_{a2}}$$
 
 ```julia
 Ka1_val = 10^(-pKa1)

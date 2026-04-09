@@ -5,7 +5,7 @@ Atmospheric CO₂ diffuses into the concrete cover, dissolves into the pore wate
 with the alkaline hydration products — above all portlandite Ca(OH)₂ and calcium silicate
 hydrates (CSH) — to precipitate calcium carbonate (calcite):
 
-$$\text{Ca(OH)}_2 + \text{CO}_2 \;\longrightarrow\; \text{CaCO}_3 + \text{H}_2\text{O}$$
+$$\ce{Ca(OH)2 + CO2 -> CaCO3 + H2O}$$
 
 This consumption of alkalinity drives the pore-solution pH from ≈ 12.5–13 down to ≈ 8–9,
 below the passivation threshold of the steel reinforcement (~9.5).
