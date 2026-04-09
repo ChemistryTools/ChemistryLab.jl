@@ -1,3 +1,6 @@
+using JSON
+using TOML
+
 """
     parse_reaction_stoich_cemdata(reaction_line::AbstractString) -> (Vector, String, String)
 

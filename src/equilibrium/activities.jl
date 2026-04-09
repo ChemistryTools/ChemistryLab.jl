@@ -1,3 +1,6 @@
+using DynamicQuantities
+using LinearAlgebra
+
 # ── Abstract activity model ───────────────────────────────────────────────────
 
 """

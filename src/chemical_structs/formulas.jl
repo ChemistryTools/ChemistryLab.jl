@@ -1,3 +1,8 @@
+using Crayons
+using OrderedCollections
+using PeriodicTable
+using Unicode
+
 """
     struct AtomGroup{T}
 

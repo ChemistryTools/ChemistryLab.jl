@@ -1,3 +1,6 @@
+using OrderedCollections
+using Unicode
+
 """
     stoich_coef_round(x::T; tol=1e-4) where {T<:Real} -> Union{Int, Rational, Float64}
     stoich_coef_round(x) -> Any

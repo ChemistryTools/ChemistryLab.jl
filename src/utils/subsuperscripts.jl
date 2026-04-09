@@ -1,3 +1,5 @@
+using OrderedCollections
+
 const dict_super_to_normal = OrderedDict{Char, Char}(
     '⁰' => '0',
     '¹' => '1',

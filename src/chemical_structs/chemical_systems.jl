@@ -1,3 +1,6 @@
+using LinearAlgebra
+using OrderedCollections
+
 """
     struct ChemicalSystem{T<:AbstractSpecies, R<:AbstractReaction, C, S, SS} <: AbstractVector{T}
 

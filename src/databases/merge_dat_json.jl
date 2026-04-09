@@ -1,3 +1,6 @@
+using JSON
+using OrderedCollections
+
 """
     merge_reactions(json_data::Dict, new_reactions::Dict) -> Dict
 

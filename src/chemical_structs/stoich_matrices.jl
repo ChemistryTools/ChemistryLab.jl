@@ -1,3 +1,7 @@
+using LinearAlgebra
+using OrderedCollections
+using PrettyTables
+
 """
         StoichMatrix{T,P}
 

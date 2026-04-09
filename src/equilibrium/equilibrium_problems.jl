@@ -1,3 +1,6 @@
+using DynamicQuantities
+using SciMLBase
+
 """
     EquilibriumProblem
 

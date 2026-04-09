@@ -90,22 +90,7 @@ module ChemistryLab
 
     import Base: ==, +, -, *, /, //, ^
 
-    using Crayons
-    using DataFrames
-    using DynamicQuantities
-    using ForwardDiff
-    using JSON
-    using LinearAlgebra
-    using Symbolics
-    using OrderedCollections
-    using Tables
-    using PeriodicTable
-    using PrettyTables
-    using ProgressMeter
     using RuntimeGeneratedFunctions
-    using SciMLBase
-    using TOML
-    using Unicode
 
     RuntimeGeneratedFunctions.init(@__MODULE__)
 

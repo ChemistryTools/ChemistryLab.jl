@@ -1,3 +1,5 @@
+using OrderedCollections
+
 """
     same_components(::AbstractVector{<:AbstractSpecies}) -> Function
 

@@ -1,3 +1,5 @@
+using OrderedCollections
+
 """
     ATOMIC_ORDER :: Vector{Symbol}
 

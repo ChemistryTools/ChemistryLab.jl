@@ -1,3 +1,8 @@
+using DynamicQuantities
+using ForwardDiff
+using OrderedCollections
+using SciMLBase
+
 # ── EquilibriumSolver ─────────────────────────────────────────────────────────
 
 """
