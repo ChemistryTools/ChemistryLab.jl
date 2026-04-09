@@ -18,7 +18,7 @@ keywords:
   - "activity models"
   - "solid solutions"
   - "cement"
-version: "0.2.3"
+version: "0.2.4"
 doi: "10.5281/zenodo.17756074"
 url: "https://github.com/ChemistryTools/ChemistryLab.jl"
 repository-code: "https://github.com/ChemistryTools/ChemistryLab.jl"
