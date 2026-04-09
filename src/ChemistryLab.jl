@@ -106,7 +106,6 @@ module ChemistryLab
     using SciMLBase
     using SymbolicNumericIntegration
     using TOML
-    import OptimaSolver: OptimaOptimizer
     using Unicode
 
     RuntimeGeneratedFunctions.init(@__MODULE__)
