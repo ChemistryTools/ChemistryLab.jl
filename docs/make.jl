@@ -1,4 +1,5 @@
 using ChemistryLab
+using Optimization, OptimizationIpopt  # load extension OptimizationIpoptExt
 using Documenter
 using PrettyTables
 
