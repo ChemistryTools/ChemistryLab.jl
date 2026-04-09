@@ -342,30 +342,37 @@ Compile a symbolic expression to RuntimeGeneratedFunction.
 """
 function compile_symbolic(symbolic_expr, var_symbols)
     return if length(var_symbols) == 1
-        build_function(symbolic_expr, var_symbols[1]; expression = Val(false))
+        Symbolics.build_function(symbolic_expr, var_symbols[1]; expression = Val(false))
     else
-        build_function(symbolic_expr, var_symbols...; expression = Val(false))
+        Symbolics.build_function(symbolic_expr, var_symbols...; expression = Val(false))
     end
 end
 
 """
-    ThermoFactory
+    ThermoFactory{Q}
 
 Factory for creating `SymbolicFunc` instances from expressions.
+Units for each variable/parameter and the output unit are stored explicitly,
+removing the need for symbolic unit propagation (previously done via ModelingToolkitBase).
 """
-struct ThermoFactory
+struct ThermoFactory{Q}
     symbolic::Num
     vars::OrderedDict{Symbol, Num}
     params::OrderedDict{Symbol, Num}
+    units::Dict{Symbol, Q}                                      # unit per var/param
+    output_unit::Q                                              # explicit output unit
     cache::Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}
 
     function ThermoFactory(
-            symbolic::Union{SymbolicUtils.BasicSymbolic, Num},
+            symbolic::Num,
             vars::AbstractDict{Symbol, Num},
             params::AbstractDict{Symbol, Num},
-        )
-        return new(
-            symbolic, vars, params, Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}()
+            units::Dict{Symbol, Q},
+            output_unit::Q,
+        ) where {Q}
+        return new{Q}(
+            symbolic, vars, params, units, output_unit,
+            Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}(),
         )
     end
 end
@@ -381,50 +388,59 @@ Create a `ThermoFactory` from a symbolic expression.
   - `vars`: list of variable symbols (default: T, P, t, x, y, z).
   - `units`: dictionary mapping symbols to their units.
 """
-function ThermoFactory(expr, vars = [:T, :P, :t, :x, :y, :z]; units = nothing)
+function ThermoFactory(
+        expr,
+        vars = [:T, :P, :t, :x, :y, :z];
+        units = nothing,
+        output_unit = nothing,
+    )
     vars, params = extract_vars_params(expr, vars)
     var_sym_dict = OrderedDict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
     param_sym_dict = OrderedDict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
+
     to_dict(nt::NamedTuple) = Dict(pairs(nt))
     to_dict(v::AbstractVector{<:Pair}) = Dict(v)
     to_unit(s::String) = uparse(s)
-    to_unit(q::Quantity) = oneunit(q)
-    to_unit(x) = u"1"
+    to_unit(q::AbstractQuantity) = oneunit(q)
+    to_unit(::Any) = u"1"
+
+    _fallback = u"1"
     if !isnothing(units)
         dict_units = to_dict(units)
-        for p in keys(var_sym_dict)
-            var_sym_dict[p] = setmetadata(
-                var_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p])
-            )
-        end
-        for p in keys(param_sym_dict)
-            param_sym_dict[p] = setmetadata(
-                param_sym_dict[p], ModelingToolkitBase.VariableUnit, to_unit(dict_units[p])
-            )
-        end
+        unit_dict = Dict{Symbol, typeof(_fallback)}(
+            sym => (haskey(dict_units, sym) ? to_unit(dict_units[sym]) : _fallback)
+                for sym in Iterators.flatten((keys(var_sym_dict), keys(param_sym_dict)))
+        )
+    else
+        unit_dict = Dict{Symbol, typeof(_fallback)}(
+            sym => _fallback
+                for sym in Iterators.flatten((keys(var_sym_dict), keys(param_sym_dict)))
+        )
     end
+
+    out_unit = isnothing(output_unit) ? _fallback : to_unit(output_unit)
+
     all_symbols = merge(var_sym_dict, param_sym_dict)
-    symbolic = Symbolics.parse_expr_to_symbolic(expr, all_symbols)
-    return ThermoFactory(symbolic, var_sym_dict, param_sym_dict)
+    symbolic = Symbolics.wrap(Symbolics.parse_expr_to_symbolic(expr, all_symbols))
+    return ThermoFactory(symbolic, var_sym_dict, param_sym_dict, unit_dict, out_unit)
 end
 
 """
-    get_unit(factory::ThermoFactory) -> Unitful.Unit
+    get_unit(factory::ThermoFactory) -> Quantity
 
-Get the unit of the expression managed by the factory.
+Get the output unit of the expression managed by the factory.
 """
 function get_unit(factory::ThermoFactory)
-    return ModelingToolkitBase.get_unit(factory.symbolic)
+    return factory.output_unit
 end
 
 """
-    get_unit(factory::ThermoFactory, sym::Symbol) -> Unitful.Unit
+    get_unit(factory::ThermoFactory, sym::Symbol) -> Quantity
 
 Get the unit of a specific variable or parameter in the factory.
 """
 function get_unit(factory::ThermoFactory, sym::Symbol)
-    vp = get(factory.vars, sym, get(factory.params, sym, nothing))
-    return ModelingToolkitBase.get_unit(vp)
+    return get(factory.units, sym, u"1")
 end
 
 """
@@ -521,7 +537,7 @@ Create a constant `SymbolicFunc` from a quantity.
 """
 function SymbolicFunc(x::Quantity)
     x = uexpand(x)
-    factory = ThermoFactory(:c; units = [:c => oneunit(x)])
+    factory = ThermoFactory(:c; units = [:c => oneunit(x)], output_unit = oneunit(x))
     return factory(; c = x)
 end
 
@@ -534,13 +550,6 @@ function SymbolicFunc(x::Number)
     factory = ThermoFactory(:c)
     return factory(; c = x)
 end
-
-# function SymbolicFunc(symexpr::Union{SymbolicUtils.BasicSymbolic, Num}; kwargs...)
-#     vars = Symbol.(get_variables(symexpr))
-#     refs = NamedTuple([v => kwargs[v] for v in vars if haskey(kwargs, v)])
-#     compiled = compile_symbolic(symexpr, collect(vars))
-#     return SymbolicFunc(Num(symexpr), Tuple(vars), refs, compiled, ModelingToolkitBase.get_unit(symexpr))
-# end
 
 # ── SymbolicFunc arithmetic ────────────────────────────────────────────────────
 

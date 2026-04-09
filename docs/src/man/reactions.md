@@ -59,7 +59,7 @@ pprint(r)
 
 ```@example
 using ChemistryLab
-using ModelingToolkit
+using Symbolics
 @variables a b g
 CSH = CemSpecies(Dict(:C => a, :S => one(Num), :H => g))
 C3S = CemSpecies("C3S")
@@ -70,7 +70,7 @@ r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
 
 ```@example
 using ChemistryLab
-using ModelingToolkit
+using Symbolics
 using PrettyTables
 @variables a b g
 CSH = CemSpecies(Dict(:C => a, :S => one(Num), :H => g))

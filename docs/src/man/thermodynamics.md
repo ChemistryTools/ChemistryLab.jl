@@ -265,6 +265,7 @@ The simplest way to add a new model is to provide a Julia expression for Cp(T). 
 ```@example custom_model
 using ChemistryLab
 using DynamicQuantities
+using SymbolicNumericIntegration  # required for add_thermo_model with Cp expression
 
 # Linear Cp = a + b·T — register with explicit units so build_thermo_functions works
 add_thermo_model(:linear_Cp, :(a + b * T), [:T => u"K", :a => u"J/mol/K", :b => u"J/(mol*K^2)"])
@@ -295,6 +296,7 @@ dtf[:ΔₐG⁰](T = 400.0)
 ```@example custom_model2
 using ChemistryLab
 using DynamicQuantities
+using SymbolicNumericIntegration  # required for add_thermo_model with Cp expression
 
 # Cp = Cp0 — constant, independent of T
 # Use :(Cp0 * T^0) so the expression is an Expr (not a bare Symbol) and T stays in the vars list

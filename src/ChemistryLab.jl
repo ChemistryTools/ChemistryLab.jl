@@ -96,7 +96,7 @@ module ChemistryLab
     using ForwardDiff
     using JSON
     using LinearAlgebra
-    using ModelingToolkit
+    using Symbolics
     using OrderedCollections
     using Tables
     using PeriodicTable
@@ -104,7 +104,6 @@ module ChemistryLab
     using ProgressMeter
     using RuntimeGeneratedFunctions
     using SciMLBase
-    using SymbolicNumericIntegration
     using TOML
     using Unicode
 
@@ -116,6 +115,7 @@ module ChemistryLab
     include("thermodynamics/thermo_factories.jl")
     include("thermodynamics/water_properties.jl")
     include("thermodynamics/thermo_models.jl")
+    include("thermodynamics/precompile.jl")
 
     include("chemical_structs/element_order.jl")
     include("chemical_structs/parsing_tools.jl")

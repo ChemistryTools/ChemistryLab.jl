@@ -1,5 +1,6 @@
 using ChemistryLab
 using DynamicQuantities
+using SymbolicNumericIntegration
 using Test
 using TimerOutputs
 

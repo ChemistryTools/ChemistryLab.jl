@@ -148,7 +148,7 @@ function build_thermo_functions(::Val{M}, params) where {M}
     δS⁰ = STref - S(; T = Tref, unit = true)
     S⁰ = S + δS⁰
 
-    T = SymbolicFunc(:T; units = [:T => "K"])
+    T = SymbolicFunc(:T; units = [:T => u"K"], output_unit = u"K")
     if haskey(dict_factories, :G)
         G = dict_factories[:G](; params...)
         ΔₐG⁰ = (G - T * δS⁰) + (GTref - G(; T = Tref, unit = true) + Tref * δS⁰)
@@ -303,14 +303,33 @@ function _build_hkf_thermo_functions(params)
 end
 
 """
+    _THERMO_OUTPUT_UNITS
+
+Explicit output units for each thermodynamic function key.
+Used by `build_thermo_factories` to populate `ThermoFactory.output_unit`
+without relying on symbolic unit propagation.
+"""
+const _THERMO_OUTPUT_UNITS = Dict{Symbol, AbstractQuantity}(
+    :Cp    => u"J/(mol*K)",
+    :S     => u"J/(mol*K)",
+    :H     => u"J/mol",
+    :G     => u"J/mol",
+    :logKr => u"1",
+)
+
+"""
     build_thermo_factories(dict_expr) -> Dict
 
 Helper function to build `ThermoFactory` objects from a model dictionary.
 """
 function build_thermo_factories(dict_expr)
     return Dict(
-        k => ThermoFactory(v, [:T, :P]; units = get(dict_expr, :units, nothing)) for
-            (k, v) in dict_expr if k != :units
+        k => ThermoFactory(
+            v,
+            [:T, :P];
+            units = get(dict_expr, :units, nothing),
+            output_unit = get(_THERMO_OUTPUT_UNITS, k, u"1"),
+        ) for (k, v) in dict_expr if k != :units
     )
 end
 
@@ -323,60 +342,17 @@ Add a new thermodynamic model to the registry using a dictionary of expressions.
 
   - `model_name`: unique symbol for the model.
   - `dict_model`: dictionary containing symbolic expressions and units.
+
+See also: `add_thermo_model(model_name, Cpexpr::Expr, units)` — variant that automatically
+integrates a Cp expression to obtain H, S and G. Requires loading `SymbolicNumericIntegration`:
+
+```julia
+using SymbolicNumericIntegration
+add_thermo_model(:my_model, :(a + b*T), [:T => u"K", :a => u"J/mol/K", :b => u"J/(mol*K^2)"])
+```
 """
 function add_thermo_model(model_name, dict_model::AbstractDict)
     THERMO_MODELS[model_name] = dict_model
     return THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
 end
 
-"""
-    add_thermo_model(model_name, Cpexpr::Expr, units=nothing)
-
-Add a new thermodynamic model derived from a heat capacity (Cp) expression.
-Automatically integrates Cp to find H, S, and G.
-
-# Arguments
-
-  - `model_name`: unique symbol for the model.
-  - `Cpexpr`: symbolic expression for heat capacity as a function of T.
-  - `units`: optional dictionary of units for parameters.
-"""
-function add_thermo_model(model_name, Cpexpr::Expr, units = nothing)
-    vars, params = extract_vars_params(Cpexpr, [:T])
-    var_sym_dict = Dict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
-    param_sym_dict = Dict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
-    all_symbols = merge(var_sym_dict, param_sym_dict)
-    T = var_sym_dict[:T]
-
-    Cp = Symbolics.simplify(
-        Symbolics.expand(Symbolics.parse_expr_to_symbolic(Cpexpr, all_symbols))
-    )
-    H = integrate(Cp, T; symbolic = true, detailed = false)
-
-    integS = sum(terms(Cp) ./ T)
-    S = integrate(integS, T; symbolic = true, detailed = false)
-
-    G = integrate(-S, T; symbolic = true, detailed = false)
-
-    # Build a Dict{Symbol, Any} so we can add String default units without
-    # triggering a type-mismatch push! when the caller passed Quantity values.
-    units_dict = if isnothing(units)
-        nothing
-    else
-        d = Dict{Symbol, Any}(units)
-        get!(d, :Cp, "J/mol/K")
-        get!(d, :S, "J/mol/K")
-        get!(d, :H, "J/mol")
-        get!(d, :G, "J/mol")
-        collect(pairs(d))   # convert back to a vector of Pairs for ThermoFactory
-    end
-
-    dict_model = if isnothing(units_dict)
-        Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G))
-    else
-        Dict(:Cp => Cpexpr, :H => toexpr(H), :S => toexpr(S), :G => toexpr(G), :units => units_dict)
-    end
-
-    THERMO_MODELS[model_name] = dict_model
-    return THERMO_FACTORIES[model_name] = build_thermo_factories(dict_model)
-end

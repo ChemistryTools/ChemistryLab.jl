@@ -1,7 +1,7 @@
 using Revise
 using ChemistryLab
 using DynamicQuantities
-using ModelingToolkit
+using Symbolics
 using Plots
 
 # Formula

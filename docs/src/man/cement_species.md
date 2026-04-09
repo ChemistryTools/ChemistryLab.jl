@@ -48,11 +48,11 @@ ox = Dict(:C => 1.666667, :S => 1, :H => 2.1)
 jennite = CemSpecies(ox, aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 ```
 
-Symbolic values are also allowed. In this case, you need to use the [`ModelingToolkit`](https://github.com/SciML/ModelingToolkit.jl) library:
+Symbolic values are also allowed. In this case, you need to use [`Symbolics`](https://github.com/JuliaSymbolics/Symbolics.jl) (already a dependency of ChemistryLab):
 
 ```julia
 using ChemistryLab
-using ModelingToolkit
+using Symbolics
 @variables a g
 ox = Dict(:C => a, :S => one(Num), :H => g)
 CSH = CemSpecies(ox)
