@@ -52,15 +52,15 @@ ProgressMeter = "1"
 RuntimeGeneratedFunctions = "0.5.16"
 SciMLBase = "2"
 SymbolicNumericIntegration = "1.10.0"
+TimerOutputs = "0.5"
 TOML = "1"
 Tables = "1"
 Unicode = "1"
 julia = "1.12"
 
 [extras]
-SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Test", "TimerOutputs", "SymbolicNumericIntegration"]
+test = ["Test", "TimerOutputs"]
