@@ -1,6 +1,18 @@
 using DynamicQuantities
 using OrderedCollections
 
+const PhaseQuantities{Q} = @NamedTuple{liquid::Q, solid::Q, gas::Q, total::Q}
+
+@doc """
+    PhaseQuantities{Q}
+
+Named tuple type alias `(liquid::Q, solid::Q, gas::Q, total::Q)` for
+phase-aggregated quantities (moles, mass, or volume).
+
+Each field holds the total of the corresponding thermodynamic phase.
+`Q` is typically an `AbstractQuantity` carrying SI units (mol, kg, or m³).
+""" PhaseQuantities
+
 """
     struct ChemicalState{C, S, Q<:AbstractQuantity}
 
@@ -48,18 +60,6 @@ julia> ustrip(state.T[])
 298.15
 ```
 """
-const PhaseQuantities{Q} = @NamedTuple{liquid::Q, solid::Q, gas::Q, total::Q}
-
-@doc """
-    PhaseQuantities{Q}
-
-Named tuple type alias `(liquid::Q, solid::Q, gas::Q, total::Q)` for
-phase-aggregated quantities (moles, mass, or volume).
-
-Each field holds the total of the corresponding thermodynamic phase.
-`Q` is typically an `AbstractQuantity` carrying SI units (mol, kg, or m³).
-""" PhaseQuantities
-
 struct ChemicalState{C, S, Q <: AbstractQuantity}
     system::ChemicalSystem{C, S}             # shared reference — not duplicated on copy
     n::Vector{Q}                             # molar amounts [mol] — always stored in mol
