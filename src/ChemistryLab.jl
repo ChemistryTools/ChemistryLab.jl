@@ -208,6 +208,8 @@ module ChemistryLab
         reactants,
         products,
         charge,
+        equation,
+        equal_sign,
         simplify_reaction
     @eval export $(Symbol.(EQUAL_OPS)...)
 

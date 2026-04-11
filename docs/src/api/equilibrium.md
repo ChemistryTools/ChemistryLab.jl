@@ -6,34 +6,21 @@ Pages = ["equilibrium.md"]
 
 ## Activity models
 
-```@docs
-AbstractActivityModel
-DiluteSolutionModel
-HKFActivityModel
-DaviesActivityModel
-activity_model
-build_potentials
-REJ_HKF
-REJ_CHARGE_DEFAULT
-hkf_debye_huckel_params
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["equilibrium/activities.jl"]
 ```
 
 ## Solid solutions
 
-```@docs
-AbstractSolidSolutionModel
-IdealSolidSolutionModel
-RedlichKisterModel
-AbstractSolidSolutionPhase
-SolidSolutionPhase
-end_members
-model
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["chemical_structs/solid_solutions.jl"]
 ```
 
 ## Problem and solver
 
-```@docs
-EquilibriumProblem
-EquilibriumSolver
-equilibrate
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["equilibrium/equilibrium_problems.jl", "equilibrium/equilibrium_solver.jl"]
 ```

@@ -1,5 +1,4 @@
 using DynamicQuantities
-using SciMLBase
 
 """
     EquilibriumProblem
@@ -12,7 +11,7 @@ Definition of a chemical equilibrium problem.
   - `A`: stoichiometric matrix (conservation matrix).
   - `μ`: chemical potential function `μ(n, p)`.
   - `u0`: initial guess for species amounts.
-  - `p`: coefficients for the potential function (default: NullParameters).
+  - `p`: coefficients for the potential function (default: `nothing`).
   - `lb`: lower bounds for species amounts.
   - `ub`: upper bounds for species amounts.
 
@@ -30,7 +29,7 @@ struct EquilibriumProblem{F <: Function, Tb, TA, Tu, P}
 end
 
 """
-    EquilibriumProblem(A, μ, u0; b=A*u0, p=NullParameters(), lb=fill(Tu(1e-16), length(u0)), ub=maximum(abs.(A))/minimum(abs.(A[.!iszero.(A)]))*sum(u0)*one.(u0))
+    EquilibriumProblem(A, μ, u0; b=A*u0, p=nothing, lb=fill(Tu(1e-16), length(u0)), ub=maximum(abs.(A))/minimum(abs.(A[.!iszero.(A)]))*sum(u0)*one.(u0))
 
 Construct an `EquilibriumProblem` with the given stoichiometric matrix `A`, chemical potential function `μ`, and initial guess `u0`.
 
@@ -40,7 +39,7 @@ Construct an `EquilibriumProblem` with the given stoichiometric matrix `A`, chem
   - `μ`: chemical potential function `μ(n, p)`.
   - `u0`: initial guess for species amounts.
   - `b`: conservation vector (elemental abundances). Defaults to `A * u0`.
-  - `p`: coefficients for the potential function. Defaults to `NullParameters()`.
+  - `p`: coefficients for the potential function. Defaults to `nothing`.
   - `lb`: lower bounds for species amounts. Defaults to `fill(Tu(1e-16), length(u0))`.
   - `ub`: upper bounds for species amounts. Defaults to `maximum(abs.(A))/minimum(abs.(A[.!iszero.(A)]))*sum(u0)*one.(u0)`.
 
@@ -53,7 +52,7 @@ function EquilibriumProblem(
         μ::F,
         u0::AbstractVector{Tu};
         b::AbstractVector = A * u0,
-        p = SciMLBase.NullParameters(),
+        p = nothing,
         lb::AbstractVector = fill(Tu(1.0e-16), length(u0)),
         ub::AbstractVector = maximum(abs.(A)) / minimum(abs.(A[.!iszero.(A)])) * sum(u0) * one.(u0),
     ) where {Tu <: Number, TA <: Number, F <: Function}

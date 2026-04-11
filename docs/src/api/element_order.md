@@ -4,9 +4,7 @@
 Pages = ["element_order.md"]
 ```
 
-```@docs
-ATOMIC_ORDER
-CEMENT_TO_MENDELEEV
-OXIDE_ORDER
-CEMDATA_PRIMARIES
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["chemical_structs/element_order.jl"]
 ```

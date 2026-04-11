@@ -4,13 +4,7 @@
 Pages = ["databases.md"]
 ```
 
-```@docs
-extract_primary_species
-read_thermofun_database
-build_species
-build_reactions
-build_solid_solutions
-get_compatible_species
-merge_json
-HKF_SI_CONVERSIONS
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["databases/thermofun_json.jl", "databases/phreeqc_dat.jl", "databases/merge_dat_json.jl"]
 ```

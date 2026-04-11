@@ -37,5 +37,6 @@ pages = [
         "Databases" => "api/databases.md",
         "Chemical systems and states" => "api/chemical_systems.md",
         "Equilibrium" => "api/equilibrium.md",
+        "Utilities" => "api/utils.md",
     ],
 ]
