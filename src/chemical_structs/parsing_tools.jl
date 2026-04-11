@@ -386,8 +386,6 @@ function parse_formula(formula::AbstractString)
         end
     end
 
-    # T = promote_type(typeof.(stoich_coef_round.(values(counts)))...)
-
     return OrderedDict(k => stoich_coef_round(v) for (k, v) in counts)
 end
 
@@ -662,14 +660,6 @@ function format_equation(coeffs::AbstractDict; scaling = 1, equal_sign = '=')
             else
                 string(abs_coeff)
             end
-
-            # if coeff > 0
-            #     push!(products, "$coeff_str$species")
-            #     total_charge_right += coeff * extract_charge(species)
-            # elseif coeff < 0
-            #     push!(reactants, "$coeff_str$species")
-            #     total_charge_left += coeff * extract_charge(species)
-            # end
 
             if coeff > 0
                 push!(products, "$coeff_str$species")

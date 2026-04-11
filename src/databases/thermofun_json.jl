@@ -467,9 +467,9 @@ function build_solid_solutions(
         model_str = get(entry, "model", "ideal")
         mixing_model = if model_str == "redlich_kister"
             RedlichKisterModel(;
-                a0 = Float64(get(entry, "a0", 0.0)),
-                a1 = Float64(get(entry, "a1", 0.0)),
-                a2 = Float64(get(entry, "a2", 0.0)),
+                a0 = get(entry, "a0", 0.0),
+                a1 = get(entry, "a1", 0.0),
+                a2 = get(entry, "a2", 0.0),
             )
         elseif model_str == "ideal"
             IdealSolidSolutionModel()

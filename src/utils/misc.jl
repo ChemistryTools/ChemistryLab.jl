@@ -155,8 +155,6 @@ safe_uparse(x::AbstractString) = uparse(x)
 
 safe_uparse(x::AbstractQuantity) = x
 
-# force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q::UnionAbstractQuantity{<:Any, <:Dimensions}) = safe_uconvert(qout, q)
-
 """
     force_uconvert(qout::UnionAbstractQuantity, q) -> AbstractQuantity
 

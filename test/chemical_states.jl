@@ -194,4 +194,41 @@
         s_zero = ChemicalState(cs_basic)   # all n = 0
         @test_throws ErrorException rescale!(s_zero, 1.0u"mol")
     end
+
+    @testsection "ForwardDiff — _build_params / _build_n0" begin
+        using ForwardDiff
+
+        # Build minimal species with synthetic ΔₐG⁰ functions
+        h2o_ad = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
+        h2o_ad[:ΔₐG⁰] = SymbolicFunc(
+            :(G0 + a * T); G0 = -237000.0, a = -70.0,
+            units = [:T => "K", :G0 => "J/mol", :a => "J/(mol*K)"]
+        )
+        h2o_ad[:M] = 0.018u"kg/mol"
+        h2o_ad[:V⁰] = SymbolicFunc(1.8e-5u"m^3/mol")
+
+        hp_ad = Species("H+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+        hp_ad[:ΔₐG⁰] = SymbolicFunc(
+            :(G0 + b * T); G0 = 0.0, b = 0.0,
+            units = [:T => "K", :G0 => "J/mol", :b => "J/(mol*K)"]
+        )
+        hp_ad[:M] = 0.001u"kg/mol"
+
+        cs_ad = ChemicalSystem([h2o_ad, hp_ad])
+        state_ad = ChemicalState(cs_ad; T = 298.15u"K", P = 1.0e5u"Pa")
+        set_quantity!(state_ad, "H2O", 55.5u"mol")
+        set_quantity!(state_ad, "H+", 1.0e-7u"mol")
+
+        # _build_params must return finite dimensionless values
+        p = ChemistryLab._build_params(state_ad)
+        @test all(isfinite, p.ΔₐG⁰overT)
+        @test isfinite(p.T)
+        @test isfinite(p.P)
+
+        # _build_n0 must return the dimensionless mole vector
+        n0 = ChemistryLab._build_n0(state_ad)
+        @test length(n0) == 2
+        @test n0[1] ≈ 55.5
+        @test n0[2] ≈ 1.0e-7
+    end
 end

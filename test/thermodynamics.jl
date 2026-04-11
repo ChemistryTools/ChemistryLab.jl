@@ -137,4 +137,65 @@
         cp_val = thermo[:Cp⁰](; T = 298.15)
         @test isapprox(cp_val, 75.0; rtol = 1.0e-6)
     end
+
+    @testsection "ForwardDiff — SymbolicFunc AD" begin
+        using ForwardDiff
+
+        sf = SymbolicFunc(:(a + b * T + c / T^2); a = 30.0, b = 5.0e-3, c = -1.5e5)
+
+        # ∂f/∂T must be finite and equal to b - 2c/T³
+        df_dT = ForwardDiff.derivative(T -> sf(; T = T), 298.15)
+        expected = 5.0e-3 - 2 * (-1.5e5) / 298.15^3
+        @test isapprox(df_dT, expected; rtol = 1.0e-6)
+    end
+
+    @testsection "ForwardDiff — SymbolicFunc arithmetic AD" begin
+        using ForwardDiff
+
+        f1 = SymbolicFunc(:(a₀ + a₁ * T); a₀ = 30.0, a₁ = 2.0e-3)
+        f2 = SymbolicFunc(:(b₀ + b₁ * T); b₀ = 10.0, b₁ = 1.0e-3)
+
+        f_sum = f1 + f2
+        f_diff = f1 - f2
+        f_scal = 2.5 * f1
+
+        # derivatives of sum/diff/scalar-mult
+        dsum = ForwardDiff.derivative(T -> f_sum(; T = T), 300.0)
+        @test isapprox(dsum, 2.0e-3 + 1.0e-3; rtol = 1.0e-6)
+
+        ddiff = ForwardDiff.derivative(T -> f_diff(; T = T), 300.0)
+        @test isapprox(ddiff, 2.0e-3 - 1.0e-3; rtol = 1.0e-6)
+
+        dscal = ForwardDiff.derivative(T -> f_scal(; T = T), 300.0)
+        @test isapprox(dscal, 2.5 * 2.0e-3; rtol = 1.0e-6)
+    end
+
+    @testsection "ForwardDiff — cross-type (SymbolicFunc ± NumericFunc) AD" begin
+        using ForwardDiff
+
+        sf = SymbolicFunc(:(a + b * T); a = 100.0, b = 0.5)
+        nf = NumericFunc(
+            (T, P) -> 50.0 + 0.3 * T,
+            (:T, :P),
+            (T = 298.15u"K", P = 1.0e5u"Pa"),
+            1.0u"1",   # dimensionless — must match sf
+        )
+
+        # Cross-type sum → NumericFunc
+        cross_sum = sf + nf
+        @test cross_sum isa NumericFunc
+
+        d_cross = ForwardDiff.derivative(T -> cross_sum(; T = T, P = 1.0e5), 300.0)
+        @test isapprox(d_cross, 0.5 + 0.3; rtol = 1.0e-6)
+
+        # Cross-type diff → NumericFunc
+        cross_diff = sf - nf
+        d_diff = ForwardDiff.derivative(T -> cross_diff(; T = T, P = 1.0e5), 300.0)
+        @test isapprox(d_diff, 0.5 - 0.3; rtol = 1.0e-6)
+
+        # Division (e.g. G / (R·T) pattern used for logK)
+        cross_div = sf / nf
+        d_div = ForwardDiff.derivative(T -> cross_div(; T = T, P = 1.0e5), 300.0)
+        @test isfinite(d_div)
+    end
 end

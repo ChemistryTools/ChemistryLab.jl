@@ -350,19 +350,6 @@ struct Species{T <: Number} <: AbstractSpecies
     aggregate_state::AggregateState
     class::Class
     properties::OrderedDict{Symbol, PropertyType}
-    # function Species{T}(
-    #     name,
-    #     symbol,
-    #     formula,
-    #     aggregate_state,
-    #     class,
-    #     properties,
-    # ) where {T}
-    #     s = new{T}(name, symbol, formula, aggregate_state, class, properties)
-    #     @info "Call implicit constructor of Species!"
-    #     println(s)
-    #     return s
-    # end
 end
 
 """
@@ -784,18 +771,6 @@ struct CemSpecies{T <: Number, S <: Number} <: AbstractSpecies
     aggregate_state::AggregateState
     class::Class
     properties::OrderedDict{Symbol, PropertyType}
-    # function CemSpecies{T,S}(
-    #     name,
-    #     symbol,
-    #     formula,
-    #     cemformula,
-    #     aggregate_state,
-    #     class,
-    #     properties,
-    # ) where {T,S}
-    #     @info "Call implicit constructor of CemSpecies!"
-    #     return new{T,S}(name, symbol, formula, cemformula, aggregate_state, class, properties)
-    # end
 end
 
 """
@@ -1530,11 +1505,6 @@ function complete_thermo_functions!(s::AbstractSpecies)
                     s[k] = v
                 end
             end
-            # for k in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰]
-            #     if !haskey(properties(s), k) && haskey(dict_params, k) && !ismissing(dict_params[k])
-            #         s[k] = SymbolicFunc(dict_params[k])
-            #     end
-            # end
         end
         if haskey(properties(s), :V_method)
             s[:V⁰] = SymbolicFunc(dict_params[:V⁰])

@@ -247,3 +247,40 @@ end
     expected_logK = -G0 / (R_log10 * T0)
     @test isapprox(logK(; T = T0, P = P0), expected_logK; rtol = 1.0e-6)
 end
+
+# ── AD smoke tests for water properties (direct) ────────────────────────────
+
+@testsection "ForwardDiff — water_thermo_props" begin
+    # ∂(density)/∂T at 298.15 K, 1 bar — must be finite (negative for liquid water)
+    dD_dT = ForwardDiff.derivative(T -> water_thermo_props(T, 1.0e5).D, 298.15)
+    @test isfinite(dD_dT)
+    @test dD_dT < 0   # water expands when heated
+
+    # ∂(density)/∂P at 298.15 K, 1 bar — must be positive (compression)
+    dD_dP = ForwardDiff.derivative(P -> water_thermo_props(298.15, P).D, 1.0e5)
+    @test isfinite(dD_dP)
+    @test dD_dP > 0
+end
+
+@testsection "ForwardDiff — water_electro_props_jn" begin
+    # ∂(epsilon)/∂T — dielectric constant decreases with temperature
+    function eps_of_T(T)
+        wtp = water_thermo_props(T, 1.0e5)
+        wep = water_electro_props_jn(T, 1.0e5, wtp)
+        return wep.epsilon
+    end
+    deps_dT = ForwardDiff.derivative(eps_of_T, 298.15)
+    @test isfinite(deps_dT)
+    @test deps_dT < 0   # ε decreases with T
+end
+
+@testsection "ForwardDiff — hkf_g_function" begin
+    # ∂g/∂T at conditions where g ≈ 0 (reference state)
+    function g_of_T(T)
+        wtp = water_thermo_props(T, 1.0e5)
+        gs = hkf_g_function(T, 1.0e5, wtp)
+        return gs.g
+    end
+    dg_dT = ForwardDiff.derivative(g_of_T, 298.15)
+    @test isfinite(dg_dT)
+end

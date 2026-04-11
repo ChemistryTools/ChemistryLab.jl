@@ -250,17 +250,16 @@ function hkf_debye_huckel_params(T_K, P_Pa)
 end
 
 # Internal: four-level ionic radius priority lookup.
-# Returns Float64 (ionic radii are physical constants, not differentiated).
 function _hkf_lookup_å(sp::AbstractSpecies, model)
     if haskey(properties(sp), :å)
         v = sp[:å]
-        return v isa Number ? Float64(v) : Float64(safe_ustrip(1.0u"Å", v))
+        return v isa Number ? float(v) : float(safe_ustrip(1.0u"Å", v))
     end
     pf = phreeqc(formula(sp))
     haskey(REJ_HKF, pf)           && return REJ_HKF[pf]
     z = Int(charge(sp))
     haskey(REJ_CHARGE_DEFAULT, z) && return REJ_CHARGE_DEFAULT[z]
-    return Float64(model.å_default)
+    return float(model.å_default)
 end
 
 # ── HKFActivityModel ──────────────────────────────────────────────────────────
