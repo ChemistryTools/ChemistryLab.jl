@@ -30,23 +30,18 @@ julia> import Pkg; Pkg.add("ChemistryLab")
 
 If you use ChemistryLab in your work, please cite the following:
 
-```
-@software{barthelemy_2026_18216605,
-  author       = {Barthélemy, Jean-François and
+```bibtex
+@software{chemistrylab_jl,
+  author       = {Barthélémy, Jean-François and
                   Soive, Anthony},
   title        = {ChemistryLab.jl: Numerical laboratory for
-                   computational chemistry
-                  },
-  month        = jan,
-  year         = 2026,
-  publisher    = {Zenodo},
-  version      = {v0.1.5},
-  doi          = {10.5281/zenodo.18216605},
-  url          = {https://doi.org/10.5281/zenodo.18216605},
+                   computational chemistry},
+  doi          = {10.5281/zenodo.17756074},
+  url          = {https://doi.org/10.5281/zenodo.17756074},
 }
 ```
 
-## Feature
+## Features
 
 - Parse and manipulate chemical formulas (supporting charges, subscripts/superscripts and rational stoichiometry).
 - Create and inspect `Species` and `CemSpecies` objects and attach thermodynamic or auxiliary properties.
@@ -54,7 +49,7 @@ If you use ChemistryLab in your work, please cite the following:
 - Read, merge and write ThermoFun / Cemdata sources and extract species and reactions programmatically.
 - Combine, simplify and transform reactions using the `Reaction` API.
 - Solve thermodynamic equilibrium problems by Gibbs energy minimisation (`equilibrate`, `EquilibriumSolver`).
-- Built-in activity model (`DiluteSolutionModel`) and extension API for custom models.
+- Built-in activity models (`DiluteSolutionModel`, `HKFActivityModel`, `DaviesActivityModel`) and extension API for custom models.
 - Temperature-dependent thermodynamic sweeps and speciation diagrams.
 
 ## Documentation structure

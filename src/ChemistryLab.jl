@@ -21,7 +21,7 @@ julia> using ChemistryLab
 
 julia> f = Formula("H2O")
 Formula{Int64}
-    formula: H2O ◆ H₂O ◆ H₂O
+    formula: H2O ◆ H₂O
 composition: H => 2, O => 1
      charge: 0
 
@@ -32,7 +32,7 @@ julia> H2O = Species(f; name="Vapour", symbol="H₂O", aggregate_state=AS_GAS, c
 Species{Int64}
            name: Vapour
          symbol: H₂O
-        formula: H2O ◆ H₂O ◆ H₂O
+        formula: H2O ◆ H₂O
           atoms: H => 2, O => 1
          charge: 0
 aggregate_state: AS_GAS
@@ -47,9 +47,9 @@ julia> CO2 = Species(
            class=SC_GASFLUID,
        ) # definition from Dict
 Species{Int64}
-           name: Dioxygen
+           name: Carbon dioxide
          symbol: CO₂
-        formula: CO2 ◆ CO₂ ◆ CO₂
+        formula: CO2 ◆ CO₂
           atoms: O => 2, C => 1
          charge: 0
 aggregate_state: AS_GAS
@@ -58,14 +58,14 @@ aggregate_state: AS_GAS
 
 julia> O2 = Species("O2"; name="Dioxygen", symbol="O₂", aggregate_state=AS_GAS, class=SC_GASFLUID) # definition from String
 Species{Int64}
-           name: Carbon dioxide
-         symbol: CO₂
-        formula: CO2 ◆ CO₂ ◆ CO₂
-          atoms: C => 1, O => 2
+           name: Dioxygen
+         symbol: O₂
+        formula: O2 ◆ O₂
+          atoms: O => 2
          charge: 0
 aggregate_state: AS_GAS
           class: SC_GASFLUID
-     properties: M = 0.04400899998479143 kg mol⁻¹
+     properties: M = 0.03199799998894218 kg mol⁻¹
 
 julia> C3H8 = Species(
            "C₃H₈"; name="Propane", symbol="C₃H₈", aggregate_state=AS_GAS, class=SC_GASFLUID
@@ -73,7 +73,7 @@ julia> C3H8 = Species(
 Species{Int64}
            name: Propane
          symbol: C₃H₈
-        formula: C₃H₈ ◆ C3H8 ◆ C₃H₈
+        formula: C₃H₈ ◆ C3H8
           atoms: C => 3, H => 8
          charge: 0
 aggregate_state: AS_GAS
@@ -81,9 +81,10 @@ aggregate_state: AS_GAS
      properties: M = 0.04409699998476102 kg mol⁻¹
 
 julia> r = Reaction([C3H8, O2, CO2, H2O])
-C₃H₈ + 5O₂ = 4H₂O + 3CO₂
+  equation: C₃H₈ + 5O₂ = 4H₂O + 3CO₂
  reactants: C₃H₈ => 1, O₂ => 5
   products: H₂O => 4, CO₂ => 3
+    charge: 0
 ```
 """
 module ChemistryLab
@@ -125,7 +126,6 @@ module ChemistryLab
         ThermoFactory,
         NumericFunc,
         AbstractFunc,
-        infer_unit,
         derivative
 
     export WaterThermoProps,
@@ -140,8 +140,7 @@ module ChemistryLab
     export THERMO_MODELS,
         THERMO_FACTORIES,
         add_thermo_model,
-        build_thermo_functions,
-        check_dimensions
+        build_thermo_functions
 
     export ATOMIC_ORDER,
         CEMENT_TO_MENDELEEV,

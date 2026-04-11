@@ -61,6 +61,12 @@ function read_thermofun_database(filename)
     return df_elements, df_substances, df_reactions
 end
 
+"""
+    extract_unit(v, default_unit=u"1") -> AbstractQuantity
+
+Try to parse the string `v` as a unit via `uparse`.
+Returns `default_unit` if parsing fails.
+"""
 function extract_unit(v, default_unit = u"1")
     return try
         uparse(v)
@@ -69,6 +75,12 @@ function extract_unit(v, default_unit = u"1")
     end
 end
 
+"""
+    extract_value(row, field; verbose=false, default_unit=u"1", with_units=true) -> Union{AbstractQuantity, Number, Missing}
+
+Extract a scalar value (optionally with units) from a nested ThermoFun DataFrame `row`.
+Returns `missing` when the field is absent, missing, or cannot be parsed.
+"""
 function extract_value(
         row, field::Symbol; verbose = false, default_unit = u"1", with_units = true
     )
@@ -101,6 +113,12 @@ correct_volume_unit(v::AbstractQuantity) = uamount(v) != -1 ? v / 1u"mol" : v
 
 correct_volume_unit(v) = v
 
+"""
+    complete_species_with_thermo_model!(species, row; verbose=false)
+
+Populate thermodynamic reference values and build thermodynamic functions on `species`
+from a ThermoFun substance DataFrame `row`. Mutates `species.properties` in place.
+"""
 function complete_species_with_thermo_model!(species, row; verbose = false)
     Tref = row.Tst * u"K"
     Pref = row.Pst * u"Pa"
@@ -217,6 +235,12 @@ function build_species(filename, list_symbols = nothing; verbose = false)
     return build_species(df_substances, list_symbols; verbose = verbose)
 end
 
+"""
+    complete_reaction_with_thermo_model!(reaction, row; verbose=false)
+
+Populate thermodynamic reference values and build thermodynamic functions on `reaction`
+from a ThermoFun reaction DataFrame `row`. Mutates `reaction.properties` in place.
+"""
 function complete_reaction_with_thermo_model!(reaction, row; verbose = false)
     Tref = row.Tst * u"K"
     Pref = row.Pst * u"Pa"

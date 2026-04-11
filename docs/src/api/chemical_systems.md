@@ -16,11 +16,13 @@ solvent
 components(cs::ChemicalSystem)
 gasfluid
 get_reaction
+solid_solutions
 ```
 
 ## ChemicalState
 
 ```@docs
+PhaseQuantities
 ChemicalState
 temperature
 pressure

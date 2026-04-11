@@ -26,6 +26,8 @@ IdealSolidSolutionModel
 RedlichKisterModel
 AbstractSolidSolutionPhase
 SolidSolutionPhase
+end_members
+model
 ```
 
 ## Problem and solver

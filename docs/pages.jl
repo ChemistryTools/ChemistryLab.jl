@@ -27,6 +27,7 @@ pages = [
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",
         "Thermodynamical models" => "api/thermo_models.md",
+        "Water properties" => "api/water_properties.md",
         "Element order" => "api/element_order.md",
         "Parsing tools" => "api/parsing_tools.md",
         "Formulas" => "api/formulas.md",

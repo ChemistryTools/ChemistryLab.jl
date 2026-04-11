@@ -2,9 +2,13 @@ using Crayons
 using DynamicQuantities
 using ForwardDiff
 
+"""Terminal colour for charge display (cyan bold)."""
 const COL_CHARGE = crayon"cyan bold"
+"""Terminal colour for parentheses (magenta bold)."""
 const COL_PAR = crayon"magenta bold"
+"""Terminal colour for internal stoichiometric coefficients (red bold)."""
 const COL_STOICH_INT = crayon"red bold"
+"""Terminal colour for external stoichiometric coefficients (yellow bold)."""
 const COL_STOICH_EXT = crayon"yellow bold"
 
 """
@@ -140,10 +144,24 @@ safe_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, 
 
 safe_uconvert(::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q) = q
 
+"""
+    safe_uparse(x::AbstractString) -> AbstractQuantity
+    safe_uparse(x::AbstractQuantity) -> AbstractQuantity
+
+Parse a unit string into a quantity via `uparse`, or return an existing
+quantity unchanged. Acts as an idempotent wrapper.
+"""
 safe_uparse(x::AbstractString) = uparse(x)
 
 safe_uparse(x::AbstractQuantity) = x
 
 # force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q::UnionAbstractQuantity{<:Any, <:Dimensions}) = safe_uconvert(qout, q)
 
+"""
+    force_uconvert(qout::UnionAbstractQuantity, q) -> AbstractQuantity
+
+Strip units from `q` (converting to `qout` dimensions when possible) and
+re-attach the unit of `qout`. Unlike `safe_uconvert`, this always returns
+a quantity with the units of `qout`, even when the input is dimensionless.
+"""
 force_uconvert(qout::UnionAbstractQuantity, q) = safe_ustrip(qout, q) * qout

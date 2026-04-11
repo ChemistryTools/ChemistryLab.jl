@@ -12,4 +12,5 @@ build_reactions
 build_solid_solutions
 get_compatible_species
 merge_json
+HKF_SI_CONVERSIONS
 ```

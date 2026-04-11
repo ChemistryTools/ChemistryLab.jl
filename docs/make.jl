@@ -33,7 +33,7 @@ makedocs(;
         collapselevel=1,
     ),
     pages=pages,
-    warnonly=[:missing_docs, :docs_block],
+    warnonly=[:docs_block],
     draft=false,
 )
 

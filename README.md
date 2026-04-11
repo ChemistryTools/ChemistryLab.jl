@@ -54,6 +54,8 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 using ChemistryLab
 using DynamicQuantities
 
+# From the repository root (or adapt the path for an installed package):
+# all_species = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
 all_species = build_species("data/cemdata18-thermofun.json")
 ```
 
@@ -119,7 +121,7 @@ The evolution of thermodynamic properties as a function of temperature, such as 
 ```julia
 using Plots
 
-p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [K]", title="Heat capacity of calcite \nas a function of temperature")
+p1 = plot(xlabel="Temperature [K]", ylabel="Cp⁰ [J/mol/K]", title="Heat capacity of calcite \nas a function of temperature")
 plot!(p1, θ -> dict_species_calcite["Cal"].Cp⁰(T = 273.15+θ), 0:0.1:100, label="Cp⁰")
 ```
 

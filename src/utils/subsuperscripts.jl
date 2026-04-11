@@ -1,5 +1,6 @@
 using OrderedCollections
 
+"""Mapping from Unicode superscript characters to their normal-line equivalents."""
 const dict_super_to_normal = OrderedDict{Char, Char}(
     '⁰' => '0',
     '¹' => '1',
@@ -16,6 +17,7 @@ const dict_super_to_normal = OrderedDict{Char, Char}(
     '.' => '.',
 )
 
+"""Mapping from normal-line characters to their Unicode superscript equivalents."""
 const dict_normal_to_super = OrderedDict{Char, Char}(
     '0' => '⁰',
     '1' => '¹',
@@ -32,6 +34,7 @@ const dict_normal_to_super = OrderedDict{Char, Char}(
     '.' => '.',
 )
 
+"""Mapping from Unicode subscript digits to their normal-line equivalents."""
 const dict_sub_to_normal = OrderedDict{Char, Char}(
     '₀' => '0',
     '₁' => '1',
@@ -46,6 +49,7 @@ const dict_sub_to_normal = OrderedDict{Char, Char}(
     '.' => '.',
 )
 
+"""Mapping from normal-line digits and signs to their Unicode subscript equivalents."""
 const dict_normal_to_sub = OrderedDict{Char, Char}(
     '0' => '₀',
     '1' => '₁',
@@ -62,6 +66,7 @@ const dict_normal_to_sub = OrderedDict{Char, Char}(
     '.' => '.',
 )
 
+"""Extended mapping from normal-line characters (digits, letters, operators) to Unicode subscripts."""
 const dict_all_normal_to_sub = OrderedDict{Char, Char}(
     '0' => '₀',
     '1' => '₁',
@@ -101,6 +106,7 @@ const dict_all_normal_to_sub = OrderedDict{Char, Char}(
     '/' => '/',
 )
 
+"""Mapping from `Rational` fractions to their Unicode vulgar fraction strings."""
 const dict_frac_unicode = OrderedDict(
     1 // 4 => "¼",
     1 // 2 => "½",
@@ -122,6 +128,7 @@ const dict_frac_unicode = OrderedDict(
     7 // 8 => "⅞",
 )
 
+"""Mapping from Unicode vulgar fraction characters to `Rational` values."""
 const dict_unicode_frac = OrderedDict(
     '¼' => 1 // 4,
     '½' => 1 // 2,

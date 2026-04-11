@@ -9,4 +9,5 @@ SymbolicFunc
 NumericFunc
 AbstractFunc
 ThermoFactory
+derivative
 ```
