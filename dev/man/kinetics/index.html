@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Chemical Kinetics · ChemistryLab.jl</title><meta name="title" content="Chemical Kinetics · ChemistryLab.jl"/><meta property="og:title" content="Chemical Kinetics · ChemistryLab.jl"/><meta property="twitter:title" content="Chemical Kinetics · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://ChemistryTools.github.io/ChemistryLab.jl/man/kinetics/"/><meta property="twitter:url" content="https://ChemistryTools.github.io/ChemistryLab.jl/man/kinetics/"/><link rel="canonical" href="https://ChemistryTools.github.io/ChemistryLab.jl/man/kinetics/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorial</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../species/">Species</a></li><li><a class="tocitem" href="../cement_species/">Cement Species</a></li><li><a class="tocitem" href="../databases/">Database Interoperability</a></li><li><a class="tocitem" href="../stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../thermodynamics/">Thermodynamic Functions</a></li><li><a class="tocitem" href="../chemical_system_state/">ChemicalSystem and ChemicalState</a></li><li><a class="tocitem" href="../equilibrium/">Chemical Equilibrium</a></li><li class="is-active"><a class="tocitem" href>Chemical Kinetics</a><ul class="internal"><li><a class="tocitem" href="#Background"><span>Background</span></a></li><li><a class="tocitem" href="#Setting-up-rate-constants"><span>Setting up rate constants</span></a></li><li><a class="tocitem" href="#Defining-kinetic-reactions"><span>Defining kinetic reactions</span></a></li><li><a class="tocitem" href="#Running-a-simulation"><span>Running a simulation</span></a></li><li><a class="tocitem" href="#Isothermal-calorimetry"><span>Isothermal calorimetry</span></a></li><li><a class="tocitem" href="#Semi-adiabatic-calorimetry"><span>Semi-adiabatic calorimetry</span></a></li><li><a class="tocitem" href="#Parameter-sensitivity-and-optimization"><span>Parameter sensitivity and optimization</span></a></li><li><a class="tocitem" href="#Cement-clinker-hydration:-Parrot–Killoh-model"><span>Cement clinker hydration: Parrot–Killoh model</span></a></li><li><a class="tocitem" href="#Full-workflow:-OPC-clinker-hydration-with-KineticsProblem"><span>Full workflow: OPC clinker hydration with KineticsProblem</span></a></li><li><a class="tocitem" href="#References"><span>References</span></a></li></ul></li><li><a class="tocitem" href="../advanced/">Advanced Topics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/bogue_calculation/">Bogue Calculation</a></li><li><a class="tocitem" href="../../examples/example_stoich_matrix/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../examples/from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../../examples/titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../../examples/titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../../examples/co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li><a class="tocitem" href="../../examples/simplified_clinker_dissolution/">Simplified Clinker Dissolution</a></li><li><a class="tocitem" href="../../examples/cement_carbonation/">Carbonation of a Cement Paste</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/water_properties/">Water properties</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li><li><a class="tocitem" href="../../api/kinetics/">Kinetics</a></li><li><a class="tocitem" href="../../api/utils/">Utilities</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorial</a></li><li class="is-active"><a href>Chemical Kinetics</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Chemical Kinetics</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/ChemistryTools/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/ChemistryTools/ChemistryLab.jl/blob/main/docs/src/man/kinetics.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Chemical-Kinetics"><a class="docs-heading-anchor" href="#Chemical-Kinetics">Chemical Kinetics</a><a id="Chemical-Kinetics-1"></a><a class="docs-heading-anchor-permalink" href="#Chemical-Kinetics" title="Permalink"></a></h1><p>This tutorial covers the kinetics module of ChemistryLab.jl, which implements mineral dissolution and precipitation kinetics coupled to fast aqueous speciation, following the methodology of Leal et al. (2017).</p><h2 id="Background"><a class="docs-heading-anchor" href="#Background">Background</a><a id="Background-1"></a><a class="docs-heading-anchor-permalink" href="#Background" title="Permalink"></a></h2><p>The kinetics algorithm solves:</p><p class="math-container">\[\frac{d n_k}{dt} = -r_k(t), \quad k \in \text{kinetic minerals}\]</p><p>where <span>$r_k$</span> [mol/s] is the net dissolution rate of mineral <span>$k$</span>. At each evaluation of this ODE right-hand side, the aqueous speciation is re-equilibrated, providing accurate activity coefficients for the saturation ratio <span>$\Omega = \text{IAP}/K$</span>.</p><p>The rate law follows transition-state theory (Palandri &amp; Kharaka 2004):</p><p class="math-container">\[r_k = A_k \sum_m k_m(T) \cdot \prod_i a_i^{n_i} \cdot \text{sgn}(1-\Omega) \cdot |1-\Omega^p|^q\]</p><h2 id="Setting-up-rate-constants"><a class="docs-heading-anchor" href="#Setting-up-rate-constants">Setting up rate constants</a><a id="Setting-up-rate-constants-1"></a><a class="docs-heading-anchor-permalink" href="#Setting-up-rate-constants" title="Permalink"></a></h2><p>Rate constants are built as <a href="../../api/thermo_functions/#ChemistryLab.SymbolicFunc"><code>SymbolicFunc</code></a> objects using the Arrhenius factory, making them fully differentiable via ForwardDiff:</p><pre><code class="language-julia hljs">using ChemistryLab, ForwardDiff
+
+# Arrhenius rate constant for calcite acid dissolution (Palandri &amp; Kharaka 2004)
+# Returns a NumericFunc — fully AD-compatible through k₀, Ea, and T
+k_acid = arrhenius_rate_constant(5.012e-1, 14400.0)   # k₀ [mol/(m²s)], Ea [J/mol]
+
+k_acid(; T = 298.15)    # → 0.5012  mol/(m²s)
+k_acid(; T = 310.0)     # → higher value at elevated T
+
+# AD through the rate constant
+ForwardDiff.derivative(T -&gt; k_acid(; T = T), 298.15)</code></pre><p>For custom models, use <a href="../../api/kinetics/#ChemistryLab.add_kinetics_rate_model-Tuple{Symbol, Dict}"><code>add_kinetics_rate_model</code></a> or build a <a href="../thermodynamics/#NumericFunc"><code>NumericFunc</code></a> directly.</p><h2 id="Defining-kinetic-reactions"><a class="docs-heading-anchor" href="#Defining-kinetic-reactions">Defining kinetic reactions</a><a id="Defining-kinetic-reactions-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-kinetic-reactions" title="Permalink"></a></h2><pre><code class="language-julia hljs"># Calcite acid + neutral mechanisms
+k_acid    = arrhenius_rate_constant(5.012e-1, 14400.0)
+k_neutral = arrhenius_rate_constant(1.549e-6, 23500.0)
+
+model = TransitionStateRateModel([
+    RateMechanism(k_acid,    1.0, 1.0, [RateModelCatalyst(&quot;H+&quot;, 1.0)]),
+    RateMechanism(k_neutral, 1.0, 1.0),
+])
+
+# BET surface area: 0.09 m²/g × 1000 g/kg = 90 m²/kg
+surface = BETSurfaceArea(90.0)
+
+# idx_calcite: index of Calcite in the ChemicalSystem
+# stoich_calcite: stoichiometric row vector
+kr = KineticReaction(reaction_calcite, model, surface, idx_calcite, stoich_calcite)</code></pre><h2 id="Running-a-simulation"><a class="docs-heading-anchor" href="#Running-a-simulation">Running a simulation</a><a id="Running-a-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Running-a-simulation" title="Permalink"></a></h2><pre><code class="language-julia hljs">using OrdinaryDiffEq   # activates KineticsOrdinaryDiffEqExt
+
+# Build problem (0 to 2 hours)
+kp = KineticsProblem(cs, [kr], state0, (0.0, 7200.0))
+
+# Solve with default Rodas5P solver
+sol = integrate(kp)
+
+# Or with explicit solver and tolerances
+ks  = KineticsSolver(; ode_solver=Rodas5P(), reltol=1e-8, abstol=1e-10)
+sol = integrate(kp, ks)
+
+# Access mineral moles at t = 1800 s
+n_calcite_t = sol(1800.0)[1]</code></pre><h2 id="Isothermal-calorimetry"><a class="docs-heading-anchor" href="#Isothermal-calorimetry">Isothermal calorimetry</a><a id="Isothermal-calorimetry-1"></a><a class="docs-heading-anchor-permalink" href="#Isothermal-calorimetry" title="Permalink"></a></h2><pre><code class="language-julia hljs">cal = IsothermalCalorimeter(298.15)   # T = 25 °C
+sol = integrate(kp, ks; calorimeter = cal)
+
+t, Q    = cumulative_heat(sol, cal)   # Q(t) [J]
+t, qdot = heat_flow(sol, cal)         # q̇(t) [W]</code></pre><h2 id="Semi-adiabatic-calorimetry"><a class="docs-heading-anchor" href="#Semi-adiabatic-calorimetry">Semi-adiabatic calorimetry</a><a id="Semi-adiabatic-calorimetry-1"></a><a class="docs-heading-anchor-permalink" href="#Semi-adiabatic-calorimetry" title="Permalink"></a></h2><p>The semi-adiabatic calorimeter solves</p><p class="math-container">\[\frac{dT}{dt} = \frac{\dot{q}(t) - \varphi(T(t) - T_{\rm env})}{C_p}\]</p><p>where <code>φ(ΔT)</code> is a user-supplied <strong>heat-loss function</strong>. The linear Newton&#39;s law (<code>φ = L·ΔT</code>) is a convenient special case; the quadratic form used by Lavergne et al. (2018) for cement hydration calorimetry is another common choice.</p><pre><code class="language-julia hljs"># Linear heat loss (Newton&#39;s law): backward-compatible L keyword
+cal = SemiAdiabaticCalorimeter(;
+    T0    = 293.15,   # initial temperature [K]
+    T_env = 293.15,   # ambient temperature [K]
+    L     = 0.5,      # heat-loss coefficient [W/K]
+    Cp    = 4000.0,   # heat capacity of vessel + sample [J/K]
+)
+
+# Quadratic heat loss (Lavergne et al. 2018: φ(ΔT) = a·ΔT + b·ΔT²)
+a, b = 0.48, 0.002   # [W/K] and [W/K²]
+cal = SemiAdiabaticCalorimeter(;
+    T0        = 293.15,
+    T_env     = 293.15,
+    Cp        = 4000.0,
+    heat_loss = ΔT -&gt; a * ΔT + b * ΔT^2,
+)
+
+sol = integrate(kp, ks; calorimeter = cal)
+
+t, T_profile = temperature_profile(sol, cal)   # T(t) [K]
+t, qdot      = heat_flow(sol, cal)             # q̇(t) [W]
+t, Q         = cumulative_heat(sol, cal)       # Q(t) [J] (integrated from q̇)</code></pre><h2 id="Parameter-sensitivity-and-optimization"><a class="docs-heading-anchor" href="#Parameter-sensitivity-and-optimization">Parameter sensitivity and optimization</a><a id="Parameter-sensitivity-and-optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Parameter-sensitivity-and-optimization" title="Permalink"></a></h2><p>Because all rate constants are built as <a href="../../api/thermo_functions/#ChemistryLab.SymbolicFunc"><code>SymbolicFunc</code></a>/<a href="../thermodynamics/#NumericFunc"><code>NumericFunc</code></a> and the ODE function is ForwardDiff-compatible, you can differentiate the solution trajectory with respect to kinetic parameters:</p><pre><code class="language-julia hljs">using ForwardDiff
+
+# Sensitivity of final calcite amount w.r.t. activation energy
+function n_calcite_final(Ea)
+    k   = arrhenius_rate_constant(5.012e-1, Ea)
+    rm  = TransitionStateRateModel([RateMechanism(k, 1.0, 1.0)])
+    kr_ = KineticReaction(reaction_calcite, rm, surface, idx_calcite, stoich_calcite)
+    kp_ = KineticsProblem(cs, [kr_], state0, (0.0, 3600.0))
+    sol = integrate(kp_, ks)
+    return sol.u[end][1]   # final moles of calcite
+end
+
+dndEa = ForwardDiff.derivative(n_calcite_final, 14400.0)</code></pre><h2 id="Cement-clinker-hydration:-Parrot–Killoh-model"><a class="docs-heading-anchor" href="#Cement-clinker-hydration:-Parrot–Killoh-model">Cement clinker hydration: Parrot–Killoh model</a><a id="Cement-clinker-hydration:-Parrot–Killoh-model-1"></a><a class="docs-heading-anchor-permalink" href="#Cement-clinker-hydration:-Parrot–Killoh-model" title="Permalink"></a></h2><p><a href="../../api/kinetics/#ChemistryLab.ParrotKillohRateModel"><code>ParrotKillohRateModel</code></a> implements the Parrot &amp; Killoh (1984) kinetic model for cement clinker hydration. Unlike surface-area-controlled models, it tracks the degree of hydration α = 1 − n/n₀ and selects the controlling mechanism at each step (nucleation-growth, interaction, or diffusion). The Arrhenius temperature correction uses the activation energies of Schindler &amp; Folliard (2005).</p><pre><code class="language-julia hljs">using ChemistryLab
+
+# Predefined parameters for the four main clinker phases
+rm_C3S  = PK_PARAMS_C3S    # alite       (K₁=1.5,  Ea=41 570 J/mol)
+rm_C2S  = PK_PARAMS_C2S    # belite      (K₁=0.95, Ea=43 670 J/mol)
+rm_C3A  = PK_PARAMS_C3A    # aluminate   (K₁=0.082,Ea=54 040 J/mol)
+rm_C4AF = PK_PARAMS_C4AF   # ferrite     (K₁=0.165,Ea=34 420 J/mol)
+
+# Evaluate at α = 0.3 (n_current = 0.7 mol, n_initial = 1.0 mol), T = 20 °C
+r = PK_PARAMS_C3S(; T = 293.15, n_current = 0.7, n_initial = 1.0)  # mol/s
+
+# Custom α_max (e.g. Powers 1948 limit for w/c = 0.40)
+α_max = min(1.0, 0.40 / 0.42)
+rm_custom = ParrotKillohRateModel(
+    1.5, 3.3, 0.018, 2.5, 0.0024, 4.0, 0.5, 41_570.0;
+    T_ref = 293.15, α_max = α_max,
+)</code></pre><p>The rate is AD-compatible:</p><pre><code class="language-julia hljs">using ForwardDiff
+
+drdT = ForwardDiff.derivative(
+    T -&gt; PK_PARAMS_C3S(; T = T, n_current = 0.5, n_initial = 1.0),
+    293.15,
+)</code></pre><h2 id="Full-workflow:-OPC-clinker-hydration-with-KineticsProblem"><a class="docs-heading-anchor" href="#Full-workflow:-OPC-clinker-hydration-with-KineticsProblem">Full workflow: OPC clinker hydration with KineticsProblem</a><a id="Full-workflow:-OPC-clinker-hydration-with-KineticsProblem-1"></a><a class="docs-heading-anchor-permalink" href="#Full-workflow:-OPC-clinker-hydration-with-KineticsProblem" title="Permalink"></a></h2><p>This example shows the complete chain — <a href="../../api/chemical_systems/#ChemicalSystem"><code>ChemicalSystem</code></a> → <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> → <a href="../../api/kinetics/#ChemistryLab.KineticReaction"><code>KineticReaction</code></a> → <a href="../../api/kinetics/#ChemistryLab.KineticsProblem"><code>KineticsProblem</code></a> → <a href="../../api/kinetics/#ChemistryLab.integrate-Tuple{KineticsProblem}"><code>integrate</code></a> — for a CEM I 52.5 R cement.</p><p>The convenience constructor <code>KineticReaction(cs, name, rate_model, surface_model)</code> looks up the species by name and builds the stoichiometry automatically; no manual index lookup is needed.</p><pre><code class="language-julia hljs">using ChemistryLab, OrdinaryDiffEq, DynamicQuantities, Printf
+
+# ── 1. ChemicalSystem from the CEMDATA18 database ────────────────────────────
+DATA_FILE = joinpath(pkgdir(ChemistryLab), &quot;data&quot;, &quot;cemdata18-thermofun.json&quot;)
+substances = build_species(DATA_FILE)
+
+input_species = split(
+    &quot;C3S C2S C3A C4AF &quot; *
+    &quot;Portlandite Jennite ettringite monosulphate12 C3AH6 C3FH6 &quot; *
+    &quot;H2O@&quot;,
+)
+species = speciation(substances, input_species; aggregate_state = [AS_AQUEOUS])
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
+
+# ── 2. Initial state: 1 kg OPC (CEM I 52.5 R), w/c = 0.40 ───────────────────
+const WC          = 0.40
+const COMPOSITION = (C3S=0.619, C2S=0.165, C3A=0.080, C4AF=0.087)  # kg/kg cement
+
+state0 = ChemicalState(cs)
+for (name, frac) in pairs(COMPOSITION)
+    set_quantity!(state0, string(name), frac * u&quot;kg&quot;)
+end
+set_quantity!(state0, &quot;H2O@&quot;, WC * u&quot;kg&quot;)
+
+# ── 3. Parrot–Killoh rate models with Powers α_max ───────────────────────────
+α_max = min(1.0, WC / 0.42)
+
+function pk_with_amax(template, α)
+    ParrotKillohRateModel(
+        template.K₁, template.N₁, template.K₂, template.N₂,
+        template.K₃, template.N₃, template.B, template.Ea;
+        T_ref = template.T_ref, α_max = α,
+    )
+end
+
+pk_C3S  = pk_with_amax(PK_PARAMS_C3S,  α_max)
+pk_C2S  = pk_with_amax(PK_PARAMS_C2S,  α_max)
+pk_C3A  = pk_with_amax(PK_PARAMS_C3A,  α_max)
+pk_C4AF = pk_with_amax(PK_PARAMS_C4AF, α_max)
+
+# ── 4. Kinetic reactions: convenience constructor handles index + stoich ──────
+# heat_per_mol [J/mol]: standard hydration enthalpies (Taylor 1997 / Lothenbach 2006)
+# Required for SemiAdiabaticCalorimeter heat generation; ignored when calorimeter=nothing.
+kr_C3S  = KineticReaction(cs, &quot;C3S&quot;,  pk_C3S,  FixedSurfaceArea(1.0); heat_per_mol = 114_617.0)
+kr_C2S  = KineticReaction(cs, &quot;C2S&quot;,  pk_C2S,  FixedSurfaceArea(1.0); heat_per_mol =  44_782.0)
+kr_C3A  = KineticReaction(cs, &quot;C3A&quot;,  pk_C3A,  FixedSurfaceArea(1.0); heat_per_mol = 233_985.0)
+kr_C4AF = KineticReaction(cs, &quot;C4AF&quot;, pk_C4AF, FixedSurfaceArea(1.0); heat_per_mol = 203_617.0)
+
+# ── 5. Problem + semi-adiabatic calorimeter ──────────────────────────────────
+kp = KineticsProblem(
+    cs, [kr_C3S, kr_C2S, kr_C3A, kr_C4AF], state0, (0.0, 7.0 * 86400.0);
+    equilibrium_solver = nothing,
+)
+
+cal = SemiAdiabaticCalorimeter(;
+    T0        = 293.15,
+    T_env     = 293.15,
+    Cp        = 1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0,   # ≈ 3449 J/K
+    heat_loss = ΔT -&gt; 0.30 * ΔT + 0.003 * ΔT^2,
+)
+
+# ── 6. Integrate and post-process ────────────────────────────────────────────
+ks  = KineticsSolver(; ode_solver = Rodas5P(), reltol = 1e-6, abstol = 1e-9)
+sol = integrate(kp, ks; calorimeter = cal)
+
+t_h = sol.t ./ 3600.0
+
+_, T_vec = temperature_profile(sol, cal)
+_, Q_vec = cumulative_heat(sol, cal)
+
+n0 = sol.prob.p.n_initial
+α_C3S  = 1.0 .- [u[1] for u in sol.u] ./ n0[1]
+α_mean = (COMPOSITION.C3S .* α_C3S .+ ...) ./ sum(COMPOSITION)
+
+@printf &quot;ΔT_max = %.2f °C   Q_7d = %.1f kJ/kg\n&quot; maximum(T_vec .- 273.15) - 20.0 Q_vec[end]/1000</code></pre><div class="admonition is-success" id="Choosing-equilibrium_solver-3995a8cd452a6875"><header class="admonition-header">Choosing `equilibrium_solver`<a class="admonition-anchor" href="#Choosing-equilibrium_solver-3995a8cd452a6875" title="Permalink"></a></header><div class="admonition-body"><p>Setting <code>equilibrium_solver = nothing</code> skips the Gibbs minimization at each ODE step, which is appropriate for the Parrot–Killoh model (it does not use solution chemistry). For models that depend on the saturation ratio Ω — such as <code>TransitionStateRateModel</code> — pass an <code>EquilibriumSolver</code> to re-speciate the aqueous phase at every ODE evaluation.</p></div></div><div class="admonition is-success" id="Calorimetry-with-the-convenience-constructor-3faa87e8f429b9cd"><header class="admonition-header">Calorimetry with the convenience constructor<a class="admonition-anchor" href="#Calorimetry-with-the-convenience-constructor-3faa87e8f429b9cd" title="Permalink"></a></header><div class="admonition-body"><p>When <code>KineticReaction</code> is built via the convenience constructor (bare <code>Species</code>, no full reaction stoichiometry), the calorimeter cannot derive the heat of reaction from species formation enthalpies. Supply <code>heat_per_mol</code> [J/mol] explicitly — it takes priority over stoichiometric calculation and is the recommended approach for empirical models such as <code>ParrotKillohRateModel</code>. When <code>heat_per_mol = nothing</code> (default) and <code>kr.reaction isa AbstractReaction</code>, the enthalpy is computed from <code>Σ ν_j ΔₐH⁰_j</code> as usual.</p></div></div><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><ul><li><p>Leal, A.M.M., Kulik, D.A., Smith, W.R., Saar, M.O. (2017). <em>An overview of computational methods for chemical equilibrium and kinetic calculations for geochemical and reactive transport modeling.</em> Pure and Applied Chemistry <strong>89</strong>, 597–643. <a href="https://doi.org/10.1515/pac-2016-1107">https://doi.org/10.1515/pac-2016-1107</a></p></li><li><p>Palandri, J.L. &amp; Kharaka, Y.K. (2004). <em>A compilation of rate parameters of water-mineral interaction kinetics for application to geochemical modeling.</em> USGS Open-File Report 2004-1068.</p></li><li><p>Parrot, L.J. &amp; Killoh, D.C. (1984). <em>Prediction of cement hydration.</em> British Ceramic Proceedings <strong>35</strong>, 41–53.</p></li><li><p>Lavergne, F., Ben Fraj, A., Bayane, I., Barthélémy, J.-F. (2018). <em>Estimating the mechanical properties of hydrating blended cementitious materials.</em> Cement and Concrete Research <strong>104</strong>, 37–60. <a href="https://doi.org/10.1016/j.cemconres.2017.11.007">https://doi.org/10.1016/j.cemconres.2017.11.007</a></p></li><li><p>Schindler, A.K. &amp; Folliard, K.J. (2005). <em>Heat of hydration models for cementitious materials.</em> ACI Materials Journal <strong>102</strong>, 24–33.</p></li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../equilibrium/">« Chemical Equilibrium</a><a class="docs-footer-nextpage" href="../advanced/">Advanced Topics »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 12 April 2026 19:21">Sunday 12 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
