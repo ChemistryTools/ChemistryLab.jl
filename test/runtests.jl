@@ -49,5 +49,10 @@ end
     include("utils.jl")
 end
 
+@testsection "Kinetics tests" begin
+    include("kinetics/test_rate_models.jl")
+    include("kinetics/test_calorimetry.jl")
+end
+
 print_timer()
 println()

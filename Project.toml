@@ -26,9 +26,11 @@ Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 OptimaSolver = "24efeca9-a785-406e-adb3-83609348bee7"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationIpopt = "43fad042-7963-4b32-ab19-e2a4f9a67124"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 
 [extensions]
+KineticsOrdinaryDiffEqExt = ["OrdinaryDiffEq"]
 OptimaSolverExt = ["OptimaSolver"]
 OptimizationIpoptExt = ["Optimization", "OptimizationIpopt"]
 SymbolicNumericIntegrationExt = "SymbolicNumericIntegration"
@@ -43,6 +45,7 @@ LinearAlgebra = "1"
 OptimaSolver = "0.1"
 Optimization = "5"
 OptimizationIpopt = "1.1.1"
+OrdinaryDiffEq = "6"
 OrderedCollections = "1"
 PeriodicTable = "1"
 PrecompileTools = "1"

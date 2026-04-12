@@ -1,0 +1,38 @@
+# Kinetics API
+
+Chemical kinetics module: rate models, kinetic reactions, ODE problem setup, solvers, and calorimetry.
+
+## Rate constants and models
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/rate_models.jl"]
+```
+
+## Kinetic reactions and surface area
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/kinetics_reactions.jl"]
+```
+
+## Kinetics problem
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/kinetics_problems.jl"]
+```
+
+## Kinetics solver
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/kinetics_solver.jl"]
+```
+
+## Calorimetry
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/calorimetry.jl"]
+```

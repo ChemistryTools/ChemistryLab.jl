@@ -50,7 +50,6 @@ From the definition of species, it is possible to construct a stoichiometric mat
 
 ```@setup database_stoichiometry
     using ChemistryLab
-    import Pkg; Pkg.add("PrettyTables")
 ```
 
 ## Stoichiometric matrix for species

@@ -31,6 +31,7 @@ makedocs(;
         assets=["assets/favicon.ico", "assets/custom.css"],
         prettyurls=(get(ENV, "CI", nothing) == "true"),
         collapselevel=1,
+        size_threshold_warn=200_000,
     ),
     pages=pages,
     warnonly=[:docs_block],

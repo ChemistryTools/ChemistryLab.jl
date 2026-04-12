@@ -11,6 +11,7 @@ pages = [
         "man/thermodynamics.md",
         "man/chemical_system_state.md",
         "man/equilibrium.md",
+        "man/kinetics.md",
         "man/advanced.md",
     ],
     "Examples" => [
@@ -37,6 +38,7 @@ pages = [
         "Databases" => "api/databases.md",
         "Chemical systems and states" => "api/chemical_systems.md",
         "Equilibrium" => "api/equilibrium.md",
+        "Kinetics" => "api/kinetics.md",
         "Utilities" => "api/utils.md",
     ],
 ]

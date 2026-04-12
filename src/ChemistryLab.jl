@@ -122,6 +122,12 @@ module ChemistryLab
     include("equilibrium/equilibrium_problems.jl")
     include("equilibrium/equilibrium_solver.jl")
 
+    include("kinetics/rate_models.jl")
+    include("kinetics/kinetics_reactions.jl")
+    include("kinetics/kinetics_problems.jl")
+    include("kinetics/kinetics_solver.jl")
+    include("kinetics/calorimetry.jl")
+
     export SymbolicFunc,
         ThermoFactory,
         NumericFunc,
@@ -284,9 +290,55 @@ module ChemistryLab
     export EquilibriumSolver,
         equilibrate
 
+    export AbstractRateModel,
+        KINETICS_RATE_MODELS,
+        KINETICS_RATE_FACTORIES,
+        add_kinetics_rate_model,
+        arrhenius_rate_constant,
+        saturation_ratio,
+        RateModelCatalyst,
+        RateMechanism,
+        TransitionStateRateModel,
+        FirstOrderRateModel,
+        ParrotKillohRateModel,
+        PK_PARAMS_C3S,
+        PK_PARAMS_C2S,
+        PK_PARAMS_C3A,
+        PK_PARAMS_C4AF
+
+    export AbstractSurfaceModel,
+        FixedSurfaceArea,
+        BETSurfaceArea,
+        surface_area,
+        KineticReaction,
+        molar_mass
+
+    export KineticsProblem,
+        build_u0,
+        build_kinetics_params,
+        build_kinetics_ode
+
+    export KineticsSolver,
+        integrate,
+        _DEFAULT_KINETICS_SOLVER_FACTORY
+
+    export AbstractCalorimeter,
+        IsothermalCalorimeter,
+        SemiAdiabaticCalorimeter,
+        n_extra_states,
+        extend_u0,
+        extend_ode!,
+        heat_rate,
+        heat_flow,
+        cumulative_heat,
+        temperature_profile
+
     function __init__()
         for (k, v) in THERMO_MODELS
             THERMO_FACTORIES[k] = build_thermo_factories(v)
+        end
+        for (k, v) in KINETICS_RATE_MODELS
+            KINETICS_RATE_FACTORIES[k] = _build_kinetics_rate_factory(v)
         end
         return
     end
