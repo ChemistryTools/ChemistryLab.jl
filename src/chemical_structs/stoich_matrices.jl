@@ -13,7 +13,9 @@ Container holding a stoichiometric matrix `A` together with the
     - `A`: matrix (components × species) of stoichiometric coefficients.
     - `primaries`: vector of independent components (Symbols or `Species`).
     - `species`: vector of `Species` corresponding to the columns of `A`.
-    - `N`: nullspace matrix (if possibly, built by the inner constructor): columns are vectors of the kernel of `A`.
+    - `N`: nullspace matrix — columns are vectors of the kernel of `A`.
+    Built analytically when primaries ⊆ species (trivial case); otherwise computed via
+    RREF over ℚ with integer coefficients (cleared denominators, reduced by GCD).
 
 # Examples
 
@@ -46,13 +48,175 @@ Base.eltype(::StoichMatrix{T}) where {T} = T
 
 primtype(::StoichMatrix{T, P}) where {T, P} = P
 
+# Lossless conversion helpers — avoid the overflow in rationalize(BigInt, ::Rational{Int64}).
+_to_qbig(x::Integer) = Rational{BigInt}(BigInt(x))
+_to_qbig(x::Rational) = Rational{BigInt}(BigInt(numerator(x)), BigInt(denominator(x)))
+# Use tol = 1e-3 to recover the "intended" rational (e.g. 5//3, 21//10) from
+# Float64 approximations produced by stoich_coef_round, instead of tol = 1e-9
+# which would give huge denominators and break A*N = 0 for the original A.
+function _to_qbig(x::AbstractFloat)
+    r = rationalize(x; tol = 1.0e-3)
+    return Rational{BigInt}(BigInt(numerator(r)), BigInt(denominator(r)))
+end
+
+# Convert A to a BigInt integer matrix.
+# For pure integer input (common case), this is just BigInt.(A).
+# For mixed/rational input, clear fractional denominators by multiplying by their LCM.
+_to_bigint_matrix(A::AbstractMatrix{<:Integer}) = BigInt.(A)
+function _to_bigint_matrix(A::AbstractMatrix)
+    B_rat = _to_qbig.(A)
+    D = mapreduce(denominator, lcm, B_rat; init = one(BigInt))
+    return [numerator(x) * (D ÷ denominator(x)) for x in B_rat]
+end
+
+# Exact rational null space via Bareiss algorithm (forward pass) + back-substitution.
+#
+# Bareiss's theorem guarantees that `÷ prev` is exact ONLY for forward (downward)
+# elimination. Clearing rows above the pivot (full RREF) does NOT satisfy this property
+# and silently corrupts B via truncation. We therefore do a forward-only pass (upper
+# triangular form) and extract null vectors by rational back-substitution.
+#
+# Returns Matrix{Rational{BigInt}} of shape (n, dim_ker).
+function _rational_nullspace(A::AbstractMatrix)
+    m, n = size(A)
+    B = _to_bigint_matrix(A)
+    pivot_cols = Int[]
+    prev = one(BigInt)
+    row = 1
+    # Forward-only Bareiss: produces upper-triangular form with exact BigInt entries.
+    for col in 1:n
+        i = findfirst(!iszero, B[row:end, col])
+        isnothing(i) && continue
+        i += row - 1
+        i != row && (B[[row, i], :] = B[[i, row], :])
+        piv = B[row, col]
+        for k in (row + 1):m           # forward only — no backward clearing
+            bkc = B[k, col]
+            iszero(bkc) && continue
+            for j in 1:n
+                B[k, j] = (piv * B[k, j] - bkc * B[row, j]) ÷ prev
+            end
+        end
+        push!(pivot_cols, col)
+        prev = piv
+        row += 1
+        row > m && break
+    end
+    free_cols = setdiff(1:n, pivot_cols)
+    isempty(free_cols) && return zeros(Rational{BigInt}, n, 0)
+    # Rational back-substitution on the upper-triangular Bareiss matrix.
+    # For each free column fc: set v[fc]=1, then solve for v[pivot_cols] back-to-front.
+    rk = length(pivot_cols)
+    N_rat = zeros(Rational{BigInt}, n, length(free_cols))
+    for (j, fc) in enumerate(free_cols)
+        v = zeros(Rational{BigInt}, n)
+        v[fc] = one(Rational{BigInt})
+        for r in rk:-1:1
+            pc = pivot_cols[r]
+            s = -Rational{BigInt}(B[r, fc])
+            for r2 in (r + 1):rk
+                s -= Rational{BigInt}(B[r, pivot_cols[r2]]) * v[pivot_cols[r2]]
+            end
+            v[pc] = s / Rational{BigInt}(B[r, pc])
+        end
+        N_rat[:, j] = v
+    end
+    return N_rat
+end
+
+# Integer null space: clear all denominators and reduce by GCD.
+# Best for purely integer A (e.g. CanonicalStoichMatrix).
+# Returns Matrix{BigInt} of shape (n, dim_ker).
+function _integer_nullspace(A::AbstractMatrix)
+    N_rat = _rational_nullspace(A)
+    n, k = size(N_rat)
+    k == 0 && return zeros(BigInt, n, 0)
+    N_out = zeros(BigInt, n, k)
+    for j in 1:k
+        v = N_rat[:, j]
+        d = mapreduce(denominator, lcm, v; init = one(BigInt))
+        vi = numerator.(v .* d)
+        g = mapreduce(abs, gcd, vi; init = zero(BigInt))
+        iszero(g) && continue
+        vi = vi .÷ g
+        lead = findfirst(!iszero, vi)
+        !isnothing(lead) && vi[lead] < 0 && (vi = -vi)
+        N_out[:, j] = vi
+    end
+    return N_out
+end
+
+# Detect whether all entries in a column are (near-)integer.
+_is_int_entry(x::Integer) = true
+_is_int_entry(x::Rational) = isone(denominator(x))
+_is_int_entry(x) = isapprox(x, round(x); atol = 1.0e-9)
+
+# Convert Rational{BigInt} → concrete Real without precision loss where possible.
+# Int for integers, Rational{Int} for small denominators, Float64 as last resort.
+function _to_stoich_real(r::Rational{BigInt})
+    n, d = numerator(r), denominator(r)
+    if isone(d)
+        return typemin(Int) <= n <= typemax(Int) ? Int(n) : stoich_coef_round(Float64(r))
+    elseif d < 10 && typemin(Int) <= n <= typemax(Int) && typemin(Int) <= d
+        return Rational{Int}(Int(n), Int(d))
+    else
+        return stoich_coef_round(Float64(r))
+    end
+end
+
+# Optimal null space for mixed integer/fractional A.
+# Integer coefficients where A columns are integer; fractional otherwise.
+# Returns a Matrix{Real} with concrete subtypes (Int, Rational{Int}, Float64)
+# — never BigInt. Exact rational conversion preserves A*N = 0.
+function _optimal_nullspace(A::AbstractMatrix)
+    N_rat = _rational_nullspace(A)
+    n, k = size(N_rat)
+    k == 0 && return zeros(Int, n, 0)
+    is_int_col = [all(_is_int_entry, view(A, :, j)) for j in axes(A, 2)]
+    # Clear denominators of integer-column entries only;
+    # fractional-column entries keep their natural rational scale.
+    N_out = Matrix{Real}(undef, n, k)
+    for j in 1:k
+        v = N_rat[:, j]
+        int_idx = [i for i in 1:n if is_int_col[i] && !iszero(v[i])]
+        d = if !isempty(int_idx)
+            mapreduce(i -> denominator(v[i]), lcm, int_idx; init = one(BigInt))
+        else
+            mapreduce(denominator, lcm, v; init = one(BigInt))
+        end
+        v = v .* d
+        # Reduce by GCD of integer-column entries
+        g = if !isempty(int_idx)
+            mapreduce(i -> abs(numerator(v[i])), gcd, int_idx; init = zero(BigInt))
+        else
+            mapreduce(x -> abs(numerator(x)), gcd, v; init = zero(BigInt))
+        end
+        !iszero(g) && g > 1 && (v = v .// g)
+        # Sign normalization: first non-zero entry positive
+        lead = findfirst(!iszero, v)
+        !isnothing(lead) && v[lead] < 0 && (v = -v)
+        # Convert to concrete types — exact for Int and small Rational,
+        # Float64 only as last resort. Preserves A*N = 0.
+        for i in 1:n
+            N_out[i, j] = _to_stoich_real(v[i])
+        end
+    end
+    return N_out
+end
+
 function StoichMatrix(
         A::M, primaries::Union{Vector{Symbol}, Vector{S}}, species::AbstractVector{S}
     ) where {M <: AbstractMatrix, S <: AbstractSpecies}
     indices_in = [findfirst(x -> x == p, species) for p in primaries]
     if any(x -> isnothing(x), indices_in)
-        return StoichMatrix(A, primaries, Vector(species), similar(A, 0, 0))
+        # General case: primaries are not contained in species (e.g., primaries are atoms).
+        # Optimal null space: integer where A is integer, rational/float otherwise.
+        N_opt = _optimal_nullspace(A)
+        N = similar(A, size(N_opt)...)
+        N .= N_opt
+        return StoichMatrix(A, primaries, Vector(species), N)
     else
+        # Trivial case: primaries ⊆ species and A[:,indices_in] = I — analytical formula.
         p, n = size(A)
         N = similar(A, n, n - p)
         indices_out = setdiff(eachindex(species), indices_in)
@@ -218,8 +382,10 @@ function CanonicalStoichMatrix(species::AbstractVector{<:AbstractSpecies})
             A[i, j] = get(atoms, atom, zero(T))
         end
     end
-
-    return StoichMatrix(A, involved_atoms, Vector(species), similar(A, 0, 0))
+    N_int = _integer_nullspace(A)
+    N = similar(A, size(N_int)...)
+    N .= N_int
+    return StoichMatrix(A, involved_atoms, Vector(species), N)
 end
 
 """
@@ -629,10 +795,28 @@ function mass_matrix(SM::StoichMatrix{T, Symbol}) where {T}
     return StoichMatrix(Mprimaries .* SM.A .* inv.(Mspecies)', SM.primaries, SM.species)
 end
 
+# Internal: build reactions from nullspace columns (general case).
+# Each column of N gives stoichiometric coefficients for the species;
+# negative = reactant, positive = product. Symbol is auto-detected.
+function _reactions_from_nullspace(
+        species::AbstractVector{<:AbstractSpecies}, N::AbstractMatrix
+    )
+    rxns = Reaction[]
+    for V in eachcol(N)
+        all(iszero, V) && continue
+        dict = OrderedDict(sp => v for (sp, v) in zip(species, V) if !iszero(v))
+        isempty(dict) && continue
+        push!(rxns, Reaction(dict; symbol = nothing))
+    end
+    return unique!(rxns)
+end
+
 """
         reactions(SM::StoichMatrix)
 
-Construct the list of non trivial reactions from a StoichMatrix.
+Construct the list of non-trivial reactions from a StoichMatrix whose primaries
+are species. Uses `push_primaries` when primaries are contained in species;
+falls back to direct nullspace extraction otherwise.
 
 # Arguments
 
@@ -666,9 +850,14 @@ julia> reactions(SM)
  H₂O + CO₂ = CO₃²⁻ + 2H⁺
 ```
 """
+# Species-primary matrices: use push_primaries when possible, fall back to general extraction.
 function reactions(SM::StoichMatrix)
     if !isempty(SM.N)
         pSM = push_primaries(SM)
+        if pSM === SM
+            # push_primaries could not reorder — fall back to general extraction
+            return _reactions_from_nullspace(SM.species, SM.N)
+        end
         return [
             Reaction(OrderedDict(zip(pSM.species, V)); symbol = symbol(pSM.species[j])) for
                 (j, V) in enumerate(eachcol(pSM.N))
@@ -684,7 +873,6 @@ function reactions(SM::StoichMatrix)
                     ) for (j, V) in enumerate(eachcol(SM.A))
             ]
         )
-        # return filter(x->!isempty(x), lr)
         return lr[.!isempty.(lr)]
     end
 end

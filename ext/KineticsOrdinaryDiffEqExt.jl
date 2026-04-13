@@ -29,6 +29,7 @@ import ChemistryLab:
     n_extra_states,
     _DEFAULT_KINETICS_SOLVER_FACTORY,
     AbstractCalorimeter,
+    SemiAdiabaticCalorimeter,
     _total_enthalpy
 
 # ── Concrete integrate implementation ────────────────────────────────────────
@@ -39,24 +40,16 @@ import ChemistryLab:
 
 Integrate the kinetics ODE using `OrdinaryDiffEq`.
 
-The ODE right-hand-side is built by [`build_kinetics_ode`](@ref) and
-optionally extended with calorimeter equations via [`extend_ode!`](@ref).
-
 ## Algorithm
 
 1. Build `u0` (kinetic mineral moles, optionally extended by calorimeter).
 2. Build the immutable parameter `NamedTuple` `p` from the initial state.
 3. Wrap into `ODEProblem` and call `OrdinaryDiffEq.solve`.
 
-## Default tolerances
+Default tolerances: `reltol = 1e-8`, `abstol = 1e-10`.
 
-`reltol = 1e-8`, `abstol = 1e-10` — suitable for mineral dissolution kinetics
-where mole amounts span several orders of magnitude.
-
-## Returns
-
-A `SciMLBase.ODESolution`. Access mineral moles at time `t` via `sol(t)[i]`
-for the i-th kinetic mineral.
+When a [`SemiAdiabaticCalorimeter`](@ref) is used, a warning is emitted for
+any species that lack Cp° data (their contribution to `Cp_total` is zero).
 
 # Examples
 
@@ -66,11 +59,10 @@ using ChemistryLab, OrdinaryDiffEq
 ks  = KineticsSolver(; ode_solver=Rodas5P(), reltol=1e-8, abstol=1e-10)
 sol = integrate(kp, ks)
 
-# With isothermal calorimetry
-using ChemistryLab: IsothermalCalorimeter
-cal = IsothermalCalorimeter(298.15)
-sol = integrate(kp, ks; calorimeter=cal)
-t, Q = cumulative_heat(sol, cal)
+cell = SemiAdiabaticCell(; Cp=4000.0u"J/K", T_env=293.15u"K", L=0.5u"W/K")
+cal  = SemiAdiabaticCalorimeter(; cell=cell, T0=293.15u"K")
+sol  = integrate(kp, ks; calorimeter=cal)
+t, T_vec = temperature_profile(sol, cal)
 ```
 """
 function integrate(
@@ -84,10 +76,24 @@ function integrate(
     p = build_kinetics_params(kp)
     n_kin = length(u0_base)
 
+    # ── Warn for missing Cp° when semi-adiabatic calorimeter requested ─────
+    if calorimeter isa SemiAdiabaticCalorimeter
+        missing_cp = String[]
+        for (sp, cp_fn) in zip(kp.system.species, p.cp_fns)
+            isnothing(cp_fn) && push!(missing_cp, string(symbol(sp)))
+        end
+        if !isempty(missing_cp)
+            shown = join(missing_cp[1:min(5, length(missing_cp))], ", ")
+            suffix = length(missing_cp) > 5 ? "…" : ""
+            @warn "SemiAdiabaticCalorimeter: variable Cp_total requires Cp° data per " *
+                "species. Missing for $(length(missing_cp)) species " *
+                "($shown$suffix). Their contribution to Cp_total is treated as zero."
+        end
+    end
+
     # ── Optionally extend state vector for calorimeter ─────────────────────
     u0 = isnothing(calorimeter) ? u0_base : extend_u0(u0_base, calorimeter)
 
-    # Wrap f_base! to also call extend_ode! when a calorimeter is present
     f! = if isnothing(calorimeter)
         f_base!
     else
@@ -100,17 +106,17 @@ function integrate(
     end
 
     # ── DiscreteCallback: track total system enthalpy at each accepted step ──
-    # Fires at t=0 (initialize) and after every accepted step.
-    # Stores H(t) = Σᵢ nᵢ(t)·hᵢ(T) in p.saved_H so that cumulative_heat can
-    # return Q(t) = H(0) - H(t), capturing both kinetic and equilibrium heat.
+    # H(t) = Σᵢ nᵢ(t)·hᵢ(T) — used by cumulative_heat to compute Q = H(0) - H(t).
+    # For SemiAdiabaticCalorimeter the current temperature is u[n_kin+1]; otherwise p_.T.
+    is_semi_adiabatic = calorimeter isa SemiAdiabaticCalorimeter
     function _enthalpy_affect!(integrator)
         p_ = integrator.p
-        any(!isnothing, p_.h_fns) || return   # no enthalpy data → skip
-        # Refresh mineral moles in n_full from the current (accepted) ODE state
-        for (j, idx) in enumerate(p_.idx_kin)
+        any(!isnothing, p_.h_fns) || return
+        for (j, idx) in enumerate(p_.idx_kin_unique)
             p_.n_full[idx] = max(integrator.u[j], p_.ϵ)
         end
-        H = _total_enthalpy(p_.n_full, p_.h_fns, p_.T)
+        T_curr = is_semi_adiabatic ? integrator.u[n_kin + 1] : p_.T
+        H = _total_enthalpy(p_.n_full, p_.h_fns, T_curr)
         push!(p_.saved_H, H)
         push!(p_.saved_t, integrator.t)
         return nothing
@@ -119,14 +125,12 @@ function integrate(
     enthalpy_cb = DiscreteCallback(
         Returns(true),
         _enthalpy_affect!;
-        initialize = (c, u, t, integrator) -> _enthalpy_affect!(integrator),
+        initialize = (_, _, _, integrator) -> _enthalpy_affect!(integrator),
         save_positions = (false, false),
     )
 
-    # ── Merge default tolerances with user kwargs ──────────────────────────
     defaults = (reltol = 1.0e-8, abstol = 1.0e-10)
     merged = merge(defaults, ks.kwargs)
-
     solver = isnothing(ks.ode_solver) ? Rodas5P() : ks.ode_solver
 
     prob = ODEProblem(f!, u0, kp.tspan, p)

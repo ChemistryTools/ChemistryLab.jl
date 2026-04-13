@@ -7,10 +7,10 @@ using SymbolicNumericIntegration
 # Construction
 expr = :(α + β * T + γ * log(T))
 factory = ThermoFactory(expr, [:T])
-params = (α=210.0, β=0.0, γ=-3.07e6, T=298.15)
+params = (α = 210.0, β = 0.0, γ = -3.07e6, T = 298.15)
 f = factory(; params...)
 # or directly
-f = factory(α=210.0, β=0.0, γ=-3.07e6, T=298.15)
+f = factory(α = 210.0, β = 0.0, γ = -3.07e6, T = 298.15)
 f(T = 300)
 f()
 f(T = 298.15)
@@ -21,7 +21,7 @@ params = [:a₀ => 210.0, :a₁ => 0.12, :a₂ => -3.07e6, :a₃ => 0.0, :T => 2
 factoryCp = THERMO_FACTORIES[:cp_ft_equation][:Cp]
 Cp⁰ = factoryCp(; params...)
 H = integrate(Cp⁰.symbolic, only(@variables T); symbolic = true, detailed = false)
-fH = SymbolicFunc(H; T=298.15)
+fH = SymbolicFunc(H; T = 298.15)
 
 dtf = build_thermo_functions(:cp_ft_equation, params)
 display(dtf)

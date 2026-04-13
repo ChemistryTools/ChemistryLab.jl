@@ -26,14 +26,14 @@ end
 w = 0.4 * sum(last.(compo))
 set_quantity!(state, "H2O@", w * u"kg")
 V = volume(state)
-set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
-set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
+set_quantity!(state, "H+", 1.0e-7u"mol/L" * V.liquid)
+set_quantity!(state, "OH-", 1.0e-7u"mol/L" * V.liquid)
 rescale!(state, 1.0u"kg")
 
 # ── Equilibrate with OptimaSolver ────────────────────────────────────────────────
 state_eq = equilibrate(
     state;
-    solver         = OptimaOptimizer(tol = 1e-9, verbose = true),
+    solver = OptimaOptimizer(tol = 1.0e-10, verbose = true),
     variable_space = Val(:linear),
 )
 
@@ -43,7 +43,7 @@ display(state_eq)
 using LinearAlgebra
 
 μ = build_potentials(cs, DiluteSolutionModel())
-p  = ChemistryLab._build_params(state; ϵ = 1.0e-16)
+p = ChemistryLab._build_params(state; ϵ = 1.0e-16)
 Gini = μ(ustrip.(state.n), p) ⋅ ustrip.(state.n)
 Gfin = μ(ustrip.(state_eq.n), p) ⋅ ustrip.(state_eq.n)
 
@@ -52,7 +52,7 @@ println("G final    = ", round(Gfin, digits = 6))
 println("ΔG         = ", round(Gfin - Gini, digits = 6))
 
 # ── Reference (Reaktoro) ─────────────────────────────────────────────────────
-values = [6.3267e+00, 5.2875e-06, 4.7599e-11, 6.0853e-10, 1.0000e-16, 2.4934e-10, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 3.1801e-01, 1.0000e-16, 6.5027e-13, 1.4563e-06, 4.3002e-01, 2.1376e-01, 1.0000e-16, 1.0000e-16, 6.9034e-08, 6.8628e-06, 7.9351e-03, 1.1895e-15, 6.9034e-08, 1.3370e-03, 1.7474e-16, 1.0000e-16, 8.0774e-16, 1.7135e-04, 1.0000e-16, 1.0000e-16, 1.0000e-16, 2.5682e-07, 1.0000e-16, 1.0000e-16, 1.0000e-16, 8.1095e-04, 5.8068e-09, 2.8552e+00, 1.0000e-16, 1.0000e-16, 1.0000e-16, 1.0000e-16, 3.5340e+00, 1.1724e-01, 4.8060e-16]
+values = [6.3267e+0, 5.2875e-6, 4.7599e-11, 6.0853e-10, 1.0e-16, 2.4934e-10, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 3.1801e-1, 1.0e-16, 6.5027e-13, 1.4563e-6, 4.3002e-1, 2.1376e-1, 1.0e-16, 1.0e-16, 6.9034e-8, 6.8628e-6, 7.9351e-3, 1.1895e-15, 6.9034e-8, 1.337e-3, 1.7474e-16, 1.0e-16, 8.0774e-16, 1.7135e-4, 1.0e-16, 1.0e-16, 1.0e-16, 2.5682e-7, 1.0e-16, 1.0e-16, 1.0e-16, 8.1095e-4, 5.8068e-9, 2.8552e+0, 1.0e-16, 1.0e-16, 1.0e-16, 1.0e-16, 3.534e+0, 1.1724e-1, 4.806e-16]
 state_rkt = copy(state)
 state_rkt.n .= values * u"mol"
 ChemistryLab._update_derived!(state_rkt)

@@ -8,22 +8,16 @@ using LinearAlgebra
 
 Base type for calorimeter models that can be coupled to a kinetics simulation.
 
-A calorimeter augments the ODE state vector `u` with additional variables
-(cumulative heat Q and/or temperature T) and extends the ODE right-hand side
-accordingly.
-
 Concrete subtypes:
 - [`IsothermalCalorimeter`](@ref): T = constant, tracks Q(t) = ∫q̇dt.
-- [`SemiAdiabaticCalorimeter`](@ref): dT/dt = (q̇ - L(T-T_env)) / Cp.
-
-All methods must be AD-compatible (no `Float64` casts).
+- [`SemiAdiabaticCalorimeter`](@ref): variable-T cell (Lavergne et al. 2018).
 """
 abstract type AbstractCalorimeter end
 
 # ── Heat-rate from kinetic reactions ─────────────────────────────────────────
 
 """
-    heat_rate(kinetic_reactions, rates, T_K; ϵ=1e-30) -> Real
+    heat_rate(kinetic_reactions, rates, T_K) -> Real
 
 Compute the instantaneous heat generation rate [W = J/s]:
 
@@ -32,19 +26,7 @@ q̇ = Σᵢ rᵢ(t) × ΔHᵣ,ᵢ(T)
 ```
 
 where `rᵢ` [mol/s] is the net rate of the i-th kinetic reaction (positive =
-dissolution/forward) and `ΔHᵣ,ᵢ(T)` [J/mol] is the enthalpy of reaction
-at temperature `T_K`.
-
-`ΔHᵣ` is computed as the sum of stoichiometrically weighted species enthalpies
-`ΔₐH⁰` using the thermodynamic functions already stored in each species.
-If a species lacks the `:ΔₐH⁰` property the contribution is treated as zero.
-
-# Arguments
-
-  - `kinetic_reactions`: vector of [`KineticReaction`](@ref).
-  - `rates`: vector of net rates [mol/s] (length = number of kinetic reactions).
-  - `T_K`: temperature [K] (plain number or Quantity; stripped internally).
-  - `ϵ`: regularisation floor (unused here, kept for API uniformity).
+dissolution/forward) and `ΔHᵣ,ᵢ(T)` [J/mol] is the enthalpy of reaction.
 
 AD-compatible: the ΔₐH⁰ callables accept `ForwardDiff.Dual` T inputs.
 """
@@ -56,7 +38,6 @@ function heat_rate(
     )
     T_val = ustrip(T_K)
     q = zero(promote_type(eltype(rates), typeof(T_val)))
-
     for (kr, r) in zip(kinetic_reactions, rates)
         ΔHr = _reaction_enthalpy(kr, T_val)
         q = q + r * ΔHr
@@ -66,68 +47,37 @@ end
 
 # ── _reaction_enthalpy dispatch hierarchy ────────────────────────────────────
 #
-# Priority (highest to lowest):
-#   1. KineticReaction with explicit heat_per_mol (Float64) — user-supplied value
-#   2. KineticReaction with heat_per_mol=nothing — delegate to reaction stoichiometry
-#   3. AbstractReaction — stoichiometric sum of species ΔₐH⁰
-#   4. AbstractSpecies — no stoichiometry available, returns 0
+# Priority:
+#   1. KineticReaction{R, F, Float64}  — explicit heat_per_mol
+#   2. KineticReaction{R, F, Nothing}  — delegate to reaction stoichiometry
+#   3. AbstractReaction                — stoichiometric sum of ΔₐH⁰
 
-# 1. Explicit heat_per_mol: user-supplied enthalpy of reaction [J/mol].
-#    Bypasses stoichiometry — correct for empirical models (e.g. ParrotKilloh).
-function _reaction_enthalpy(kr::KineticReaction{<:Any, <:Any, <:Any, Float64}, ::Real)
+function _reaction_enthalpy(kr::KineticReaction{<:Any, <:Any, Float64}, ::Real)
     return kr.heat_per_mol
 end
 
-# 2. No explicit heat_per_mol: delegate to the stored reaction object.
-function _reaction_enthalpy(kr::KineticReaction{<:Any, <:Any, <:Any, Nothing}, T_K::Real)
+function _reaction_enthalpy(kr::KineticReaction{<:Any, <:Any, Nothing}, T_K::Real)
     return _reaction_enthalpy(kr.reaction, T_K)
 end
 
-# 3. Full reaction stoichiometry: ΔHᵣ = Σ_products ν_j·ΔₐH⁰_j - Σ_reactants ν_i·ΔₐH⁰_i
 function _reaction_enthalpy(reaction::AbstractReaction, T_K::Real)
-    ΔH = zero(T_K)
-    for (sp, ν) in pairs(reactants(reaction))
-        haskey(properties(sp), :ΔₐH⁰) || continue
-        ΔH -= ν * ustrip(sp[:ΔₐH⁰](T = T_K * u"K"; unit = true))
+    # reaction[:ΔᵣH⁰] is a SymbolicFunc or NumericFunc (T-dependent) built lazily
+    # by complete_thermo_functions! from species :ΔₐH⁰ properties.
+    # Thermodynamic convention: ΔᵣH⁰ < 0 for exothermic.
+    # heat_rate requires "heat generated" (positive = exothermic), so we negate.
+    if haskey(reaction, :ΔᵣH⁰)
+        return -ustrip(reaction[:ΔᵣH⁰](; T = T_K * u"K", unit = true))
     end
-    for (sp, ν) in pairs(products(reaction))
-        haskey(properties(sp), :ΔₐH⁰) || continue
-        ΔH += ν * ustrip(sp[:ΔₐH⁰](T = T_K * u"K"; unit = true))
-    end
-    return ΔH
+    return zero(T_K)
 end
-
-# 4. Bare species (convenience constructor, no reaction stoichiometry): return 0.
-#    For meaningful calorimetry with bare-species KineticReactions, supply
-#    `heat_per_mol` to the KineticReaction constructor.
-_reaction_enthalpy(::AbstractSpecies, T_K::Real) = zero(T_K)
 
 # ── Total-enthalpy helper ─────────────────────────────────────────────────────
 
 """
     _total_enthalpy(n_full, h_fns, T_K) -> Real
 
-Compute the total molar enthalpy of the system:
-
-```math
-H = \\sum_i n_i \\cdot \\Delta_a H^\\circ_i(T)
-```
-
-where `n_full` is the full species mole vector [mol] and `h_fns` is the vector of
-standard-enthalpy callables built by [`build_kinetics_params`](@ref) (one entry per
-species, `nothing` for species without `:ΔₐH⁰` data).
-
-Called by the `DiscreteCallback` in `KineticsOrdinaryDiffEqExt` at each accepted ODE
-step to track the total system enthalpy. The cumulative heat released is then:
-
-```math
-Q(t) = H(0) - H(t)
-```
-
-This captures heat from **all** chemical transformations — both kinetically controlled
-reactions and instantaneous equilibrium re-speciation.
-
-AD-compatible: accepts `ForwardDiff.Dual` numbers in `n_full` and `T_K`.
+Total molar enthalpy `H = Σᵢ nᵢ ΔₐH⁰ᵢ(T)`.
+Used by the `DiscreteCallback` in `KineticsOrdinaryDiffEqExt`.
 """
 function _total_enthalpy(n_full::AbstractVector, h_fns, T_K::Real)
     H = zero(promote_type(eltype(n_full), typeof(T_K)))
@@ -144,22 +94,15 @@ end
 """
     struct IsothermalCalorimeter{T<:Real} <: AbstractCalorimeter
 
-Isothermal calorimeter: temperature is held constant at `T` [K], and the
-cumulative heat released `Q(t) = ∫₀ᵗ q̇(τ) dτ` [J] is tracked as an
-additional ODE state.
-
-The augmented ODE state is `[n_minerals..., Q]` where `Q` is the last element.
-
-# Fields
-
-  - `T`: fixed temperature [K].
+Isothermal calorimeter: temperature held constant at `T` [K]; cumulative heat
+`Q(t) = ∫₀ᵗ q̇(τ) dτ` [J] tracked as an extra ODE state.
 
 # Examples
 
 ```julia
-cal = IsothermalCalorimeter(298.15)   # 25 °C
+cal = IsothermalCalorimeter(298.15)
 sol = integrate(kp, ks; calorimeter = cal)
-t, Q   = cumulative_heat(sol, cal)
+t, Q    = cumulative_heat(sol, cal)
 t, qdot = heat_flow(sol, cal)
 ```
 """
@@ -168,41 +111,21 @@ struct IsothermalCalorimeter{T <: Real} <: AbstractCalorimeter
 end
 
 """
-    IsothermalCalorimeter(T_K::Real) -> IsothermalCalorimeter
+    IsothermalCalorimeter(T) -> IsothermalCalorimeter
 
-Construct an [`IsothermalCalorimeter`](@ref) at temperature `T_K` [K].
-Strips units if a `Quantity` is supplied.
+Plain `Real` → SI [K]; `Quantity` → converted.
 """
-IsothermalCalorimeter(T_K) = IsothermalCalorimeter{Float64}(Float64(ustrip(T_K)))
+IsothermalCalorimeter(T_K) =
+    IsothermalCalorimeter{Float64}(Float64(safe_ustrip(us"K", T_K)))
 
-"""
-    n_extra_states(::IsothermalCalorimeter) -> Int
-
-Number of extra ODE states added by this calorimeter (1: cumulative heat Q).
-"""
 n_extra_states(::IsothermalCalorimeter) = 1
 
-"""
-    extend_u0(u0::AbstractVector, ::IsothermalCalorimeter) -> Vector
-
-Append Q₀ = 0 to the kinetic mole vector `u0`.
-"""
 function extend_u0(u0::AbstractVector, ::IsothermalCalorimeter)
     return vcat(u0, zero(eltype(u0)))
 end
 
-"""
-    extend_ode!(du, u, p, n_kin, cal::IsothermalCalorimeter)
-
-Append `dQ/dt = q̇` to the ODE right-hand side.
-
-Called by `KineticsOrdinaryDiffEqExt` after the mineral ODE step.
-`n_kin` is the number of kinetic species (index offset into `u` for extra states).
-"""
 function extend_ode!(du, ::Any, p, n_kin::Int, cal::IsothermalCalorimeter)
-    # rates = -du[1:n_kin] (sign: dissolution lowers mineral → r = -du[i])
-    rates = [-du[j] for j in 1:n_kin]
-    qdot = heat_rate(p.kin_rxns, rates, cal.T)
+    qdot = heat_rate(p.kin_rxns, p.rates_buf, cal.T)
     du[n_kin + 1] = qdot
     return nothing
 end
@@ -212,49 +135,39 @@ end
 """
     struct SemiAdiabaticCalorimeter{T<:Real, F} <: AbstractCalorimeter
 
-Semi-adiabatic calorimeter: temperature evolves according to
+Semi-adiabatic calorimeter following the Lavergne et al. (2018) energy balance:
 
 ```math
-\\frac{dT}{dt} = \\frac{\\dot{q}(t) - \\varphi(T(t) - T_{\\rm env})}{C_p}
+\\frac{dT}{dt} = \\frac{\\dot{q}(t) - \\varphi(T - T_{\\rm env})}{C_p + \\sum_i n_i C^\\circ_{p,i}(T)}
 ```
 
 where:
-- `q̇(t) = Σᵢ rᵢ × ΔHᵣ,ᵢ(T)` [W] is the instantaneous heat-generation rate,
-- `φ(ΔT)` [W] is a user-supplied **heat-loss function** (e.g. linear, quadratic),
-- `Cp` [J/K] is the total heat capacity of the vessel + sample,
-- `T_env` [K] is the ambient temperature.
-
-The augmented ODE state is `[n_minerals..., T]` where `T` is the last element.
-
-The heat-loss function `φ` maps temperature difference `ΔT = T - T_env` [K] to
-heat-loss rate [W]. Common choices:
-
-| Law | Expression |
-|-----|-----------|
-| Linear (Newton) | `ΔT -> L * ΔT` |
-| Quadratic (Lavergne et al. 2018) | `ΔT -> a*ΔT + b*ΔT^2` |
-| Arbitrary | any callable `φ(ΔT)` |
+- `q̇(t)` [W] is the instantaneous heat-generation rate,
+- `φ(ΔT)` [W] is the heat-loss function (e.g. linear `L·ΔT` or quadratic `a·ΔT + b·ΔT²`),
+- `Cp` [J/K] is the fixed calorimeter heat capacity,
+- `Σᵢ nᵢ Cp°ᵢ(T)` is the temperature- and mole-dependent sample heat capacity
+  (computed from `p.cp_fns` at every ODE step when available).
 
 # Fields
 
-  - `T0`: initial temperature [K].
+  - `Cp`: heat capacity of calorimeter + sample [J/K].
+  - `heat_loss`: callable `φ(ΔT::Real) -> Real [W]`.
   - `T_env`: ambient temperature [K].
-  - `Cp`: total heat capacity [J/K].
-  - `heat_loss`: callable `ΔT::Real -> Real [W]` — heat-loss function.
+  - `T0`: initial temperature [K].
 
 # Examples
 
 ```julia
-# Linear heat loss (Newton's law of cooling, L = 0.5 W/K)
-cal = SemiAdiabaticCalorimeter(; T0=293.15, T_env=293.15, Cp=4000.0,
-                                  heat_loss = ΔT -> 0.5 * ΔT)
+# Linear heat loss — Newton cooling
+cal = SemiAdiabaticCalorimeter(; Cp=4000.0u"J/K", T_env=293.15u"K", L=0.5u"W/K", T0=293.15u"K")
 
-# Quadratic heat loss (Lavergne et al. 2018: a [W/K], b [W/K²])
-cal = SemiAdiabaticCalorimeter(; T0=293.15, T_env=293.15, Cp=4000.0,
-                                  heat_loss = ΔT -> 0.48*ΔT + 0.002*ΔT^2)
-
-# Convenience constructor with linear L keyword (backward-compatible)
-cal = SemiAdiabaticCalorimeter(; T0=293.15, T_env=293.15, L=0.5, Cp=4000.0)
+# Quadratic heat loss (Lavergne et al. 2018)
+cal = SemiAdiabaticCalorimeter(;
+    Cp        = 3449.0u"J/K",
+    T_env     = 293.15u"K",
+    heat_loss = ΔT -> 0.3*ΔT + 0.003*ΔT^2,
+    T0        = 293.15u"K",
+)
 
 sol = integrate(kp, ks; calorimeter = cal)
 t, T_vec = temperature_profile(sol, cal)
@@ -264,71 +177,68 @@ t, qdot  = heat_flow(sol, cal)
 # References
 
   - Lavergne, F., Ben Fraj, A., Bayane, I. & Barthélémy, J.-F. (2018).
-    *Estimating the mechanical properties of hydrating blended cementitious materials:
-    An investigation based on micromechanics.* Cement and Concrete Research **104**, 37–60.
-  - Lerch, R. (2007). Calorimetry of cement hydration. *Cem. Concr. Res.*
+    *Cement and Concrete Research* **104**, 37–60.
 """
 struct SemiAdiabaticCalorimeter{T <: Real, F} <: AbstractCalorimeter
-    T0::T
-    T_env::T
     Cp::T
-    heat_loss::F   # callable: ΔT [K] → heat loss [W]
+    heat_loss::F
+    T_env::T
+    T0::T
 end
 
 """
-    SemiAdiabaticCalorimeter(; T0, T_env, Cp, heat_loss=nothing, L=nothing)
+    SemiAdiabaticCalorimeter(; Cp, T_env, T0, heat_loss=nothing, L=nothing)
 
-Keyword constructor. Exactly one of `heat_loss` or `L` must be provided:
+Keyword constructor for [`SemiAdiabaticCalorimeter`](@ref).
 
-  - `heat_loss`: any callable `ΔT -> [W]` (general heat-loss function).
-  - `L`: linear heat-loss coefficient [W/K] (shorthand for `heat_loss = ΔT -> L*ΔT`).
+Exactly one of `heat_loss` or `L` must be provided:
+  - `heat_loss`: callable `ΔT -> [W]` (e.g. quadratic `ΔT -> a*ΔT + b*ΔT^2`).
+  - `L`: linear Newton cooling coefficient [W/K]. Sets `heat_loss = ΔT -> L * ΔT`.
+
+All scalar fields accept plain `Real` (SI) or `Quantity`:
+  - `Cp` → J/K; `T_env` → K; `T0` → K.
 
 # Examples
 
 ```julia
-# Linear heat loss via L shorthand
-cal = SemiAdiabaticCalorimeter(; T0=293.15, T_env=293.15, Cp=4000.0, L=0.5)
-
-# Quadratic heat loss (Lavergne et al. 2018)
+# Linear loss (Langavant / NF EN 196-9)
 cal = SemiAdiabaticCalorimeter(;
-    T0        = 293.15,
-    T_env     = 293.15,
-    Cp        = 4000.0,
-    heat_loss = ΔT -> 0.48*ΔT + 0.002*ΔT^2,
+    Cp    = 3449.0u"J/K",
+    T_env = 293.15u"K",
+    L     = 0.3u"W/K",
+    T0    = 293.15u"K",
+)
+
+# Quadratic loss (Lavergne et al. 2018)
+cal = SemiAdiabaticCalorimeter(;
+    Cp        = 3449.0u"J/K",
+    T_env     = 293.15u"K",
+    heat_loss = ΔT -> 0.3*ΔT + 0.003*ΔT^2,
+    T0        = 293.15u"K",
 )
 ```
 """
-function SemiAdiabaticCalorimeter(;
-        T0::Real,
-        T_env::Real,
-        Cp::Real,
-        heat_loss = nothing,
-        L = nothing,
-    )
+function SemiAdiabaticCalorimeter(; Cp, T_env, T0, heat_loss = nothing, L = nothing)
+    Cp_f = Float64(safe_ustrip(us"J/K", Cp))
+    T_env_f = Float64(safe_ustrip(us"K", T_env))
+    T0_f = Float64(safe_ustrip(us"K", T0))
     hl = if !isnothing(heat_loss)
         heat_loss
     elseif !isnothing(L)
-        L_f = float(L)
+        L_f = Float64(safe_ustrip(us"W/K", L))
         ΔT -> L_f * ΔT
     else
-        throw(ArgumentError("SemiAdiabaticCalorimeter requires either `heat_loss` or `L`"))
+        throw(
+            ArgumentError(
+                "SemiAdiabaticCalorimeter requires either `heat_loss` or `L`",
+            ),
+        )
     end
-    T0_f, T_env_f, Cp_f = promote(float(T0), float(T_env), float(Cp))
-    return SemiAdiabaticCalorimeter{typeof(T0_f), typeof(hl)}(T0_f, T_env_f, Cp_f, hl)
+    return SemiAdiabaticCalorimeter{Float64, typeof(hl)}(Cp_f, hl, T_env_f, T0_f)
 end
 
-"""
-    n_extra_states(::SemiAdiabaticCalorimeter) -> Int
-
-Number of extra ODE states added by this calorimeter (1: temperature T).
-"""
 n_extra_states(::SemiAdiabaticCalorimeter) = 1
 
-"""
-    extend_u0(u0::AbstractVector, cal::SemiAdiabaticCalorimeter) -> Vector
-
-Append T₀ to the kinetic mole vector `u0`.
-"""
 function extend_u0(u0::AbstractVector, cal::SemiAdiabaticCalorimeter)
     return vcat(u0, eltype(u0)(cal.T0))
 end
@@ -336,36 +246,35 @@ end
 """
     extend_ode!(du, u, p, n_kin, cal::SemiAdiabaticCalorimeter)
 
-Append `dT/dt = (q̇ - φ(T - T_env)) / Cp` to the ODE right-hand side,
-where `φ = cal.heat_loss` is the user-supplied heat-loss function.
+Append `dT/dt = (q̇ − φ(ΔT)) / Cp_total(T, n)` to the ODE right-hand side.
+
+`Cp_total = cal.Cp + Σᵢ nᵢ Cp°ᵢ(T)` is recomputed at every ODE step
+from `p.cp_fns` and `p.n_full` (Lavergne et al. 2018).
 """
 function extend_ode!(du, u, p, n_kin::Int, cal::SemiAdiabaticCalorimeter)
     T_curr = u[n_kin + 1]
-    rates = [-du[j] for j in 1:n_kin]
-    qdot = heat_rate(p.kin_rxns, rates, T_curr; ϵ = p.ϵ)
+    # Variable total heat capacity: Cp_calorimeter + Σᵢ nᵢ Cp°ᵢ(T)
+    Cp_total = cal.Cp
+    for (i, cp_fn) in enumerate(p.cp_fns)
+        isnothing(cp_fn) && continue
+        cp_i = cp_fn(; T = T_curr, unit = false)   # J/(mol·K)
+        Cp_total = Cp_total + p.n_full[i] * cp_i
+    end
+    qdot = heat_rate(p.kin_rxns, p.rates_buf, T_curr)
     ΔT = T_curr - cal.T_env
-    du[n_kin + 1] = (qdot - cal.heat_loss(ΔT)) / cal.Cp
+    du[n_kin + 1] = (qdot - cal.heat_loss(ΔT)) / Cp_total
     return nothing
 end
 
 # ── Result extraction ─────────────────────────────────────────────────────────
 
 """
-    heat_flow(sol, cal::AbstractCalorimeter) -> (t::Vector, qdot::Vector)
+    heat_flow(sol, cal::IsothermalCalorimeter) -> (t, qdot)
 
-Extract the instantaneous heat-generation rate q̇(t) [W] from an ODE solution.
-
-For [`IsothermalCalorimeter`](@ref): if total-enthalpy tracking data are available
-in `sol.prob.p.saved_H` (filled by `KineticsOrdinaryDiffEqExt`), q̇ is derived from
-H(0) - H(t), capturing both kinetic and equilibrium heat. Otherwise falls back to
-finite differences on the ODE state Q (kinetic heat only).
-
-For [`SemiAdiabaticCalorimeter`](@ref): q̇ is re-derived from the temperature ODE.
-
-Returns `(t_vector, qdot_vector)`.
+Extract instantaneous heat-generation rate q̇(t) [W] from an ODE solution.
 """
 function heat_flow(sol, ::IsothermalCalorimeter)
-    t, Q = cumulative_heat(sol, IsothermalCalorimeter(0.0))   # reuse logic
+    t, Q = cumulative_heat(sol, IsothermalCalorimeter(0.0))
     qdot = similar(Q)
     qdot[1] = zero(eltype(Q))
     for i in 2:lastindex(t)
@@ -375,10 +284,18 @@ function heat_flow(sol, ::IsothermalCalorimeter)
     return t, qdot
 end
 
+"""
+    heat_flow(sol, cal::SemiAdiabaticCalorimeter) -> (t, qdot)
+
+Reconstruct q̇(t) [W] from the temperature ODE via the energy balance
+`q̇ ≈ Cp × dT/dt + φ(T − T_env)`.
+
+Note: uses the fixed `cal.Cp` (not the variable Cp_total) for this
+post-processing reconstruction.
+"""
 function heat_flow(sol, cal::SemiAdiabaticCalorimeter)
     t = sol.t
     n_kin = length(sol.u[1]) - n_extra_states(cal)
-    # Re-derive q̇ = Cp dT/dt + φ(T - T_env) via the calorimeter energy balance
     T_vec = [u[n_kin + 1] for u in sol.u]
     qdot = similar(T_vec)
     qdot[1] = zero(eltype(T_vec))
@@ -392,44 +309,27 @@ function heat_flow(sol, cal::SemiAdiabaticCalorimeter)
 end
 
 """
-    cumulative_heat(sol, cal::IsothermalCalorimeter) -> (t::Vector, Q::Vector)
+    cumulative_heat(sol, cal::IsothermalCalorimeter) -> (t, Q)
 
-Extract the cumulative heat Q(t) = ∫₀ᵗ q̇(τ) dτ [J] from an ODE solution.
+Extract cumulative heat Q(t) = ∫₀ᵗ q̇(τ) dτ [J].
 
-When total-enthalpy tracking data are available (i.e. `sol.prob.p.saved_H` is
-non-empty — filled at each accepted ODE step by `KineticsOrdinaryDiffEqExt`),
-returns:
-
-```math
-Q(t) = H(0) - H(t)
-```
-
-where H(t) = Σᵢ nᵢ(t) ΔₐH⁰ᵢ(T) is the full-system enthalpy. This captures heat
-from both kinetic reactions **and** instantaneous equilibrium re-speciation.
-
-Falls back to the ODE state Q (kinetic heat only) when enthalpy tracking is
-unavailable (no species with `:ΔₐH⁰` data, or run without `OrdinaryDiffEqExt`).
+When total-enthalpy tracking data are available in `sol.prob.p.saved_H`,
+returns `Q(t) = H(0) − H(t)` (captures both kinetic and equilibrium heat).
 """
 function cumulative_heat(sol, ::IsothermalCalorimeter)
     p = sol.prob.p
-    # Prefer total-enthalpy path (includes equilibrium heat)
     if hasproperty(p, :saved_H) && !isempty(p.saved_H)
         return p.saved_t, p.saved_H[1] .- p.saved_H
     end
-    # Fallback: kinetic-only heat from ODE state Q
     n_kin = length(sol.u[1]) - 1
     Q = [u[n_kin + 1] for u in sol.u]
     return sol.t, Q
 end
 
 """
-    cumulative_heat(sol, cal::SemiAdiabaticCalorimeter) -> (t::Vector, Q::Vector)
+    cumulative_heat(sol, cal::SemiAdiabaticCalorimeter) -> (t, Q)
 
-Extract the cumulative heat Q(t) = ∫₀ᵗ q̇(τ) dτ [J] from a semi-adiabatic calorimeter
-ODE solution by integrating the heat-flow rate derived from the temperature ODE.
-
-The heat-flow rate is reconstructed via the calorimeter energy balance:
-`q̇(t) = Cp dT/dt + φ(T(t) - T_env)`.
+Integrate the reconstructed heat-flow rate to obtain Q(t) [J].
 """
 function cumulative_heat(sol, cal::SemiAdiabaticCalorimeter)
     t, qdot = heat_flow(sol, cal)
@@ -443,13 +343,12 @@ function cumulative_heat(sol, cal::SemiAdiabaticCalorimeter)
 end
 
 """
-    temperature_profile(sol, cal::SemiAdiabaticCalorimeter) -> (t::Vector, T::Vector)
+    temperature_profile(sol, cal::SemiAdiabaticCalorimeter) -> (t, T)
 
-Extract the temperature profile T(t) [K] from a semi-adiabatic calorimeter ODE solution.
+Extract the temperature profile T(t) [K].
 """
 function temperature_profile(sol, ::SemiAdiabaticCalorimeter)
-    n_extra = 1
-    n_kin = length(sol.u[1]) - n_extra
+    n_kin = length(sol.u[1]) - 1
     T_vec = [u[n_kin + 1] for u in sol.u]
     return sol.t, T_vec
 end

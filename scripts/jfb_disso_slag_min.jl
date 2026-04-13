@@ -12,24 +12,24 @@ clinker = "C3S C2S C3A C4AF Gp Anh"
 hydrates = "Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13"
 slag = "hydrotalcite C3AFS0.84H4.32 C3AS0.84H4.32 C4AH13"
 
-species = speciation(substances, split(clinker*" "*hydrates*" "*slag); aggregate_state=[AS_AQUEOUS])
+species = speciation(substances, split(clinker * " " * hydrates * " " * slag); aggregate_state = [AS_AQUEOUS])
 
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 
 # ── Initial state ──────────────────────────────────────────────────────────────
 state = ChemicalState(cs)
-compo = ["C3S" => 67.8/100, "C2S" => 16.6/100, "C3A" => 4/100, "C4AF" => 7.2/100, "Gp" => 2.8/100, "MgSO4@" => 1.6/100]
-c     = sum(last.(compo))
-wc    = 0.4
-w     = wc * c
-mtot  = c + w
+compo = ["C3S" => 67.8 / 100, "C2S" => 16.6 / 100, "C3A" => 4 / 100, "C4AF" => 7.2 / 100, "Gp" => 2.8 / 100, "MgSO4@" => 1.6 / 100]
+c = sum(last.(compo))
+wc = 0.4
+w = wc * c
+mtot = c + w
 for x in compo
     set_quantity!(state, x.first, x.second / mtot * u"kg")
 end
 set_quantity!(state, "H2O@", w / mtot * u"kg")
 V = volume(state)
-set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
-set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
+set_quantity!(state, "H+", 1.0e-7u"mol/L" * V.liquid)
+set_quantity!(state, "OH-", 1.0e-7u"mol/L" * V.liquid)
 
 # ── Equilibrate ─────────────────────────────────────────────────────────────────
 state_eq = equilibrate(state)
@@ -66,7 +66,7 @@ display(state_eq)
 using LinearAlgebra
 
 μ = build_potentials(cs, DiluteSolutionModel())
-p  = ChemistryLab._build_params(state; ϵ=1.e-16)
+p = ChemistryLab._build_params(state; ϵ = 1.0e-16)
 Gini = μ(ustrip.(state.n), p) ⋅ ustrip.(state.n)
 Gfin = μ(ustrip.(state_eq.n), p) ⋅ ustrip.(state_eq.n)
 

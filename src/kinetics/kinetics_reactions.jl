@@ -34,11 +34,23 @@ Suitable for short simulations or when the surface area is externally controlled
 # Examples
 
 ```julia
-FixedSurfaceArea(0.5)    # 0.5 m²
+FixedSurfaceArea(0.5)            # 0.5 m²  (plain Real → SI)
+FixedSurfaceArea(500.0u"cm^2")  # 500 cm² → 0.05 m²
 ```
 """
 struct FixedSurfaceArea{T <: Real} <: AbstractSurfaceModel
     A::T
+end
+
+"""
+    FixedSurfaceArea(A) -> FixedSurfaceArea
+
+Construct a [`FixedSurfaceArea`](@ref).
+`A` can be a plain `Real` (SI [m²]) or a `Quantity` (automatically converted to m²).
+"""
+function FixedSurfaceArea(A)
+    A_si = Float64(safe_ustrip(us"m^2", A))
+    return FixedSurfaceArea{Float64}(A_si)
 end
 
 """
@@ -73,12 +85,24 @@ This is the standard approach in reactive-transport models (Palandri & Kharaka 2
 # Examples
 
 ```julia
-# Calcite: 0.09 m²/g = 90 m²/kg
-BETSurfaceArea(90.0)
+BETSurfaceArea(90.0)              # 90 m²/kg  (plain Real → SI)
+BETSurfaceArea(0.09u"m^2/g")     # 0.09 m²/g → 90 m²/kg
 ```
 """
 struct BETSurfaceArea{T <: Real} <: AbstractSurfaceModel
     A_specific::T   # m²/kg
+end
+
+"""
+    BETSurfaceArea(A_specific) -> BETSurfaceArea
+
+Construct a [`BETSurfaceArea`](@ref).
+`A_specific` can be a plain `Real` (SI [m²/kg]) or a `Quantity` (automatically
+converted to m²/kg), e.g. `0.09u"m^2/g"` → 90 m²/kg.
+"""
+function BETSurfaceArea(A_specific)
+    A_si = Float64(safe_ustrip(us"m^2/kg", A_specific))
+    return BETSurfaceArea{Float64}(A_si)
 end
 
 """
@@ -94,166 +118,107 @@ end
 # ── KineticReaction ───────────────────────────────────────────────────────────
 
 """
-    struct KineticReaction{R, M<:AbstractRateModel, S<:AbstractSurfaceModel, H}
+    struct KineticReaction{R<:AbstractReaction, F, H}
 
-Associates a mineral species (or thermodynamic [`Reaction`](@ref)) with a
-kinetic [`AbstractRateModel`](@ref) and an [`AbstractSurfaceModel`](@ref).
+Associates a chemical [`Reaction`](@ref) with a compiled [`KineticFunc`](@ref).
 
-Kinetic reactions are "slow" reactions whose extent is governed by a rate law
-rather than by instantaneous equilibrium. Typically these are mineral
-dissolution/precipitation reactions.
+Following Leal et al. (2017), **reactions** — not individual species — carry kinetics.
+A single mineral can therefore appear as a reactant in multiple `KineticReaction` objects
+(e.g. C₃A → ettringite and C₃A → monosulphate for multi-pathway cement hydration).
+The ODE state is indexed by unique mineral species, and contributions from all reactions
+that consume the same mineral are accumulated.
 
 # Fields
 
-  - `reaction`: the underlying [`Reaction`](@ref) / [`CemReaction`](@ref) *or* a
-    bare [`Species`](@ref) (when constructed via the convenience constructor).
-    Used only to retrieve the molar mass for [`BETSurfaceArea`](@ref) calculations.
-  - `rate_model`: an [`AbstractRateModel`](@ref) computing r [mol/s].
-  - `surface_model`: an [`AbstractSurfaceModel`](@ref) computing A [m²].
-  - `idx_mineral`: index of the mineral species in the parent `ChemicalSystem`.
+  - `reaction`: the underlying [`Reaction`](@ref) / [`CemReaction`](@ref).
+  - `rate_fn`: a [`KineticFunc`](@ref) (or any callable matching the six-argument signature
+    `(T, P, t, n, lna, n_initial) -> Real`) computing r [mol/s].
+  - `idx_mineral`: index of the primary (controlling) mineral species in the parent
+    `ChemicalSystem`. Determined automatically as the first solid (AS_CRYSTAL) reactant.
   - `stoich`: stoichiometric coefficient vector for all species in the system.
     Sign convention: positive for products, negative for reactants.
-    Used to evaluate the saturation ratio Ω (ignored by
-    [`ParrotKillohRateModel`](@ref)).
   - `heat_per_mol`: enthalpy of reaction [J/mol], positive = exothermic (heat released).
-    Used by calorimeter models to compute q̇(t). When `nothing` (default), the
-    enthalpy is derived from the stoichiometric sum of species `:ΔₐH⁰` values —
-    only meaningful when `reaction isa AbstractReaction` with full stoichiometry.
-    For convenience-constructed reactions (bare [`Species`](@ref)) without explicit
-    reaction stoichiometry, set this to a literature value (e.g. 114_634.0 J/mol
-    for C₃S hydration).
+    When `nothing` (default), the enthalpy is derived from the stoichiometric sum
+    of species `:ΔₐH⁰` values.
 
 # Constructors
 
-The **recommended** user-facing constructor takes a [`ChemicalSystem`](@ref)
-and a species name — no manual index lookup or stoichiometry needed:
+**From a species name** (convenience, builds a minimal dissolution Reaction):
 
 ```julia
-# Convenience: system + name → index and stoichiometry built automatically
-kr = KineticReaction(cs, "C3S", PK_PARAMS_C3S, FixedSurfaceArea(1.0))
-
-# With explicit heat of hydration for calorimetry [J/mol]
-kr = KineticReaction(cs, "C3S", PK_PARAMS_C3S, FixedSurfaceArea(1.0);
-                     heat_per_mol = 114_634.0)
+pk = parrot_killoh(PK_PARAMS_C3S, "C3S")
+kr = KineticReaction(cs, "C3S", pk)
+kr = KineticReaction(cs, "C3S", pk; heat_per_mol = 114_634.0)
 ```
 
-The **low-level** constructor accepts an explicit `Reaction` (or `Species`),
-index, and stoichiometry vector for cases where full dissolution-reaction
-stoichiometry must be supplied (e.g. [`TransitionStateRateModel`](@ref)):
+**From an explicit Reaction** (multi-pathway):
 
 ```julia
-k_acid    = arrhenius_rate_constant(5.012e-1, 14400.0)
-k_neutral = arrhenius_rate_constant(1.549e-6, 23500.0)
+pk_c3a = parrot_killoh(PK_PARAMS_C3A, "C3A")
+kr_ett  = KineticReaction(cs, rxn_C3A_ettringite,   pk_c3a)
+kr_mono = KineticReaction(cs, rxn_C3A_monosulphate, pk_c3a)
+```
 
-model = TransitionStateRateModel([
-    RateMechanism(k_acid,    1.0, 1.0, [RateModelCatalyst("H+", 1.0)]),
-    RateMechanism(k_neutral, 1.0, 1.0),
-])
+**Reaction-centric** (rate stored in `rxn.properties[:rate]`):
 
-kr = KineticReaction(
-    reaction_calcite,           # Reaction object from ChemicalSystem
-    model,
-    BETSurfaceArea(90.0),       # 90 m²/kg (BET)
-    idx_calcite,                # integer index in ChemicalSystem
-    stoich_calcite,             # stoichiometric row vector
-)
+```julia
+rxn[:rate] = parrot_killoh(PK_PARAMS_C3S, "C3S")
+kr = KineticReaction(cs, rxn)
 ```
 """
-struct KineticReaction{R, M <: AbstractRateModel, S <: AbstractSurfaceModel, H}
-    reaction::R        # AbstractReaction or AbstractSpecies (for convenience ctor)
-    rate_model::M
-    surface_model::S
+struct KineticReaction{R <: AbstractReaction, F, H}
+    reaction::R
+    rate_fn::F           # KineticFunc or compatible callable
     idx_mineral::Int
     stoich::Vector{Float64}    # stoich coefficients for all species in system
-    heat_per_mol::H            # Nothing or Float64: enthalpy of reaction [J/mol], positive = exothermic
+    heat_per_mol::H            # Nothing or Float64: enthalpy [J/mol], positive = exothermic
 
-    # Inner constructor: always validates, regardless of which outer constructor is used.
-    function KineticReaction{R, M, S, H}(
+    function KineticReaction{R, F, H}(
             reaction::R,
-            rate_model::M,
-            surface_model::S,
+            rate_fn::F,
             idx_mineral::Int,
             stoich::Vector{Float64},
             heat_per_mol::H,
-        ) where {R, M <: AbstractRateModel, S <: AbstractSurfaceModel, H}
+        ) where {R <: AbstractReaction, F, H}
         idx_mineral > 0 || throw(ArgumentError("idx_mineral must be a positive integer"))
         isempty(stoich) && throw(ArgumentError("stoich cannot be empty"))
-        return new{R, M, S, H}(reaction, rate_model, surface_model, idx_mineral, stoich, heat_per_mol)
+        return new{R, F, H}(reaction, rate_fn, idx_mineral, stoich, heat_per_mol)
     end
 end
 
 """
-    KineticReaction(reaction, rate_model, surface_model, idx_mineral, stoich;
-                    heat_per_mol=nothing)
+    KineticReaction(rxn, rate_fn, idx_mineral, stoich; heat_per_mol=nothing)
 
-Low-level constructor: explicit `Reaction` (or `Species`), index, and stoichiometry.
-Validates that `idx_mineral > 0` and `stoich` is non-empty.
-
-The first argument accepts any type (typically `AbstractReaction` or `AbstractSpecies`);
-the correct [`molar_mass`](@ref) dispatch is resolved at call time based on the stored type.
-
-`heat_per_mol` [J/mol] overrides stoichiometric enthalpy calculation for calorimetry.
+Low-level constructor: explicit `Reaction`, rate callable, index, and stoichiometry.
 """
 function KineticReaction(
-        reaction::R,
-        rate_model::M,
-        surface_model::S,
+        rxn::R,
+        rate_fn::F,
         idx_mineral::Integer,
         stoich::AbstractVector{<:Real};
-        heat_per_mol::Union{Nothing, Float64} = nothing,
-    ) where {R, M <: AbstractRateModel, S <: AbstractSurfaceModel}
-    return KineticReaction{R, M, S, typeof(heat_per_mol)}(
-        reaction, rate_model, surface_model, Int(idx_mineral), Float64.(stoich), heat_per_mol
+        heat_per_mol = nothing,
+    ) where {R <: AbstractReaction, F}
+    hpm = _strip_heat_per_mol(heat_per_mol)
+    return KineticReaction{R, F, typeof(hpm)}(
+        rxn, rate_fn, Int(idx_mineral), Float64.(stoich), hpm,
     )
 end
 
 """
-    KineticReaction(cs::ChemicalSystem, species_name, rate_model, surface_model;
-                    stoich=nothing) -> KineticReaction
+    KineticReaction(cs::ChemicalSystem, species_name::AbstractString, rate_fn;
+                    heat_per_mol=nothing) -> KineticReaction
 
-Convenience constructor: look up `species_name` in `cs`, determine the mineral
-index and default stoichiometry automatically.
+Convenience constructor: look up `species_name` in `cs` and build a minimal dissolution
+[`Reaction`](@ref) (species as sole reactant, no products) automatically.
 
-The default stoichiometry is a vector of zeros with `-1.0` at the mineral index,
-meaning "pure mineral dissolution" (no products tracked). This is correct for
-[`ParrotKillohRateModel`](@ref) (which ignores Ω) and for any model where you
-only care about the mineral mole balance, not the full reaction stoichiometry.
-
-For [`TransitionStateRateModel`](@ref) with explicit catalyst/product effects,
-supply the full stoichiometry via the `stoich` keyword.
-
-# Arguments
-
-  - `cs`: the [`ChemicalSystem`](@ref) containing the mineral.
-  - `species_name`: PHREEQC formula or symbol string (e.g. `"C3S"`, `"Calcite"`).
-  - `rate_model`: an [`AbstractRateModel`](@ref).
-  - `surface_model`: an [`AbstractSurfaceModel`](@ref).
-  - `stoich`: optional stoichiometric coefficient vector (length = `length(cs.species)`).
-
-# Examples
-
-```julia
-using ChemistryLab, OrdinaryDiffEq
-
-# Build kinetic reactions for all four clinker phases — no manual indexing
-kr_C3S  = KineticReaction(cs, "C3S",  PK_PARAMS_C3S,  FixedSurfaceArea(1.0))
-kr_C2S  = KineticReaction(cs, "C2S",  PK_PARAMS_C2S,  FixedSurfaceArea(1.0))
-kr_C3A  = KineticReaction(cs, "C3A",  PK_PARAMS_C3A,  FixedSurfaceArea(1.0))
-kr_C4AF = KineticReaction(cs, "C4AF", PK_PARAMS_C4AF, FixedSurfaceArea(1.0))
-
-kp  = KineticsProblem(cs, [kr_C3S, kr_C2S, kr_C3A, kr_C4AF], state0, (0.0, 7*86400.0))
-sol = integrate(kp)
-```
+The default stoichiometry places `-1.0` at the mineral index and `0.0` everywhere else.
 """
 function KineticReaction(
         cs::ChemicalSystem,
         species_name::AbstractString,
-        rate_model::AbstractRateModel,
-        surface_model::AbstractSurfaceModel;
-        stoich::Union{Nothing, AbstractVector{<:Real}} = nothing,
-        heat_per_mol::Union{Nothing, Float64} = nothing,
+        rate_fn;
+        heat_per_mol = nothing,
     )
-    # Find species index
     idx = findfirst(
         sp -> phreeqc(formula(sp)) == species_name || string(symbol(sp)) == species_name,
         cs.species,
@@ -261,29 +226,311 @@ function KineticReaction(
     isnothing(idx) && throw(
         ArgumentError(
             "Species \"$species_name\" not found in ChemicalSystem. " *
-                "Use phreeqc(formula(sp)) or symbol(sp) to check species names."
-        )
+                "Use phreeqc(formula(sp)) or symbol(sp) to check species names.",
+        ),
     )
-
-    # Default stoichiometry: -1 for the mineral, 0 for all others
-    stoich_vec = if isnothing(stoich)
-        s = zeros(Float64, length(cs.species))
-        s[idx] = -1.0
-        s
-    else
-        length(stoich) == length(cs.species) || throw(
-            DimensionMismatch(
-                "stoich length $(length(stoich)) ≠ number of species $(length(cs.species))"
-            )
-        )
-        Float64.(stoich)
-    end
 
     sp = cs.species[idx]
-    return KineticReaction{typeof(sp), typeof(rate_model), typeof(surface_model), typeof(heat_per_mol)}(
-        sp, rate_model, surface_model, Int(idx), stoich_vec, heat_per_mol
+    n_sp = length(cs.species)
+    rxn = Reaction(
+        OrderedDict(sp => 1),
+        OrderedDict{typeof(sp), Int}();
+        symbol = string(symbol(sp)),
+        equal_sign = '→',
+    )
+
+    s = zeros(Float64, n_sp)
+    s[idx] = -1.0
+    hpm = _strip_heat_per_mol(heat_per_mol)
+    return KineticReaction{typeof(rxn), typeof(rate_fn), typeof(hpm)}(
+        rxn, rate_fn, Int(idx), s, hpm,
     )
 end
+
+"""
+    KineticReaction(cs::ChemicalSystem, rxn::AbstractReaction, rate_fn;
+                    heat_per_mol=nothing) -> KineticReaction
+
+Construct a `KineticReaction` from an explicit [`Reaction`](@ref) object.
+
+The controlling mineral index (`idx_mineral`) is determined automatically as the index
+of the **first solid (AS_CRYSTAL) reactant** found in `rxn.reactants` that is present in
+`cs`. The stoichiometric vector is derived from the reaction stoichiometry.
+
+This constructor is the recommended entry point for multi-pathway kinetics:
+
+```julia
+pk_c3a = parrot_killoh(PK_PARAMS_C3A, "C3A")
+kr_ett  = KineticReaction(cs, cs.dict_reactions["C3A_ettringite"],   pk_c3a)
+kr_mono = KineticReaction(cs, cs.dict_reactions["C3A_monosulphate"], pk_c3a)
+kp = KineticsProblem(cs, [kr_C3S, kr_ett, kr_mono], state0, tspan)
+```
+"""
+function KineticReaction(
+        cs::ChemicalSystem,
+        rxn::R,
+        rate_fn;
+        heat_per_mol = nothing,
+    ) where {R <: AbstractReaction}
+    idx = _find_mineral_idx(cs, rxn)
+    isnothing(idx) && throw(
+        ArgumentError(
+            "No reactant species of the given reaction found in the ChemicalSystem.",
+        ),
+    )
+    stoich_vec = _stoich_from_reaction(cs, rxn)
+    hpm = _strip_heat_per_mol(heat_per_mol)
+    return KineticReaction{R, typeof(rate_fn), typeof(hpm)}(
+        rxn, rate_fn, Int(idx), stoich_vec, hpm,
+    )
+end
+
+"""
+    KineticReaction(cs::ChemicalSystem, rxn::AbstractReaction) -> KineticReaction
+
+Reaction-centric constructor: build a `KineticReaction` from a [`Reaction`](@ref)
+that carries its kinetics in `reaction.properties`.
+
+Required property:
+  - `rxn[:rate]` — a [`KineticFunc`](@ref) **or** any callable matching
+    `(T, P, t, n, lna, n_initial) -> Real`. Non-`KineticFunc` callables are
+    wrapped automatically in a `KineticFunc` with empty `refs`.
+
+Optional property:
+  - `rxn[:heat_per_mol]` — a `Number` giving the molar enthalpy [J/mol] for calorimetry.
+
+# Examples
+
+```julia
+pk = parrot_killoh(PK_PARAMS_C3S, "C3S")
+rxn[:rate]         = pk
+rxn[:heat_per_mol] = 114_634.0
+kr = KineticReaction(cs, rxn)
+
+# Build problem directly from a list of annotated Reaction objects:
+kp = KineticsProblem(cs, [rxn_C3S, rxn_C3A, rxn_C2S], state0, tspan)
+```
+"""
+function KineticReaction(cs::ChemicalSystem, rxn::AbstractReaction)
+    haskey(properties(rxn), :rate) || throw(
+        ArgumentError(
+            "Reaction \"$(rxn.symbol)\" must have a :rate entry in its properties. " *
+                "Attach a KineticFunc via rxn[:rate] = parrot_killoh(...).",
+        ),
+    )
+
+    rate_raw = properties(rxn)[:rate]
+    rate_fn = rate_raw isa KineticFunc ? rate_raw :
+        KineticFunc(rate_raw, NamedTuple(), u"mol/s")
+
+    heat_raw = get(properties(rxn), :heat_per_mol, nothing)
+    heat_val = _strip_heat_per_mol(heat_raw)
+
+    idx = _find_mineral_idx(cs, rxn)
+    isnothing(idx) && throw(
+        ArgumentError(
+            "No reactant species of reaction \"$(rxn.symbol)\" found in the ChemicalSystem.",
+        ),
+    )
+
+    stoich_vec = _stoich_from_reaction(cs, rxn)
+    return KineticReaction{typeof(rxn), typeof(rate_fn), typeof(heat_val)}(
+        rxn, rate_fn, Int(idx), stoich_vec, heat_val,
+    )
+end
+
+# ── transition_state factory ──────────────────────────────────────────────────
+
+"""
+    transition_state(mechanisms, cs, rxn, surface_model; ϵ=1e-16) -> KineticFunc
+
+Build a Transition-State Theory (TST) dissolution/precipitation rate function from a
+list of [`RateMechanism`](@ref) objects, returning a [`KineticFunc`](@ref).
+
+The compiled closure captures:
+  - the mineral name and molar mass (from `rxn` + `cs`)
+  - the surface model (`FixedSurfaceArea` or `BETSurfaceArea`)
+  - stoichiometry and `ΔₐG⁰` callables for all aqueous species (T-dependent Ω)
+
+The net rate [mol/s] is:
+
+```
+r = A(n) × Σ_m [ k_m(T) × Π_cat(aᵢ^nᵢ) × (1 - Ω^p) × |1 - Ω^p|^(q-1) ]
+```
+
+where `Ω(T) = exp(Σ νᵢ ln aᵢ + Σ νᵢ ΔₐG°ᵢ(T)/(RT))` is re-evaluated at every ODE
+step — correct for variable-temperature semi-adiabatic calorimetry.
+
+# Arguments
+
+  - `mechanisms`: vector of [`RateMechanism`](@ref) (acid, neutral, base, …).
+  - `cs`: [`ChemicalSystem`](@ref) supplying `ΔₐG⁰` callables for aqueous species.
+  - `rxn`: `AbstractReaction` defining stoichiometry and the mineral species.
+  - `surface_model`: [`AbstractSurfaceModel`](@ref) — captures area as a function of `n`.
+  - `ϵ`: regularisation floor near Ω = 1 (default `1e-16`).
+
+# Returns
+
+A [`KineticFunc`](@ref) callable as
+`f(T, P, t, n::StateView, lna::StateView, n_initial::StateView) -> Real [mol/s]`.
+
+AD-compatible: all operations use generic Julia arithmetic; no `Float64` casts.
+
+# References
+
+  - Palandri, J.L. & Kharaka, Y.K. (2004). USGS Open-File Report 2004-1068.
+  - Leal, A.M.M. et al. (2017). Pure Appl. Chem. 89, 597–643.
+"""
+function transition_state(
+        mechanisms::AbstractVector{<:RateMechanism},
+        cs::ChemicalSystem,
+        rxn::AbstractReaction,
+        surface_model::AbstractSurfaceModel;
+        ϵ::Real = 1.0e-16,
+    )
+    mineral_name, M = _mineral_name_and_mass(cs, rxn)
+    stoich_species = _stoich_named(cs, rxn)   # Vector of (name, ν, ΔG°_fn)
+    R_gas = 8.31446261815324
+
+    f = (T, _P, _t, n, lna, n_initial) -> begin
+        n_m = max(n[mineral_name], oneunit(T) * 1.0e-30)
+        A = surface_area(surface_model, n_m, M)
+        ln_iap = sum(ν * lna[sp] for (sp, ν, _) in stoich_species)
+        ln_K = -sum(ν * ΔG_fn(; T = T, unit = false) / (R_gas * T) for (_, ν, ΔG_fn) in stoich_species)
+        Ω = exp(ln_iap - ln_K)
+        r = zero(promote_type(typeof(T), typeof(Ω), typeof(A)))
+        for mech in mechanisms
+            k_val = mech.k(; T = T)
+            cat_term = one(r)
+            for cat in mech.catalysts
+                if haskey(lna, cat.species)
+                    cat_term *= exp(cat.n * lna[cat.species])
+                end
+            end
+            Ωp = Ω^mech.p
+            diff = one(r) - Ωp
+            sat = diff * (diff^2 + ϵ)^((mech.q - one(r)) / 2)
+            r = r + k_val * cat_term * sat
+        end
+        return A * r
+    end
+
+    refs = (T = 298.15u"K", P = 1.0e5u"Pa")
+    return KineticFunc(f, refs, u"mol/s")
+end
+
+# ── first_order_rate factory ──────────────────────────────────────────────────
+
+"""
+    first_order_rate(k, cs, rxn, surface_model; p=1.0, q=1.0, ϵ=1e-16) -> KineticFunc
+
+Build a single-mechanism first-order TST rate as a [`KineticFunc`](@ref).
+
+```
+r = A(n) × k(T) × sign(1 - Ω) × |1 - Ω^p|^q
+```
+
+This is a convenience wrapper around [`transition_state`](@ref) with one no-catalyst
+mechanism. Useful as a minimal test case or for empirical fits.
+
+# Arguments
+
+  - `k`: rate constant as an [`AbstractFunc`](@ref) (e.g. from
+    [`arrhenius_rate_constant`](@ref)).
+  - `cs`, `rxn`, `surface_model`: same as [`transition_state`](@ref).
+  - `p`, `q`: saturation exponents (defaults `1.0`).
+  - `ϵ`: regularisation floor (default `1e-16`).
+
+# Examples
+
+```julia
+k = arrhenius_rate_constant(1e-7, 40000.0)
+rf = first_order_rate(k, cs, rxn, BETSurfaceArea(90.0))
+kr = KineticReaction(cs, rxn, rf)
+```
+"""
+function first_order_rate(
+        k::AbstractFunc,
+        cs::ChemicalSystem,
+        rxn::AbstractReaction,
+        surface_model::AbstractSurfaceModel;
+        p::Real = 1.0,
+        q::Real = 1.0,
+        ϵ::Real = 1.0e-16,
+    )
+    T_p = typeof(promote(p, q)[1])
+    mech = RateMechanism{typeof(k), T_p}(k, T_p(p), T_p(q), RateModelCatalyst{T_p}[])
+    return transition_state([mech], cs, rxn, surface_model; ϵ = ϵ)
+end
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+# Convert heat_per_mol to Float64 SI [J/mol], or return nothing.
+_strip_heat_per_mol(::Nothing) = nothing
+_strip_heat_per_mol(h) = Float64(safe_ustrip(us"J/mol", h))
+
+# Find the index in cs.species of the first solid (AS_CRYSTAL) reactant of rxn.
+# Falls back to the first reactant present in cs if no crystal phase is found.
+function _find_mineral_idx(cs::ChemicalSystem, rxn::AbstractReaction)
+    for (sp, _) in rxn.reactants
+        i = findfirst(s -> s == sp, cs.species)
+        !isnothing(i) && aggregate_state(cs.species[i]) == AS_CRYSTAL && return i
+    end
+    for (sp, _) in rxn.reactants
+        i = findfirst(s -> s == sp, cs.species)
+        isnothing(i) || return i
+    end
+    return nothing
+end
+
+# Build the stoichiometric coefficient vector (length = length(cs.species)) from a
+# reaction. Reactants get negative coefficients, products get positive ones.
+function _stoich_from_reaction(cs::ChemicalSystem, rxn::AbstractReaction)
+    s = zeros(Float64, length(cs.species))
+    for (sp, ν) in rxn.reactants
+        i = findfirst(s_ -> s_ == sp, cs.species)
+        isnothing(i) || (s[i] -= Float64(ν))
+    end
+    for (sp, ν) in rxn.products
+        i = findfirst(s_ -> s_ == sp, cs.species)
+        isnothing(i) || (s[i] += Float64(ν))
+    end
+    return s
+end
+
+# Returns (mineral_name::String, M::Float64) for the controlling mineral in rxn.
+function _mineral_name_and_mass(cs::ChemicalSystem, rxn::AbstractReaction)
+    idx = _find_mineral_idx(cs, rxn)
+    isnothing(idx) && throw(
+        ArgumentError("No mineral reactant found in reaction \"$(rxn.symbol)\"."),
+    )
+    sp = cs.species[idx]
+    M = haskey(properties(sp), :M) ? Float64(ustrip(us"kg/mol", sp[:M])) : 0.1
+    return phreeqc(formula(sp)), M
+end
+
+# Returns Vector of (name::String, ν::Float64, ΔG_fn) for all species in rxn
+# that are present in cs and have a :ΔₐG⁰ property.
+function _stoich_named(cs::ChemicalSystem, rxn::AbstractReaction)
+    result = Tuple{String, Float64, Any}[]
+    for (sp, ν) in rxn.reactants
+        i = findfirst(s -> s == sp, cs.species)
+        isnothing(i) && continue
+        sp_cs = cs.species[i]
+        haskey(properties(sp_cs), :ΔₐG⁰) || continue
+        push!(result, (phreeqc(formula(sp_cs)), -Float64(ν), sp_cs[:ΔₐG⁰]))
+    end
+    for (sp, ν) in rxn.products
+        i = findfirst(s -> s == sp, cs.species)
+        isnothing(i) && continue
+        sp_cs = cs.species[i]
+        haskey(properties(sp_cs), :ΔₐG⁰) || continue
+        push!(result, (phreeqc(formula(sp_cs)), Float64(ν), sp_cs[:ΔₐG⁰]))
+    end
+    return result
+end
+
+# ── molar_mass ────────────────────────────────────────────────────────────────
 
 """
     molar_mass(kr::KineticReaction) -> Float64
@@ -291,26 +538,12 @@ end
 Return the molar mass of the mineral species [kg/mol], used internally for
 [`BETSurfaceArea`](@ref) calculations.
 
-Two dispatch paths:
-- If `kr.reaction isa AbstractReaction`: searches `reaction.reactants` for a
-  species with an `:M` property.
-- If `kr.reaction isa AbstractSpecies`: reads `:M` directly from the species
-  (set by the convenience constructor [`KineticReaction`](@ref)).
-
+Searches `kr.reaction.reactants` for a species with an `:M` property.
 Falls back to `0.1` kg/mol when `:M` is unavailable.
 """
-function molar_mass(kr::KineticReaction{<:AbstractReaction})
-    # Search reactants for a species that carries a molar mass property
+function molar_mass(kr::KineticReaction)
     for (sp_obj, _) in kr.reaction.reactants
-        if haskey(properties(sp_obj), :M)
-            return ustrip(us"kg/mol", sp_obj[:M])
-        end
+        haskey(properties(sp_obj), :M) && return ustrip(us"kg/mol", sp_obj[:M])
     end
-    return 0.1   # fallback: ~100 g/mol
-end
-
-function molar_mass(kr::KineticReaction{<:AbstractSpecies})
-    sp = kr.reaction   # the bare Species stored by the convenience constructor
-    haskey(properties(sp), :M) && return ustrip(us"kg/mol", sp[:M])
     return 0.1
 end

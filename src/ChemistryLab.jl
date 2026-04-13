@@ -290,7 +290,8 @@ module ChemistryLab
     export EquilibriumSolver,
         equilibrate
 
-    export AbstractRateModel,
+    export StateView,
+        KineticFunc,
         KINETICS_RATE_MODELS,
         KINETICS_RATE_FACTORIES,
         add_kinetics_rate_model,
@@ -298,9 +299,7 @@ module ChemistryLab
         saturation_ratio,
         RateModelCatalyst,
         RateMechanism,
-        TransitionStateRateModel,
-        FirstOrderRateModel,
-        ParrotKillohRateModel,
+        parrot_killoh,
         PK_PARAMS_C3S,
         PK_PARAMS_C2S,
         PK_PARAMS_C3A,
@@ -310,6 +309,8 @@ module ChemistryLab
         FixedSurfaceArea,
         BETSurfaceArea,
         surface_area,
+        transition_state,
+        first_order_rate,
         KineticReaction,
         molar_mass
 

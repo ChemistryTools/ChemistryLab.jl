@@ -19,14 +19,14 @@ cs = ChemicalSystem(species)
 # ── Initial state ──────────────────────────────────────────────────────────────
 state = ChemicalState(cs)
 
-set_quantity!(state, "NaOH@", 1.e-3 * u"mol")
+set_quantity!(state, "NaOH@", 1.0e-3 * u"mol")
 set_quantity!(state, "H2O@", 1 * u"kg")
 V = volume(state)
-set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
-set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
+set_quantity!(state, "H+", 1.0e-7u"mol/L" * V.liquid)
+set_quantity!(state, "OH-", 1.0e-7u"mol/L" * V.liquid)
 # rescale!(state, 1.0u"kg")
 
 # ── Equilibrate ─────────────────────────────────────────────────────────────────
-state_eq = equilibrate(state; variable_space=Val(:linear), verbose=5)
+state_eq = equilibrate(state; variable_space = Val(:linear), verbose = 5)
 
 display(state_eq)

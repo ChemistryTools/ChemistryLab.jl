@@ -1,4 +1,5 @@
 using ForwardDiff
+using OrderedCollections
 
 # ── IsothermalCalorimeter ─────────────────────────────────────────────────────
 
@@ -22,14 +23,16 @@ end
 
 @testset "SemiAdiabaticCalorimeter" begin
 
-    # Backward-compat linear constructor (L keyword)
-    cal_lin = SemiAdiabaticCalorimeter(; T0 = 293.15, T_env = 293.15, L = 0.5, Cp = 4000.0)
+    # Linear heat loss via L keyword
+    cal_lin = SemiAdiabaticCalorimeter(;
+        Cp = 4000.0u"J/K", T_env = 293.15u"K", L = 0.5u"W/K", T0 = 293.15u"K",
+    )
     @test cal_lin isa SemiAdiabaticCalorimeter
-    @test cal_lin.T0 ≈ 293.15
-    @test cal_lin.T_env ≈ 293.15
     @test cal_lin.Cp ≈ 4000.0
-    @test cal_lin.heat_loss(1.0) ≈ 0.5   # φ(ΔT=1) = L*1 = 0.5
-    @test cal_lin.heat_loss(2.0) ≈ 1.0   # φ(ΔT=2) = L*2 = 1.0
+    @test cal_lin.T_env ≈ 293.15
+    @test cal_lin.T0 ≈ 293.15
+    @test cal_lin.heat_loss(1.0) ≈ 0.5
+    @test cal_lin.heat_loss(2.0) ≈ 1.0
 
     @test n_extra_states(cal_lin) == 1
 
@@ -39,89 +42,82 @@ end
     @test u0_ext[end] ≈ 293.15
     @test u0_ext[1:2] == u0
 
-    # Quadratic heat loss (Lavergne et al. 2018: φ(ΔT) = a*ΔT + b*ΔT²)
+    # Quadratic heat loss (Lavergne et al. 2018)
     a, b = 0.48, 0.002
     cal_quad = SemiAdiabaticCalorimeter(;
-        T0 = 293.15,
-        T_env = 293.15,
-        Cp = 4000.0,
+        Cp = 4000.0u"J/K",
+        T_env = 293.15u"K",
         heat_loss = ΔT -> a * ΔT + b * ΔT^2,
+        T0 = 293.15u"K",
     )
     @test cal_quad isa SemiAdiabaticCalorimeter
-    @test cal_quad.heat_loss(10.0) ≈ a * 10.0 + b * 100.0   # = 4.8 + 0.2 = 5.0
+    @test cal_quad.heat_loss(10.0) ≈ a * 10.0 + b * 100.0
     @test cal_quad.heat_loss(0.0) ≈ 0.0
 
-    # Generic callable: constant heat loss
+    # Plain Real (SI) inputs
+    cal_si = SemiAdiabaticCalorimeter(; Cp = 3500.0, T_env = 295.0, L = 0.3, T0 = 295.0)
+    @test cal_si.Cp ≈ 3500.0
+    @test cal_si.T_env ≈ 295.0
+
+    # Constant heat loss
     cal_const = SemiAdiabaticCalorimeter(;
-        T0 = 300.0,
-        T_env = 293.15,
-        Cp = 3000.0,
+        Cp = 3000.0u"J/K",
+        T_env = 293.15u"K",
         heat_loss = _ -> 2.5,
+        T0 = 300.0u"K",
     )
+    @test cal_const.T0 ≈ 300.0
     @test cal_const.heat_loss(0.0) ≈ 2.5
     @test cal_const.heat_loss(100.0) ≈ 2.5
+
+    # Requires either heat_loss or L
+    @test_throws ArgumentError SemiAdiabaticCalorimeter(;
+        Cp = 4000.0, T_env = 293.15, T0 = 293.15,
+    )
 
 end
 
 # ── heat_rate ─────────────────────────────────────────────────────────────────
 
 @testset "heat_rate (constant-enthalpy reactions)" begin
-    # Build a minimal reaction with a constant ΔₐH⁰ = -50 000 J/mol
-    # Using NumericFunc as stand-in for the species thermo function
 
     # Species with known ΔₐH⁰
-    H2O = Species(
-        "H2O";
-        name = "Water",
-        aggregate_state = AS_AQUEOUS,
-        class = SC_AQSOLVENT,
-    )
+    H2O = Species("H2O"; name = "Water", aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     H2O.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
 
-    Ca2p = Species(
-        "Ca+2";
-        name = "Calcium ion",
-        aggregate_state = AS_AQUEOUS,
-        class = SC_AQSOLUTE,
-    )
+    Ca2p = Species("Ca+2"; name = "Calcium ion", aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
     Ca2p.properties[:ΔₐH⁰] = NumericFunc((T,) -> -542830.0, (:T,), u"J/mol")
 
-    Calcite = Species(
-        "Calcite";
-        name = "Calcite",
-        aggregate_state = AS_CRYSTAL,
-        class = SC_COMPONENT,
-    )
+    Calcite = Species("Calcite"; name = "Calcite", aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     Calcite.properties[:ΔₐH⁰] = NumericFunc((T,) -> -1206900.0, (:T,), u"J/mol")
 
-    CO2aq = Species(
-        "CO2";
-        name = "CO2 aqueous",
-        aggregate_state = AS_AQUEOUS,
-        class = SC_AQSOLUTE,
+    # Explicit reactants/products so complete_thermo_functions! gives correct ΔᵣH⁰
+    reaction = Reaction(
+        OrderedDict(Calcite => 1.0),
+        OrderedDict(Ca2p => 1.0);
+        symbol = "calcite dissolution test",
     )
-    CO2aq.properties[:ΔₐH⁰] = NumericFunc((T,) -> -413800.0, (:T,), u"J/mol")
+    dummy_fn = KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s")
+    kr = KineticReaction(reaction, dummy_fn, 1, [-1.0, 1.0])
 
-    # CaCO3 + CO2 + H2O = Ca²⁺ + 2HCO₃⁻ (simplified: just CaCO3 = Ca²⁺ + CO3²⁻)
-    # For this test: only check sign/magnitude
-    k_test = arrhenius_rate_constant(1.0e-7, 0.0)   # k = const = 1e-7
-    rm_test = FirstOrderRateModel(k_test)
-
-    # We won't build a full KineticReaction here; just test heat_rate directly
-    # by constructing a mock with a simple reaction
-    reaction = Reaction([Calcite, Ca2p]; symbol = "calcite dissolution test")
-    kr = KineticReaction(reaction, rm_test, FixedSurfaceArea(1.0), 1, [-1.0, 1.0])
-
-    # With rate = 1e-5 mol/s, ΔHr = ΔₐH⁰_Ca²⁺ - ΔₐH⁰_Calcite
-    ΔHr_expected = -542830.0 - (-1206900.0)   # = +664 070 J/mol (endothermic dissolution)
-    rates = [1.0e-5]   # mol/s
+    # Thermodynamic ΔᵣH⁰ = ΔₐH⁰(Ca²⁺) − ΔₐH⁰(Calcite) = +664 070 J/mol (endothermic)
+    # heat_rate uses −ΔᵣH⁰: negative for endothermic (heat absorbed from calorimeter)
+    ΔHr_thermo = -542830.0 - (-1206900.0)   # = +664 070 J/mol
+    rates = [1.0e-5]
 
     qdot = heat_rate([kr], rates, 298.15)
-    @test isapprox(qdot, rates[1] * ΔHr_expected; rtol = 1.0e-6)
+    @test isapprox(qdot, rates[1] * (-ΔHr_thermo); rtol = 1.0e-6)
+
+    # With explicit heat_per_mol: should override stoichiometric path
+    # heat_per_mol > 0 means heat generated (exothermic convention)
+    kr_explicit = KineticReaction(reaction, dummy_fn, 1, [-1.0, 1.0]; heat_per_mol = 50_000.0)
+    qdot_explicit = heat_rate([kr_explicit], rates, 298.15)
+    @test isapprox(qdot_explicit, 1.0e-5 * 50_000.0; rtol = 1.0e-10)
 
     # AD smoke-test through heat_rate
     dqdot_dr = ForwardDiff.derivative(r -> heat_rate([kr], [r], 298.15), 1.0e-5)
-    @test isapprox(dqdot_dr, ΔHr_expected; rtol = 1.0e-6)
+    @test isapprox(dqdot_dr, -ΔHr_thermo; rtol = 1.0e-6)
+
 end
 
 # ── extend_ode! for IsothermalCalorimeter ─────────────────────────────────────
@@ -130,37 +126,30 @@ end
 
     cal = IsothermalCalorimeter(298.15)
 
-    # Minimal mock: du and u with n_kin=1 mineral + 1 heat state
-    # We simulate: du[1] = -r (mineral decreasing at rate r)
-    # extend_ode! should set du[2] = heat_rate([kr], [r], T)
-    # Since we can't easily run the full ODE, just test the sign
-
-    # Use a simple reaction with known enthalpy
-    k_test = arrhenius_rate_constant(1.0e-7, 0.0)
-    rm_test = FirstOrderRateModel(k_test)
-    H2Osp = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     CaO = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     CaO.properties[:ΔₐH⁰] = NumericFunc((T,) -> -635090.0, (:T,), u"J/mol")
+    H2Osp = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     H2Osp.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
-    Ca_OH_2 = Species(
-        "Ca(OH)2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT
-    )
+    Ca_OH_2 = Species("Ca(OH)2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T,) -> -986090.0, (:T,), u"J/mol")
 
-    rxn = Reaction([CaO, H2Osp, Ca_OH_2]; symbol = "portlandite formation")
-    kr = KineticReaction(rxn, rm_test, FixedSurfaceArea(1.0), 1, [-1.0, -1.0, 1.0])
+    dummy_fn = KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s")
+    rxn = Reaction(
+        OrderedDict(CaO => 1.0, H2Osp => 1.0),
+        OrderedDict(Ca_OH_2 => 1.0);
+        symbol = "portlandite formation",
+    )
+    kr = KineticReaction(rxn, dummy_fn, 1, [-1.0, -1.0, 1.0])
 
-    # Simulate: du[1] = -0.001 (dissolution rate 0.001 mol/s)
     du = [-0.001, 0.0]
     u = [0.01, 0.0]
-    p = (kin_rxns = [kr], ϵ = 1.0e-30)
+    p = (kin_rxns = [kr], ϵ = 1.0e-30, rates_buf = [0.001])
 
     extend_ode!(du, u, p, 1, cal)
-    # q̇ = rate × ΔHr where rate = 0.001, ΔHr = H_Ca(OH)2 - H_CaO - H_H2O
-    ΔHr = -986090.0 - (-635090.0) - (-285830.0)   # = -65 170 J/mol (exothermic)
-    @test isapprox(du[2], 0.001 * ΔHr; rtol = 1.0e-6)
-    # Exothermic → q̇ < 0 (heat released, convention: negative = exothermic here)
-    # Actually sign depends on definition; just check it's nonzero and finite
+    # ΔᵣH⁰ = ΔₐH⁰(Ca(OH)₂) − ΔₐH⁰(CaO) − ΔₐH⁰(H₂O) = −65 170 J/mol (exothermic)
+    # heat_rate uses −ΔᵣH⁰ > 0: positive qdot for exothermic (heat generated)
+    ΔHr_thermo = -986090.0 - (-635090.0) - (-285830.0)   # = −65 170 J/mol
+    @test isapprox(du[2], -0.001 * ΔHr_thermo; rtol = 1.0e-6)
     @test isfinite(du[2])
 
 end
@@ -169,33 +158,71 @@ end
 
 @testset "SemiAdiabaticCalorimeter dT/dt" begin
 
-    cal = SemiAdiabaticCalorimeter(; T0 = 293.15, T_env = 293.15, L = 0.5, Cp = 4000.0)
+    cal = SemiAdiabaticCalorimeter(;
+        Cp = 4000.0u"J/K", T_env = 293.15u"K", L = 0.5u"W/K", T0 = 293.15u"K",
+    )
 
-    k_test = arrhenius_rate_constant(1.0e-7, 0.0)
-    rm_test = FirstOrderRateModel(k_test)
     CaO = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     CaO.properties[:ΔₐH⁰] = NumericFunc((T,) -> -635090.0, (:T,), u"J/mol")
     H2Osp = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     H2Osp.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
     Ca_OH_2 = Species("Ca(OH)2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T,) -> -986090.0, (:T,), u"J/mol")
-    rxn = Reaction([CaO, H2Osp, Ca_OH_2]; symbol = "portlandite")
-    kr = KineticReaction(rxn, rm_test, FixedSurfaceArea(1.0), 1, [-1.0, -1.0, 1.0])
 
-    # At T = T_env: no heat loss; dT/dt = q̇ / Cp
+    dummy_fn = KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s")
+    rxn = Reaction(
+        OrderedDict(CaO => 1.0, H2Osp => 1.0),
+        OrderedDict(Ca_OH_2 => 1.0);
+        symbol = "portlandite",
+    )
+    kr = KineticReaction(rxn, dummy_fn, 1, [-1.0, -1.0, 1.0])
+
+    # ΔᵣH⁰ = ΔₐH⁰(Ca(OH)₂) − ΔₐH⁰(CaO) − ΔₐH⁰(H₂O) = −65 170 J/mol (exothermic)
+    # heat_rate = r × (−ΔᵣH⁰) > 0: positive for exothermic → T rises
+    ΔHr_thermo = -986090.0 - (-635090.0) - (-285830.0)   # = −65 170 J/mol
+    r = 0.001
+    qdot_expected = r * (-ΔHr_thermo)   # = +65.17 W (heat generated)
+
+    # At T = T_env: no heat loss (L * ΔT = 0); dT/dt = q̇ / Cp_total
     T_curr = 293.15
-    du = [-0.001, T_curr]   # du[1] unused here; du[2] = dT/dt to be set
+    du = [-0.001, T_curr]
     u = [0.01, T_curr]
-    p = (kin_rxns = [kr], ϵ = 1.0e-30)
+    # p needs: kin_rxns, rates_buf, n_full, cp_fns
+    p = (
+        kin_rxns = [kr], ϵ = 1.0e-30, rates_buf = [0.001],
+        n_full = [0.01], cp_fns = [nothing],
+    )
 
     extend_ode!(du, u, p, 1, cal)
-    # dT/dt = (q̇ - L*(T-T_env)) / Cp
-    # At T = T_env: dT/dt = q̇ / Cp
-    ΔHr = -986090.0 - (-635090.0) - (-285830.0)
-    r = 0.001
-    qdot_expected = r * ΔHr
-    dTdt_expected = (qdot_expected - 0.0) / 4000.0
+    # Cp_total = cal.Cp (all cp_fns are nothing)
+    dTdt_expected = (qdot_expected - 0.0) / 4000.0   # positive → T rises
     @test isapprox(du[2], dTdt_expected; rtol = 1.0e-6)
+
+    # With nonzero ΔT: heat loss L * ΔT reduces dT/dt
+    T_hot = 303.15   # +10 °C above T_env
+    du_hot = [-0.001, T_hot]
+    u_hot = [0.01, T_hot]
+    p_hot = (
+        kin_rxns = [kr], ϵ = 1.0e-30, rates_buf = [0.001],
+        n_full = [0.01], cp_fns = [nothing],
+    )
+    extend_ode!(du_hot, u_hot, p_hot, 1, cal)
+    ΔT = T_hot - 293.15
+    dTdt_hot = (qdot_expected - 0.5 * ΔT) / 4000.0
+    @test isapprox(du_hot[2], dTdt_hot; rtol = 1.0e-6)
+
+    # Variable Cp_total: add a Cp° function for the mineral
+    cp_fn = NumericFunc((T,) -> 100.0, (:T,), u"J/(mol*K)")   # 100 J/(mol·K)
+    p_cp = (
+        kin_rxns = [kr], ϵ = 1.0e-30, rates_buf = [0.001],
+        n_full = [0.01], cp_fns = [cp_fn],
+    )
+    du_cp = [-0.001, T_curr]
+    u_cp = [0.01, T_curr]
+    extend_ode!(du_cp, u_cp, p_cp, 1, cal)
+    Cp_total_expected = 4000.0 + 0.01 * 100.0   # = 4001 J/K
+    dTdt_cp = (qdot_expected - 0.0) / Cp_total_expected
+    @test isapprox(du_cp[2], dTdt_cp; rtol = 1.0e-6)
 
 end
 
@@ -203,32 +230,24 @@ end
 
 @testset "_total_enthalpy" begin
 
-    # Two species: only the first has enthalpy data
     sp1 = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     sp1.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
     sp2 = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    # sp2 has no ΔₐH⁰
 
     h_fns = [sp1[:ΔₐH⁰], nothing]
-    n_full = [0.5, 1.0]   # 0.5 mol H2O, 1.0 mol CaO (no enthalpy data)
+    n_full = [0.5, 1.0]
 
     H = ChemistryLab._total_enthalpy(n_full, h_fns, 298.15)
-    # H = 0.5 × (-285830) + 0 (CaO has no data)
     @test isapprox(H, 0.5 * (-285830.0); rtol = 1.0e-10)
-
-    # cumulative_heat = H(0) - H(t): if both points equal → Q = 0
     @test isapprox(H - H, 0.0; atol = 1.0e-12)
 
-    # All-nothing h_fns → H = 0
     H_none = ChemistryLab._total_enthalpy(n_full, [nothing, nothing], 298.15)
     @test iszero(H_none)
 
-    # AD smoke-test w.r.t. moles
     dHdn = ForwardDiff.derivative(n -> ChemistryLab._total_enthalpy([n, 1.0], h_fns, 298.15), 0.5)
     @test isfinite(dHdn)
-    @test isapprox(dHdn, -285830.0; rtol = 1.0e-10)  # ΔₐH⁰ of sp1
+    @test isapprox(dHdn, -285830.0; rtol = 1.0e-10)
 
-    # AD smoke-test w.r.t. T (constant enthalpy function → dH/dT = 0)
     dHdT = ForwardDiff.derivative(T -> ChemistryLab._total_enthalpy(n_full, h_fns, T), 298.15)
     @test isfinite(dHdT)
 

@@ -12,8 +12,9 @@ function format_all_julia_files(directory::String)
             if endswith(file, ".jl")
                 filepath = joinpath(root, file)
                 println("Formatting $filepath")
-                format_file(filepath; overwrite=true)
+                format_file(filepath; overwrite = true)
             end
         end
     end
+    return
 end

@@ -3,11 +3,11 @@
 #
 # Simulation cinétique de l'hydratation du clinker OPC via ChemistryLab :
 #   - ChemicalSystem construit depuis la base de données CEMDATA18
-#   - KineticsProblem avec ParrotKillohRateModel (4 phases clinker)
+#   - KineticsProblem avec parrot_killoh (KineticFunc) pour les 4 phases clinker
 #   - Suivi de la chaleur via SemiAdiabaticCalorimeter
 #
 # Ce script montre l'utilisation de la chaîne complète :
-#   1. ChemicalSystem  → 2. ChemicalState  → 3. KineticReaction
+#   1. ChemicalSystem  → 2. ChemicalState  → 3. liste de Reaction annotées
 #   → 4. KineticsProblem → 5. integrate → 6. post-traitement
 #
 # Cinétique : Parrot & Killoh (1984), correction Arrhenius de Schindler &
@@ -25,13 +25,14 @@ Pkg.activate(@__DIR__)
 using ChemistryLab
 using OrdinaryDiffEq
 using DynamicQuantities
+using OrderedCollections
 using Printf
 
 # ── 1. ChemicalSystem depuis la base CEMDATA18 ────────────────────────────────
 #
 # On sélectionne :
 #   • les 4 phases clinker (espèces cinétiques)
-#   • les principaux produits d'hydratation (équilibre instantané)
+#   • les principaux produits d'hydratation
 #   • l'eau liquide (solvant)
 # L'extension CEMDATA_PRIMARIES donne les composantes indépendantes du système.
 
@@ -70,15 +71,6 @@ for (name, frac) in pairs(COMPOSITION)
 end
 set_quantity!(state0, "H2O@", WC * u"kg")
 
-# Amorçage pH neutre pour H⁺ / OH⁻ (si présents dans le système)
-try
-    V0 = volume(state0)
-    set_quantity!(state0, "H+", 1.0e-7u"mol/L" * V0.liquid)
-    set_quantity!(state0, "OH-", 1.0e-7u"mol/L" * V0.liquid)
-catch
-    # espèces absentes du système sélectionné — OK
-end
-
 # ── 3. Modèles cinétiques de Parrot & Killoh ──────────────────────────────────
 #
 # Degré maximal d'hydratation selon Powers (1948) : α_max ≤ w/c / 0.42
@@ -86,39 +78,55 @@ end
 
 const α_max = min(1.0, WC / 0.42)
 
-function _pk_with_amax(template::ParrotKillohRateModel, α::Real)
-    return ParrotKillohRateModel(
-        template.K₁, template.N₁, template.K₂, template.N₂,
-        template.K₃, template.N₃, template.B, template.Ea;
-        T_ref = template.T_ref, α_max = α,
-    )
-end
+pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
+pk_C2S = parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max)
+pk_C3A = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
+pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
 
-pk_C3S = _pk_with_amax(PK_PARAMS_C3S, α_max)
-pk_C2S = _pk_with_amax(PK_PARAMS_C2S, α_max)
-pk_C3A = _pk_with_amax(PK_PARAMS_C3A, α_max)
-pk_C4AF = _pk_with_amax(PK_PARAMS_C4AF, α_max)
-
-# ── 4. Réactions cinétiques ───────────────────────────────────────────────────
+# ── 4. Liste des réactions cinétiques ─────────────────────────────────────────
 #
-# Le constructeur de commodité KineticReaction(cs, nom, modèle, surface)
-# recherche automatiquement l'indice de l'espèce dans cs et construit
-# la stœchiométrie par défaut (-1 pour le minéral, 0 pour le reste).
-# FixedSurfaceArea(1.0) est un dummy car ParrotKillohRateModel n'utilise
-# pas A_surface.
+# Réactions d'hydratation (CEMDATA18 / Lothenbach & Winnefeld 2006) :
+#   Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O  →  Ca:Si = 1.5
 #
-# heat_per_mol : chaleurs d'hydratation standard [J/mol] (Taylor 1997 / Lothenbach 2006)
-#   C3S : 502 J/g × 228.32 g/mol ≈ 114 617 J/mol
-#   C2S : 260 J/g × 172.24 g/mol ≈  44 782 J/mol
-#   C3A : 866 J/g × 270.19 g/mol ≈ 233 985 J/mol
-#   C4AF: 419 J/g × 485.96 g/mol ≈ 203 617 J/mol
+#   C₃S  + 3.33 H₂O  →  0.167 Jennite + 1.5  Portlandite
+#   C₂S  + 2.33 H₂O  →  0.167 Jennite + 0.5  Portlandite
+#   C₃A  + 6    H₂O  →  C₃AH₆
+#   C₄AF + 6    H₂O  →  0.5 C₃AH₆ + 0.5 C₃FH₆ + Portlandite  (approx.)
+#
+# Chaque Reaction porte son taux cinétique (:rate) et son enthalpie (:heat_per_mol).
+# La stœchiométrie des produits permet le suivi des phases hydratées.
+#
+sp(name) = cs[name]
 
-kr_C3S = KineticReaction(cs, "C3S", pk_C3S, FixedSurfaceArea(1.0); heat_per_mol = 114_617.0)
-kr_C2S = KineticReaction(cs, "C2S", pk_C2S, FixedSurfaceArea(1.0); heat_per_mol = 44_782.0)
-kr_C3A = KineticReaction(cs, "C3A", pk_C3A, FixedSurfaceArea(1.0); heat_per_mol = 233_985.0)
-kr_C4AF = KineticReaction(cs, "C4AF", pk_C4AF, FixedSurfaceArea(1.0); heat_per_mol = 203_617.0)
+rxn_C3S = Reaction(
+    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
+    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5);
+    symbol = "C₃S hydration",
+)
+rxn_C3S[:rate] = pk_C3S
 
-@info "Indice C3S dans cs : $(kr_C3S.idx_mineral)"
+rxn_C2S = Reaction(
+    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 2.33),
+    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 0.5);
+    symbol = "C₂S hydration",
+)
+rxn_C2S[:rate] = pk_C2S
+
+rxn_C3A = Reaction(
+    OrderedDict(sp("C3A") => 1.0, sp("H2O@") => 6.0),
+    OrderedDict(sp("C3AH6") => 1.0);
+    symbol = "C₃A hydration",
+)
+rxn_C3A[:rate] = pk_C3A
+
+rxn_C4AF = Reaction(
+    OrderedDict(sp("C4AF") => 1.0, sp("H2O@") => 6.0),
+    OrderedDict(sp("C3AH6") => 0.5, sp("C3FH6") => 0.5, sp("Portlandite") => 1.0);
+    symbol = "C₄AF hydration",
+)
+rxn_C4AF[:rate] = pk_C4AF
+
+kinetic_reactions = [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF]
 
 # ── 5. Problème cinétique + calorimètre ──────────────────────────────────────
 #
@@ -129,7 +137,7 @@ const TSPAN = (0.0, 7.0 * 86400.0)
 
 kp = KineticsProblem(
     cs,
-    [kr_C3S, kr_C2S, kr_C3A, kr_C4AF],
+    kinetic_reactions,
     state0,
     TSPAN;
     equilibrium_solver = nothing,
@@ -139,10 +147,10 @@ kp = KineticsProblem(
 #   Cp [J/K] : 1 kg ciment + WC kg eau + vase Dewar
 #   pertes quadratiques : φ(ΔT) = a·ΔT + b·ΔT²
 cal = SemiAdiabaticCalorimeter(;
-    T0 = 293.15,     # température initiale [K]  (20 °C)
-    T_env = 293.15,     # température ambiante [K]
-    Cp = 1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0,   # ≈ 3449 J/K
+    Cp = (1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0) * u"J/K",   # ≈ 3449 J/K
+    T_env = 293.15u"K",
     heat_loss = ΔT -> 0.3 * ΔT + 0.003 * ΔT^2,
+    T0 = 293.15u"K",
 )
 
 # ── 6. Intégration ────────────────────────────────────────────────────────────
@@ -162,15 +170,21 @@ t_Q, Q_J_vec = cumulative_heat(sol, cal)
 T_°C_vec = T_K_vec .- 273.15
 Q_kJ_vec = Q_J_vec ./ 1000.0
 
-# Degrés d'hydratation depuis les moles cinétiques
-n0_kin = sol.prob.p.n_initial     # moles initiales [mol] de chaque phase cinétique
+# Degrés d'hydratation par phase
+n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kin_unique]
 n_kin = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
 
-# Indices des phases dans le vecteur d'état ODE (ordre = [kr_C3S, kr_C2S, kr_C3A, kr_C4AF])
-α_C3S = 1.0 .- n_kin[1] ./ n0_kin[1]
-α_C2S = 1.0 .- n_kin[2] ./ n0_kin[2]
-α_C3A = 1.0 .- n_kin[3] ./ n0_kin[3]
-α_C4AF = 1.0 .- n_kin[4] ./ n0_kin[4]
+function phase_alpha(cs, kp, sol, n0_kin, n_kin, name)
+    sp_idx = findfirst(sp -> ChemistryLab.phreeqc(ChemistryLab.formula(sp)) == name, cs.species)
+    pos = findfirst(==(sp_idx), kp.idx_kin_unique)
+    isnothing(pos) && return fill(NaN, length(sol.t))
+    return 1.0 .- n_kin[pos] ./ n0_kin[pos]
+end
+
+α_C3S = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C3S")
+α_C2S = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C2S")
+α_C3A = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C3A")
+α_C4AF = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C4AF")
 
 # Degré d'hydratation moyen pondéré (fractions massiques)
 w = COMPOSITION
@@ -204,7 +218,7 @@ p1 = plot(
     t_T ./ 3600, T_°C_vec;
     xlabel = "Temps [h]", ylabel = "T [°C]",
     title = "Température (calorimètre semi-adiabatique)",
-    label = "T(t)", lw = 2, color = :red
+    label = "T(t)", lw = 2, color = :red,
 )
 hline!(p1, [20.0]; linestyle = :dash, color = :gray, label = "T₀ = T_env")
 
@@ -213,7 +227,7 @@ p2 = plot(
     xlabel = "Temps [h]", ylabel = "Degré d'hydratation α",
     title = "Hydratation des phases clinker",
     label = ["C₃S" "C₂S" "C₃A" "C₄AF" "ᾱ moyen"],
-    lw = 2, ls = [:solid :dash :dot :dashdot :solid]
+    lw = 2, ls = [:solid :dash :dot :dashdot :solid],
 )
 hline!(p2, [α_max]; linestyle = :dash, color = :black, label = "α_max (Powers)")
 
@@ -221,12 +235,12 @@ p3 = plot(
     t_Q ./ 3600, Q_kJ_vec;
     xlabel = "Temps [h]", ylabel = "Q [kJ/kg ciment]",
     title = "Chaleur cumulée",
-    label = "Q(t)", lw = 2, color = :purple
+    label = "Q(t)", lw = 2, color = :purple,
 )
 
 display(
     plot(
         p1, p2, p3; layout = (1, 3), size = (1400, 420),
-        plot_title = "ChemistryLab — KineticsProblem cement — CEM I e/c=$WC"
+        plot_title = "ChemistryLab — KineticsProblem cement — CEM I e/c=$WC",
     )
 )

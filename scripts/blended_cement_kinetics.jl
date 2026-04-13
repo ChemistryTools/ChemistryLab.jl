@@ -25,6 +25,7 @@ Pkg.activate(@__DIR__)
 using ChemistryLab
 using OrdinaryDiffEq
 using DynamicQuantities
+using OrderedCollections
 using Printf
 
 # ── 1. ChemicalSystem de base depuis CEMDATA18 ───────────────────────────────
@@ -105,20 +106,12 @@ cs = ChemicalSystem(all_species, CEMDATA_PRIMARIES)
 # Phases clinker (fractions massiques dans le clinker CEM I 52.5 R) :
 #   C₃S : 61.9%, C₂S : 16.5%, C₃A : 8.0%, C₄AF : 8.7%   (Lavergne 2018)
 # Fraction clinker dans le ciment ternaire : 0.63
-#
-# heat_per_mol [J/mol] (par unité formulaire définie par :M) :
-#   C₃S  : 502 J/g × 228 g/mol ≈ 114 617  (Taylor 1997)
-#   C₂S  : 260 J/g × 172 g/mol ≈  44 782  (Taylor 1997)
-#   C₃A  : 866 J/g × 270 g/mol ≈ 233 985  (Taylor 1997)
-#   C₄AF : 419 J/g × 486 g/mol ≈ 203 617  (Taylor 1997)
-#   GGBS : 380 J/g ×  95 g/mol ≈  36 100  (Gruyaert 2010)
-#   MK   : 250 J/g × 222 g/mol ≈  55 500  (Lothenbach 2011)
 
 const WB = 0.4      # rapport eau/liant
 
-const CLINKER_FRAC = 0.63      # fraction massique du clinker dans le ciment
-const GGBS_FRAC = 0.3      # fraction massique du laitier
-const MK_FRAC = 0.07      # fraction massique du métakaolin
+const CLINKER_FRAC = 0.63
+const GGBS_FRAC = 0.3
+const MK_FRAC = 0.07
 
 const CLINKER_COMP = (C3S = 0.619, C2S = 0.165, C3A = 0.08, C4AF = 0.087)
 
@@ -137,87 +130,130 @@ for (name, frac) in pairs(COMPOSITION)
 end
 set_quantity!(state0, "H2O@", WB * u"kg")
 
-# ── 5. Modèles cinétiques ─────────────────────────────────────────────────────
+# ── 5. Modèles cinétiques Parrot & Killoh ────────────────────────────────────
 #
 # α_max selon Powers (1948) : hydratation limitée par l'eau disponible
 const α_max = min(1.0, WB / 0.42)
 
-function _pk_with_amax(template::ParrotKillohRateModel, α::Real)
-    return ParrotKillohRateModel(
-        template.K₁, template.N₁, template.K₂, template.N₂,
-        template.K₃, template.N₃, template.B, template.Ea;
-        T_ref = template.T_ref, α_max = α,
-    )
-end
-
 # Clinker (Parrot & Killoh 1984, corrections Schindler & Folliard 2005)
-pk_C3S = _pk_with_amax(PK_PARAMS_C3S, α_max)
-pk_C2S = _pk_with_amax(PK_PARAMS_C2S, α_max)
-pk_C3A = _pk_with_amax(PK_PARAMS_C3A, α_max)
-pk_C4AF = _pk_with_amax(PK_PARAMS_C4AF, α_max)
+pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
+pk_C2S = parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max)
+pk_C3A = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
+pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
 
 # GGBS (laitier) : paramètres PK adaptés de la littérature
 #   K₁ faible → cinétique initiale lente (vitreux, peu de nucléation)
 #   Ea élevée → forte sensibilité à la température
 #   α_max = 0.90 (vitreux, hydratation partielle)
 #   Références : Richardson & Groves (1992), Chen & Brouwers (2007)
-pk_ggbs = ParrotKillohRateModel(
-    0.15, 2.0, 0.003, 2.0, 0.0015, 3.5, 0.2, 46_000.0;
-    T_ref = 293.15, α_max = 0.9,
+pk_ggbs = parrot_killoh(
+    (
+        K₁ = 0.15u"1/d", N₁ = 2.0, K₂ = 0.003u"1/d", N₂ = 2.0,
+        K₃ = 0.0015u"1/d", N₃ = 3.5, B = 0.2,
+        Ea = 46_000.0u"J/mol", T_ref = 293.15u"K",
+    ),
+    "GGBS";
+    α_max = 0.9,
 )
 
 # MK (métakaolin) : paramètres PK adaptés de la littérature
 #   K₁ élevé → réactivité initiale forte (surface spécifique élevée)
 #   α_max = 0.95 (quasi-totale dans les conditions normales)
 #   Références : Lothenbach et al. (2011), Deschner et al. (2012)
-pk_mk = ParrotKillohRateModel(
-    0.7, 1.5, 0.008, 2.0, 0.002, 3.5, 0.3, 48_000.0;
-    T_ref = 293.15, α_max = 0.95,
+pk_mk = parrot_killoh(
+    (
+        K₁ = 0.7u"1/d", N₁ = 1.5, K₂ = 0.008u"1/d", N₂ = 2.0,
+        K₃ = 0.002u"1/d", N₃ = 3.5, B = 0.3,
+        Ea = 48_000.0u"J/mol", T_ref = 293.15u"K",
+    ),
+    "MK";
+    α_max = 0.95,
 )
 
-# ── 6. Réactions cinétiques ───────────────────────────────────────────────────
+# ── 6. Liste des réactions cinétiques ─────────────────────────────────────────
 #
-# Le constructeur de commodité KineticReaction(cs, nom, modèle, surface)
-# résout l'espèce par son champ :symbol dans cs.
-# FixedSurfaceArea(1.0) est un dummy : Parrot–Killoh n'utilise pas A_surface.
+# Réactions clinker (Lothenbach & Winnefeld 2006 / Lavergne et al. 2018) :
+#   Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O  →  Ca:Si = 1.5
+#
+#   C₃S  + 3.33 H₂O → 0.167 Jennite + 1.5  Portlandite
+#   C₂S  + 2.33 H₂O → 0.167 Jennite + 0.5  Portlandite
+#   C₃A  + 6    H₂O → C₃AH₆
+#   C₄AF + 6    H₂O → 0.5 C₃AH₆ + 0.5 C₃FH₆ + Portlandite  (approx.)
+#
+# Réactions des additions minérales (approchées — formules artificielles) :
+#   GGBS + 3 H₂O → Jennite + straetlingite  (stœchiométrie approchée)
+#   MK   + 2 Portlandite + 5 H₂O → straetlingite  (Si non équilibré)
+#
+# Note : GGBS et MK ont des formules artificielles (M écrasé) ; les réactions
+# sont des approximations littéraires. Seule la phase réactante pilote la
+# cinétique PK (Ω est ignoré).
+#
+# heat_per_mol [J/mol] : nécessaire uniquement pour les espèces personnalisées
+# sans ΔₐH⁰ dans leur properties (GGBS et MK). Pour les phases clinker CEMDATA18,
+# la chaleur est calculée automatiquement depuis les ΔₐH⁰ des espèces.
+#   GGBS : 380 J/g ×  95 g/mol ≈  36 100 J/mol  (Gruyaert 2010, M artificiel)
+#   MK   : 250 J/g × 222 g/mol ≈  55 500 J/mol  (Lothenbach 2011)
 
-kr_C3S = KineticReaction(
-    cs, "C3S", pk_C3S, FixedSurfaceArea(1.0);
-    heat_per_mol = 114_617.0,
-)
-kr_C2S = KineticReaction(
-    cs, "C2S", pk_C2S, FixedSurfaceArea(1.0);
-    heat_per_mol = 44_782.0,
-)
-kr_C3A = KineticReaction(
-    cs, "C3A", pk_C3A, FixedSurfaceArea(1.0);
-    heat_per_mol = 233_985.0,
-)
-kr_C4AF = KineticReaction(
-    cs, "C4AF", pk_C4AF, FixedSurfaceArea(1.0);
-    heat_per_mol = 203_617.0,
-)
-kr_ggbs = KineticReaction(
-    cs, "GGBS", pk_ggbs, FixedSurfaceArea(1.0);
-    heat_per_mol = 36_100.0,    # 380 J/g × 95 g/mol (Gruyaert 2010)
-)
-kr_mk = KineticReaction(
-    cs, "MK", pk_mk, FixedSurfaceArea(1.0);
-    heat_per_mol = 55_500.0,    # 250 J/g × 222 g/mol (Lothenbach 2011)
-)
+sp(name) = cs[name]
 
-@info "Indices : C3S=$(kr_C3S.idx_mineral)  GGBS=$(kr_ggbs.idx_mineral)  MK=$(kr_mk.idx_mineral)"
+rxn_C3S = Reaction(
+    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
+    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5);
+    symbol = "C₃S hydration",
+)
+rxn_C3S[:rate] = pk_C3S
+
+rxn_C2S = Reaction(
+    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 2.33),
+    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 0.5);
+    symbol = "C₂S hydration",
+)
+rxn_C2S[:rate] = pk_C2S
+
+rxn_C3A = Reaction(
+    OrderedDict(sp("C3A") => 1.0, sp("H2O@") => 6.0),
+    OrderedDict(sp("C3AH6") => 1.0);
+    symbol = "C₃A hydration",
+)
+rxn_C3A[:rate] = pk_C3A
+
+rxn_C4AF = Reaction(
+    OrderedDict(sp("C4AF") => 1.0, sp("H2O@") => 6.0),
+    OrderedDict(sp("C3AH6") => 0.5, sp("C3FH6") => 0.5, sp("Portlandite") => 1.0);
+    symbol = "C₄AF hydration",
+)
+rxn_C4AF[:rate] = pk_C4AF
+
+# GGBS : formule artificielle → produits approchés (Jennite + straetlingite)
+rxn_GGBS = Reaction(
+    OrderedDict(sp("GGBS") => 1.0, sp("H2O@") => 3.0),
+    OrderedDict(sp("Jennite") => 0.05, sp("straetlingite") => 0.2);
+    symbol = "GGBS hydration",
+)
+rxn_GGBS[:rate] = pk_ggbs
+rxn_GGBS[:heat_per_mol] = 36_100.0u"J/mol"
+
+# MK : Al₂Si₂O₇ + 2 Ca(OH)₂ + 5 H₂O → straetlingite (Si approché)
+rxn_MK = Reaction(
+    OrderedDict(sp("MK") => 1.0, sp("Portlandite") => 2.0, sp("H2O@") => 5.0),
+    OrderedDict(sp("straetlingite") => 1.0);
+    symbol = "MK hydration",
+)
+rxn_MK[:rate] = pk_mk
+rxn_MK[:heat_per_mol] = 55_500.0u"J/mol"
+
+kinetic_reactions = [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF, rxn_GGBS, rxn_MK]
 
 # ── 7. Problème cinétique ─────────────────────────────────────────────────────
 #
 # tspan : 28 jours → montre la réactivité tardive du laitier
 # equilibrium_solver = nothing : pas de re-spéciation aqueuse (suffisant pour PK)
 
-const TSPAN = (0.0, 28.0 * 86400.0)
+const TSPAN = (0.0u"s", 28.0u"d")
 
 kp = KineticsProblem(
     cs,
-    [kr_C3S, kr_C2S, kr_C3A, kr_C4AF, kr_ggbs, kr_mk],
+    kinetic_reactions,
     state0,
     TSPAN;
     equilibrium_solver = nothing,
@@ -226,16 +262,16 @@ kp = KineticsProblem(
 # ── 8. Calorimètre semi-adiabatique ──────────────────────────────────────────
 #
 # Cp [J/K] : ciment ternaire + eau + vase Dewar
-#   cement : 1 kg × 800 J/(kg·K)
+#   ciment : 1 kg × 800 J/(kg·K)
 #   eau    : WB kg × 4186 J/(kg·K)
 #   Dewar  : 1 kg × 900 J/(kg·K)
 # Pertes quadratiques (Lavergne et al. 2018)
 
 cal = SemiAdiabaticCalorimeter(;
-    T0 = 293.15,
-    T_env = 293.15,
-    Cp = 1.0 * 800.0 + WB * 4186.0 + 1.0 * 900.0,
+    Cp = (1.0 * 800.0 + WB * 4186.0 + 1.0 * 900.0) * u"J/K",
+    T_env = 293.15u"K",
     heat_loss = ΔT -> 0.3 * ΔT + 0.003 * ΔT^2,
+    T0 = 293.15u"K",
 )
 
 # ── 9. Intégration ────────────────────────────────────────────────────────────
@@ -247,24 +283,28 @@ sol = integrate(kp, ks; calorimeter = cal)
 
 # ── 10. Post-traitement ────────────────────────────────────────────────────────
 
-# Profil température et chaleur depuis le calorimètre
 t_T, T_K_vec = temperature_profile(sol, cal)
 t_Q, Q_J_vec = cumulative_heat(sol, cal)
 T_°C_vec = T_K_vec .- 273.15
 Q_kJ_vec = Q_J_vec ./ 1000.0
 
-# Degrés d'hydratation par phase (ordre du vecteur d'état ODE)
-# ODE state : [C3S, C2S, C3A, C4AF, GGBS, MK]
-n0_kin = sol.prob.p.n_initial        # moles initiales [mol]
+n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kin_unique]
 n_kin = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
-t_h = sol.t ./ 3600.0             # [s] → [h]
+t_h = sol.t ./ 3600.0
 
-α_C3S = 1.0 .- n_kin[1] ./ n0_kin[1]
-α_C2S = 1.0 .- n_kin[2] ./ n0_kin[2]
-α_C3A = 1.0 .- n_kin[3] ./ n0_kin[3]
-α_C4AF = 1.0 .- n_kin[4] ./ n0_kin[4]
-α_GGBS = 1.0 .- n_kin[5] ./ n0_kin[5]
-α_MK = 1.0 .- n_kin[6] ./ n0_kin[6]
+function phase_alpha(cs, kp, sol, n0_kin, n_kin, name)
+    sp_idx = findfirst(sp -> ChemistryLab.symbol(sp) == name, cs.species)
+    pos = findfirst(==(sp_idx), kp.idx_kin_unique)
+    isnothing(pos) && return fill(NaN, length(sol.t))
+    return 1.0 .- n_kin[pos] ./ n0_kin[pos]
+end
+
+α_C3S = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C3S")
+α_C2S = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C2S")
+α_C3A = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C3A")
+α_C4AF = phase_alpha(cs, kp, sol, n0_kin, n_kin, "C4AF")
+α_GGBS = phase_alpha(cs, kp, sol, n0_kin, n_kin, "GGBS")
+α_MK = phase_alpha(cs, kp, sol, n0_kin, n_kin, "MK")
 
 # Degré d'hydratation moyen pondéré par la fraction massique de chaque phase
 w = COMPOSITION
@@ -276,6 +316,8 @@ w = COMPOSITION
 
 # ── Résumé ────────────────────────────────────────────────────────────────────
 
+idx_7d = findlast(t -> t <= 7 * 86400, sol.t)
+
 println()
 println("╔═══════════════════════════════════════════════════════════╗")
 println("║   Cinétique ciment ternaire — ChemistryLab                ║")
@@ -283,13 +325,13 @@ println("║   Cinétique ciment ternaire — ChemistryLab                ║")
 println("╠═══════════════════════════════════════════════════════════╣")
 @printf "║  ΔT max      = %6.2f °C                                  ║\n" maximum(T_°C_vec) - 20.0
 println("╠═══════════════════════════════════════════════════════════╣")
-@printf "║  α(C₃S)  7j  = %6.4f   28j = %6.4f                    ║\n" α_C3S[findlast(t -> t <= 7 * 86400, sol.t)] α_C3S[end]
-@printf "║  α(C₂S)  7j  = %6.4f   28j = %6.4f                    ║\n" α_C2S[findlast(t -> t <= 7 * 86400, sol.t)] α_C2S[end]
-@printf "║  α(GGBS) 7j  = %6.4f   28j = %6.4f                    ║\n" α_GGBS[findlast(t -> t <= 7 * 86400, sol.t)] α_GGBS[end]
-@printf "║  α(MK)   7j  = %6.4f   28j = %6.4f                    ║\n" α_MK[findlast(t -> t <= 7 * 86400, sol.t)] α_MK[end]
-@printf "║  ᾱ moyen  7j  = %6.4f   28j = %6.4f                    ║\n" α_mean[findlast(t -> t <= 7 * 86400, sol.t)] α_mean[end]
+@printf "║  α(C₃S)  7j  = %6.4f   28j = %6.4f                    ║\n" α_C3S[idx_7d] α_C3S[end]
+@printf "║  α(C₂S)  7j  = %6.4f   28j = %6.4f                    ║\n" α_C2S[idx_7d] α_C2S[end]
+@printf "║  α(GGBS) 7j  = %6.4f   28j = %6.4f                    ║\n" α_GGBS[idx_7d] α_GGBS[end]
+@printf "║  α(MK)   7j  = %6.4f   28j = %6.4f                    ║\n" α_MK[idx_7d] α_MK[end]
+@printf "║  ᾱ moyen  7j  = %6.4f   28j = %6.4f                    ║\n" α_mean[idx_7d] α_mean[end]
 println("╠═══════════════════════════════════════════════════════════╣")
-@printf "║  Q  7j = %6.1f kJ/kg   Q 28j = %6.1f kJ/kg            ║\n" Q_kJ_vec[findlast(t -> t <= 7 * 86400, sol.t)] Q_kJ_vec[end]
+@printf "║  Q  7j = %6.1f kJ/kg   Q 28j = %6.1f kJ/kg            ║\n" Q_kJ_vec[idx_7d] Q_kJ_vec[end]
 println("╚═══════════════════════════════════════════════════════════╝")
 
 # ── 11. Tracés ────────────────────────────────────────────────────────────────
@@ -300,10 +342,10 @@ gr()
 p1 = plot(
     t_T ./ 3600, T_°C_vec;
     xlabel = "Temps [h]", ylabel = "T [°C]",
-    title = "Température",
+    title = "Température (calorimètre semi-adiabatique)",
     label = "T(t)", lw = 2, color = :red,
 )
-hline!(p1, [20.0]; linestyle = :dash, color = :gray, label = "T₀")
+hline!(p1, [20.0]; linestyle = :dash, color = :gray, label = "T₀ = T_env")
 
 p2 = plot(
     t_h, [α_C3S α_C2S α_C3A α_C4AF α_GGBS α_MK α_mean];
@@ -313,11 +355,11 @@ p2 = plot(
     lw = 2, ls = [:solid :dash :dot :dashdot :solid :dash :solid],
     color = [:blue :cyan :green :orange :brown :purple :black],
 )
-hline!(p2, [α_max]; linestyle = :dash, color = :black, label = "α_max")
+hline!(p2, [α_max]; linestyle = :dash, color = :black, label = "α_max (Powers)")
 
 p3 = plot(
     t_Q ./ 3600, Q_kJ_vec;
-    xlabel = "Temps [h]", ylabel = "Q [kJ/kg]",
+    xlabel = "Temps [h]", ylabel = "Q [kJ/kg ciment]",
     title = "Chaleur cumulée",
     label = "Q(t)", lw = 2, color = :purple,
 )

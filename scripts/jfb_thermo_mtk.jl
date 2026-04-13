@@ -16,16 +16,18 @@ safe_uparse(x::AbstractString) = uparse(x)
 safe_uparse(x::AbstractQuantity) = x
 
 force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractDimensions}, q::UnionAbstractQuantity{<:Any, <:Dimensions}) = safe_uconvert(qout, q)
-force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractDimensions}, q) = safe_ustrip(qout, q)*qout
+force_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractDimensions}, q) = safe_ustrip(qout, q) * qout
 
 
-const ADIM_MATH_FUNCTIONS = [:log, :log10, :log2, :log1p,
-                        :exp, :expm1, :exp2, :exp10,
-                        :sin, :cos, :tan, :csc, :sec, :cot,
-                        :asin, :acos, :atan, :acsc, :asec, :acot,
-                        :sinh, :cosh, :tanh, :csch, :sech, :coth,
-                        :asinh, :acosh, :atanh, :acsch, :asech, :acoth,
-                        :erf, :erfc, :gamma, :lgamma]
+const ADIM_MATH_FUNCTIONS = [
+    :log, :log10, :log2, :log1p,
+    :exp, :expm1, :exp2, :exp10,
+    :sin, :cos, :tan, :csc, :sec, :cot,
+    :asin, :acos, :atan, :acsc, :asec, :acot,
+    :sinh, :cosh, :tanh, :csch, :sech, :coth,
+    :asinh, :acosh, :atanh, :acsch, :asech, :acoth,
+    :erf, :erfc, :gamma, :lgamma,
+]
 
 for f in ADIM_MATH_FUNCTIONS
     if isdefined(Base, f)
@@ -35,12 +37,12 @@ end
 
 abstract type AbstractFunc end
 
-struct SymbolicFunc{N, R<:NamedTuple, T, D} <: AbstractFunc
+struct SymbolicFunc{N, R <: NamedTuple, T, D} <: AbstractFunc
     symbolic::Num
     vars::NTuple{N, Symbol}
     refs::R
     compiled::RuntimeGeneratedFunction
-    unit::Quantity{T,D}
+    unit::Quantity{T, D}
 end
 
 # OPTIMIZED callable - specialized for 1, 2, 3+ variables
@@ -49,8 +51,8 @@ end
     v = tf.vars[1]
     val = haskey(kwargs, v) ? kwargs[v] : tf.refs[v]
     with_unit = get(kwargs, :unit, false)
-    return with_unit ? tf.compiled(ustrip(val))*tf.unit :
-                       tf.compiled(ustrip(val))
+    return with_unit ? tf.compiled(ustrip(val)) * tf.unit :
+        tf.compiled(ustrip(val))
 end
 
 @inline function (tf::SymbolicFunc{2})(; kwargs...)
@@ -59,8 +61,8 @@ end
     val1 = haskey(kwargs, v1) ? kwargs[v1] : get(tf.refs, v1, nothing)
     val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
     with_unit = get(kwargs, :unit, false)
-    return with_unit ? tf.compiled(ustrip(val1), ustrip(val2))*tf.unit :
-                       tf.compiled(ustrip(val1), ustrip(val2))
+    return with_unit ? tf.compiled(ustrip(val1), ustrip(val2)) * tf.unit :
+        tf.compiled(ustrip(val1), ustrip(val2))
 end
 
 @inline function (tf::SymbolicFunc{3})(; kwargs...)
@@ -70,11 +72,11 @@ end
     val2 = haskey(kwargs, v2) ? kwargs[v2] : get(tf.refs, v2, nothing)
     val3 = haskey(kwargs, v3) ? kwargs[v3] : get(tf.refs, v3, nothing)
     with_unit = get(kwargs, :unit, false)
-    return with_unit ? tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))*tf.unit :
-                       tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
+    return with_unit ? tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3)) * tf.unit :
+        tf.compiled(ustrip(val1), ustrip(val2), ustrip(val3))
 end
 
-@inline function (tf::SymbolicFunc{N})(; kwargs...) where N
+@inline function (tf::SymbolicFunc{N})(; kwargs...) where {N}
     # General case - fallback for 4+ variables
     if isempty(kwargs)
         # Fast path: no overrides, use refs directly
@@ -85,7 +87,7 @@ end
         with_unit = get(kwargs, :unit, false)
         merged = merge(tf.refs, kwargs)
         var_values = ntuple(i -> ustrip(merged[tf.vars[i]]), N)
-        return with_unit ? tf.compiled(var_values...)*tf.unit : tf.compiled(var_values...)
+        return with_unit ? tf.compiled(var_values...) * tf.unit : tf.compiled(var_values...)
     end
 end
 
@@ -96,7 +98,7 @@ struct ThermoFactory
     cache::Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}
 
     function ThermoFactory(symbolic::Union{SymbolicUtils.BasicSymbolic, Num}, vars::AbstractDict{Symbol, Num}, params::AbstractDict{Symbol, Num})
-        new(symbolic, vars, params, Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}())
+        return new(symbolic, vars, params, Dict{UInt64, Tuple{Num, RuntimeGeneratedFunction}}())
     end
 end
 
@@ -106,7 +108,7 @@ function extract_vars_params(expr, vars)
     newvars = Symbol[]
 
     function scan_expr(ex)
-        if ex isa Symbol
+        return if ex isa Symbol
             ex ∈ vars_set ? push!(newvars, ex) : push!(params, ex)
         elseif ex isa Expr
             for arg in ex.args[2:end]
@@ -121,7 +123,7 @@ function extract_vars_params(expr, vars)
     return newvars, params
 end
 
-function ThermoFactory(expr, vars=[:T, :P, :t, :x, :y, :z]; units=nothing)
+function ThermoFactory(expr, vars = [:T, :P, :t, :x, :y, :z]; units = nothing)
     vars, params = extract_vars_params(expr, vars)
     var_sym_dict = OrderedDict{Symbol, Num}(v => Symbolics.variable(v) for v in vars)
     param_sym_dict = OrderedDict{Symbol, Num}(p => Symbolics.variable(p) for p in params)
@@ -136,7 +138,7 @@ function ThermoFactory(expr, vars=[:T, :P, :t, :x, :y, :z]; units=nothing)
     end
     all_symbols = merge(var_sym_dict, param_sym_dict)
     symbolic = Symbolics.parse_expr_to_symbolic(expr, all_symbols)
-    ThermoFactory(symbolic, var_sym_dict, param_sym_dict)
+    return ThermoFactory(symbolic, var_sym_dict, param_sym_dict)
 end
 
 function get_unit(factory::ThermoFactory)
@@ -150,18 +152,18 @@ end
 
 function compile_symbolic(symbolic_expr, var_symbols)
     return length(var_symbols) == 1 ?
-        build_function(symbolic_expr, var_symbols[1]; expression=Val(false)) :
-        build_function(symbolic_expr, var_symbols...; expression=Val(false))
+        build_function(symbolic_expr, var_symbols[1]; expression = Val(false)) :
+        build_function(symbolic_expr, var_symbols...; expression = Val(false))
 end
 
 function (factory::ThermoFactory)(; kwargs...)
     param_vals = Dict{Symbol, Any}(p => get(kwargs, p, 0.0) for p in keys(factory.params))
     refs = NamedTuple([v => force_uconvert(get_unit(factory, v), kwargs[v]) for v in keys(factory.vars) if haskey(kwargs, v)])
-    cache_key = hash(tuple(sort(collect(pairs(param_vals)), by=x->x.first)...))
+    cache_key = hash(tuple(sort(collect(pairs(param_vals)), by = x -> x.first)...))
     unit = get_unit(factory)
 
     simplified, compiled = get!(factory.cache, cache_key) do
-        substitutions = Dict(v => param_vals[p] for (p,v) in factory.params)
+        substitutions = Dict(v => param_vals[p] for (p, v) in factory.params)
         substituted = Symbolics.substitute(factory.symbolic, substitutions)
         simplified = Symbolics.simplify(Symbolics.expand(substituted))
         compiled = compile_symbolic(simplified, collect(keys(factory.vars)))
@@ -174,7 +176,7 @@ end
 
 function Base.show(io::IO, tf::SymbolicFunc)
     print(io, tf.symbolic, " [", dimension(tf.unit), "]")
-    if !isempty(tf.refs)
+    return if !isempty(tf.refs)
         print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(tf.refs)], ", "))
     end
 end
@@ -190,7 +192,7 @@ function Base.show(io::IO, ::MIME"text/plain", tf::SymbolicFunc)
     end
 
     print(io, "  Variables: ")
-    print(io, join(tf.vars, ", "))
+    return print(io, join(tf.vars, ", "))
 end
 
 function Base.show(io::IO, factory::ThermoFactory)
@@ -198,7 +200,7 @@ function Base.show(io::IO, factory::ThermoFactory)
     if !isempty(factory.params)
         print(io, " ◆ params = ", join(keys(factory.params), ", "))
     end
-    if !isempty(factory.vars)
+    return if !isempty(factory.vars)
         print(io, " ◆ vars = ", join(keys(factory.vars), ", "))
     end
 end
@@ -214,11 +216,11 @@ function Base.show(io::IO, ::MIME"text/plain", factory::ThermoFactory)
     end
 
     print(io, "  Variables: ")
-    print(io, join(sort(collect(keys(factory.vars))), ", "))
+    return print(io, join(sort(collect(keys(factory.vars))), ", "))
 end
 
 units =
-[
+    [
     :a₀ => "J/(mol*K)",
     :a₁ => "J/(mol*K^2)",
     :a₂ => "(J*K)/mol",
@@ -240,17 +242,17 @@ for p in keys(dict_symvars)
     var_sym_dict[p] = setmetadata(var_sym_dict[p], ModelingToolkitBase.VariableUnit, uparse(dict_symvars[p]))
 end
 
-Cpexpr = :(a₀ + a₁ * T + a₂ / T ^ 2 + a₃ / T^(1/2) + a₄ * T ^ 2 + a₅ * T ^ 3 + a₆ * T ^ 4 + a₇ / T ^ 3 + a₈ / T + a₉ * T^(1/2) + a₁₀ * log(T))
+Cpexpr = :(a₀ + a₁ * T + a₂ / T^2 + a₃ / T^(1 / 2) + a₄ * T^2 + a₅ * T^3 + a₆ * T^4 + a₇ / T^3 + a₈ / T + a₉ * T^(1 / 2) + a₁₀ * log(T))
 Cp = Symbolics.parse_expr_to_symbolic(Cpexpr, var_sym_dict)
 ModelingToolkitBase.get_unit(Cp)
 # H = integrate(Cp, var_sym_dict[:T]; symbolic = true, detailed = false)
 # ModelingToolkitBase.get_unit(H)
 
-Gexpr = :(-(a₀ * T * log(T)) + (a₀ * T) + (-(a₁ / 2) * T^2) + (-(a₂ / 2) / T) + (4 * a₃ * T^(1/2)) + (-(a₄ / 6) * T^3) + (-(a₅ / 12) * T^4) + (-(a₆ / 20) * T^5) + (-(a₇ / 6) / T^2) + (a₈ * log(T)) + (-(4 / 3) * a₉ * T^(3 / 2)) + (-(a₁₀ / 2) * T * (log(T))^2) + (a₁₀ * T * log(T)) + (-a₁₀ * T))
+Gexpr = :(-(a₀ * T * log(T)) + (a₀ * T) + (-(a₁ / 2) * T^2) + (-(a₂ / 2) / T) + (4 * a₃ * T^(1 / 2)) + (-(a₄ / 6) * T^3) + (-(a₅ / 12) * T^4) + (-(a₆ / 20) * T^5) + (-(a₇ / 6) / T^2) + (a₈ * log(T)) + (-(4 / 3) * a₉ * T^(3 / 2)) + (-(a₁₀ / 2) * T * (log(T))^2) + (a₁₀ * T * log(T)) + (-a₁₀ * T))
 G = Symbolics.parse_expr_to_symbolic(Gexpr, var_sym_dict)
 ModelingToolkitBase.get_unit(G)
 
-factory = ThermoFactory(Cpexpr, [:T]; units=units)
+factory = ThermoFactory(Cpexpr, [:T]; units = units)
 
 ModelingToolkitBase.get_unit(factory.symbolic)
 ModelingToolkitBase.get_unit(factory.params[:a₂])
