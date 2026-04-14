@@ -292,7 +292,7 @@ function arrhenius_rate_constant(
     T_ref_si = safe_ustrip(us"K", T_ref)
     # Closure captures SI values; no Float64 cast → ForwardDiff.Dual propagates correctly
     # through k₀, Ea, or T_ref when differentiating through construction.
-    f = (T,) -> k₀_si * exp(-Ea_si / R_gas * (1 / T - 1 / T_ref_si))
+    f = (T) -> k₀_si * exp(-Ea_si / R_gas * (1 / T - 1 / T_ref_si))
     # refs is metadata for default call values — always stored as plain Float64
     refs = (T = Float64(_primal(T_ref_si)) * u"K",)
     return NumericFunc(f, (:T,), refs, u"mol/(m^2*s)")

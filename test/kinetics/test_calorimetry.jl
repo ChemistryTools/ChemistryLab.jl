@@ -83,13 +83,13 @@ end
 
     # Species with known ΔₐH⁰
     H2O = Species("H2O"; name = "Water", aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    H2O.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
+    H2O.properties[:ΔₐH⁰] = NumericFunc((T) -> -285830.0, (:T,), u"J/mol")
 
     Ca2p = Species("Ca+2"; name = "Calcium ion", aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
-    Ca2p.properties[:ΔₐH⁰] = NumericFunc((T,) -> -542830.0, (:T,), u"J/mol")
+    Ca2p.properties[:ΔₐH⁰] = NumericFunc((T) -> -542830.0, (:T,), u"J/mol")
 
     Calcite = Species("Calcite"; name = "Calcite", aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    Calcite.properties[:ΔₐH⁰] = NumericFunc((T,) -> -1206900.0, (:T,), u"J/mol")
+    Calcite.properties[:ΔₐH⁰] = NumericFunc((T) -> -1206900.0, (:T,), u"J/mol")
 
     # Explicit reactants/products so complete_thermo_functions! gives correct ΔᵣH⁰
     reaction = Reaction(
@@ -127,11 +127,11 @@ end
     cal = IsothermalCalorimeter(298.15)
 
     CaO = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    CaO.properties[:ΔₐH⁰] = NumericFunc((T,) -> -635090.0, (:T,), u"J/mol")
+    CaO.properties[:ΔₐH⁰] = NumericFunc((T) -> -635090.0, (:T,), u"J/mol")
     H2Osp = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    H2Osp.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
+    H2Osp.properties[:ΔₐH⁰] = NumericFunc((T) -> -285830.0, (:T,), u"J/mol")
     Ca_OH_2 = Species("Ca(OH)2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T,) -> -986090.0, (:T,), u"J/mol")
+    Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T) -> -986090.0, (:T,), u"J/mol")
 
     dummy_fn = KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s")
     rxn = Reaction(
@@ -163,11 +163,11 @@ end
     )
 
     CaO = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    CaO.properties[:ΔₐH⁰] = NumericFunc((T,) -> -635090.0, (:T,), u"J/mol")
+    CaO.properties[:ΔₐH⁰] = NumericFunc((T) -> -635090.0, (:T,), u"J/mol")
     H2Osp = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    H2Osp.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
+    H2Osp.properties[:ΔₐH⁰] = NumericFunc((T) -> -285830.0, (:T,), u"J/mol")
     Ca_OH_2 = Species("Ca(OH)2"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
-    Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T,) -> -986090.0, (:T,), u"J/mol")
+    Ca_OH_2.properties[:ΔₐH⁰] = NumericFunc((T) -> -986090.0, (:T,), u"J/mol")
 
     dummy_fn = KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s")
     rxn = Reaction(
@@ -212,7 +212,7 @@ end
     @test isapprox(du_hot[2], dTdt_hot; rtol = 1.0e-6)
 
     # Variable Cp_total: add a Cp° function for the mineral
-    cp_fn = NumericFunc((T,) -> 100.0, (:T,), u"J/(mol*K)")   # 100 J/(mol·K)
+    cp_fn = NumericFunc((T) -> 100.0, (:T,), u"J/(mol*K)")   # 100 J/(mol·K)
     p_cp = (
         kin_rxns = [kr], ϵ = 1.0e-30, rates_buf = [0.001],
         n_full = [0.01], cp_fns = [cp_fn],
@@ -231,7 +231,7 @@ end
 @testset "_total_enthalpy" begin
 
     sp1 = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
-    sp1.properties[:ΔₐH⁰] = NumericFunc((T,) -> -285830.0, (:T,), u"J/mol")
+    sp1.properties[:ΔₐH⁰] = NumericFunc((T) -> -285830.0, (:T,), u"J/mol")
     sp2 = Species("CaO"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
 
     h_fns = [sp1[:ΔₐH⁰], nothing]
