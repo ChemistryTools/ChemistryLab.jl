@@ -153,8 +153,10 @@ function KineticsProblem(
         activity_model::AbstractActivityModel = DiluteSolutionModel(),
         equilibrium_solver = nothing,
     )
-    kin_rxns = [r isa KineticReaction ? r : KineticReaction(system, r)
-                for r in kinetic_reactions]
+    kin_rxns = [
+        r isa KineticReaction ? r : KineticReaction(system, r)
+            for r in kinetic_reactions
+    ]
     return _build_kinetics_problem(
         system, kin_rxns, initial_state, tspan;
         calorimeter, activity_model, equilibrium_solver,
