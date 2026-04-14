@@ -14,6 +14,14 @@ Concrete subtypes:
 """
 abstract type AbstractCalorimeter end
 
+# ── Unit helpers ─────────────────────────────────────────────────────────────
+
+# Ensure a value is stored as a Quantity with the given unit.
+# Plain Real → assumed SI, wrapped with `unit`.
+# Quantity   → converted to `unit`.
+_ensure_unit(unit, x::Real) = x * unit
+_ensure_unit(unit, x) = safe_uconvert(unit, x)
+
 # ── Heat-rate from kinetic reactions ─────────────────────────────────────────
 
 """
@@ -92,7 +100,7 @@ end
 # ── IsothermalCalorimeter ─────────────────────────────────────────────────────
 
 """
-    struct IsothermalCalorimeter{T<:Real} <: AbstractCalorimeter
+    struct IsothermalCalorimeter{T} <: AbstractCalorimeter
 
 Isothermal calorimeter: temperature held constant at `T` [K]; cumulative heat
 `Q(t) = ∫₀ᵗ q̇(τ) dτ` [J] tracked as an extra ODE state.
@@ -100,24 +108,26 @@ Isothermal calorimeter: temperature held constant at `T` [K]; cumulative heat
 # Examples
 
 ```julia
-cal = IsothermalCalorimeter(298.15)
+cal = IsothermalCalorimeter(298.15u"K")
 kp = KineticsProblem(cs, reactions, state0, tspan; calorimeter = cal)
 sol = integrate(kp, ks)
 t, Q    = cumulative_heat(sol, cal)
 t, qdot = heat_flow(sol, cal)
 ```
 """
-struct IsothermalCalorimeter{T <: Real} <: AbstractCalorimeter
+struct IsothermalCalorimeter{T} <: AbstractCalorimeter
     T::T
 end
 
 """
     IsothermalCalorimeter(T) -> IsothermalCalorimeter
 
-Plain `Real` → SI [K]; `Quantity` → converted.
+Plain `Real` → SI [K]; `Quantity` → converted to K.
 """
-IsothermalCalorimeter(T_K) =
-    IsothermalCalorimeter{Float64}(Float64(safe_ustrip(us"K", T_K)))
+IsothermalCalorimeter(T_K::Real) = IsothermalCalorimeter(_ensure_unit(us"K", T_K))
+IsothermalCalorimeter(T_K) = IsothermalCalorimeter{typeof(_ensure_unit(us"K", T_K))}(
+    _ensure_unit(us"K", T_K),
+)
 
 n_extra_states(::IsothermalCalorimeter) = 1
 
@@ -126,7 +136,8 @@ function extend_u0(u0::AbstractVector, ::IsothermalCalorimeter)
 end
 
 function extend_ode!(du, ::Any, p, n_kin::Int, cal::IsothermalCalorimeter)
-    qdot = heat_rate(p.kin_rxns, p.rates_buf, cal.T)
+    T_val = Float64(safe_ustrip(us"K", cal.T))
+    qdot = heat_rate(p.kin_rxns, p.rates_buf, T_val)
     du[n_kin + 1] = qdot
     return nothing
 end
@@ -134,7 +145,7 @@ end
 # ── SemiAdiabaticCalorimeter ──────────────────────────────────────────────────
 
 """
-    struct SemiAdiabaticCalorimeter{T<:Real, F} <: AbstractCalorimeter
+    struct SemiAdiabaticCalorimeter{C, T, F} <: AbstractCalorimeter
 
 Semi-adiabatic calorimeter following the Lavergne et al. (2018) energy balance:
 
@@ -151,10 +162,10 @@ where:
 
 # Fields
 
-  - `Cp`: heat capacity of calorimeter + sample [J/K].
+  - `Cp`: heat capacity of calorimeter + sample [J/K] (stored as `Quantity`).
   - `heat_loss`: callable `φ(ΔT::Real) -> Real [W]`.
-  - `T_env`: ambient temperature [K].
-  - `T0`: initial temperature [K].
+  - `T_env`: ambient temperature [K] (stored as `Quantity`).
+  - `T0`: initial temperature [K] (stored as `Quantity`).
 
 # Examples
 
@@ -181,11 +192,11 @@ t, qdot  = heat_flow(sol, cal)
   - Lavergne, F., Ben Fraj, A., Bayane, I. & Barthélémy, J.-F. (2018).
     *Cement and Concrete Research* **104**, 37–60.
 """
-struct SemiAdiabaticCalorimeter{T <: Real, F} <: AbstractCalorimeter
-    Cp::T
+struct SemiAdiabaticCalorimeter{C, T, F} <: AbstractCalorimeter
+    Cp::C       # heat capacity [J/K]
     heat_loss::F
-    T_env::T
-    T0::T
+    T_env::T    # ambient temperature [K]
+    T0::T       # initial temperature [K]
 end
 
 """
@@ -197,33 +208,13 @@ Exactly one of `heat_loss` or `L` must be provided:
   - `heat_loss`: callable `ΔT -> [W]` (e.g. quadratic `ΔT -> a*ΔT + b*ΔT^2`).
   - `L`: linear Newton cooling coefficient [W/K]. Sets `heat_loss = ΔT -> L * ΔT`.
 
-All scalar fields accept plain `Real` (SI) or `Quantity`:
-  - `Cp` → J/K; `T_env` → K; `T0` → K.
-
-# Examples
-
-```julia
-# Linear loss (Langavant / NF EN 196-9)
-cal = SemiAdiabaticCalorimeter(;
-    Cp    = 3449.0u"J/K",
-    T_env = 293.15u"K",
-    L     = 0.3u"W/K",
-    T0    = 293.15u"K",
-)
-
-# Quadratic loss (Lavergne et al. 2018)
-cal = SemiAdiabaticCalorimeter(;
-    Cp        = 3449.0u"J/K",
-    T_env     = 293.15u"K",
-    heat_loss = ΔT -> 0.3*ΔT + 0.003*ΔT^2,
-    T0        = 293.15u"K",
-)
-```
+All scalar fields accept plain `Real` (assumed SI) or `Quantity`:
+  - `Cp` → J/K; `T_env` → K; `T0` → K; `L` → W/K.
 """
 function SemiAdiabaticCalorimeter(; Cp, T_env, T0, heat_loss = nothing, L = nothing)
-    Cp_f = Float64(safe_ustrip(us"J/K", Cp))
-    T_env_f = Float64(safe_ustrip(us"K", T_env))
-    T0_f = Float64(safe_ustrip(us"K", T0))
+    Cp_q = _ensure_unit(us"J/K", Cp)
+    T_env_q = _ensure_unit(us"K", T_env)
+    T0_q = _ensure_unit(us"K", T0)
     hl = if !isnothing(heat_loss)
         heat_loss
     elseif !isnothing(L)
@@ -236,13 +227,14 @@ function SemiAdiabaticCalorimeter(; Cp, T_env, T0, heat_loss = nothing, L = noth
             ),
         )
     end
-    return SemiAdiabaticCalorimeter{Float64, typeof(hl)}(Cp_f, hl, T_env_f, T0_f)
+    return SemiAdiabaticCalorimeter(Cp_q, hl, T_env_q, T0_q)
 end
 
 n_extra_states(::SemiAdiabaticCalorimeter) = 1
 
 function extend_u0(u0::AbstractVector, cal::SemiAdiabaticCalorimeter)
-    return vcat(u0, eltype(u0)(cal.T0))
+    T0_f = Float64(safe_ustrip(us"K", cal.T0))
+    return vcat(u0, eltype(u0)(T0_f))
 end
 
 """
@@ -250,20 +242,22 @@ end
 
 Append `dT/dt = (q̇ − φ(ΔT)) / Cp_total(T, n)` to the ODE right-hand side.
 
-`Cp_total = cal.Cp + Σᵢ nᵢ Cp°ᵢ(T)` is recomputed at every ODE step
+`Cp_total = Cp + Σᵢ nᵢ Cp°ᵢ(T)` is recomputed at every ODE step
 from `p.cp_fns` and `p.n_full` (Lavergne et al. 2018).
 """
 function extend_ode!(du, u, p, n_kin::Int, cal::SemiAdiabaticCalorimeter)
     T_curr = u[n_kin + 1]
+    Cp_f = Float64(safe_ustrip(us"J/K", cal.Cp))
+    T_env_f = Float64(safe_ustrip(us"K", cal.T_env))
     # Variable total heat capacity: Cp_calorimeter + Σᵢ nᵢ Cp°ᵢ(T)
-    Cp_total = cal.Cp
+    Cp_total = Cp_f
     for (i, cp_fn) in enumerate(p.cp_fns)
         isnothing(cp_fn) && continue
         cp_i = cp_fn(; T = T_curr, unit = false)   # J/(mol·K)
         Cp_total = Cp_total + p.n_full[i] * cp_i
     end
     qdot = heat_rate(p.kin_rxns, p.rates_buf, T_curr)
-    ΔT = T_curr - cal.T_env
+    ΔT = T_curr - T_env_f
     du[n_kin + 1] = (qdot - cal.heat_loss(ΔT)) / Cp_total
     return nothing
 end
@@ -297,6 +291,8 @@ post-processing reconstruction.
 """
 function heat_flow(sol, cal::SemiAdiabaticCalorimeter)
     t = sol.t
+    Cp_f = Float64(safe_ustrip(us"J/K", cal.Cp))
+    T_env_f = Float64(safe_ustrip(us"K", cal.T_env))
     n_kin = length(sol.u[1]) - n_extra_states(cal)
     T_vec = [u[n_kin + 1] for u in sol.u]
     qdot = similar(T_vec)
@@ -304,8 +300,8 @@ function heat_flow(sol, cal::SemiAdiabaticCalorimeter)
     for i in 2:lastindex(t)
         dt = t[i] - t[i - 1]
         dTdt = dt > 0 ? (T_vec[i] - T_vec[i - 1]) / dt : zero(eltype(T_vec))
-        ΔT = T_vec[i] - cal.T_env
-        qdot[i] = cal.Cp * dTdt + cal.heat_loss(ΔT)
+        ΔT = T_vec[i] - T_env_f
+        qdot[i] = Cp_f * dTdt + cal.heat_loss(ΔT)
     end
     return t, qdot
 end

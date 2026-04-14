@@ -238,8 +238,9 @@ sol = integrate(kp, ks)
 ## Isothermal calorimetry
 
 ```julia
-cal = IsothermalCalorimeter(298.15)   # T = 25 °C
-sol = integrate(kp, ks; calorimeter = cal)
+cal = IsothermalCalorimeter(298.15u"K")   # T = 25 °C
+kp = KineticsProblem(cs, reactions, state0, tspan; calorimeter = cal)
+sol = integrate(kp, ks)
 
 t, Q    = cumulative_heat(sol, cal)   # Q(t) [J]
 t, qdot = heat_flow(sol, cal)         # q̇(t) [W]
@@ -275,7 +276,8 @@ cal_lin = SemiAdiabaticCalorimeter(;
     Cp = 4000.0u"J/K", T_env = 293.15u"K", L = 0.5u"W/K", T0 = 293.15u"K",
 )
 
-sol = integrate(kp, ks; calorimeter = cal)
+kp = KineticsProblem(cs, reactions, state0, tspan; calorimeter = cal)
+sol = integrate(kp, ks)
 
 t, T_profile = temperature_profile(sol, cal)   # T(t) [K]
 t, qdot      = heat_flow(sol, cal)             # q̇(t) [W]
@@ -352,11 +354,6 @@ rxn_C4AF = Reaction(
 rxn_C4AF[:rate] = pk_C4AF
 
 # ── 5. Problem + semi-adiabatic calorimeter ─────────────────────────────────
-kp = KineticsProblem(
-    cs, [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF], state0, (0.0, 7.0 * 86400.0);
-    equilibrium_solver = nothing,
-)
-
 cal = SemiAdiabaticCalorimeter(;
     Cp        = (1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0) * u"J/K",
     T_env     = 293.15u"K",
@@ -364,19 +361,25 @@ cal = SemiAdiabaticCalorimeter(;
     T0        = 293.15u"K",
 )
 
+kp = KineticsProblem(
+    cs, [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF], state0, (0.0, 7.0 * 86400.0);
+    calorimeter = cal,
+    equilibrium_solver = nothing,
+)
+
 # ── 6. Integrate and post-process ───────────────────────────────────────────
 ks  = KineticsSolver(; ode_solver = Rodas5P(), reltol = 1e-6, abstol = 1e-9)
-sol = integrate(kp, ks; calorimeter = cal)
+sol = integrate(kp, ks)
 
 _, T_vec = temperature_profile(sol, cal)
 _, Q_vec = cumulative_heat(sol, cal)
 
-n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kin_unique]
+n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kinetic]
 n_kin  = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
 
 function phase_alpha(cs, kp, n0_kin, n_kin, name)
     sp_idx = findfirst(s -> ChemistryLab.phreeqc(ChemistryLab.formula(s)) == name, cs.species)
-    pos    = findfirst(==(sp_idx), kp.idx_kin_unique)
+    pos    = findfirst(==(sp_idx), kp.idx_kinetic)
     isnothing(pos) && return fill(NaN, length(sol.t))
     return 1.0 .- n_kin[pos] ./ n0_kin[pos]
 end

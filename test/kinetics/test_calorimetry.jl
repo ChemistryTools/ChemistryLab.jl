@@ -7,7 +7,7 @@ using OrderedCollections
 
     cal = IsothermalCalorimeter(298.15)
     @test cal isa IsothermalCalorimeter
-    @test cal.T ≈ 298.15
+    @test cal.T ≈ 298.15us"K"
 
     @test n_extra_states(cal) == 1
 
@@ -28,9 +28,9 @@ end
         Cp = 4000.0u"J/K", T_env = 293.15u"K", L = 0.5u"W/K", T0 = 293.15u"K",
     )
     @test cal_lin isa SemiAdiabaticCalorimeter
-    @test cal_lin.Cp ≈ 4000.0
-    @test cal_lin.T_env ≈ 293.15
-    @test cal_lin.T0 ≈ 293.15
+    @test cal_lin.Cp ≈ 4000.0us"J/K"
+    @test cal_lin.T_env ≈ 293.15us"K"
+    @test cal_lin.T0 ≈ 293.15us"K"
     @test cal_lin.heat_loss(1.0) ≈ 0.5
     @test cal_lin.heat_loss(2.0) ≈ 1.0
 
@@ -56,8 +56,8 @@ end
 
     # Plain Real (SI) inputs
     cal_si = SemiAdiabaticCalorimeter(; Cp = 3500.0, T_env = 295.0, L = 0.3, T0 = 295.0)
-    @test cal_si.Cp ≈ 3500.0
-    @test cal_si.T_env ≈ 295.0
+    @test cal_si.Cp ≈ 3500.0us"J/K"
+    @test cal_si.T_env ≈ 295.0us"K"
 
     # Constant heat loss
     cal_const = SemiAdiabaticCalorimeter(;
@@ -66,7 +66,7 @@ end
         heat_loss = _ -> 2.5,
         T0 = 300.0u"K",
     )
-    @test cal_const.T0 ≈ 300.0
+    @test cal_const.T0 ≈ 300.0us"K"
     @test cal_const.heat_loss(0.0) ≈ 2.5
     @test cal_const.heat_loss(100.0) ≈ 2.5
 

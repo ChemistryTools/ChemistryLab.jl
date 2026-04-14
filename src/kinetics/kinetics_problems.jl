@@ -218,7 +218,7 @@ function build_u0(kp::KineticsProblem)
 
     # Append temperature for semi-adiabatic calorimeter
     if kp.calorimeter isa SemiAdiabaticCalorimeter
-        push!(u0, Float64(kp.calorimeter.T0))
+        push!(u0, Float64(safe_ustrip(us"K", kp.calorimeter.T0)))
     end
 
     return u0
@@ -266,8 +266,8 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
 
     # Calorimeter parameters (semi-adiabatic)
     cal = kp.calorimeter
-    Cp_calo = cal isa SemiAdiabaticCalorimeter ? Float64(ustrip(us"J/K", cal.Cp)) : 0.0
-    T_env = cal isa SemiAdiabaticCalorimeter ? Float64(cal.T_env) : T_K
+    Cp_calo = cal isa SemiAdiabaticCalorimeter ? Float64(safe_ustrip(us"J/K", cal.Cp)) : 0.0
+    T_env = cal isa SemiAdiabaticCalorimeter ? Float64(safe_ustrip(us"K", cal.T_env)) : T_K
     heat_loss_fn = cal isa SemiAdiabaticCalorimeter ? cal.heat_loss : identity
 
     return (
