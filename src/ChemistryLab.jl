@@ -246,7 +246,8 @@ module ChemistryLab
         components,
         gasfluid,
         get_reaction,
-        solid_solutions
+        solid_solutions,
+        kinetic_species
 
     export ChemicalState,
         PhaseQuantities,

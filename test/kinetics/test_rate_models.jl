@@ -244,7 +244,7 @@ end
 
 @testset "KineticReaction convenience constructor" begin
 
-    calcite = Species("Calcite"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    calcite = Species("CaCO3"; symbol = "Calcite", aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     ca2p = Species("Ca+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
     cs = ChemicalSystem([calcite, h2o, ca2p])
@@ -293,14 +293,20 @@ end
     @test kr_from_rxn.reaction === rxn
     @test kr_from_rxn.idx_mineral == 1
 
-    # ── KineticsProblem deduplicates shared minerals ──────────────────────────
-    kr_a = KineticReaction(cs, "Calcite", pk)
-    kr_b = KineticReaction(cs, "Calcite", pk)
-    kp_multi = KineticsProblem(cs, [kr_a, kr_b], ChemicalState(cs), (0.0, 1.0))
-    @test length(kp_multi.idx_kin) == 2
-    @test length(kp_multi.idx_kin_unique) == 1
-    u0_multi = build_u0(kp_multi)
-    @test length(u0_multi) == 1
+    # ── KineticsProblem via kinetic_species API ──────────────────────────────
+    # Need 6 species for 2 nullspace reactions (4 atoms → 6 - 4 = 2 reactions)
+    co3 = Species("CO3-2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    hplus = Species("H+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    oh = Species("OH-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    cs_kin = ChemicalSystem(
+        [calcite, h2o, ca2p, co3, hplus, oh];
+        kinetic_species = Dict("Calcite" => pk)
+    )
+    kp = KineticsProblem(cs_kin, ChemicalState(cs_kin), (0.0, 1.0))
+    @test kp isa KineticsProblem
+    @test length(kp.idx_kinetic) == 1
+    u0 = build_u0(kp)
+    @test length(u0) == 1
 
 end
 
@@ -308,7 +314,7 @@ end
 
 @testset "KineticReaction from annotated Reaction" begin
 
-    calcite = Species("Calcite"; aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
+    calcite = Species("CaCO3"; symbol = "Calcite", aggregate_state = AS_CRYSTAL, class = SC_COMPONENT)
     h2o = Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)
     ca2p = Species("Ca+2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
     cs = ChemicalSystem([calcite, h2o, ca2p])
@@ -348,13 +354,17 @@ end
     @test kr3.heat_per_mol isa Float64
     @test kr3.heat_per_mol ≈ 12_500.0
 
-    # ── Build KineticsProblem from annotated reactions ─────────────────────────
-    rxn4 = Reaction([calcite, ca2p]; symbol = "kp test")
-    rxn4[:rate] = pk
-    rxn4[:heat_per_mol] = 8_000.0
-    state0 = ChemicalState(cs)
-    kp = KineticsProblem(cs, [rxn4], state0, (0.0, 1.0))
+    # ── Build KineticsProblem from kinetic_species API ──────────────────────────
+    co3 = Species("CO3-2"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    hplus = Species("H+"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    oh = Species("OH-"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLUTE)
+    cs_kin = ChemicalSystem(
+        [calcite, h2o, ca2p, co3, hplus, oh];
+        kinetic_species = Dict("Calcite" => pk)
+    )
+    state0 = ChemicalState(cs_kin)
+    kp = KineticsProblem(cs_kin, state0, (0.0, 1.0))
     @test kp isa KineticsProblem
-    @test length(kp.kinetic_reactions) == 1
+    @test length(kp.idx_kinetic) == 1
 
 end

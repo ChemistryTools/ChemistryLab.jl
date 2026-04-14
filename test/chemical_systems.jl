@@ -69,26 +69,18 @@
         @test size(cs.CSM.A, 2) == 3   # 3 species → 3 columns
     end
 
-    @testsection "Reactions and get_reaction" begin
-        r_diss = Reaction("H2O = H+ + OH-"; symbol = "water_diss")
-        cs = ChemicalSystem([h2o, hplus, oh]; reactions = [r_diss])
-        @test length(cs.reactions) == 1
-        @test symbol(get_reaction(cs, "water_diss")) == "water_diss"
-        @test_throws KeyError get_reaction(cs, "nonexistent_rxn")
+    @testsection "Reactions via kinetic_species" begin
+        # With no kinetic_species → no reactions
+        cs_no_kin = ChemicalSystem([h2o, hplus, oh])
+        @test isempty(cs_no_kin.reactions)
+        @test isempty(cs_no_kin.idx_kinetic)
     end
 
     @testsection "merge two systems" begin
-        cs1 = ChemicalSystem(
-            [h2o, hplus];
-            reactions = [Reaction("H2O = H+ + OH-"; symbol = "water_diss")],
-        )
-        cs2 = ChemicalSystem(
-            [oh, h2o];   # h2o duplicate — cs1 wins
-            reactions = [Reaction("CO2 + H2O = H2CO3"; symbol = "co2_hyd")],
-        )
+        cs1 = ChemicalSystem([h2o, hplus])
+        cs2 = ChemicalSystem([oh, h2o])   # h2o duplicate — cs1 wins
         cs = merge(cs1, cs2)
         @test length(cs) == 3             # H2O, H+, OH- (no duplicate H2O)
-        @test length(cs.reactions) == 2   # both reactions present
         @test cs["H2O"] === cs1["H2O"]    # cs1 wins on conflict
     end
 

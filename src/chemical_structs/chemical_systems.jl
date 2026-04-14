@@ -27,6 +27,7 @@ construct a new `ChemicalSystem`.
     its end-members. Populated via the `solid_solutions` keyword constructor.
   - `ss_groups`: for each solid solution, the indices of its end-members in `species`.
   - `idx_ssendmembers`: union of all end-member indices (flattened `ss_groups`).
+  - `idx_kinetic`: indices of kinetic species (empty when none declared).
 """
 struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S, SS} <:
     AbstractVector{T}
@@ -54,15 +55,18 @@ struct ChemicalSystem{T <: AbstractSpecies, R <: AbstractReaction, C, S, SS} <:
     solid_solutions::SS
     ss_groups::Vector{Vector{Int}}              # per-SS end-member indices
     idx_ssendmembers::Vector{Int}               # all end-member indices (flattened)
+
+    idx_kinetic::Vector{Int}                    # kinetic species indices (empty if none)
 end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
 
 """
-    ChemicalSystem(species, primaries=species; reactions, solid_solutions=nothing) -> ChemicalSystem
+    ChemicalSystem(species, primaries=species; kinetic_species, solid_solutions) -> ChemicalSystem
 
 Construct a fully typed `ChemicalSystem` from a vector of species,
-an optional vector of primary species, optional reactions, and optional solid-solution phases.
+an optional vector of primary species, optional kinetic species with rates,
+and optional solid-solution phases.
 
 All derived fields are computed once at construction time and remain
 consistent for the lifetime of the object.
@@ -71,7 +75,14 @@ consistent for the lifetime of the object.
 
   - `species`: vector of `AbstractSpecies`.
   - `primaries`: subset used as independent components (default: all species).
-  - `reactions`: vector of `AbstractReaction` (default: empty).
+  - `kinetic_species`: `nothing` (default) or a dictionary / vector of pairs mapping
+    each kinetic species (by name `String` or `Species` object) to its rate function.
+    Rate functions must be callable as `(T, P, t, n, lna, n_initial) → Real [mol/s]`
+    (see [`KineticFunc`](@ref)). The rate is given per mole of kinetic species
+    (stoichiometric coefficient = 1); the constructor corrects by `1/|νₖ|` automatically.
+    When provided, the nullspace N of the stoichiometric matrix is diagonalised so that
+    each kinetic species appears in exactly one reaction. Those reactions are stored in
+    the `reactions` field with their rate attached via `rxn[:rate]`.
   - `solid_solutions`: vector of [`SolidSolutionPhase`](@ref) (default: `nothing`).
     When provided, end-members must already appear in `species` (matched by symbol) and
     must carry `aggregate_state = AS_CRYSTAL` and `class = SC_SSENDMEMBER`.
@@ -114,17 +125,62 @@ julia> cs.idx_ssendmembers
 function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractSpecies} = species;
-        reactions::AbstractVector{R} = AbstractReaction[],
+        kinetic_species = nothing,
         solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
-    ) where {T <: AbstractSpecies, R <: AbstractReaction}
+    ) where {T <: AbstractSpecies}
     idx(f) = findall(f, species)
+    # Extract kinetic species keys for StoichMatrix construction
+    kin_keys = if isnothing(kinetic_species)
+        nothing
+    elseif kinetic_species isa AbstractDict
+        collect(keys(kinetic_species))
+    else
+        # Vector of Pairs
+        [first(p) for p in kinetic_species]
+    end
     CSM = CanonicalStoichMatrix(species)
-    SM = StoichMatrix(species, primaries)
+    SM = StoichMatrix(species, primaries; kinetic_species = kin_keys)
+
+    # Build kinetic reactions from diagonalised nullspace
+    idx_kinetic = isnothing(kin_keys) ? Int[] : _resolve_kinetic_indices(kin_keys, SM.species)
+    kin_reactions = if isempty(idx_kinetic)
+        Reaction[]
+    else
+        all_rxns = reactions(SM)
+        kin_pairs = if kinetic_species isa AbstractDict
+            collect(pairs(kinetic_species))
+        else
+            kinetic_species
+        end
+        rxn_list = Reaction[]
+        for (name_or_sp, rate_fn) in kin_pairs
+            sp_idx = _resolve_kinetic_indices([name_or_sp], SM.species)[1]
+            # Find the unique reaction where this kinetic species has a non-zero coefficient
+            matching = filter(all_rxns) do r
+                any(!iszero(ν) && s == SM.species[sp_idx] for (s, ν) in r)
+            end
+            isempty(matching) && throw(
+                ArgumentError(
+                    "No reaction found for kinetic species \"$(symbol(SM.species[sp_idx]))\"."
+                )
+            )
+            rxn = first(matching)
+            # Get the stoichiometric coefficient and correct the rate
+            νk = sum(ν for (s, ν) in rxn if s == SM.species[sp_idx]; init = 0)
+            abs_νk = abs(νk)
+            corrected_rate = isone(abs_νk) ? rate_fn :
+                (T, P, t, n, lna, n0) -> rate_fn(T, P, t, n, lna, n0) / abs_νk
+            rxn[:rate] = corrected_rate
+            push!(rxn_list, rxn)
+        end
+        rxn_list
+    end
+    R = isempty(kin_reactions) ? AbstractReaction : eltype(kin_reactions)
 
     if isnothing(solid_solutions)
         return ChemicalSystem{T, R, typeof(CSM), typeof(SM), Nothing}(
-            collect(T, species),                                    # owned Vector{T}
-            Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
+            collect(T, species),
+            Dict{String, T}(symbol(s) => s for s in species),
             idx(s -> aggregate_state(s) == AS_AQUEOUS),
             idx(s -> aggregate_state(s) == AS_CRYSTAL),
             idx(s -> aggregate_state(s) == AS_GAS),
@@ -132,17 +188,16 @@ function ChemicalSystem(
             idx(s -> class(s) == SC_AQSOLVENT),
             idx(s -> class(s) == SC_COMPONENT),
             idx(s -> class(s) == SC_GASFLUID),
-            collect(R, reactions),                                  # owned Vector{R}
-            Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
+            collect(R, kin_reactions),
+            Dict{String, R}(symbol(r) => r for r in kin_reactions),
             CSM,
             SM,
-            nothing,        # solid_solutions — SS = Nothing
-            Vector{Int}[],  # ss_groups
-            Int[],          # idx_ssendmembers
+            nothing,
+            Vector{Int}[],
+            Int[],
+            idx_kinetic,
         )
     else
-        # Build ss_groups: for each solid solution, find the indices of its end-members
-        # in the species vector (by symbol matching).
         ss_groups = map(solid_solutions) do ss
             map(end_members(ss)) do em
                 idx_em = findfirst(s -> symbol(s) == symbol(em), species)
@@ -158,8 +213,8 @@ function ChemicalSystem(
         ss = collect(solid_solutions)
 
         return ChemicalSystem{T, R, typeof(CSM), typeof(SM), typeof(ss)}(
-            collect(T, species),                                    # owned Vector{T}
-            Dict{String, T}(symbol(s) => s for s in species),      # symbol → species map
+            collect(T, species),
+            Dict{String, T}(symbol(s) => s for s in species),
             idx(s -> aggregate_state(s) == AS_AQUEOUS),
             idx(s -> aggregate_state(s) == AS_CRYSTAL),
             idx(s -> aggregate_state(s) == AS_GAS),
@@ -167,19 +222,20 @@ function ChemicalSystem(
             idx(s -> class(s) == SC_AQSOLVENT),
             idx(s -> class(s) == SC_COMPONENT),
             idx(s -> class(s) == SC_GASFLUID),
-            collect(R, reactions),                                  # owned Vector{R}
-            Dict{String, R}(symbol(r) => r for r in reactions),    # symbol → reaction map
+            collect(R, kin_reactions),
+            Dict{String, R}(symbol(r) => r for r in kin_reactions),
             CSM,
             SM,
             ss,
             ss_groups,
             idx_ssendmembers,
+            idx_kinetic,
         )
     end
 end
 
 """
-    ChemicalSystem(species, primaries::AbstractVector{<:AbstractString}; reactions) -> ChemicalSystem
+    ChemicalSystem(species, primaries::AbstractVector{<:AbstractString}; kinetic_species, solid_solutions) -> ChemicalSystem
 
 Convenience constructor that resolves primary species from their symbol strings.
 
@@ -200,13 +256,16 @@ julia> symbol.(cs.SM.primaries)
 function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractString};
-        reactions::AbstractVector{R} = AbstractReaction[],
+        kinetic_species = nothing,
         solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
-    ) where {T <: AbstractSpecies, R <: AbstractReaction}
+    ) where {T <: AbstractSpecies}
     # Resolve string symbols to species objects, preserving order
     primaries_species = species[symbol.(species) .∈ Ref(primaries)]
     return ChemicalSystem(
-        species, primaries_species; reactions = reactions, solid_solutions = solid_solutions
+        species,
+        primaries_species;
+        kinetic_species = kinetic_species,
+        solid_solutions = solid_solutions,
     )
 end
 
@@ -236,6 +295,14 @@ julia> length(solid_solutions(cs))
 ```
 """
 solid_solutions(cs::ChemicalSystem) = cs.solid_solutions
+
+"""
+    kinetic_species(cs::ChemicalSystem) -> SubArray
+
+Return a view of the kinetic species declared at construction time.
+Empty when no kinetic species were declared.
+"""
+kinetic_species(cs::ChemicalSystem) = @view cs.species[cs.idx_kinetic]
 
 # ── AbstractVector interface ──────────────────────────────────────────────────
 
@@ -292,14 +359,11 @@ Base.getindex(cs::ChemicalSystem, i::AbstractString) = cs.dict_species[i]
 Return the reaction identified by symbol `sym`. Runs in O(1) via `dict_reactions`.
 
 # Examples
-```jldoctest
-julia> cs = ChemicalSystem(
-           [Species("H2O"; aggregate_state=AS_AQUEOUS)];
-           reactions=[Reaction("H2O = H+ + OH-"; symbol="water_diss")],
-       );
-
-julia> symbol(get_reaction(cs, "water_diss"))
-"water_diss"
+```julia
+cs = ChemicalSystem(
+    [Species("H2O"; aggregate_state=AS_AQUEOUS)];
+);
+get_reaction(cs, "some_rxn")  # returns the Reaction with that symbol
 ```
 """
 get_reaction(cs::ChemicalSystem, sym::AbstractString) = cs.dict_reactions[sym]
@@ -324,23 +388,18 @@ The return type is inferred from the merged collections and may differ from
 ```jldoctest
 julia> cs1 = ChemicalSystem(
            [Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT),
-            Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)];
-           reactions=[Reaction("H2O = H+ + OH-"; symbol="water_diss")],
+            Species("H+";  aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)],
        );
 
 julia> cs2 = ChemicalSystem(
            [Species("OH-"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE),
-            Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)];
-           reactions=[Reaction("CO2 + H2O = H2CO3"; symbol="co2_hyd")],
+            Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)],
        );
 
 julia> cs = merge(cs1, cs2);
 
 julia> length(cs)
 3
-
-julia> length(cs.reactions)
-2
 ```
 """
 function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
@@ -369,7 +428,8 @@ function Base.merge(cs1::ChemicalSystem, cs2::ChemicalSystem)
     all_reactions = vcat(cs1.reactions, extra_reactions)
 
     # Construct a new ChemicalSystem — all derived fields rebuilt from scratch
-    return ChemicalSystem(all_species, all_primaries; reactions = all_reactions)
+    # Kinetic species are not propagated through merge (requires re-specification).
+    return ChemicalSystem(all_species, all_primaries)
 end
 
 """

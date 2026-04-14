@@ -5,368 +5,362 @@ using SciMLBase
 # ── KineticsProblem ───────────────────────────────────────────────────────────
 
 """
-    struct KineticsProblem{CS, KR, ES, AM<:AbstractActivityModel}
+    struct KineticsProblem{CS, CAL, ES, AM}
 
-Encapsulates the full specification of a kinetics simulation:
-chemical system, kinetic reactions, initial state, time span, and solver ingredients.
+Encapsulates a kinetics simulation following Leal et al. (2017).
 
-Construct via [`KineticsProblem`](@ref) (outer constructor).
+The ODE state vector `u` is structured as:
+  - Without re-speciation: `u = [nₖ₁, …, nₖ_K, [T]]`
+  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K, [T]]`
+
+where `bₑ` are the element amounts in the equilibrium partition, `nₖ` are
+the moles of kinetic species, and `T` is the temperature (semi-adiabatic only).
 
 # Fields
 
-  - `system`: the [`ChemicalSystem`](@ref) holding all species and reactions.
-  - `kinetic_reactions`: vector of [`KineticReaction`](@ref) objects.
-  - `initial_state`: [`ChemicalState`](@ref) providing initial mole amounts, T, P.
+  - `system`: [`ChemicalSystem`](@ref) with `kinetic_species` declared.
+  - `initial_state`: [`ChemicalState`](@ref) providing initial moles, T, P.
   - `tspan`: `(t_start, t_end)` time interval [s].
-  - `activity_model`: [`AbstractActivityModel`](@ref) used at every ODE step to
-    compute log-activities.
-  - `equilibrium_solver`: an [`EquilibriumSolver`](@ref) re-equilibrating the fast
-    (aqueous) species at every ODE evaluation. `nothing` disables re-speciation.
-  - `S_kin`: stoichiometric submatrix `[n_reactions × n_species]` — row `i` is the
-    stoichiometric coefficient vector for kinetic reaction `i`.
-  - `idx_kin`: integer indices of each kinetic reaction's controlling mineral in `system`
-    (length = n_reactions, may contain duplicates when several reactions share a mineral).
-  - `idx_kin_unique`: sorted unique kinetic species indices — defines the ODE state vector
-    `u`. Includes the rate-controlling minerals (`idx_kin`) PLUS all AS_CRYSTAL species
-    with non-zero stoich in any kinetic reaction (Leal et al. 2015 kinetic classification).
-
-# Usage
-
-```julia
-kp = KineticsProblem(cs, [kr_calcite], state0, (0.0, 3600.0))
-```
+  - `calorimeter`: `nothing`, [`IsothermalCalorimeter`](@ref),
+    or [`SemiAdiabaticCalorimeter`](@ref).
+  - `activity_model`: [`AbstractActivityModel`](@ref) for log-activities.
+  - `equilibrium_solver`: solver for re-speciation, or `nothing`.
+  - `idx_kinetic`: indices of kinetic species in `system.species`.
+  - `idx_equilibrium`: indices of equilibrium species.
+  - `ν`: stoichiometric matrix (M × N) = `SM.N'` restricted to kinetic reactions.
+  - `νe`, `νk`: partitions of `ν` for equilibrium / kinetic species.
+  - `Ae`: formula matrix restricted to equilibrium species (C × Nₑ).
 
 See also: [`integrate`](@ref), [`KineticsSolver`](@ref).
 """
 struct KineticsProblem{
         CS <: ChemicalSystem,
-        KR <: AbstractVector,
+        CAL,
         ES,
         AM <: AbstractActivityModel,
     }
     system::CS
-    kinetic_reactions::KR
     initial_state::ChemicalState
     tspan::Tuple{Float64, Float64}
+    calorimeter::CAL
     activity_model::AM
     equilibrium_solver::ES
-    S_kin::Matrix{Float64}
-    idx_kin::Vector{Int}
-    idx_kin_unique::Vector{Int}
+    # ── Pre-computed partitions (Leal 2017, Eq. 53) ──
+    idx_kinetic::Vector{Int}
+    idx_equilibrium::Vector{Int}
+    ν::Matrix{Float64}          # (M × N) stoichiometric matrix of kinetic reactions
+    νe::Matrix{Float64}         # (M × Nₑ) equilibrium columns
+    νk::Matrix{Float64}         # (M × K)  kinetic columns
+    Ae::Matrix{Float64}         # (C × Nₑ) formula matrix, equilibrium partition
 end
 
 """
-    KineticsProblem(system, kinetic_reactions, initial_state, tspan;
-                    activity_model = DiluteSolutionModel(),
-                    equilibrium_solver = nothing) -> KineticsProblem
+    KineticsProblem(cs, initial_state, tspan;
+        calorimeter=nothing, activity_model=DiluteSolutionModel(),
+        equilibrium_solver=nothing) -> KineticsProblem
 
-Construct a [`KineticsProblem`](@ref).
-
-Multiple [`KineticReaction`](@ref) objects may share the same mineral (`idx_mineral`),
-enabling multi-pathway kinetics. The ODE state has **one entry per unique mineral**;
-contributions from all reactions are accumulated.
+Construct a [`KineticsProblem`](@ref) from a [`ChemicalSystem`](@ref) that has
+`kinetic_species` declared (reactions and rates auto-generated).
 
 # Arguments
 
-  - `tspan`: `(t0, tf)` time interval. Plain `Real` → SI [s]; `Quantity` → converted
-    (e.g. `(0.0u"s", 7.0u"d")` or `(0.0, 168.0u"hr")`). Mixed tuples supported.
+  - `cs`: [`ChemicalSystem`](@ref) with `.reactions` populated via `kinetic_species`.
+  - `initial_state`: [`ChemicalState`](@ref) providing initial moles, T, P.
+  - `tspan`: `(t0, tf)` time interval. Plain `Real` → [s]; `Quantity` → converted.
+  - `calorimeter`: `nothing` (no thermal coupling),
+    [`IsothermalCalorimeter`](@ref), or [`SemiAdiabaticCalorimeter`](@ref).
+  - `activity_model`: activity model for log-activity computation (default: dilute).
+  - `equilibrium_solver`: `nothing` (no re-speciation) or an [`EquilibriumSolver`](@ref).
 
 # Examples
 
 ```julia
-pk = parrot_killoh(PK_PARAMS_C3S, "C3S")
-kr = KineticReaction(cs, "C3S", pk; heat_per_mol = 114_634.0)
-kp = KineticsProblem(cs, [kr], state0, (0.0, 7 * 86400.0))
+cs = ChemicalSystem(species, primaries;
+    kinetic_species = Dict("C3S" => pk_C3S, "C2S" => pk_C2S))
+state0 = ChemicalState(cs)
+set_quantity!(state0, "C3S", 0.619u"kg")
+kp = KineticsProblem(cs, state0, (0.0, 7 * 86400.0);
+    calorimeter = SemiAdiabaticCalorimeter(Cp=3449.0, T_env=293.15, T0=293.15,
+        heat_loss = ΔT -> 0.3ΔT + 0.003ΔT^2))
 ```
 """
 function KineticsProblem(
         system::ChemicalSystem,
-        kinetic_reactions::AbstractVector,
         initial_state::ChemicalState,
         tspan::Tuple;
+        calorimeter = nothing,
         activity_model::AbstractActivityModel = DiluteSolutionModel(),
         equilibrium_solver = nothing,
     )
-    n_sp = length(system.species)
-    n_rxn = length(kinetic_reactions)
-
-    idx_kin = Int[kr.idx_mineral for kr in kinetic_reactions]
-    S_kin = zeros(Float64, n_rxn, n_sp)
-    for (i, kr) in enumerate(kinetic_reactions)
-        length(kr.stoich) == n_sp || throw(
-            DimensionMismatch(
-                "stoich for reaction $i has length $(length(kr.stoich)), expected $n_sp",
-            ),
+    isempty(system.idx_kinetic) &&
+        throw(
+        ArgumentError(
+            "ChemicalSystem has no kinetic species. " *
+                "Pass kinetic_species to the ChemicalSystem constructor."
         )
-        S_kin[i, :] = kr.stoich
+    )
+
+    n_sp = length(system.species)
+    idx_kin = system.idx_kinetic
+    idx_eq = setdiff(1:n_sp, idx_kin)
+
+    # Build KineticReaction wrappers from cs.reactions
+    kin_rxns = [KineticReaction(system, rxn) for rxn in system.reactions]
+    n_rxn = length(kin_rxns)
+
+    # Stoichiometric matrix ν (M × N) — Leal Eq. 44
+    # Each row is the stoich vector for one kinetic reaction.
+    ν = zeros(Float64, n_rxn, n_sp)
+    for (i, kr) in enumerate(kin_rxns)
+        ν[i, :] .= kr.stoich
     end
 
-    # Unique kinetic species (sorted) — Leal et al. 2015 classification:
-    # rate-controlling minerals ∪ AS_CRYSTAL species with non-zero stoich
-    stoich_crystal = Int[]
-    for kr in kinetic_reactions
-        for (j, s) in enumerate(kr.stoich)
-            if !iszero(s) && aggregate_state(system.species[j]) == AS_CRYSTAL
-                push!(stoich_crystal, j)
-            end
-        end
-    end
-    idx_kin_unique = sort(unique([idx_kin; stoich_crystal]))
+    # Partition (Leal Eq. 53): ν = [νₑ  νₖ]
+    νe = ν[:, idx_eq]
+    νk = ν[:, idx_kin]
+
+    # Formula matrix for equilibrium partition: Aₑ = CSM.A[:, idx_eq]
+    Ae = Float64.(system.CSM.A[:, idx_eq])
 
     return KineticsProblem{
-        typeof(system),
-        typeof(kinetic_reactions),
-        typeof(equilibrium_solver),
-        typeof(activity_model),
+        typeof(system), typeof(calorimeter),
+        typeof(equilibrium_solver), typeof(activity_model),
     }(
         system,
-        kinetic_reactions,
         initial_state,
         (Float64(safe_ustrip(us"s", tspan[1])), Float64(safe_ustrip(us"s", tspan[2]))),
+        calorimeter,
         activity_model,
         equilibrium_solver,
-        S_kin,
-        idx_kin,
-        idx_kin_unique,
+        collect(Int, idx_kin),
+        collect(Int, idx_eq),
+        ν, νe, νk, Ae,
     )
 end
 
-"""
-    KineticsProblem(system, reactions, initial_state, tspan;
-                    activity_model = DiluteSolutionModel(),
-                    equilibrium_solver = nothing) -> KineticsProblem
-
-Reaction-centric convenience constructor: build a [`KineticsProblem`](@ref) directly
-from a list of [`Reaction`](@ref) objects carrying their kinetics in `properties`.
-
-Each `Reaction` in `reactions` must have a `:rate` entry (a [`KineticFunc`](@ref) or
-compatible callable). See [`KineticReaction(cs, rxn)`](@ref) for details.
-
-# Examples
-
-```julia
-rxn[:rate]         = parrot_killoh(PK_PARAMS_C3S, "C3S")
-rxn[:heat_per_mol] = 114_617.0
-
-kp = KineticsProblem(cs, [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF], state0, (0.0, 7 * 86400.0))
-```
-"""
-function KineticsProblem(
-        system::ChemicalSystem,
-        reactions::AbstractVector{<:AbstractReaction},
-        initial_state::ChemicalState,
-        tspan::Tuple;
-        activity_model::AbstractActivityModel = DiluteSolutionModel(),
-        equilibrium_solver = nothing,
-    )
-    kinetic_rxns = [KineticReaction(system, rxn) for rxn in reactions]
-    return KineticsProblem(
-        system, kinetic_rxns, initial_state, tspan;
-        activity_model, equilibrium_solver,
-    )
-end
-
-# ── build_u0 ──────────────────────────────────────────────────────────────────
+# ── build_u0 ─────────────────────────────────────────────────────────────────
 
 """
     build_u0(kp::KineticsProblem) -> Vector{Float64}
 
-Extract the initial mole vector for kinetic (mineral) species from `kp.initial_state`.
+Build the initial ODE state vector.
 
-The returned vector has length `length(kp.idx_kin_unique)` — one entry per unique
-kinetic mineral, in the order defined by `kp.idx_kin_unique`.
-
-# Examples
-
-```julia
-u0 = build_u0(kp)
-# u0[j] = moles of the j-th unique kinetic mineral at t=0
-```
+Structure of `u`:
+  - Without re-speciation: `u = [nₖ₁, …, nₖ_K]`
+  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K]`
+  - Semi-adiabatic adds `T` at the end: `u = [..., T₀]`
 """
 function build_u0(kp::KineticsProblem)
-    n_mol = ustrip.(us"mol", kp.initial_state.n)
-    return Float64[n_mol[i] for i in kp.idx_kin_unique]
+    n_mol = Float64[
+        ustrip(us"mol", kp.initial_state.n[i])
+            for i in eachindex(kp.system.species)
+    ]
+    # Kinetic species moles
+    nk0 = n_mol[kp.idx_kinetic]
+
+    u0 = if isnothing(kp.equilibrium_solver)
+        copy(nk0)
+    else
+        # Element amounts in equilibrium partition: bₑ = Aₑ nₑ
+        ne0 = n_mol[kp.idx_equilibrium]
+        be0 = kp.Ae * ne0
+        vcat(be0, nk0)
+    end
+
+    # Append temperature for semi-adiabatic calorimeter
+    if kp.calorimeter isa SemiAdiabaticCalorimeter
+        push!(u0, Float64(kp.calorimeter.T0))
+    end
+
+    return u0
 end
 
-# ── build_kinetics_params ─────────────────────────────────────────────────────
+# ── build_kinetics_params ────────────────────────────────────────────────────
 
 """
     build_kinetics_params(kp::KineticsProblem; ϵ=1e-30) -> NamedTuple
 
-Build the immutable parameter `NamedTuple` `p` passed to the ODE function.
+Build the immutable parameter tuple `p` passed to the ODE function.
 
-Fields in the returned tuple:
-  - `T`: temperature [K] (plain `Float64`).
-  - `P`: pressure [Pa].
-  - `ϵ`: regularisation floor.
-  - `lna_fn`: log-activity closure built from `kp.activity_model`.
-  - `kin_rxns`: `kp.kinetic_reactions` (compiled [`KineticFunc`](@ref) objects).
-  - `S_kin`: stoichiometric submatrix `[n_reactions × n_species]`.
-  - `idx_kin`: mineral indices per reaction.
-  - `idx_kin_unique`: unique sorted mineral indices — matches the ODE state `u`.
-  - `species_index`: `Dict{String,Int}` mapping PHREEQC formula → species index in system.
-    Built once at construction; used to create [`StateView`](@ref)s in the ODE loop
-    without allocating a new dict at each step.
-  - `n_initial_full`: `Vector{Float64}` of initial moles for **all** species
-    (length = n_species). Wrapped in a `StateView` for O(1) named access.
-  - `n_full`: mutable `Vector{Float64}` holding the full species mole vector
-    (updated in-place at every ODE evaluation).
-  - `cp_fns`: vector of Cp°(T) callables [J/(mol·K)] (one per species, `nothing` when
-    no Cp° data available). Used by [`SemiAdiabaticCalorimeter`](@ref) to compute
-    the variable heat capacity `Cp_cell + Σᵢ nᵢ Cpᵢ°(T)` (Lavergne et al. 2018).
-  - `eq_solver`: the equilibrium solver (or `nothing`).
-  - `state_ref`: `Ref` to the current [`ChemicalState`](@ref) (updated during integration).
-  - `h_fns`: vector of `ΔₐH⁰` callables (or `nothing`) per species.
-  - `saved_H`, `saved_t`: mutable buffers for total-enthalpy tracking.
-  - `rates_buf`: mutable `Vector{Float64}` of length n_reactions; individual rates at
-    each Float64 ODE step. Used by calorimeter `extend_ode!`.
+Key fields: `T`, `P`, `ϵ`, `lna_fn`, `kin_rxns`, `species_index`,
+`n_initial_full`, `n_full`, `cp_fns`, `rates_buf`, index ranges
+`n_be`, `n_nk`, `idx_kinetic`, `idx_equilibrium`, `νe`, `νk`, `Ae`.
 """
 function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     state = kp.initial_state
-    T = temperature(state)
-    P = pressure(state)
-
-    T_K = Float64(ustrip(us"K", T))
-    P_Pa = Float64(ustrip(us"Pa", P))
+    T_K = Float64(ustrip(us"K", temperature(state)))
+    P_Pa = Float64(ustrip(us"Pa", pressure(state)))
 
     lna_fn = activity_model(kp.system, kp.activity_model)
 
-    # Pre-built species name → index dict (built once; reused as StateView.index).
-    # Two keys per species: PHREEQC formula (e.g. "Ca3SiO5") and species symbol
-    # (e.g. "C3S") so that both transition_state (uses formula) and parrot_killoh
-    # (uses cement symbol) resolve correctly.
+    # Species name → index dict (built once, shared by all StateViews)
     species_index = Dict{String, Int}()
     for (i, sp) in enumerate(kp.system.species)
         species_index[phreeqc(formula(sp))] = i
         sym = ChemistryLab.symbol(sp)
-        if !isempty(sym)
-            species_index[sym] = i
-        end
+        !isempty(sym) && (species_index[sym] = i)
     end
 
-    # Full initial mole vector for all species (for n_initial StateView)
-    n_initial_full = Float64[ustrip(us"mol", kp.initial_state.n[i]) for i in eachindex(kp.system.species)]
+    n_sp = length(kp.system.species)
+    n_initial_full = Float64[ustrip(us"mol", state.n[i]) for i in 1:n_sp]
+    n_full = copy(n_initial_full)
 
-    # Mutable full-system mole vector (updated in-place at each ODE step)
-    n_full = Float64[ustrip(us"mol", state.n[i]) for i in eachindex(kp.system.species)]
-
-    # Cp°(T) callables per species [J/(mol·K)], nothing if unavailable
     cp_fns = [haskey(sp, :Cp⁰) ? sp[:Cp⁰] : nothing for sp in kp.system.species]
 
-    # Enthalpy callables for total-enthalpy tracking
-    h_fns = [haskey(sp, :ΔₐH⁰) ? sp[:ΔₐH⁰] : nothing for sp in kp.system.species]
+    kin_rxns = [KineticReaction(kp.system, rxn) for rxn in kp.system.reactions]
+    rates_buf = zeros(Float64, length(kin_rxns))
 
-    saved_H = Float64[]
-    saved_t = Float64[]
+    # State layout sizes
+    n_be = isnothing(kp.equilibrium_solver) ? 0 : size(kp.Ae, 1)
+    n_nk = length(kp.idx_kinetic)
+    has_T = kp.calorimeter isa SemiAdiabaticCalorimeter
 
-    rates_buf = zeros(Float64, length(kp.kinetic_reactions))
+    # Calorimeter parameters (semi-adiabatic)
+    cal = kp.calorimeter
+    Cp_calo = cal isa SemiAdiabaticCalorimeter ? Float64(ustrip(us"J/K", cal.Cp)) : 0.0
+    T_env = cal isa SemiAdiabaticCalorimeter ? Float64(cal.T_env) : T_K
+    heat_loss_fn = cal isa SemiAdiabaticCalorimeter ? cal.heat_loss : identity
 
     return (
         T = T_K,
         P = P_Pa,
         ϵ = ϵ,
         lna_fn = lna_fn,
-        kin_rxns = kp.kinetic_reactions,
-        S_kin = kp.S_kin,
-        idx_kin = kp.idx_kin,
-        idx_kin_unique = kp.idx_kin_unique,
+        kin_rxns = kin_rxns,
         species_index = species_index,
         n_initial_full = n_initial_full,
         n_full = n_full,
         cp_fns = cp_fns,
+        rates_buf = rates_buf,
+        # Index layout
+        n_be = n_be,
+        n_nk = n_nk,
+        has_T = has_T,
+        idx_kinetic = kp.idx_kinetic,
+        idx_equilibrium = kp.idx_equilibrium,
+        # Leal partitions
+        νe = Float64.(kp.νe),
+        νk = Float64.(kp.νk),
+        Ae = Float64.(kp.Ae),
+        # Calorimeter
+        Cp_calo = Cp_calo,
+        T_env = T_env,
+        heat_loss_fn = heat_loss_fn,
+        # Equilibrium
         eq_solver = kp.equilibrium_solver,
         state_ref = Ref{ChemicalState}(state),
-        h_fns = h_fns,
-        saved_H = saved_H,
-        saved_t = saved_t,
-        rates_buf = rates_buf,
     )
 end
 
-# ── build_kinetics_ode ────────────────────────────────────────────────────────
+# ── build_kinetics_ode ───────────────────────────────────────────────────────
 
 """
     build_kinetics_ode(kp::KineticsProblem) -> Function
 
-Build the ODE right-hand-side function `f!(du, u, p, t)` for the kinetics problem.
+Build the ODE right-hand-side `f!(du, u, p, t)` implementing Leal et al. (2017).
 
-The returned closure implements the Reaktoro-style coupled kinetics–equilibrium
-algorithm (Leal et al. 2017):
+State layout:
+  - `u[1:n_be]`         = bₑ (element amounts in equilibrium partition)
+  - `u[n_be+1:n_be+n_nk]` = nₖ (moles of kinetic species)
+  - `u[end]`            = T  (semi-adiabatic only)
 
-1. **Update full mole vector**: inject `u` (unique kinetic minerals) into `p.n_full`.
-2. **Re-equilibrate** (if `p.eq_solver ≢ nothing`): run aqueous speciation.
-3. **Compute log-activities** `lna` via `p.lna_fn`.
-4. **Build `StateView`s** (O(1) named access, no dict allocation per step):
-   `n_sv`, `lna_sv`, `n_initial_sv` wrapping `p.species_index`.
-5. **Evaluate rates**: `r = kr.rate_fn(p.T, p.P, t, n_sv, lna_sv, n_initial_sv)`.
-6. **Accumulate `du`**: `du[k] += kr.stoich[sp_idx] * r` for each tracked species.
+ODE equations (Leal 2017, Eq. 66):
+  - `dnₖ/dt = νₖᵀ r`
+  - `dbₑ/dt = Aₑ νₑᵀ r`
+  - `dT/dt  = (q̇ − φ(ΔT)) / Cp_total`  (semi-adiabatic)
 
-# Returns
-
-A mutating function `f!(du, u, p, t)` suitable for `ODEProblem`.
+where `nₑ = φ(bₑ)` is the equilibrium re-speciation constraint.
 """
-function build_kinetics_ode(::KineticsProblem)
+function build_kinetics_ode(kp::KineticsProblem)
     function f!(du, u, p, t)
         T_elt = eltype(u)
 
-        # ── 1. Build full mole vector ──────────────────────────────────────
+        # ── 1. Extract state components ──────────────────────────────────
+        nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
+        T_curr = p.has_T ? u[end] : p.T
+
+        # ── 2. Reconstruct full mole vector ──────────────────────────────
         if T_elt === Float64
-            for (j, idx) in enumerate(p.idx_kin_unique)
-                p.n_full[idx] = max(u[j], p.ϵ)
-            end
             n_full = p.n_full
         else
             n_full = T_elt.(p.n_full)
-            for (j, idx) in enumerate(p.idx_kin_unique)
-                n_full[idx] = max(u[j], p.ϵ)
-            end
         end
 
-        # ── 2. Re-equilibrate aqueous speciation (Float64 path only) ───────
-        if !isnothing(p.eq_solver) && T_elt === Float64
+        # 2a. Kinetic species from nₖ
+        for (j, idx) in enumerate(p.idx_kinetic)
+            n_full[idx] = max(nk[j], p.ϵ)
+        end
+
+        # 2b. Equilibrium species from re-speciation φ(bₑ) (Leal Eq. 54)
+        if p.n_be > 0 && T_elt === Float64
+            be = @view u[1:(p.n_be)]
             curr_state = p.state_ref[]
+            # Build a ChemicalState with updated element amounts
+            new_n = copy(p.n_full) .* u"mol"
             new_state = ChemicalState(
-                curr_state.system,
-                p.n_full .* u"mol",
-                temperature(curr_state),
-                pressure(curr_state),
+                curr_state.system, new_n,
+                temperature(curr_state), pressure(curr_state)
             )
             try
                 eq_result = equilibrate(new_state, p.eq_solver)
                 n_eq = ustrip.(us"mol", eq_result.n)
-                for i in eachindex(n_eq)
-                    if i ∉ p.idx_kin_unique
-                        p.n_full[i] = n_eq[i]
-                    end
+                for (j, idx) in enumerate(p.idx_equilibrium)
+                    n_full[idx] = n_eq[idx]
                 end
                 p.state_ref[] = eq_result
             catch
+                # If re-speciation fails, keep current n_full for equilibrium species
             end
         end
 
-        # ── 3. Compute log-activities ─────────────────────────────────────
+        # ── 3. Compute log-activities ────────────────────────────────────
         lna = p.lna_fn(n_full, p)
 
-        # ── 4. Build StateViews (O(1) named access, no dict alloc) ────────
+        # ── 4. Build StateViews (O(1) named access) ─────────────────────
         n_sv = StateView(n_full, p.species_index)
         lna_sv = StateView(lna, p.species_index)
-        n_initial_sv = StateView(p.n_initial_full, p.species_index)
+        n0_sv = StateView(p.n_initial_full, p.species_index)
 
-        # ── 5–6. Evaluate rates and accumulate ────────────────────────────
-        fill!(du, zero(eltype(du)))
-
+        # ── 5. Evaluate kinetic rates r(T, P, t, n, lna, n₀) ────────────
+        n_rxn = length(p.kin_rxns)
+        rates = Vector{T_elt}(undef, n_rxn)
         for (i, kr) in enumerate(p.kin_rxns)
-            r = kr.rate_fn(p.T, p.P, t, n_sv, lna_sv, n_initial_sv)
-
-            for (k, sp_idx) in enumerate(p.idx_kin_unique)
-                s = kr.stoich[sp_idx]
-                iszero(s) && continue
-                du[k] += s * r
-            end
-
+            rates[i] = kr.rate_fn(T_curr, p.P, t, n_sv, lna_sv, n0_sv)
             if T_elt === Float64
-                p.rates_buf[i] = r
+                p.rates_buf[i] = rates[i]
             end
+        end
+
+        # ── 6. ODE: dnₖ/dt = νₖᵀ r (Leal Eq. 56) ───────────────────────
+        fill!(du, zero(T_elt))
+        du_nk = p.νk' * rates
+        for j in 1:(p.n_nk)
+            du[p.n_be + j] = du_nk[j]
+        end
+
+        # ── 7. ODE: dbₑ/dt = Aₑ νₑᵀ r (Leal Eq. 65) ────────────────────
+        if p.n_be > 0
+            du_be = p.Ae * (p.νe' * rates)
+            for j in 1:(p.n_be)
+                du[j] = du_be[j]
+            end
+        end
+
+        # ── 8. ODE: dT/dt = (q̇ − φ(ΔT)) / Cp_total (semi-adiabatic) ───
+        if p.has_T
+            # Heat generation: q̇ = Σᵢ rᵢ × (−ΔᵣH⁰ᵢ) [W]
+            qdot = heat_rate(p.kin_rxns, rates, T_curr)
+
+            # Total heat capacity: Cp_calo + Σᵢ nᵢ Cp°ᵢ(T)
+            Cp_total = p.Cp_calo
+            for (i, cp_fn) in enumerate(p.cp_fns)
+                isnothing(cp_fn) && continue
+                cp_i = cp_fn(; T = T_curr, unit = false)
+                Cp_total = Cp_total + n_full[i] * cp_i
+            end
+
+            ΔT = T_curr - p.T_env
+            du[end] = (qdot - p.heat_loss_fn(ΔT)) / Cp_total
         end
 
         return nothing

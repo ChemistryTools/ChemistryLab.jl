@@ -58,6 +58,9 @@ function _to_qbig(x::AbstractFloat)
     r = rationalize(x; tol = 1.0e-3)
     return Rational{BigInt}(BigInt(numerator(r)), BigInt(denominator(r)))
 end
+# Fallback for other concrete Number types (e.g. ForwardDiff.Dual): extract Float64 value.
+# Symbolic types (Symbolics.Num) are excluded upstream by _is_rationalizable.
+_to_qbig(x::Number) = _to_qbig(Float64(x))
 
 # Convert A to a BigInt integer matrix.
 # For pure integer input (common case), this is just BigInt.(A).
@@ -124,11 +127,35 @@ function _rational_nullspace(A::AbstractMatrix)
     return N_rat
 end
 
-# Integer null space: clear all denominators and reduce by GCD.
-# Best for purely integer A (e.g. CanonicalStoichMatrix).
-# Returns Matrix{BigInt} of shape (n, dim_ker).
-function _integer_nullspace(A::AbstractMatrix)
-    N_rat = _rational_nullspace(A)
+# ── Stage 2: conversion from rational nullspace to concrete types ─────────────
+
+# Convert Rational{BigInt} → concrete Real without precision loss where possible.
+# Int for integers, Rational{Int} for small denominators, Float64 as last resort.
+function _to_stoich_real(r::Rational{BigInt})
+    n, d = numerator(r), denominator(r)
+    if isone(d)
+        return typemin(Int) <= n <= typemax(Int) ? Int(n) : stoich_coef_round(Float64(r))
+    elseif d < 10 && typemin(Int) <= n <= typemax(Int) && typemin(Int) <= d
+        return Rational{Int}(Int(n), Int(d))
+    else
+        return stoich_coef_round(Float64(r))
+    end
+end
+
+# Detect whether all entries in a column are (near-)integer.
+_is_int_entry(x::Integer) = true
+_is_int_entry(x::Rational) = isone(denominator(x))
+_is_int_entry(x::AbstractFloat) = isapprox(x, round(x); atol = 1.0e-9)
+
+# Check whether a matrix element type supports exact rational conversion.
+# Symbolic types (Symbolics.Num <: Real) are excluded — their nullspace
+# cannot be computed numerically and must remain empty.
+_is_rationalizable(::AbstractMatrix{<:Union{Integer, AbstractFloat, Rational}}) = true
+_is_rationalizable(::AbstractMatrix) = false
+
+# Clear all denominators + GCD + sign normalize on a pre-computed rational nullspace.
+# Returns Matrix{BigInt}.
+function _integer_from_rational(N_rat::Matrix{Rational{BigInt}})
     n, k = size(N_rat)
     k == 0 && return zeros(BigInt, n, 0)
     N_out = zeros(BigInt, n, k)
@@ -146,35 +173,12 @@ function _integer_nullspace(A::AbstractMatrix)
     return N_out
 end
 
-# Detect whether all entries in a column are (near-)integer.
-_is_int_entry(x::Integer) = true
-_is_int_entry(x::Rational) = isone(denominator(x))
-_is_int_entry(x) = isapprox(x, round(x); atol = 1.0e-9)
-
-# Convert Rational{BigInt} → concrete Real without precision loss where possible.
-# Int for integers, Rational{Int} for small denominators, Float64 as last resort.
-function _to_stoich_real(r::Rational{BigInt})
-    n, d = numerator(r), denominator(r)
-    if isone(d)
-        return typemin(Int) <= n <= typemax(Int) ? Int(n) : stoich_coef_round(Float64(r))
-    elseif d < 10 && typemin(Int) <= n <= typemax(Int) && typemin(Int) <= d
-        return Rational{Int}(Int(n), Int(d))
-    else
-        return stoich_coef_round(Float64(r))
-    end
-end
-
-# Optimal null space for mixed integer/fractional A.
-# Integer coefficients where A columns are integer; fractional otherwise.
-# Returns a Matrix{Real} with concrete subtypes (Int, Rational{Int}, Float64)
-# — never BigInt. Exact rational conversion preserves A*N = 0.
-function _optimal_nullspace(A::AbstractMatrix)
-    N_rat = _rational_nullspace(A)
+# Smart conversion: integer where A is integer, fractional otherwise.
+# Returns Matrix{Real} with concrete subtypes (Int, Rational{Int}, Float64) — never BigInt.
+function _optimal_from_rational(N_rat::Matrix{Rational{BigInt}}, A::AbstractMatrix)
     n, k = size(N_rat)
     k == 0 && return zeros(Int, n, 0)
     is_int_col = [all(_is_int_entry, view(A, :, j)) for j in axes(A, 2)]
-    # Clear denominators of integer-column entries only;
-    # fractional-column entries keep their natural rational scale.
     N_out = Matrix{Real}(undef, n, k)
     for j in 1:k
         v = N_rat[:, j]
@@ -185,18 +189,14 @@ function _optimal_nullspace(A::AbstractMatrix)
             mapreduce(denominator, lcm, v; init = one(BigInt))
         end
         v = v .* d
-        # Reduce by GCD of integer-column entries
         g = if !isempty(int_idx)
             mapreduce(i -> abs(numerator(v[i])), gcd, int_idx; init = zero(BigInt))
         else
             mapreduce(x -> abs(numerator(x)), gcd, v; init = zero(BigInt))
         end
         !iszero(g) && g > 1 && (v = v .// g)
-        # Sign normalization: first non-zero entry positive
         lead = findfirst(!iszero, v)
         !isnothing(lead) && v[lead] < 0 && (v = -v)
-        # Convert to concrete types — exact for Int and small Rational,
-        # Float64 only as last resort. Preserves A*N = 0.
         for i in 1:n
             N_out[i, j] = _to_stoich_real(v[i])
         end
@@ -204,19 +204,112 @@ function _optimal_nullspace(A::AbstractMatrix)
     return N_out
 end
 
+# Thin wrappers: compute rational nullspace then convert.
+_integer_nullspace(A::AbstractMatrix) = _integer_from_rational(_rational_nullspace(A))
+_optimal_nullspace(A::AbstractMatrix) = _optimal_from_rational(_rational_nullspace(A), A)
+
+# ── Stage 3: kinetic species diagonalization ─────────────────────────────────
+
+# Diagonalize rows of the rational nullspace corresponding to kinetic species.
+# After this, each kinetic species row has exactly one non-zero entry.
+# In-place column operations preserve A*N = 0 exactly (Rational{BigInt} arithmetic).
+function _diagonalize_kinetic_rows!(
+        N_rat::Matrix{Rational{BigInt}}, kinetic_indices::AbstractVector{Int}
+    )
+    claimed = Set{Int}()
+    for k in kinetic_indices
+        # Find an unclaimed pivot column where N_rat[k, j] ≠ 0
+        j = nothing
+        for c in axes(N_rat, 2)
+            c ∈ claimed && continue
+            iszero(N_rat[k, c]) && continue
+            j = c
+            break
+        end
+        isnothing(j) && throw(
+            ArgumentError(
+                "Kinetic species at index $k does not participate in any " *
+                    "remaining independent reaction (row is zero in unclaimed columns)."
+            )
+        )
+        push!(claimed, j)
+        # Eliminate row k from all other columns
+        for c in axes(N_rat, 2)
+            c == j && continue
+            iszero(N_rat[k, c]) && continue
+            factor = N_rat[k, c] // N_rat[k, j]
+            N_rat[:, c] .-= factor .* N_rat[:, j]
+        end
+    end
+    return nothing
+end
+
+# Resolve kinetic species names or objects to row indices in the species vector.
+function _resolve_kinetic_indices(
+        kinetic_species::AbstractVector{<:AbstractSpecies},
+        species::AbstractVector{<:AbstractSpecies},
+    )
+    return [
+        begin
+                idx = findfirst(s -> s == ks, species)
+                isnothing(idx) &&
+                throw(ArgumentError("Kinetic species \"$(symbol(ks))\" not found in species list."))
+                idx
+            end for ks in kinetic_species
+    ]
+end
+
+function _resolve_kinetic_indices(
+        kinetic_species::AbstractVector{<:AbstractString},
+        species::AbstractVector{<:AbstractSpecies},
+    )
+    return [
+        begin
+                idx = findfirst(s -> symbol(s) == name, species)
+                isnothing(idx) &&
+                throw(ArgumentError("Kinetic species \"$name\" not found in species list."))
+                idx
+            end for name in kinetic_species
+    ]
+end
+
 function StoichMatrix(
-        A::M, primaries::Union{Vector{Symbol}, Vector{S}}, species::AbstractVector{S}
+        A::M, primaries::Union{Vector{Symbol}, Vector{S}}, species::AbstractVector{S};
+        kinetic_species = nothing,
     ) where {M <: AbstractMatrix, S <: AbstractSpecies}
     indices_in = [findfirst(x -> x == p, species) for p in primaries]
     if any(x -> isnothing(x), indices_in)
         # General case: primaries are not contained in species (e.g., primaries are atoms).
-        # Optimal null space: integer where A is integer, rational/float otherwise.
-        N_opt = _optimal_nullspace(A)
-        N = similar(A, size(N_opt)...)
-        N .= N_opt
+        if _is_rationalizable(A)
+            N_rat = _rational_nullspace(A)
+            if !isnothing(kinetic_species)
+                kin_idx = _resolve_kinetic_indices(kinetic_species, species)
+                _diagonalize_kinetic_rows!(N_rat, kin_idx)
+            end
+            N_opt = _optimal_from_rational(N_rat, A)
+            N = similar(A, size(N_opt)...)
+            N .= N_opt
+        else
+            # Symbolic matrix (e.g. Symbolics.Num entries): nullspace is undefined
+            # numerically — return empty nullspace as in the analytical branch.
+            N = similar(A, 0, 0)
+        end
         return StoichMatrix(A, primaries, Vector(species), N)
     else
         # Trivial case: primaries ⊆ species and A[:,indices_in] = I — analytical formula.
+        # Each non-primary species already has exactly one column → diagonalization
+        # is automatic. Just validate kinetic species are not primaries.
+        if !isnothing(kinetic_species)
+            kin_idx = _resolve_kinetic_indices(kinetic_species, species)
+            for k in kin_idx
+                k ∈ indices_in && throw(
+                    ArgumentError(
+                        "Kinetic species \"$(symbol(species[k]))\" cannot be a primary. " *
+                            "Primaries appear in every reaction (identity block of A)."
+                    )
+                )
+            end
+        end
         p, n = size(A)
         N = similar(A, n, n - p)
         indices_out = setdiff(eachindex(species), indices_in)
@@ -382,9 +475,13 @@ function CanonicalStoichMatrix(species::AbstractVector{<:AbstractSpecies})
             A[i, j] = get(atoms, atom, zero(T))
         end
     end
-    N_int = _integer_nullspace(A)
-    N = similar(A, size(N_int)...)
-    N .= N_int
+    if _is_rationalizable(A)
+        N_int = _integer_nullspace(A)
+        N = similar(A, size(N_int)...)
+        N .= N_int
+    else
+        N = similar(A, 0, 0)
+    end
     return StoichMatrix(A, involved_atoms, Vector(species), N)
 end
 
@@ -443,6 +540,7 @@ function StoichMatrix(
         candidate_primaries::AbstractVector{<:AbstractSpecies} = species;
         involve_all_atoms = true,
         optimize_primaries = false,
+        kinetic_species = nothing,
     )
     safe_rank(A; rtol = 1.0e-6) =
     try
@@ -512,8 +610,13 @@ function StoichMatrix(
     end
 
     cols_candidates = [findfirst(y -> y == x, newspecies) for x in candidate_primaries]
-    # filter!(x -> !isnothing(x), cols_candidates)
     cols_candidates = cols_candidates[.!isnothing.(cols_candidates)]
+    # Exclude kinetic species from primary selection — they must stay dependent
+    # so they can each be isolated to a single nullspace column.
+    if !isnothing(kinetic_species)
+        kin_idx_in_new = _resolve_kinetic_indices(kinetic_species, newspecies)
+        filter!(c -> c ∉ kin_idx_in_new, cols_candidates)
+    end
     M_subset = M[:, cols_candidates]
 
     r = Int(safe_rank(M_subset))
@@ -563,7 +666,7 @@ function StoichMatrix(
     A = A[.!zero_rows, :]
     indep_comp = indep_comp[.!zero_rows]
 
-    return StoichMatrix(A, indep_comp, dep_comp)
+    return StoichMatrix(A, indep_comp, dep_comp; kinetic_species = kinetic_species)
 end
 
 function StoichMatrix(
@@ -571,6 +674,7 @@ function StoichMatrix(
         candidate_primaries = species;
         involve_all_atoms = true,
         optimize_primaries = false,
+        kinetic_species = nothing,
     )
     gather_species(d::AbstractDict{T, S} where {T, S <: AbstractSpecies}) = collect(values(d))
     gather_species(d::AbstractDict{S, T} where {S <: AbstractSpecies, T}) = collect(keys(d))
@@ -580,17 +684,23 @@ function StoichMatrix(
         gather_species(candidate_primaries);
         involve_all_atoms = involve_all_atoms,
         optimize_primaries = optimize_primaries,
+        kinetic_species = kinetic_species,
     )
 end
 
 function StoichMatrix(
-        species, candidate_primaries = species; involve_all_atoms = true, optimize_primaries = false
+        species,
+        candidate_primaries = species;
+        involve_all_atoms = true,
+        optimize_primaries = false,
+        kinetic_species = nothing,
     )
     return StoichMatrix(
         collect(species),
         collect(candidate_primaries);
         involve_all_atoms = involve_all_atoms,
         optimize_primaries = optimize_primaries,
+        kinetic_species = kinetic_species,
     )
 end
 

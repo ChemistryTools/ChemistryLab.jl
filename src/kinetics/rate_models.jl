@@ -79,11 +79,53 @@ true
 """
 struct KineticFunc{F, R <: NamedTuple, Q} <: Function
     compiled::F
-    refs::R    # default variable values as Quantity (for documentation/display)
-    unit::Q    # output unit, always u"mol/s"
+    vars::NTuple{6, Symbol}   # (T, P, t, n, lna, n_initial) — positional arg names
+    refs::R                   # default variable values as Quantity (for documentation/display)
+    unit::Q                   # output unit, always u"mol/s"
 end
 
+const _KF_VARS = (:T, :P, :t, :n, :lna, :n_initial)
+const _KF_DEFAULT_REFS = (T = 298.15u"K", P = 1.0e5u"Pa")
+
+# Convenience constructor — vars defaults to the standard 6-argument names.
+KineticFunc(compiled, refs::NamedTuple, unit) = KineticFunc(compiled, _KF_VARS, refs, unit)
+
+# Positional call — hot path for ODE integration (no allocation, no unit handling).
 (kf::KineticFunc)(T, P, t, n, lna, n_initial) = kf.compiled(T, P, t, n, lna, n_initial)
+
+# Keyword call — user convenience (REPL, scripts), mirroring NumericFunc/SymbolicFunc.
+# T, P, t are ustripped (accept Quantity or plain Real); n, lna, n_initial pass through.
+@inline function (kf::KineticFunc)(; kwargs...)
+    T_raw = haskey(kwargs, :T) ? kwargs[:T] :
+        get(kf.refs, :T, get(_KF_DEFAULT_REFS, :T, nothing))
+    P_raw = haskey(kwargs, :P) ? kwargs[:P] :
+        get(kf.refs, :P, get(_KF_DEFAULT_REFS, :P, nothing))
+    t_raw = haskey(kwargs, :t) ? kwargs[:t] : get(kf.refs, :t, 0.0)
+    n_val = get(kwargs, :n, nothing)
+    lna_val = get(kwargs, :lna, nothing)
+    n0_val = get(kwargs, :n_initial, nothing)
+    val = kf.compiled(ustrip(T_raw), ustrip(P_raw), ustrip(t_raw), n_val, lna_val, n0_val)
+    return get(kwargs, :unit, false) ? val * kf.unit : val
+end
+
+function Base.show(io::IO, kf::KineticFunc)
+    print(io, "KineticFunc [", dimension(kf.unit), "]")
+    if !isempty(kf.vars)
+        print(io, " ◆ vars=(", join(kf.vars, ", "), ")")
+    end
+    return if !isempty(kf.refs)
+        print(io, " ◆ ", join(["$k=$v" for (k, v) in pairs(kf.refs)], ", "))
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", kf::KineticFunc)
+    println(io, "KineticFunc:")
+    print(io, "  Unit: [", dimension(kf.unit), "]")
+    print(io, "\n  Variables: ", join(kf.vars, ", "))
+    return if !isempty(kf.refs)
+        print(io, "\n  References: ", join(["$k=$v" for (k, v) in pairs(kf.refs)], ", "))
+    end
+end
 
 # ── KINETICS_RATE_MODELS / KINETICS_RATE_FACTORIES ────────────────────────────
 
