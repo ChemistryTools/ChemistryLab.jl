@@ -178,7 +178,7 @@ Kinetics can be attached directly to `Reaction` objects via their `properties` d
 | Key | Type | Required | Description |
 | --- | --- | :---: | --- |
 | `:rate` | `KineticFunc` or `(T,P,t,n,lna,n₀)->Real` | ✓ | Net dissolution rate [mol/s] |
-| `:heat_per_mol` | `Number` | | Override molar heat [J/mol], positive = exothermic; needed only for custom species without `ΔₐH⁰` |
+| `:ΔᵣH⁰` | `AbstractFunc` or `Number` | | Reaction enthalpy [J/mol] (thermodynamic convention: negative = exothermic). Computed automatically from species `ΔₐH⁰` for balanced reactions; set explicitly for custom species without `ΔₐH⁰`. |
 
 When `:rate` is a plain callable (not a `KineticFunc`), it is automatically wrapped
 in a `KineticFunc` with empty `refs`.
@@ -215,7 +215,7 @@ All constructors support DynamicQuantities `Quantity` values.  Plain `Real` → 
 | `parrot_killoh` params | `T_ref` | K | `293.15u"K"` |
 | `FixedSurfaceArea` | `A` | m² | `500.0u"cm^2"` |
 | `BETSurfaceArea` | `A_specific` | m²/kg | `0.09u"m^2/g"` |
-| `KineticReaction` | `heat_per_mol` (custom species) | J/mol | `36.1u"kJ/mol"` |
+| `Reaction` | `:ΔᵣH⁰` (custom species) | J/mol | `NumericFunc((T,) -> -36100.0, (:T,), u"J/mol")` |
 | `KineticsProblem` | `tspan` | s | `(0.0u"s", 7.0u"d")` |
 | `IsothermalCalorimeter` | `T` | K | `298.15u"K"` |
 | `SemiAdiabaticCalorimeter` | `Cp` | J/K | `4.0u"kJ/K"` |
@@ -322,19 +322,19 @@ pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
 
 # ── 4. Kinetic reactions (reaction-centric) ─────────────────────────────────
 # Reactions follow Lothenbach & Winnefeld (2006) — Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O
-# Calorimetric heat is computed automatically from CEMDATA18 species ΔₐH⁰.
+# Balanced hydration reactions — ΔᵣH⁰ computed from species ΔₐH⁰.
 sp(name) = cs[name]
 
 rxn_C3S = Reaction(
-    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5);
+    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 103/30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 4/3);
     symbol = "C₃S hydration",
 )
 rxn_C3S[:rate] = pk_C3S
 
 rxn_C2S = Reaction(
-    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 2.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 0.5);
+    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 73/30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 1/3);
     symbol = "C₂S hydration",
 )
 rxn_C2S[:rate] = pk_C2S
@@ -347,8 +347,8 @@ rxn_C3A = Reaction(
 rxn_C3A[:rate] = pk_C3A
 
 rxn_C4AF = Reaction(
-    OrderedDict(sp("C4AF") => 1.0, sp("H2O@") => 6.0),
-    OrderedDict(sp("C3AH6") => 0.5, sp("C3FH6") => 0.5, sp("Portlandite") => 1.0);
+    OrderedDict(sp("C4AF") => 1.0, sp("Portlandite") => 2.0, sp("H2O@") => 10.0),
+    OrderedDict(sp("C3AH6") => 1.0, sp("C3FH6") => 1.0);
     symbol = "C₄AF hydration",
 )
 rxn_C4AF[:rate] = pk_C4AF
@@ -378,7 +378,7 @@ n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kinetic]
 n_kin  = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
 
 function phase_alpha(cs, kp, n0_kin, n_kin, name)
-    sp_idx = findfirst(s -> ChemistryLab.phreeqc(ChemistryLab.formula(s)) == name, cs.species)
+    sp_idx = findfirst(s -> ChemistryLab.symbol(s) == name, cs.species)
     pos    = findfirst(==(sp_idx), kp.idx_kinetic)
     isnothing(pos) && return fill(NaN, length(sol.t))
     return 1.0 .- n_kin[pos] ./ n0_kin[pos]
@@ -398,11 +398,12 @@ end
 
 !!! tip "Calorimetry and ΔᵣH⁰"
     The calorimeter computes the heat generation rate as `q̇ = Σ rᵢ × (−ΔᵣH⁰ᵢ)`,
-    where `ΔᵣH⁰ᵢ(T)` is the reaction enthalpy built automatically from species
-    `ΔₐH⁰` properties via `complete_thermo_functions!`.  For database species
-    (e.g. CEMDATA18) no extra input is needed.  For **custom species** that lack
-    a `ΔₐH⁰` entry (GGBS, MK, …), set `:heat_per_mol` [J/mol] on the reaction
-    to override (positive = exothermic).
+    where `ΔᵣH⁰ᵢ(T)` is the reaction enthalpy (thermodynamic convention:
+    negative = exothermic). It is built automatically from species `ΔₐH⁰`
+    properties via `complete_thermo_functions!` — **reactions must be
+    mass-balanced** for this computation to be correct. For **custom species**
+    that lack a `ΔₐH⁰` entry (GGBS, MK, …), set `:ΔᵣH⁰` directly on the
+    reaction: `rxn[:ΔᵣH⁰] = NumericFunc((T,) -> -36_100.0, (:T,), u"J/mol")`.
 
 ## Multiple kinetic reactions per mineral
 

@@ -63,8 +63,8 @@ end
 Construct a [`KineticsProblem`](@ref) from an explicit list of reactions.
 
 Each element of `kinetic_reactions` must be either a [`KineticReaction`](@ref) or
-an [`AbstractReaction`](@ref) with a `:rate` entry in its properties (and optionally
-`:heat_per_mol`). `Reaction` objects are automatically wrapped via
+a [`Reaction`](@ref) with a `:rate` entry in its properties. Reaction objects
+are automatically wrapped via
 `KineticReaction(cs, rxn)`.
 
     KineticsProblem(cs, initial_state, tspan; ...) -> KineticsProblem

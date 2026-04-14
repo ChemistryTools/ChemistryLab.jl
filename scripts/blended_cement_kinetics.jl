@@ -10,9 +10,9 @@
 # with a dummy ΔₐG⁰ (the Parrot-Killoh model ignores Ω).
 # The reference mole of each addition is defined by the explicit :M field
 # of the Species (mass per "representative formula unit"), which must be
-# consistent with heat_per_mol for correct calorimetry:
+# consistent with ΔᵣH⁰ for correct calorimetry:
 #
-#     heat_per_mol [J/mol] = specific_heat [J/g] × M [g/mol]
+#     |ΔᵣH⁰| [J/mol] = specific_heat [J/g] × M [g/mol]
 #
 # Usage:
 #   julia --project scripts/blended_cement_kinetics.jl
@@ -56,12 +56,12 @@ cs_base = ChemicalSystem(species_base, CEMDATA_PRIMARIES)
 #   Typical CEM I-like composition: ~42% CaO, 35% SiO₂, 12% Al₂O₃, 8% MgO.
 #   Representative formula (charge-neutral): CaAl₂Si₂O₈ (anorthite analogy).
 #   Molar mass of the formula unit overridden to 95 g/mol so that:
-#       heat_per_mol = 380 J/g × 95 g/mol ≈ 36 100 J/mol  (Gruyaert 2010)
+#       |ΔᵣH⁰| = 380 J/g × 95 g/mol ≈ 36 100 J/mol  (Gruyaert 2010)
 #
 # MK (metakaolin):
 #   Exact formula: Al₂Si₂O₇ (dehydroxylated kaolinite).
 #   Auto-computed molar mass: M = 222 g/mol.
-#   heat_per_mol = 250 J/g × 222 g/mol ≈ 55 500 J/mol  (Lothenbach 2011)
+#   |ΔᵣH⁰| = 250 J/g × 222 g/mol ≈ 55 500 J/mol  (Lothenbach 2011)
 #
 # Dummy ΔₐG⁰: very negative → Ω ≈ 0 (dissolution always favoured).
 # Parrot-Killoh ignores Ω; the value does not affect kinetic rates.
@@ -172,40 +172,31 @@ pk_mk = parrot_killoh(
 
 # ── 6. Kinetic reaction list ─────────────────────────────────────────────────
 #
-# Clinker reactions (Lothenbach & Winnefeld 2006 / Lavergne et al. 2018):
-#   Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O  →  Ca:Si = 1.5
+# Balanced clinker reactions (CEMDATA18).
+# Jennite in CEMDATA18 = (SiO₂)(CaO)_{5/3}(H₂O)_{21/10}, Ca:Si = 5/3.
 #
-#   C₃S  + 3.33 H₂O → 0.167 Jennite + 1.5  Portlandite
-#   C₂S  + 2.33 H₂O → 0.167 Jennite + 0.5  Portlandite
-#   C₃A  + 6    H₂O → C₃AH₆
-#   C₄AF + 6    H₂O → 0.5 C₃AH₆ + 0.5 C₃FH₆ + Portlandite  (approx.)
+#   C₃S  + 103/30 H₂O  →  Jennite  + 4/3 Portlandite       (ΔᵣH⁰ ≈ −124 kJ/mol)
+#   C₂S  +  73/30 H₂O  →  Jennite  + 1/3 Portlandite       (ΔᵣH⁰ ≈  −48 kJ/mol)
+#   C₃A  +  6     H₂O  →  C₃AH₆                            (ΔᵣH⁰ ≈ −261 kJ/mol)
+#   C₄AF + 2 Portlandite + 10 H₂O → C₃AH₆ + C₃FH₆         (ΔᵣH⁰ ≈ −147 kJ/mol)
 #
-# Mineral addition reactions (approximate — artificial formulas):
-#   GGBS + 3 H₂O → Jennite + stratlingite  (approximate stoichiometry)
-#   MK   + 2 Portlandite + 5 H₂O → stratlingite  (Si not balanced)
-#
-# Note: GGBS and MK have artificial formulas (overridden M); the reactions
-# are literature approximations. Only the reactant phase drives PK kinetics
-# (Ω is ignored).
-#
-# heat_per_mol [J/mol]: required only for custom species without ΔₐH⁰ in
-# their properties (GGBS and MK). For CEMDATA18 clinker phases, the heat
-# is computed automatically from species ΔₐH⁰.
-#   GGBS: 380 J/g ×  95 g/mol ≈  36 100 J/mol  (Gruyaert 2010, artificial M)
+# GGBS and MK have artificial formulas (no ΔₐH⁰ in database); ΔᵣH⁰ is set
+# directly on the reaction (thermodynamic convention: negative = exothermic).
+#   GGBS: 380 J/g ×  95 g/mol ≈  36 100 J/mol  (Gruyaert 2010)
 #   MK  : 250 J/g × 222 g/mol ≈  55 500 J/mol  (Lothenbach 2011)
 
 sp(name) = cs[name]
 
 rxn_C3S = Reaction(
-    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5);
+    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 103 / 30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 4 / 3);
     symbol = "C₃S hydration",
 )
 rxn_C3S[:rate] = pk_C3S
 
 rxn_C2S = Reaction(
-    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 2.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 0.5);
+    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 73 / 30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 1 / 3);
     symbol = "C₂S hydration",
 )
 rxn_C2S[:rate] = pk_C2S
@@ -218,29 +209,30 @@ rxn_C3A = Reaction(
 rxn_C3A[:rate] = pk_C3A
 
 rxn_C4AF = Reaction(
-    OrderedDict(sp("C4AF") => 1.0, sp("H2O@") => 6.0),
-    OrderedDict(sp("C3AH6") => 0.5, sp("C3FH6") => 0.5, sp("Portlandite") => 1.0);
+    OrderedDict(sp("C4AF") => 1.0, sp("Portlandite") => 2.0, sp("H2O@") => 10.0),
+    OrderedDict(sp("C3AH6") => 1.0, sp("C3FH6") => 1.0);
     symbol = "C₄AF hydration",
 )
 rxn_C4AF[:rate] = pk_C4AF
 
 # GGBS: artificial formula → approximate products (Jennite + stratlingite)
+# ΔᵣH⁰ set directly (no ΔₐH⁰ for custom species)
 rxn_GGBS = Reaction(
     OrderedDict(sp("GGBS") => 1.0, sp("H2O@") => 3.0),
     OrderedDict(sp("Jennite") => 0.05, sp("straetlingite") => 0.2);
     symbol = "GGBS hydration",
 )
 rxn_GGBS[:rate] = pk_ggbs
-rxn_GGBS[:heat_per_mol] = 36_100.0u"J/mol"
+rxn_GGBS[:ΔᵣH⁰] = NumericFunc((T,) -> -36_100.0, (:T,), u"J/mol")
 
-# MK: Al₂Si₂O₇ + 2 Ca(OH)₂ + 5 H₂O → stratlingite (Si approximate)
+# MK: Al₂Si₂O₇ + 2 Ca(OH)₂ + 5 H₂O → stratlingite
 rxn_MK = Reaction(
     OrderedDict(sp("MK") => 1.0, sp("Portlandite") => 2.0, sp("H2O@") => 5.0),
     OrderedDict(sp("straetlingite") => 1.0);
     symbol = "MK hydration",
 )
 rxn_MK[:rate] = pk_mk
-rxn_MK[:heat_per_mol] = 55_500.0u"J/mol"
+rxn_MK[:ΔᵣH⁰] = NumericFunc((T,) -> -55_500.0, (:T,), u"J/mol")
 
 kinetic_reactions = [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF, rxn_GGBS, rxn_MK]
 

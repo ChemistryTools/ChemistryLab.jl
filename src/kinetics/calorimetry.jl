@@ -117,17 +117,18 @@ t, qdot = heat_flow(sol, cal)
 """
 struct IsothermalCalorimeter{T} <: AbstractCalorimeter
     T::T
+    IsothermalCalorimeter{T}(T_K::T) where {T} = new{T}(T_K)
 end
 
 """
     IsothermalCalorimeter(T) -> IsothermalCalorimeter
 
-Plain `Real` → SI [K]; `Quantity` → converted to K.
+Plain `Real` → assumed SI [K]; `Quantity` → converted to K.
 """
-IsothermalCalorimeter(T_K::Real) = IsothermalCalorimeter(_ensure_unit(us"K", T_K))
-IsothermalCalorimeter(T_K) = IsothermalCalorimeter{typeof(_ensure_unit(us"K", T_K))}(
-    _ensure_unit(us"K", T_K),
-)
+function IsothermalCalorimeter(T_K)
+    q = _ensure_unit(us"K", T_K)
+    return IsothermalCalorimeter{typeof(q)}(q)
+end
 
 n_extra_states(::IsothermalCalorimeter) = 1
 

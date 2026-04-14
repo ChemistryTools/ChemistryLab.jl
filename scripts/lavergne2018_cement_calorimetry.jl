@@ -107,29 +107,27 @@ pk_C4AF = parrot_killoh(PK_L2018_C4AF, "C4AF"; α_max = ALPHA_MAX)
 
 # ── 4. Kinetic reaction list ─────────────────────────────────────────────────
 #
-# Simplified hydration reactions (CEMDATA18 / Lothenbach & Winnefeld 2006),
-# stoichiometric coefficients computed for Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O.
+# Balanced hydration reactions (CEMDATA18).
+# Jennite in CEMDATA18 = (SiO₂)(CaO)_{5/3}(H₂O)_{21/10}, Ca:Si = 5/3.
+# ΔᵣH⁰ is computed automatically from species ΔₐH⁰ (requires balanced reactions).
 #
-#   C₃S  + 3.33 H₂O  →  0.167 Jennite + 1.5 Portlandite   (Ca:Si = 1.5 in Jennite)
-#   C₂S  + 2.33 H₂O  →  0.167 Jennite + 0.5 Portlandite
-#   C₃A  + 6    H₂O  →  C₃AH₆
-#   C₄AF + 6    H₂O  →  0.5 C₃AH₆ + 0.5 C₃FH₆ + Ca(OH)₂  (approx.)
-#
-# Heat is computed automatically from CEMDATA18 species ΔₐH⁰
-# (via complete_thermo_functions! / _reaction_enthalpy).
+#   C₃S  + 103/30 H₂O  →  Jennite  + 4/3 Portlandite       (ΔᵣH⁰ ≈ −124 kJ/mol)
+#   C₂S  +  73/30 H₂O  →  Jennite  + 1/3 Portlandite       (ΔᵣH⁰ ≈  −48 kJ/mol)
+#   C₃A  +  6     H₂O  →  C₃AH₆                            (ΔᵣH⁰ ≈ −261 kJ/mol)
+#   C₄AF + 2 Portlandite + 10 H₂O → C₃AH₆ + C₃FH₆         (ΔᵣH⁰ ≈ −147 kJ/mol)
 
 sp(name) = cs[name]
 
 rxn_C3S = Reaction(
-    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5);
+    OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 103 / 30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 4 / 3);
     symbol = "C₃S hydration",
 )
 rxn_C3S[:rate] = pk_C3S
 
 rxn_C2S = Reaction(
-    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 2.33),
-    OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 0.5);
+    OrderedDict(sp("C2S") => 1.0, sp("H2O@") => 73 / 30),
+    OrderedDict(sp("Jennite") => 1.0, sp("Portlandite") => 1 / 3);
     symbol = "C₂S hydration",
 )
 rxn_C2S[:rate] = pk_C2S
@@ -142,8 +140,8 @@ rxn_C3A = Reaction(
 rxn_C3A[:rate] = pk_C3A
 
 rxn_C4AF = Reaction(
-    OrderedDict(sp("C4AF") => 1.0, sp("H2O@") => 6.0),
-    OrderedDict(sp("C3AH6") => 0.5, sp("C3FH6") => 0.5, sp("Portlandite") => 1.0);
+    OrderedDict(sp("C4AF") => 1.0, sp("Portlandite") => 2.0, sp("H2O@") => 10.0),
+    OrderedDict(sp("C3AH6") => 1.0, sp("C3FH6") => 1.0);
     symbol = "C₄AF hydration",
 )
 rxn_C4AF[:rate] = pk_C4AF
@@ -210,7 +208,7 @@ n_kin = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
 # The position of each clinker phase depends on cs.species; we retrieve
 # it by comparing with kp.idx_kinetic.
 function phase_alpha(cs, kp, sol, n0_kin, n_kin, name)
-    sp_idx = findfirst(sp -> ChemistryLab.phreeqc(ChemistryLab.formula(sp)) == name, cs.species)
+    sp_idx = findfirst(sp -> ChemistryLab.symbol(sp) == name, cs.species)
     pos = findfirst(==(sp_idx), kp.idx_kinetic)
     isnothing(pos) && return fill(NaN, length(sol.t))
     return 1.0 .- n_kin[pos] ./ n0_kin[pos]
