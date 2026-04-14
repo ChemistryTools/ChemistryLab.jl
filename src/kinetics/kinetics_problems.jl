@@ -18,7 +18,8 @@ the moles of kinetic species, and `T` is the temperature (semi-adiabatic only).
 
 # Fields
 
-  - `system`: [`ChemicalSystem`](@ref) with `kinetic_species` declared.
+  - `system`: [`ChemicalSystem`](@ref).
+  - `kinetic_reactions`: vector of [`KineticReaction`](@ref) objects.
   - `initial_state`: [`ChemicalState`](@ref) providing initial moles, T, P.
   - `tspan`: `(t_start, t_end)` time interval [s].
   - `calorimeter`: `nothing`, [`IsothermalCalorimeter`](@ref),
@@ -35,11 +36,13 @@ See also: [`integrate`](@ref), [`KineticsSolver`](@ref).
 """
 struct KineticsProblem{
         CS <: ChemicalSystem,
+        KR <: AbstractVector,
         CAL,
         ES,
         AM <: AbstractActivityModel,
     }
     system::CS
+    kinetic_reactions::KR
     initial_state::ChemicalState
     tspan::Tuple{Float64, Float64}
     calorimeter::CAL
@@ -55,16 +58,25 @@ struct KineticsProblem{
 end
 
 """
-    KineticsProblem(cs, initial_state, tspan;
-        calorimeter=nothing, activity_model=DiluteSolutionModel(),
-        equilibrium_solver=nothing) -> KineticsProblem
+    KineticsProblem(cs, kinetic_reactions, initial_state, tspan; ...) -> KineticsProblem
 
-Construct a [`KineticsProblem`](@ref) from a [`ChemicalSystem`](@ref) that has
-`kinetic_species` declared (reactions and rates auto-generated).
+Construct a [`KineticsProblem`](@ref) from an explicit list of reactions.
+
+Each element of `kinetic_reactions` must be either a [`KineticReaction`](@ref) or
+an [`AbstractReaction`](@ref) with a `:rate` entry in its properties (and optionally
+`:heat_per_mol`). `Reaction` objects are automatically wrapped via
+`KineticReaction(cs, rxn)`.
+
+    KineticsProblem(cs, initial_state, tspan; ...) -> KineticsProblem
+
+Construct from a [`ChemicalSystem`](@ref) that has `kinetic_species` declared
+(reactions and rates auto-generated via the `kinetic_species` keyword).
 
 # Arguments
 
-  - `cs`: [`ChemicalSystem`](@ref) with `.reactions` populated via `kinetic_species`.
+  - `cs`: [`ChemicalSystem`](@ref).
+  - `kinetic_reactions`: `AbstractVector` of [`KineticReaction`](@ref) or
+    [`Reaction`](@ref) objects carrying a `:rate` property.
   - `initial_state`: [`ChemicalState`](@ref) providing initial moles, T, P.
   - `tspan`: `(t0, tf)` time interval. Plain `Real` → [s]; `Quantity` → converted.
   - `calorimeter`: `nothing` (no thermal coupling),
@@ -75,41 +87,33 @@ Construct a [`KineticsProblem`](@ref) from a [`ChemicalSystem`](@ref) that has
 # Examples
 
 ```julia
+# From explicit reactions
+rxn = Reaction(OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
+               OrderedDict(sp("Jennite") => 0.167, sp("Portlandite") => 1.5))
+rxn[:rate] = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
+kp = KineticsProblem(cs, [rxn], state0, (0.0, 7 * 86400.0))
+
+# From kinetic_species in ChemicalSystem
 cs = ChemicalSystem(species, primaries;
     kinetic_species = Dict("C3S" => pk_C3S, "C2S" => pk_C2S))
-state0 = ChemicalState(cs)
-set_quantity!(state0, "C3S", 0.619u"kg")
-kp = KineticsProblem(cs, state0, (0.0, 7 * 86400.0);
-    calorimeter = SemiAdiabaticCalorimeter(Cp=3449.0, T_env=293.15, T0=293.15,
-        heat_loss = ΔT -> 0.3ΔT + 0.003ΔT^2))
+kp = KineticsProblem(cs, state0, (0.0, 7 * 86400.0))
 ```
 """
-function KineticsProblem(
+function _build_kinetics_problem(
         system::ChemicalSystem,
+        kin_rxns::AbstractVector{<:KineticReaction},
         initial_state::ChemicalState,
         tspan::Tuple;
         calorimeter = nothing,
         activity_model::AbstractActivityModel = DiluteSolutionModel(),
         equilibrium_solver = nothing,
     )
-    isempty(system.idx_kinetic) &&
-        throw(
-        ArgumentError(
-            "ChemicalSystem has no kinetic species. " *
-                "Pass kinetic_species to the ChemicalSystem constructor."
-        )
-    )
-
     n_sp = length(system.species)
-    idx_kin = system.idx_kinetic
+    idx_kin = unique!(Int[kr.idx_mineral for kr in kin_rxns])
     idx_eq = setdiff(1:n_sp, idx_kin)
-
-    # Build KineticReaction wrappers from cs.reactions
-    kin_rxns = [KineticReaction(system, rxn) for rxn in system.reactions]
     n_rxn = length(kin_rxns)
 
     # Stoichiometric matrix ν (M × N) — Leal Eq. 44
-    # Each row is the stoich vector for one kinetic reaction.
     ν = zeros(Float64, n_rxn, n_sp)
     for (i, kr) in enumerate(kin_rxns)
         ν[i, :] .= kr.stoich
@@ -123,10 +127,11 @@ function KineticsProblem(
     Ae = Float64.(system.CSM.A[:, idx_eq])
 
     return KineticsProblem{
-        typeof(system), typeof(calorimeter),
+        typeof(system), typeof(kin_rxns), typeof(calorimeter),
         typeof(equilibrium_solver), typeof(activity_model),
     }(
         system,
+        kin_rxns,
         initial_state,
         (Float64(safe_ustrip(us"s", tspan[1])), Float64(safe_ustrip(us"s", tspan[2]))),
         calorimeter,
@@ -135,6 +140,48 @@ function KineticsProblem(
         collect(Int, idx_kin),
         collect(Int, idx_eq),
         ν, νe, νk, Ae,
+    )
+end
+
+# 4-argument form: explicit reaction list (Reaction or KineticReaction)
+function KineticsProblem(
+        system::ChemicalSystem,
+        kinetic_reactions::AbstractVector,
+        initial_state::ChemicalState,
+        tspan::Tuple;
+        calorimeter = nothing,
+        activity_model::AbstractActivityModel = DiluteSolutionModel(),
+        equilibrium_solver = nothing,
+    )
+    kin_rxns = [r isa KineticReaction ? r : KineticReaction(system, r)
+                for r in kinetic_reactions]
+    return _build_kinetics_problem(
+        system, kin_rxns, initial_state, tspan;
+        calorimeter, activity_model, equilibrium_solver,
+    )
+end
+
+# 3-argument form: reactions from ChemicalSystem.reactions (kinetic_species API)
+function KineticsProblem(
+        system::ChemicalSystem,
+        initial_state::ChemicalState,
+        tspan::Tuple;
+        calorimeter = nothing,
+        activity_model::AbstractActivityModel = DiluteSolutionModel(),
+        equilibrium_solver = nothing,
+    )
+    isempty(system.idx_kinetic) &&
+        throw(
+        ArgumentError(
+            "ChemicalSystem has no kinetic species. " *
+                "Pass kinetic_species to the ChemicalSystem constructor, " *
+                "or use the 4-argument form KineticsProblem(cs, reactions, state, tspan)."
+        )
+    )
+    kin_rxns = [KineticReaction(system, rxn) for rxn in system.reactions]
+    return _build_kinetics_problem(
+        system, kin_rxns, initial_state, tspan;
+        calorimeter, activity_model, equilibrium_solver,
     )
 end
 
@@ -207,7 +254,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
 
     cp_fns = [haskey(sp, :Cp⁰) ? sp[:Cp⁰] : nothing for sp in kp.system.species]
 
-    kin_rxns = [KineticReaction(kp.system, rxn) for rxn in kp.system.reactions]
+    kin_rxns = kp.kinetic_reactions
     rates_buf = zeros(Float64, length(kin_rxns))
 
     # State layout sizes

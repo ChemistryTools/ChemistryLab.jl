@@ -101,7 +101,8 @@ Isothermal calorimeter: temperature held constant at `T` [K]; cumulative heat
 
 ```julia
 cal = IsothermalCalorimeter(298.15)
-sol = integrate(kp, ks; calorimeter = cal)
+kp = KineticsProblem(cs, reactions, state0, tspan; calorimeter = cal)
+sol = integrate(kp, ks)
 t, Q    = cumulative_heat(sol, cal)
 t, qdot = heat_flow(sol, cal)
 ```
@@ -169,7 +170,8 @@ cal = SemiAdiabaticCalorimeter(;
     T0        = 293.15u"K",
 )
 
-sol = integrate(kp, ks; calorimeter = cal)
+kp = KineticsProblem(cs, reactions, state0, tspan; calorimeter = cal)
+sol = integrate(kp, ks)
 t, T_vec = temperature_profile(sol, cal)
 t, qdot  = heat_flow(sol, cal)
 ```

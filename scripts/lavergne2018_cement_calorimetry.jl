@@ -180,6 +180,7 @@ kp = KineticsProblem(
     kinetic_reactions,
     state0,
     TSPAN;
+    calorimeter = cal,
     equilibrium_solver = nothing,
 )
 
@@ -187,7 +188,7 @@ kp = KineticsProblem(
 
 @info "Solving (7 days, Rodas5P)..."
 ks = KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-6, abstol = 1.0e-9)
-sol = integrate(kp, ks; calorimeter = cal)
+sol = integrate(kp, ks)
 @info "Done: $(length(sol.t)) accepted steps."
 
 # ── 9. Post-processing ──────────────────────────────────────────────────────
@@ -202,15 +203,15 @@ Q_kJ_vec = Q_J_vec ./ 1000.0
 _, qdot_W = heat_flow(sol, cal)   # [W]
 
 # Degree of hydration per phase
-n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kin_unique]
+n0_kin = [sol.prob.p.n_initial_full[i] for i in kp.idx_kinetic]
 n_kin = [[u[i] for u in sol.u] for i in eachindex(n0_kin)]
 
-# idx_kin_unique lists the kinetic species in order of appearance.
+# idx_kinetic lists the kinetic species in order of appearance.
 # The position of each clinker phase depends on cs.species; we retrieve
-# it by comparing with kp.idx_kin_unique.
+# it by comparing with kp.idx_kinetic.
 function phase_alpha(cs, kp, sol, n0_kin, n_kin, name)
     sp_idx = findfirst(sp -> ChemistryLab.phreeqc(ChemistryLab.formula(sp)) == name, cs.species)
-    pos = findfirst(==(sp_idx), kp.idx_kin_unique)
+    pos = findfirst(==(sp_idx), kp.idx_kinetic)
     isnothing(pos) && return fill(NaN, length(sol.t))
     return 1.0 .- n_kin[pos] ./ n0_kin[pos]
 end
