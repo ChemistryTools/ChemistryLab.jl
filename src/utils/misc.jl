@@ -110,11 +110,15 @@ julia> safe_ustrip(u"m", 3.0)
 function safe_ustrip(unit::UnionAbstractQuantity, q::UnionAbstractQuantity)
     # Avoid comparing dimension types directly (SymbolicDimensions vs Dimensions
     # comparison raises an error in DynamicQuantities ≤ 1.11).  Instead, attempt
-    # the conversion and fall back to plain stripping on any failure.
+    # the direct conversion, then try uconvert + ustrip as fallback.
     try
         return ustrip(unit, q)
     catch
-        return ustrip(q)
+        try
+            return ustrip(uconvert(unit, q))
+        catch
+            return ustrip(q)
+        end
     end
 end
 

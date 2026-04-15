@@ -921,7 +921,10 @@ function set_quantity!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuan
     i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
     state.n[i] = uconvert(us"mol", _entry_to_moles(n, s))
-    class(s) == SC_AQSOLVENT && _auto_seed_neutral_pH!(state)
+    if class(s) == SC_AQSOLVENT
+        _update_derived!(state)     # recompute volumes before auto-seeding
+        _auto_seed_neutral_pH!(state)
+    end
     _update_derived!(state)     # recompute all derived quantities
     return state
 end
