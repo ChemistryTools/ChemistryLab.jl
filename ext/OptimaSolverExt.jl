@@ -77,7 +77,7 @@ end
 _default_optima_solver() = OptimaOptimizer()
 
 function __init__()
-    ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver
+    return ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver
 end
 
 end # module OptimaSolverExt
