@@ -28,75 +28,75 @@ set_quantity!(state, &quot;OH-&quot;, 1e-7u&quot;mol/L&quot; * V.liquid)
 state_eq = equilibrate(state)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ChemicalState{Species, AbstractReaction, DynamicQuantities.Quantity{Float64, DynamicQuantities.SymbolicDimensions{DynamicQuantities.FRInt32}}}
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │             T : 298.15 K                                                                         │
-│             P : 100000.0 bar                                                                     │
+│             P : 1.0 bar                                                                          │
 ╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
 │    # liquid #│             n [mol]│               m [g]│             V [cm³]│           c [mol/L]│
 ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
-│   tot. liquid│             4.56715│           0.0823084│          8.24393e-5│                    │
+│   tot. liquid│             4.56715│             82.3084│             82.4393│                    │
 ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
-│          H2O@│              4.5639│             82.2187│             82.4624│             55360.8│
-│           OH-│          0.00203377│           0.0345884│         -0.00957467│             24.6699│
-│          Ca+2│         0.000847529│           0.0339673│          -0.0156274│             10.2806│
-│         CaOH+│         0.000348591│           0.0198993│          0.00200874│             4.22845│
-│         AlO2-│           8.1689e-6│         0.000481798│          7.73378e-5│           0.0990899│
-│       CaSiO3@│          3.94762e-6│         0.000458555│                 0.0│           0.0478851│
-│        HSiO3-│          4.92113e-7│           3.7937e-5│          2.22724e-6│           0.0059694│
-│      Ca(SO4)@│          3.91258e-7│          5.32635e-5│          1.83916e-6│          0.00474601│
-│         SO4-2│          3.23877e-7│          3.11103e-5│          4.18372e-6│          0.00392867│
-│    Ca(HSiO3)+│          2.98903e-7│          3.50219e-5│         -2.01357e-6│          0.00362573│
-│         FeO2-│          2.89124e-7│          2.53976e-5│          1.30555e-7│          0.00350712│
-│        SiO3-2│          2.76821e-7│          2.10611e-5│                 0.0│          0.00335787│
-│         SiO2@│          1.47571e-7│          8.86652e-6│          2.37048e-6│          0.00179006│
-│        AlO2H@│          1.05619e-7│          6.33582e-6│          1.37404e-6│          0.00128117│
-│        FeO2H@│          9.89221e-8│          8.78933e-6│          7.13161e-7│          0.00119994│
-│      AlSiO5-3│          9.39011e-8│          1.26824e-5│         -3.20501e-6│          0.00113903│
-│            H+│          6.87555e-8│          6.93055e-8│                 0.0│         0.000834013│
-│           O2@│          5.47678e-8│          1.75246e-6│          1.67046e-6│          0.00066434│
-│          FeO+│          4.54479e-8│          3.26516e-6│         -1.90975e-6│         0.000551289│
-│          AlO+│          4.22899e-8│          1.81764e-6│          1.29972e-8│         0.000512982│
-│         HSO4-│           4.0066e-8│          3.88897e-6│          1.39594e-6│         0.000486006│
-│      Si4O10-4│          2.89027e-8│          7.87107e-6│                 0.0│         0.000350594│
-│        AlOH+2│          2.58318e-8│           1.1363e-6│         -7.04564e-8│         0.000313343│
-│         FeOH+│          2.40477e-8│          1.75192e-6│         -4.01906e-7│         0.000291702│
-│        FeOH+2│          2.38753e-8│          1.73936e-6│         -6.05011e-7│          0.00028961│
-│          Fe+2│          2.07896e-8│          1.16099e-6│         -4.70685e-7│          0.00025218│
-│          Al+3│          1.80262e-8│          4.86373e-7│         -8.15554e-7│          0.00021866│
-│      Fe(SO4)@│          1.71644e-8│          2.60729e-6│          2.86967e-8│         0.000208206│
-│      Al(SO4)+│          1.61508e-8│          1.98716e-6│         -9.72125e-8│         0.000195912│
-│          Fe+3│          1.53987e-8│          8.59941e-7│         -5.81921e-7│         0.000186788│
-│      Fe(SO4)+│          1.40688e-8│          2.13707e-6│         -3.70775e-8│         0.000170657│
-│     Al(SO4)2-│          1.37585e-8│           3.0144e-6│          4.28052e-7│         0.000166893│
-│           H2@│          1.34619e-8│          2.71391e-8│          3.40105e-7│         0.000163294│
-│     Fe(SO4)2-│          1.19954e-8│          2.97433e-6│          3.65682e-7│         0.000145505│
-│     Fe(HSO4)+│          1.18284e-8│          1.80867e-6│           2.2245e-7│          0.00014348│
-│         SO3-2│          1.10755e-8│           8.8667e-7│         -4.55866e-8│         0.000134347│
-│    Fe(HSO4)+2│          1.01722e-8│          1.55542e-6│          2.35981e-8│          0.00012339│
-│         HSO3-│          9.79624e-9│          7.94132e-7│          3.22853e-7│          0.00011883│
-│           HS-│          3.56425e-9│          1.17862e-7│          7.20317e-8│          4.32348e-5│
-│          H2S@│          3.41339e-9│          1.16315e-7│          1.19302e-7│          4.14049e-5│
-│        S2O3-2│          3.17902e-9│          3.56423e-7│          8.77165e-8│           3.8562e-5│
+│          H2O@│              4.5639│             82.2187│             82.4624│             55.3608│
+│           OH-│          0.00203377│           0.0345884│         -0.00957467│           0.0246699│
+│          Ca+2│         0.000847529│           0.0339673│          -0.0156274│           0.0102806│
+│         CaOH+│         0.000348591│           0.0198993│          0.00200874│          0.00422845│
+│         AlO2-│           8.1689e-6│         0.000481798│          7.73378e-5│          9.90899e-5│
+│       CaSiO3@│          3.94762e-6│         0.000458555│                 0.0│          4.78851e-5│
+│        HSiO3-│          4.92113e-7│           3.7937e-5│          2.22724e-6│           5.9694e-6│
+│      Ca(SO4)@│          3.91258e-7│          5.32635e-5│          1.83916e-6│          4.74601e-6│
+│         SO4-2│          3.23877e-7│          3.11103e-5│          4.18372e-6│          3.92867e-6│
+│    Ca(HSiO3)+│          2.98903e-7│          3.50219e-5│         -2.01357e-6│          3.62573e-6│
+│         FeO2-│          2.89124e-7│          2.53976e-5│          1.30555e-7│          3.50712e-6│
+│        SiO3-2│          2.76821e-7│          2.10611e-5│                 0.0│          3.35787e-6│
+│         SiO2@│          1.47571e-7│          8.86652e-6│          2.37048e-6│          1.79006e-6│
+│        AlO2H@│          1.05619e-7│          6.33582e-6│          1.37404e-6│          1.28117e-6│
+│        FeO2H@│          9.89221e-8│          8.78933e-6│          7.13161e-7│          1.19994e-6│
+│      AlSiO5-3│          9.39011e-8│          1.26824e-5│         -3.20501e-6│          1.13903e-6│
+│            H+│          6.87555e-8│          6.93055e-8│                 0.0│          8.34013e-7│
+│           O2@│          5.47678e-8│          1.75246e-6│          1.67047e-6│          6.64341e-7│
+│          FeO+│          4.54479e-8│          3.26516e-6│         -1.90975e-6│          5.51289e-7│
+│          AlO+│          4.22899e-8│          1.81764e-6│          1.29972e-8│          5.12982e-7│
+│         HSO4-│           4.0066e-8│          3.88897e-6│          1.39594e-6│          4.86006e-7│
+│      Si4O10-4│          2.89027e-8│          7.87107e-6│                 0.0│          3.50594e-7│
+│        AlOH+2│          2.58318e-8│           1.1363e-6│         -7.04564e-8│          3.13343e-7│
+│         FeOH+│          2.40477e-8│          1.75192e-6│         -4.01906e-7│          2.91702e-7│
+│        FeOH+2│          2.38753e-8│          1.73936e-6│         -6.05011e-7│           2.8961e-7│
+│          Fe+2│          2.07896e-8│          1.16099e-6│         -4.70685e-7│           2.5218e-7│
+│          Al+3│          1.80262e-8│          4.86373e-7│         -8.15554e-7│           2.1866e-7│
+│      Fe(SO4)@│          1.71644e-8│          2.60728e-6│          2.86967e-8│          2.08206e-7│
+│      Al(SO4)+│          1.61508e-8│          1.98716e-6│         -9.72125e-8│          1.95912e-7│
+│          Fe+3│          1.53987e-8│          8.59941e-7│         -5.81921e-7│          1.86788e-7│
+│      Fe(SO4)+│          1.40688e-8│          2.13707e-6│         -3.70775e-8│          1.70657e-7│
+│     Al(SO4)2-│          1.37585e-8│           3.0144e-6│          4.28052e-7│          1.66893e-7│
+│           H2@│          1.34619e-8│          2.71391e-8│          3.40105e-7│          1.63294e-7│
+│     Fe(SO4)2-│          1.19954e-8│          2.97433e-6│          3.65682e-7│          1.45505e-7│
+│     Fe(HSO4)+│          1.18284e-8│          1.80867e-6│           2.2245e-7│           1.4348e-7│
+│         SO3-2│          1.10755e-8│           8.8667e-7│         -4.55866e-8│          1.34347e-7│
+│    Fe(HSO4)+2│          1.01722e-8│          1.55542e-6│          2.35981e-8│           1.2339e-7│
+│         HSO3-│          9.79624e-9│          7.94132e-7│          3.22853e-7│           1.1883e-7│
+│           HS-│          3.56424e-9│          1.17862e-7│          7.20317e-8│          4.32348e-8│
+│          H2S@│          3.41339e-9│          1.16315e-7│          1.19302e-7│          4.14049e-8│
+│        S2O3-2│          3.17902e-9│          3.56423e-7│          8.77165e-8│           3.8562e-8│
 ╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
 │     # solid #│             n [mol]│               m [g]│             V [cm³]│                    │
 ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
-│    tot. solid│              6.0689│            0.917692│         0.000387255│                    │
+│    tot. solid│              6.0689│             917.692│             387.255│                    │
 ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
 │   Portlandite│              2.8911│             214.207│             95.5797│                    │
 │       Jennite│             2.85524│             546.425│             223.851│                    │
 │monosulphate12│            0.118055│             73.4901│              36.609│                    │
 │         C3FH6│             0.10755│             46.8926│             16.7011│                    │
 │         C3AH6│           0.0969555│             36.6764│             14.5144│                    │
-│        C4FH13│          5.68512e-7│         0.000351448│          0.00016256│                    │
+│        C4FH13│          5.68515e-7│          0.00035145│         0.000162561│                    │
 │           C2S│          2.62224e-7│          4.51646e-5│          1.35806e-5│                    │
-│    ettringite│          2.37129e-7│         0.000297615│         0.000167658│                    │
+│    ettringite│          2.37131e-7│         0.000297616│         0.000167659│                    │
 │            Gp│          1.04572e-7│          1.80036e-5│           7.8105e-6│                    │
-│           Anh│          9.78941e-8│          1.33267e-5│          4.49726e-6│                    │
+│           Anh│          9.78947e-8│          1.33268e-5│          4.49728e-6│                    │
 │           C3S│          3.17065e-8│          7.23903e-6│          2.32028e-6│                    │
 │          C4AF│           1.3876e-8│           6.7431e-6│          1.80668e-6│                    │
 │           C3A│          1.22265e-8│          3.30349e-6│          1.09081e-6│                    │
 ╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
 │     # TOTAL #│             n [mol]│               m [g]│             V [cm³]│                    │
 ├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
-│              │              10.636│                 1.0│         0.000469694│                    │
+│              │              10.636│              1000.0│             469.694│                    │
 ╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
 │            pH : 12.3923                                                                          │
 │           pOH : 1.6078                                                                           │
@@ -161,4 +161,4 @@ function ChemistryLab.activity_model(::ChemicalSystem, ::MyModel)
     return (_, _) -&gt; begin
         # compute and return log-activities
     end
-end</code></pre><p>Pass your model to <code>equilibrate</code> or <code>EquilibriumSolver</code>:</p><pre><code class="language-julia hljs">state_eq = equilibrate(state; model=MyModel(...))</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../co2_carbonate_system/">« CO₂ Dissolution and the Carbonate System</a><a class="docs-footer-nextpage" href="../cement_carbonation/">Carbonation of a Cement Paste »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 15 April 2026 01:42">Wednesday 15 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><p>Pass your model to <code>equilibrate</code> or <code>EquilibriumSolver</code>:</p><pre><code class="language-julia hljs">state_eq = equilibrate(state; model=MyModel(...))</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../co2_carbonate_system/">« CO₂ Dissolution and the Carbonate System</a><a class="docs-footer-nextpage" href="../cement_carbonation/">Carbonation of a Cement Paste »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 15 April 2026 02:12">Wednesday 15 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
