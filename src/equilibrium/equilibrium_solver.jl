@@ -117,38 +117,80 @@ function _build_n0(state::ChemicalState)
     return ustrip.(us"mol", state.n)    # no Float64 cast — type follows eltype(state.n)
 end
 
-# ── equilibrate(ChemicalState) ────────────────────────────────────────────────
+# ── Default solver factory ────────────────────────────────────────────────────
 
 """
-    equilibrate(state::ChemicalState;
-                model          = DiluteSolutionModel(),
-                solver         = IpoptOptimizer(...),
-                variable_space = Val(:linear),
-                ϵ              = 1e-16,
-                kwargs...) -> ChemicalState
+    _DEFAULT_SOLVER_FACTORY
 
-Compute the chemical equilibrium state from an initial `ChemicalState`.
+Internal `Ref{Union{Nothing, Function}}` — populated by extension `__init__`
+functions to register a default solver factory.
 
-Requires `Optimization` and `OptimizationIpopt` to be loaded:
+  - `OptimizationIpoptExt.__init__`: registers only if nothing is set (low priority).
+  - `OptimaSolverExt.__init__`: always overrides (high priority).
+
+Result: OptimaSolver wins whenever loaded, regardless of load order.
+"""
+const _DEFAULT_SOLVER_FACTORY = Ref{Union{Nothing, Function}}(nothing)
+
+# ── equilibrate ──────────────────────────────────────────────────────────────
+
+"""
+    equilibrate(state::ChemicalState, solver; model=..., variable_space=..., ϵ=...) -> ChemicalState
+    equilibrate(state::ChemicalState; kwargs...) -> ChemicalState
+
+Compute the chemical equilibrium state by minimising the Gibbs free energy.
+
+**Two-argument form** (solver explicit, always available once an extension is loaded):
 
 ```julia
 using Optimization, OptimizationIpopt
-using ChemistryLab
+state_eq = equilibrate(state, IpoptOptimizer())
+
+using OptimaSolver
+state_eq = equilibrate(state, OptimaOptimizer())
+```
+
+**One-argument form** (uses the default solver of the loaded extension):
+
+```julia
 state_eq = equilibrate(state)
 ```
+
+When both extensions are loaded, `OptimaSolverExt` always takes priority.
 
 # Arguments
 
   - `state`: initial `ChemicalState` — defines the system, T, P, and composition.
+  - `solver`: any SciML-compatible solver (e.g. `IpoptOptimizer()`, `OptimaOptimizer()`).
   - `model`: activity model (default: `DiluteSolutionModel()`).
-  - `solver`: SciML-compatible solver (default: `IpoptOptimizer` with tight tolerances).
   - `variable_space`: `Val(:linear)` (default) or `Val(:log)`.
-  - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
-  - `kwargs...`: additional keyword arguments forwarded to the solver.
+  - `ϵ`: regularisation floor for mole amounts (default: `1e-16`).
+  - `kwargs...`: forwarded to the underlying solver.
 """
-function equilibrate(args...; kwargs...)
-    return error(
-        "equilibrate requires Optimization.jl and OptimizationIpopt.jl to be loaded.\n" *
-            "Add `using Optimization, OptimizationIpopt` before calling this function.",
+function equilibrate(
+        state::ChemicalState,
+        solver;
+        model::AbstractActivityModel = DiluteSolutionModel(),
+        variable_space::Val = Val(:linear),
+        ϵ::Float64 = 1.0e-16,
+        kwargs...,
     )
+    esolver = EquilibriumSolver(
+        state.system, model, solver;
+        variable_space = variable_space,
+        kwargs...,
+    )
+    return SciMLBase.solve(esolver, state; ϵ = ϵ)
+end
+
+function equilibrate(state::ChemicalState; kwargs...)
+    f = _DEFAULT_SOLVER_FACTORY[]
+    if isnothing(f)
+        error(
+            "equilibrate without explicit solver requires an extension.\n" *
+                "Add `using Optimization, OptimizationIpopt` or `using OptimaSolver`, " *
+                "or call `equilibrate(state, solver; ...)` explicitly.",
+        )
+    end
+    return equilibrate(state, f(); kwargs...)
 end

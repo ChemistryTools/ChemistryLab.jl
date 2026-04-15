@@ -144,7 +144,7 @@ function SciMLBase.solve(
     return state_eq
 end
 
-# ── equilibrate(ChemicalState) — high-level convenience ──────────────────────
+# ── Default Ipopt solver factory ──────────────────────────────────────────────
 
 function _default_ipopt_solver()
     return IpoptOptimizer(
@@ -156,42 +156,12 @@ function _default_ipopt_solver()
     )
 end
 
-"""
-    ChemistryLab.equilibrate(state::ChemicalState;
-                model          = DiluteSolutionModel(),
-                solver         = IpoptOptimizer(...),
-                variable_space = Val(:linear),
-                ϵ              = 1e-16,
-                kwargs...) -> ChemicalState
+# ── __init__: register default solver (low priority) ─────────────────────────
 
-Compute the chemical equilibrium state from an initial `ChemicalState`.
-
-High-level convenience wrapper around `EquilibriumSolver` and `solve` with sensible
-defaults. Requires `Optimization` and `OptimizationIpopt` to be loaded.
-
-# Arguments
-
-  - `state`: initial `ChemicalState` — defines the system, T, P, and composition.
-  - `model`: activity model (default: `DiluteSolutionModel()`).
-  - `solver`: SciML-compatible solver (default: `IpoptOptimizer` with tight tolerances).
-  - `variable_space`: `Val(:linear)` (default) or `Val(:log)`.
-  - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
-  - `kwargs...`: additional keyword arguments forwarded to the solver.
-"""
-function ChemistryLab.equilibrate(
-        state::ChemicalState;
-        model::AbstractActivityModel = DiluteSolutionModel(),
-        solver = _default_ipopt_solver(),
-        variable_space::Val = Val(:linear),
-        ϵ::Float64 = 1.0e-16,
-        kwargs...,
-    )
-    esolver = EquilibriumSolver(
-        state.system, model, solver;
-        variable_space = variable_space,
-        kwargs...,
-    )
-    return SciMLBase.solve(esolver, state; ϵ = ϵ)
+function __init__()
+    if isnothing(ChemistryLab._DEFAULT_SOLVER_FACTORY[])
+        ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_ipopt_solver
+    end
 end
 
 end # module OptimizationIpoptExt

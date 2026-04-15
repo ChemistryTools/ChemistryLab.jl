@@ -72,4 +72,12 @@ function SciMLBase.solve(
     return state_eq
 end
 
+# ── __init__: register default solver (high priority — always overrides) ──────
+
+_default_optima_solver() = OptimaOptimizer()
+
+function __init__()
+    ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver
+end
+
 end # module OptimaSolverExt

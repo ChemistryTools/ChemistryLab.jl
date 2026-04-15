@@ -2,7 +2,7 @@
 
 This tutorial covers the kinetics module of ChemistryLab.jl, which implements
 mineral dissolution and precipitation kinetics coupled to fast aqueous speciation,
-following the methodology of Leal et al. (2017).
+following the methodology of [Leal2017](@cite).
 
 ## Background
 
@@ -60,7 +60,7 @@ Rate constants are built as [`NumericFunc`](@ref) objects using the Arrhenius fa
 ```julia
 using ChemistryLab, ForwardDiff
 
-# Arrhenius rate constant for calcite acid dissolution (Palandri & Kharaka 2004)
+# Arrhenius rate constant for calcite acid dissolution ([PalandriKharaka2004](@cite))
 k_acid = arrhenius_rate_constant(5.012e-1, 14400.0)   # k₀ [mol/(m²s)], Ea [J/mol]
 
 k_acid(; T = 298.15)    # → 0.5012 mol/(m²s)
@@ -69,9 +69,9 @@ k_acid(; T = 310.0)     # → higher value at elevated T
 ForwardDiff.derivative(T -> k_acid(; T = T), 298.15)  # AD-compatible
 ```
 
-## Cement clinker hydration: Parrot–Killoh model
+## Cement clinker hydration: [ParrotKilloh1984](@cite) model
 
-[`parrot_killoh`](@ref) is the factory for the Parrot & Killoh (1984) kinetic model.
+[`parrot_killoh`](@ref) is the factory for the [ParrotKilloh1984](@cite) kinetic model.
 It returns a [`KineticFunc`](@ref) that uses the `StateView`-based calling convention
 and is fully AD-compatible.
 
@@ -84,7 +84,7 @@ using ChemistryLab, DynamicQuantities
 
 pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S")    # → KineticFunc
 
-# Custom α_max (Powers 1948 limit for w/c = 0.40)
+# Custom α_max ([Powers1948](@cite) limit for w/c = 0.40)
 WC    = 0.40
 α_max = min(1.0, WC / 0.42)
 pk_C3S_wc = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max = α_max)
@@ -246,7 +246,7 @@ t, Q    = cumulative_heat(sol, cal)   # Q(t) [J]
 t, qdot = heat_flow(sol, cal)         # q̇(t) [W]
 ```
 
-## Semi-adiabatic calorimetry (Lavergne et al. 2018)
+## Semi-adiabatic calorimetry [Lavergne2018](@cite)
 
 The semi-adiabatic calorimeter solves:
 
@@ -256,14 +256,14 @@ The semi-adiabatic calorimeter solves:
 
 The denominator uses the **variable total heat capacity** `Cp_total = Cp + Σᵢ nᵢ Cp°ᵢ(T)`,
 where `Cp°ᵢ(T)` are the molar heat capacities from the thermodynamic database
-(Lavergne et al. 2018).
+([Lavergne2018](@cite)).
 
 [`SemiAdiabaticCalorimeter`](@ref) bundles hardware parameters and initial temperature:
 
 ```julia
 using ChemistryLab, DynamicQuantities
 
-# Quadratic heat loss (Lavergne et al. 2018: φ = a·ΔT + b·ΔT²)
+# Quadratic heat loss ([Lavergne2018](@cite): φ = a·ΔT + b·ΔT²)
 cal = SemiAdiabaticCalorimeter(;
     Cp        = (1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0) * u"J/K",   # ≈ 3449 J/K
     T_env     = 293.15u"K",
@@ -313,7 +313,7 @@ for (name, frac) in pairs(COMPOSITION)
 end
 set_quantity!(state0, "H2O@", WC * u"kg")
 
-# ── 3. Parrot–Killoh rate functions with Powers α_max ───────────────────────
+# ── 3. [ParrotKilloh1984](@cite) rate functions with Powers α_max ───────────────────────
 α_max   = min(1.0, WC / 0.42)
 pk_C3S  = parrot_killoh(PK_PARAMS_C3S,  "C3S";  α_max)
 pk_C2S  = parrot_killoh(PK_PARAMS_C2S,  "C2S";  α_max)
@@ -321,7 +321,7 @@ pk_C3A  = parrot_killoh(PK_PARAMS_C3A,  "C3A";  α_max)
 pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
 
 # ── 4. Kinetic reactions (reaction-centric) ─────────────────────────────────
-# Reactions follow Lothenbach & Winnefeld (2006) — Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O
+# Reactions follow [LothenbachWinnefeld2006](@cite) — Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O
 # Balanced hydration reactions — ΔᵣH⁰ computed from species ΔₐH⁰.
 sp(name) = cs[name]
 
@@ -392,7 +392,7 @@ end
 
 !!! tip "Choosing `equilibrium_solver`"
     Setting `equilibrium_solver = nothing` skips the Gibbs minimization at each ODE
-    step, which is appropriate for the Parrot–Killoh model (it does not use
+    step, which is appropriate for the [ParrotKilloh1984](@cite) model (it does not use
     solution chemistry).  For `transition_state` models, pass an `EquilibriumSolver`
     to re-speciate the aqueous phase at every ODE evaluation.
 
@@ -407,7 +407,7 @@ end
 
 ## Multiple kinetic reactions per mineral
 
-Following Leal et al. (2017), **reactions** — not species — carry kinetics.
+Following [Leal2017](@cite), **reactions** — not species — carry kinetics.
 A single mineral can appear in multiple `KineticReaction` objects
 (e.g. C₃A via an early ettringite pathway and a late monosulphate pathway).
 The ODE state contains **one entry per unique mineral**; contributions accumulate
@@ -425,8 +425,8 @@ kp = KineticsProblem(
 # length(build_u0(kp)) == 4  (one entry per unique mineral: C3S, C2S, C3A, C4AF)
 ```
 
-!!! note "Species classification (Leal et al. 2015)"
-    `KineticsProblem` automatically applies the Leal et al. 2015 classification:
+!!! note "Species classification [Leal2017](@cite)"
+    `KineticsProblem` automatically applies the [Leal2017](@cite) classification:
     - **Kinetic species** (tracked in ODE state `u`): `AS_CRYSTAL` species with non-zero
       stoichiometry in any kinetic reaction.
     - **Equilibrium species**: aqueous species re-equilibrated by `equilibrium_solver`.
@@ -450,28 +450,3 @@ end
 
 dn_dK₁ = ForwardDiff.derivative(n_C3S_final, safe_ustrip(us"1/s", PK_PARAMS_C3S.K₁))
 ```
-
-## References
-
-- Leal, A.M.M., Kulik, D.A., Smith, W.R., Saar, M.O. (2017).
-  *An overview of computational methods for chemical equilibrium and kinetic
-  calculations for geochemical and reactive transport modeling.*
-  Pure and Applied Chemistry **89**, 597–643.
-  <https://doi.org/10.1515/pac-2016-1107>
-
-- Palandri, J.L. & Kharaka, Y.K. (2004).
-  *A compilation of rate parameters of water-mineral interaction kinetics.*
-  USGS Open-File Report 2004-1068.
-
-- Parrot, L.J. & Killoh, D.C. (1984).
-  *Prediction of cement hydration.*
-  British Ceramic Proceedings **35**, 41–53.
-
-- Lavergne, F., Ben Fraj, A., Bayane, I., Barthélémy, J.-F. (2018).
-  *Estimating the mechanical properties of hydrating blended cementitious materials.*
-  Cement and Concrete Research **104**, 37–60.
-  <https://doi.org/10.1016/j.cemconres.2017.11.007>
-
-- Schindler, A.K. & Folliard, K.J. (2005).
-  *Heat of hydration models for cementitious materials.*
-  ACI Materials Journal **102**, 24–33.

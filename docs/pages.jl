@@ -24,6 +24,7 @@ pages = [
         "examples/simplified_clinker_dissolution.md",
         # "examples/cement_wc_ratio.md",
         "examples/cement_carbonation.md",
+        "examples/cement_clinker_kinetics.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",
@@ -41,4 +42,5 @@ pages = [
         "Kinetics" => "api/kinetics.md",
         "Utilities" => "api/utils.md",
     ],
+    "References" => "references.md",
 ]

@@ -47,6 +47,51 @@ state_eq = equilibrate(state)
 
 ---
 
+## Choosing a solver
+
+ChemistryLab provides two solver extensions. Load whichever fits your workflow:
+
+| Extension packages | Default solver | When to use |
+|---|---|---|
+| `Optimization`, `OptimizationIpopt` | `IpoptOptimizer` | general-purpose, robust |
+| `OptimaSolver` | `OptimaOptimizer` | preferred when available |
+
+When both are loaded, `OptimaSolver` always takes priority for `equilibrate(state)`.
+
+### Explicit solver (always works)
+
+Pass the solver as the **second positional argument**:
+
+```julia
+using Optimization, OptimizationIpopt
+state_eq = equilibrate(state, IpoptOptimizer())
+
+using OptimaSolver
+state_eq = equilibrate(state, OptimaOptimizer())
+```
+
+### Default shortcut
+
+When only one extension is loaded:
+
+```julia
+using Optimization, OptimizationIpopt
+state_eq = equilibrate(state)   # → IpoptOptimizer
+
+using OptimaSolver
+state_eq = equilibrate(state)   # → OptimaOptimizer
+```
+
+With both loaded, `OptimaSolver` always wins:
+
+```julia
+using Optimization, OptimizationIpopt
+using OptimaSolver
+state_eq = equilibrate(state)   # → OptimaOptimizer (priority)
+```
+
+---
+
 ## Inspecting the equilibrium state
 
 The returned [`ChemicalState`](@ref) carries all derived thermodynamic quantities:

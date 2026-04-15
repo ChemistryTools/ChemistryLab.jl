@@ -255,6 +255,7 @@ module ChemistryLab
         pressure,
         set_temperature!,
         set_pressure!,
+        set_neutral_pH!,
         moles,
         set_quantity!,
         rescale!,
@@ -289,7 +290,8 @@ module ChemistryLab
     export EquilibriumProblem
 
     export EquilibriumSolver,
-        equilibrate
+        equilibrate,
+        _DEFAULT_SOLVER_FACTORY
 
     export StateView,
         KineticFunc,

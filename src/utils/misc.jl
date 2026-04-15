@@ -152,6 +152,18 @@ safe_uconvert(qout::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, 
 safe_uconvert(::UnionAbstractQuantity{<:Any, <:AbstractSymbolicDimensions}, q) = q
 
 """
+    _ensure_unit(unit, x::Real) -> Quantity
+    _ensure_unit(unit, x) -> Quantity
+
+Ensure a value is a `Quantity` with the given `unit`.
+
+  - Plain `Real` → interpreted as SI, wrapped: `x * unit`.
+  - `Quantity` → converted to `unit` via [`safe_uconvert`](@ref).
+"""
+_ensure_unit(unit, x::Real) = x * unit
+_ensure_unit(unit, x) = safe_uconvert(unit, x)
+
+"""
     safe_uparse(x::AbstractString) -> AbstractQuantity
     safe_uparse(x::AbstractQuantity) -> AbstractQuantity
 

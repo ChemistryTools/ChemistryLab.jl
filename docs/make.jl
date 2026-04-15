@@ -1,9 +1,14 @@
 using ChemistryLab
 using Optimization, OptimizationIpopt  # load extension OptimizationIpoptExt
+using OptimaSolver                     # load extension OptimaSolverExt
+using OrdinaryDiffEq                  # load extension KineticsOrdinaryDiffEqExt
 using Documenter
+using DocumenterCitations
 using PrettyTables
 
 include("pages.jl")
+
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style = :authoryear)
 
 DocMeta.setdocmeta!(
     ChemistryLab,
@@ -34,6 +39,7 @@ makedocs(;
         size_threshold_warn=200_000,
     ),
     pages=pages,
+    plugins=[bib],
     warnonly=[:docs_block],
     draft=false,
 )

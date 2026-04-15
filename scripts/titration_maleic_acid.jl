@@ -1,99 +1,116 @@
+# =============================================================================
+# titration_maleic_acid.jl
+#
+# Titration curve of maleic acid (diprotic, 0.1 M, 100 mL) by NaOH (2 M).
+# Two equivalence points at ~5 mL and ~10 mL; pKa₁ = 1.92, pKa₂ = 6.27.
+#
+# Solver: OptimaSolver (default) or Ipopt — selected via USE_OPTIMA flag.
+#
+# Usage:
+#   julia --project scripts/titration_maleic_acid.jl
+# =============================================================================
+
 using Pkg
 Pkg.activate(@__DIR__)
 
 using ChemistryLab
 using Optimization, OptimizationIpopt
+using OptimaSolver
 using DynamicQuantities
 using ProgressMeter
+
+# ── Solver selection ─────────────────────────────────────────���───────────────
+
+const USE_OPTIMA = true
+
+# ── Species and chemical system ──────────────────────────────────────────────
 
 substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
 substances_org = build_species("data/slop98-organic-thermofun.json")
 
-aq_species = speciation(substances_inorg, split("H2O@ Na+ NaOH@ H+ OH-"); aggregate_state = [AS_AQUEOUS])
-ace_species = speciation(substances_org, split("MalH2@ MalH- Mal-2"); aggregate_state = [AS_AQUEOUS])
-species = unique(s -> symbol(s), vcat(aq_species, ace_species))
-
-dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
+dict_all_species = merge(
+    Dict(symbol(s) => s for s in substances_inorg),
+    Dict(symbol(s) => s for s in substances_org),
+)
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 
-using OptimizationIpopt
+# ── Equilibrium solver ───────────────────────────────────────────────────────
 
-solver = EquilibriumSolver(
-    cs,
-    DiluteSolutionModel(),
-    IpoptOptimizer(
-        # acceptable_tol        = 1e-10,
-        # dual_inf_tol          = 1e-10,
-        # acceptable_iter       = 1000,
-        # constr_viol_tol       = 1e-10,
-        mu_strategy = "adaptive",
-        # warm_start_init_point = "no",
-    );
-    variable_space = Val(:linear),
-    abstol = 1.0e-8,
-    reltol = 1.0e-8,
-    maxiters = 100,
-    verbose = 0,
-)
+solver = if USE_OPTIMA
+    EquilibriumSolver(
+        cs, DiluteSolutionModel(),
+        OptimaOptimizer(tol = 1.0e-12, warm_start = true);
+        variable_space = Val(:linear),
+    )
+else
+    EquilibriumSolver(
+        cs, DiluteSolutionModel(),
+        IpoptOptimizer(mu_strategy = "adaptive");
+        variable_space = Val(:linear),
+        abstol = 1.0e-8, reltol = 1.0e-8, maxiters = 100, verbose = 0,
+    )
+end
 
-V_acid = 100.0e-3   # volume of acid solution, L
-c_acid = 0.1     # maleic acid concentration, mol/L
-c_base = 2     # NaOH concentration, mol/L
-n_H2A = V_acid * c_acid   # total moles of H₂A = 2.5 mmol
+# ── Titration parameters ─────────────────────────────────────────────────────
 
-volumes_NaOH = range(0, 15; length = 201)   # mL
+const V_acid = 100.0e-3    # acid solution volume [L]
+const c_acid = 0.1          # maleic acid concentration [mol/L]
+const c_base = 2.0          # NaOH concentration [mol/L]
+const n_H2A = V_acid * c_acid   # total moles of H₂A
+
+const V_eq1 = n_H2A / c_base * 1.0e3       # first equivalence point [mL]
+const V_eq2 = 2 * n_H2A / c_base * 1.0e3   # second equivalence point [mL]
+
+# ── Titration loop ───────────────────────────────────────────────────────────
+
+volumes_NaOH = range(0, 15; length = 201)   # [mL]
 pH_vals = Float64[]
 
 s = ChemicalState(cs)
 @showprogress for V_mL in volumes_NaOH
-    # @show V_mL
-    V_NaOH = V_mL * 1.0e-3           # L
-    n_NaOH = c_base * V_NaOH        # mol of NaOH (= mol of Na⁺ added)
-    V_total = V_acid + V_NaOH        # total volume, L
+    V_NaOH = V_mL * 1.0e-3        # [L]
+    n_NaOH = c_base * V_NaOH      # [mol] NaOH added
+    V_total = V_acid + V_NaOH     # total volume [L]
 
     set_quantity!(s, "MalH2@", n_H2A * u"mol")
     set_quantity!(s, "NaOH@", n_NaOH * u"mol")
     set_quantity!(s, "H2O@", V_total * u"kg")
-
-    V_liq = volume(s).liquid
-    set_quantity!(s, "H+", 1.0e-7u"mol/L" * V_liq)   # pH-neutral seed
-    set_quantity!(s, "OH-", 1.0e-7u"mol/L" * V_liq)
+    set_neutral_pH!(s)
 
     s_eq = solve(solver, s)
     push!(pH_vals, pH(s_eq))
 end
 
-println("pH at V = 0 mL (pure acid)        : ", round(pH_vals[1], digits = 2))
-println("pH at V = 2.5 mL (½ PE₁, ≈ pKa₁): ", round(pH_vals[6], digits = 2))
-println("pH at V = 5 mL  (PE₁)            : ", round(pH_vals[11], digits = 2))
-println("pH at V = 7.5 mL (½ PE₂, ≈ pKa₂): ", round(pH_vals[16], digits = 2))
-println("pH at V = 10 mL  (PE₂)            : ", round(pH_vals[21], digits = 2))
-println("pH at V = 15 mL  (excess NaOH)    : ", round(pH_vals[26], digits = 2))
+# ── Results ──────────────────────────────────────────────────────────────────
 
-using Plots #hide
+println("pH at V = 0 mL   (pure acid)         : ", round(pH_vals[1], digits = 2))
+println("pH at V = 2.5 mL (½ PE₁, ≈ pKa₁)   : ", round(pH_vals[6], digits = 2))
+println("pH at V = 5 mL   (PE₁)              : ", round(pH_vals[11], digits = 2))
+println("pH at V = 7.5 mL (½ PE₂, ≈ pKa₂)   : ", round(pH_vals[16], digits = 2))
+println("pH at V = 10 mL  (PE₂)              : ", round(pH_vals[21], digits = 2))
+println("pH at V = 15 mL  (excess NaOH)       : ", round(pH_vals[26], digits = 2))
+
+# ── Plot ─────────────────────────────────────────────────────────────────────
+
+using Plots
+gr()
 
 pKa1 = 1.92
 pKa2 = 6.27
-V_eq1 = n_H2A / c_base * 1.0e3    # first equivalence point  = 25 mL
-V_eq2 = 2 * n_H2A / c_base * 1.0e3  # second equivalence point = 50 mL
 
+solver_name = USE_OPTIMA ? "OptimaSolver" : "Ipopt"
 p = plot(
     collect(volumes_NaOH), pH_vals;
-    xlabel = "V(NaOH) (mL)",
-    ylabel = "pH",
-    label = "Titration curve",
-    linewidth = 2,
-    marker = :circle,
-    markersize = 3,
-    color = :steelblue,
+    xlabel = "V(NaOH) [mL]", ylabel = "pH",
+    label = "Titration curve ($solver_name)",
+    lw = 2, marker = :circle, markersize = 3, color = :steelblue,
     title = "Titration of maleic acid (0.1 M) by NaOH (2 M)",
-    ylims = (0, 14),
-    legend = :topleft,
+    ylims = (0, 14), legend = :topleft,
 )
-vline!(p, [V_eq1]; linestyle = :dash, color = :red, label = "PE₁ ($(round(V_eq1, digits = 1)) mL)")
-vline!(p, [V_eq2]; linestyle = :dash, color = :blue, label = "PE₂ ($(round(V_eq2, digits = 1)) mL)")
-hline!(p, [pKa1]; linestyle = :dot, color = :orange, label = "pKₐ₁ = $pKa1")
-hline!(p, [pKa2]; linestyle = :dot, color = :green, label = "pKₐ₂ = $pKa2")
-p
+vline!(p, [V_eq1]; ls = :dash, color = :red, label = "PE₁ ($(round(V_eq1, digits=1)) mL)")
+vline!(p, [V_eq2]; ls = :dash, color = :blue, label = "PE₂ ($(round(V_eq2, digits=1)) mL)")
+hline!(p, [pKa1]; ls = :dot, color = :orange, label = "pKₐ₁ = $pKa1")
+hline!(p, [pKa2]; ls = :dot, color = :green, label = "pKₐ₂ = $pKa2")
+display(p)

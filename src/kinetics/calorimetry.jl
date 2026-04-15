@@ -14,13 +14,7 @@ Concrete subtypes:
 """
 abstract type AbstractCalorimeter end
 
-# ── Unit helpers ─────────────────────────────────────────────────────────────
-
-# Ensure a value is stored as a Quantity with the given unit.
-# Plain Real → assumed SI, wrapped with `unit`.
-# Quantity   → converted to `unit`.
-_ensure_unit(unit, x::Real) = x * unit
-_ensure_unit(unit, x) = safe_uconvert(unit, x)
+# _ensure_unit is defined in utils/misc.jl (imported at module level)
 
 # ── Heat-rate from kinetic reactions ─────────────────────────────────────────
 

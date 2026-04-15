@@ -1,5 +1,5 @@
 # =============================================================================
-# lavergne2018_cement_calorimetry.jl
+# opc_semiadiabatic_calorimetry.jl
 #
 # Simulation of the heat release of a CEM I paste in a semi-adiabatic
 # calorimeter using the method of Lavergne et al. (2018).
@@ -25,8 +25,8 @@
 #   Br. Ceram. Proc. 35, 41-53.
 #
 # Usage:
-#   julia --project scripts/lavergne2018_cement_calorimetry.jl
-#   or from the REPL: include("scripts/lavergne2018_cement_calorimetry.jl")
+#   julia --project scripts/opc_semiadiabatic_calorimetry.jl
+#   or from the REPL: include("scripts/opc_semiadiabatic_calorimetry.jl")
 # =============================================================================
 
 using Pkg

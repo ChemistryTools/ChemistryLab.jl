@@ -221,8 +221,7 @@ cs   = ChemicalSystem([H2O, Hp, OHm], [H2O, Hp])
 
 state = ChemicalState(cs)
 set_quantity!(state, "H2O", 1.0u"kg")
-set_quantity!(state, "H+",  1e-7u"mol/L" * volume(state).liquid)   # pH 7
-set_quantity!(state, "OH-", 1e-7u"mol/L" * volume(state).liquid)
+# H⁺ and OH⁻ are auto-seeded at neutral pH — no manual seeding needed
 
 pH(state)
 ```
@@ -230,6 +229,17 @@ pH(state)
 ```@example cst_derived
 pOH(state)
 ```
+
+!!! info "Automatic H⁺/OH⁻ seeding"
+    When water (the aqueous solvent, `SC_AQSOLVENT`) is added to a `ChemicalState`
+    that contains H⁺ and OH⁻ species, ChemistryLab automatically seeds them at
+    the neutral pH concentration ``c = 10^{-pK_w/2}`` based on the water
+    autoprotolysis constant ``K_w(T, P)``. This ensures a chemically consistent
+    initial state without manual intervention.
+
+    The auto-seeding only triggers when **both** H⁺ and OH⁻ are at zero — if you
+    set them explicitly (e.g. to impose a specific initial pH), your values are
+    preserved.
 
 ```@example cst_derived
 v = volume(state)

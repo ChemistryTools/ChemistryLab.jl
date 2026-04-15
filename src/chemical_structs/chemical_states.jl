@@ -85,13 +85,18 @@ If `v` has mass dimension, it is divided by the molar mass `M` of `s`.
 Otherwise an error is raised.
 """
 function _entry_to_moles(v::AbstractQuantity, s::AbstractSpecies)
-    if dimension(v) == dimension(u"mol")
-        return v                                # already in mol — return as-is
-    elseif dimension(v) == dimension(u"kg")
-        return uconvert(us"mol", v / s[:M])     # m / M → mol, with unit conversion
-    else
-        error("Value for species $(symbol(s)) must have amount (mol) or mass dimension, got $(dimension(v))")
+    # Try converting to mol (handles both Dimensions and SymbolicDimensions).
+    # If v has amount dimension, uconvert succeeds. Otherwise try mass → mol via M.
+    try
+        return uconvert(us"mol", v)
+    catch
     end
+    try
+        m_kg = uconvert(us"kg", v)
+        return uconvert(us"mol", m_kg / s[:M])
+    catch
+    end
+    error("Value for species $(symbol(s)) must have amount (mol) or mass dimension, got $(dimension(v))")
 end
 
 """
@@ -230,12 +235,14 @@ true
 """
 function ChemicalState(
         system::ChemicalSystem;
-        T::Q = 298.15u"K",
-        P::Q = 1u"bar",
+        T = 298.15u"K",
+        P = 1u"bar",
         n::AbstractVector = fill(0.0u"mol", length(system)),
-    ) where {Q <: AbstractQuantity}
-    @assert dimension(T) == dimension(u"K")  "T must have temperature dimension"
-    @assert dimension(P) == dimension(u"Pa") "P must have pressure dimension"
+    )
+    # Accept plain Real (assumed SI: K, Pa) or Quantity
+    T_q = _ensure_unit(us"K", T)
+    P_q = _ensure_unit(us"Pa", P)
+    Q = typeof(T_q)
     @assert length(n) == length(system) "n must have one entry per species (got $(length(n)), expected $(length(system)))"
 
     # Convert each entry individually — species i may be in mol while species j is in g
@@ -244,20 +251,23 @@ function ChemicalState(
             for (nᵢ, s) in zip(n, system.species)
     ]
 
+    # Auto-seed H⁺/OH⁻ at neutral pH if water is present and they are zero
+    _auto_seed_neutral_pH_vec!(system, n_mol, T_q, P_q)
+
     # Compute all derived quantities once at construction time
     n_ph = _compute_n_phases(system, n_mol)
     m_ph = _compute_m_phases(system, n_mol)
-    V_ph = _compute_V_phases(system, n_mol, T, P)
-    _pH = _compute_pH(system, n_mol, T, P, V_ph.liquid)
-    _pOH = _compute_pOH(system, n_mol, T, P, V_ph.liquid)
+    V_ph = _compute_V_phases(system, n_mol, T_q, P_q)
+    _pH = _compute_pH(system, n_mol, T_q, P_q, V_ph.liquid)
+    _pOH = _compute_pOH(system, n_mol, T_q, P_q, V_ph.liquid)
     _porosity = _compute_porosity(V_ph)
     _saturation = _compute_saturation(V_ph)
 
     return ChemicalState(
         system,
         n_mol,
-        Q[T],
-        Q[P],
+        Q[T_q],
+        Q[P_q],
         PhaseQuantities{Q}[n_ph],       # 1-element Vector for in-place update
         PhaseQuantities{Q}[m_ph],
         PhaseQuantities{Q}[V_ph],
@@ -293,9 +303,9 @@ true
 function ChemicalState(
         system::ChemicalSystem,
         values::AbstractVector;
-        T::Q = 298.15u"K",
-        P::Q = 1u"bar",
-    ) where {Q <: AbstractQuantity}
+        T = 298.15u"K",
+        P = 1u"bar",
+    )
     return ChemicalState(system; T = T, P = P, n = values)
 end
 
@@ -375,9 +385,8 @@ julia> ustrip(temperature(state))
 350.0
 ```
 """
-function set_temperature!(state::ChemicalState, T::AbstractQuantity)
-    @assert dimension(T) == dimension(u"K") "T must have temperature dimension"
-    state.T[] = T
+function set_temperature!(state::ChemicalState, T)
+    state.T[] = _ensure_unit(us"K", T)
     _update_derived!(state)     # volumes depend on T — recompute everything
     return state
 end
@@ -399,12 +408,12 @@ julia> isapprox(ustrip(pressure(state)), 2e5; rtol=1e-4)
 true
 ```
 """
-function set_pressure!(state::ChemicalState, P::AbstractQuantity)
-    @assert dimension(P) == dimension(u"Pa") "P must have pressure dimension"
-    state.P[] = P
+function set_pressure!(state::ChemicalState, P)
+    state.P[] = _ensure_unit(us"Pa", P)
     _update_derived!(state)     # volumes depend on P — recompute everything
     return state
 end
+
 
 # ── Molar amount accessors ────────────────────────────────────────────────────
 
@@ -694,8 +703,8 @@ function _compute_pH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
     # Need at least one of H+ or OH-
     isnothing(i_H) && isnothing(i_OH) && return nothing
 
-    c_H = isnothing(i_H) ? 0.0 : ustrip(us"mol/L", n[i_H] / V_liquid)
-    c_OH = isnothing(i_OH) ? 0.0 : ustrip(us"mol/L", n[i_OH] / V_liquid)
+    c_H = isnothing(i_H) ? 0.0 : safe_ustrip(us"mol/L", n[i_H] / V_liquid)
+    c_OH = isnothing(i_OH) ? 0.0 : safe_ustrip(us"mol/L", n[i_OH] / V_liquid)
 
     if c_H >= c_OH
         # Acidic or neutral — pH directly from H+
@@ -729,8 +738,8 @@ function _compute_pOH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
 
     isnothing(i_H) && isnothing(i_OH) && return nothing
 
-    c_H = isnothing(i_H) ? 0.0 : ustrip(us"mol/L", n[i_H] / V_liquid)
-    c_OH = isnothing(i_OH) ? 0.0 : ustrip(us"mol/L", n[i_OH] / V_liquid)
+    c_H = isnothing(i_H) ? 0.0 : safe_ustrip(us"mol/L", n[i_H] / V_liquid)
+    c_OH = isnothing(i_OH) ? 0.0 : safe_ustrip(us"mol/L", n[i_OH] / V_liquid)
 
     if c_OH >= c_H
         c_OH <= 0.0 && return nothing
@@ -766,7 +775,129 @@ function _compute_pKw(system::ChemicalSystem, T, P)
     return -r.logK⁰(T = T, P = P)
 end
 
+"""
+    _auto_seed_neutral_pH!(state::ChemicalState)
+
+When the aqueous solvent (H₂O@) is present with non-zero amount and both H⁺ and
+OH⁻ are in the system at zero/negligible concentration, seed them at the neutral
+pH concentration ``c = 10^{-pK_w/2}`` [mol/L] using the T- and P-dependent water
+autoprotolysis constant.
+
+Does nothing if any of the three species is absent, if H⁺ or OH⁻ already have
+non-negligible amounts (i.e. the user set them explicitly), or if pKw cannot be
+computed.
+"""
+function _auto_seed_neutral_pH!(state::ChemicalState)
+    sys = state.system
+    i_H2O = findfirst(s -> class(s) == SC_AQSOLVENT, sys.species)
+    i_H = findfirst(s -> symbol(s) == "H+", sys.species)
+    i_OH = findfirst(s -> symbol(s) == "OH-", sys.species)
+
+    # All three must be present
+    (isnothing(i_H2O) || isnothing(i_H) || isnothing(i_OH)) && return
+
+    # Only seed if H⁺ and OH⁻ are currently zero/negligible
+    ϵ = 1.0e-30
+    (ustrip(state.n[i_H]) > ϵ || ustrip(state.n[i_OH]) > ϵ) && return
+
+    # Water must have positive amount
+    ustrip(state.n[i_H2O]) <= 0 && return
+
+    T = temperature(state)
+    P = pressure(state)
+    pKw = _compute_pKw(sys, T, P)
+    isnothing(pKw) && return
+
+    V_liq = volume(state).liquid
+    ustrip(V_liq) <= 0 && return
+
+    c_neutral = 10.0^(-pKw / 2) * us"mol/L"
+    n_neutral = uconvert(us"mol", c_neutral * V_liq)
+    state.n[i_H] = n_neutral
+    state.n[i_OH] = n_neutral
+    return
+end
+
+# Vector variant for use in the constructor (no ChemicalState yet)
+function _auto_seed_neutral_pH_vec!(
+        system::ChemicalSystem, n_mol::AbstractVector, T, P,
+    )
+    i_H2O = findfirst(s -> class(s) == SC_AQSOLVENT, system.species)
+    i_H = findfirst(s -> symbol(s) == "H+", system.species)
+    i_OH = findfirst(s -> symbol(s) == "OH-", system.species)
+
+    (isnothing(i_H2O) || isnothing(i_H) || isnothing(i_OH)) && return
+    ϵ = 1.0e-30
+    (ustrip(n_mol[i_H]) > ϵ || ustrip(n_mol[i_OH]) > ϵ) && return
+    ustrip(n_mol[i_H2O]) <= 0 && return
+
+    pKw = _compute_pKw(system, T, P)
+    isnothing(pKw) && return
+
+    sp_H2O = system.species[i_H2O]
+    _has_molar_volume(sp_H2O) || return
+    V_liq = n_mol[i_H2O] * _molar_volume(sp_H2O)(T = T, P = P; unit = true)
+    ustrip(V_liq) <= 0 && return
+
+    c_neutral = 10.0^(-pKw / 2) * us"mol/L"
+    n_neutral = uconvert(us"mol", c_neutral * V_liq)
+    n_mol[i_H] = n_neutral
+    n_mol[i_OH] = n_neutral
+    return
+end
+
 # ── Mutation ──────────────────────────────────────────────────────────────────
+
+"""
+    set_neutral_pH!(state::ChemicalState) -> ChemicalState
+
+Set H⁺ and OH⁻ concentrations to neutral pH at the current temperature and
+pressure, using the water autoprotolysis constant ``K_w(T, P)``:
+
+```math
+[\\text{H}^+] = [\\text{OH}^-] = 10^{-pK_w/2} \\quad [\\text{mol/L}]
+```
+
+Requires the system to contain `H2O@` (solvent), `H+`, and `OH-`.
+The liquid volume is estimated from the current water amount.
+
+Unlike `_auto_seed_neutral_pH!` (which only triggers when H⁺/OH⁻ are zero),
+this function **always overwrites** the current values — useful inside loops
+where the state is reused across iterations.
+
+# Examples
+
+```julia
+set_quantity!(s, "H2O@", 1.0u"kg")
+set_neutral_pH!(s)   # H⁺ and OH⁻ at neutral, T/P-dependent
+```
+"""
+function set_neutral_pH!(state::ChemicalState)
+    sys = state.system
+    i_H2O = findfirst(s -> class(s) == SC_AQSOLVENT, sys.species)
+    i_H = findfirst(s -> symbol(s) == "H+", sys.species)
+    i_OH = findfirst(s -> symbol(s) == "OH-", sys.species)
+
+    (isnothing(i_H2O) || isnothing(i_H) || isnothing(i_OH)) &&
+        error("set_neutral_pH! requires H2O@ (solvent), H+, and OH- in the system.")
+
+    ustrip(state.n[i_H2O]) <= 0 &&
+        error("set_neutral_pH! requires a positive water amount.")
+
+    T = temperature(state)
+    P = pressure(state)
+    pKw = _compute_pKw(sys, T, P)
+    isnothing(pKw) && error("Cannot compute pKw — species lack thermodynamic data.")
+
+    V_liq = volume(state).liquid
+
+    c_neutral = 10.0^(-pKw / 2) * us"mol/L"
+    n_neutral = uconvert(us"mol", c_neutral * V_liq)
+    state.n[i_H] = n_neutral
+    state.n[i_OH] = n_neutral
+    _update_derived!(state)
+    return state
+end
 
 """
     set_quantity!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuantity) -> ChemicalState
@@ -790,6 +921,7 @@ function set_quantity!(state::ChemicalState, s::AbstractSpecies, n::AbstractQuan
     i = findfirst(x -> x == s, state.system.species)
     isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
     state.n[i] = uconvert(us"mol", _entry_to_moles(n, s))
+    class(s) == SC_AQSOLVENT && _auto_seed_neutral_pH!(state)
     _update_derived!(state)     # recompute all derived quantities
     return state
 end
@@ -854,6 +986,62 @@ Equivalent to `state * α`.
 Base.:*(α::Real, state::ChemicalState) = state * α
 
 """
+    Base.:+(s1::ChemicalState, s2::ChemicalState) -> ChemicalState
+
+Combine two chemical states by adding their species amounts.
+
+  - **Same system** (`s1.system === s2.system`): the result shares the system reference.
+  - **Different systems**: a merged system is created via `merge(s1.system, s2.system)`
+    (union of species, `s1` takes priority for duplicates).
+  - **T, P**: taken from `s1`. A warning is emitted if `s2` has different T or P.
+  - **Derived quantities** (pH, volumes, …) are recomputed from the summed moles.
+
+# Examples
+
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> s1 = ChemicalState(cs, [2.0u"mol"]);
+
+julia> s2 = ChemicalState(cs, [3.0u"mol"]);
+
+julia> ustrip(moles(s1 + s2, "H2O"))
+5.0
+```
+"""
+function Base.:+(s1::ChemicalState, s2::ChemicalState)
+    # ── T, P ──
+    T1, P1 = temperature(s1), pressure(s1)
+    T2, P2 = temperature(s2), pressure(s2)
+    if !(T1 ≈ T2) || !(P1 ≈ P2)
+        @warn "Incompatible T/P: state1 (T=$T1, P=$P1) vs state2 (T=$T2, P=$P2). " *
+            "Using state1 values."
+    end
+
+    # ── System ──
+    same_system = s1.system === s2.system
+    sys = same_system ? s1.system : merge(s1.system, s2.system)
+
+    # ── Moles ──
+    if same_system
+        n_new = s1.n .+ s2.n
+    else
+        z = zero(s1.n[1])   # zero with correct Quantity dimensions (mol)
+        n_new = fill(z, length(sys.species))
+        for (i, sp) in enumerate(sys.species)
+            j1 = findfirst(==(sp), s1.system.species)
+            j2 = findfirst(==(sp), s2.system.species)
+            n1 = isnothing(j1) ? z : s1.n[j1]
+            n2 = isnothing(j2) ? z : s2.n[j2]
+            n_new[i] = n1 + n2
+        end
+    end
+
+    # ── Construct result (handles _update_derived! internally) ──
+    return ChemicalState(sys; T = T1, P = P1, n = n_new)
+end
+
+"""
     Base.:/(state::ChemicalState, α::Real) -> ChemicalState
 
 Return a new `ChemicalState` with all molar amounts divided by `α`.
@@ -902,13 +1090,13 @@ rescale!(state, 500u"g")      # total mass   → 500 g
 function rescale!(state::ChemicalState, target::AbstractQuantity)
     if dimension(target) == dimension(u"mol")
         current = moles(state).total
-        factor = ustrip(us"mol", target) / ustrip(us"mol", current)
+        factor = safe_ustrip(us"mol", target) / safe_ustrip(us"mol", current)
     elseif dimension(target) == dimension(u"kg")
         current = mass(state).total
-        factor = ustrip(us"kg", target) / ustrip(us"kg", current)
+        factor = safe_ustrip(us"kg", target) / safe_ustrip(us"kg", current)
     elseif dimension(target) == dimension(u"m^3")
         current = volume(state).total
-        factor = ustrip(us"m^3", target) / ustrip(us"m^3", current)
+        factor = safe_ustrip(us"m^3", target) / safe_ustrip(us"m^3", current)
     else
         error(
             "rescale!: target must have dimensions of amount (mol), " *
@@ -1046,8 +1234,8 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     # ── Header ────────────────────────────────────────────────────────────────
     println(io, typeof(state))
     println(io, _topline())
-    println(io, _full_row("T", _fmt4(ustrip(us"K", T)) * " K"))
-    println(io, _full_row("P", _fmt4(ustrip(us"bar", P)) * " bar"))
+    println(io, _full_row("T", _fmt4(safe_ustrip(us"K", T)) * " K"))
+    println(io, _full_row("P", _fmt4(safe_ustrip(us"bar", P)) * " bar"))
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -1055,22 +1243,22 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     function _concentration(nᵢ)
         !show_conc                && return ""
         iszero(ustrip(V_liq))    && return "N/A"
-        return _fmt(ustrip(us"mol/L", nᵢ / V_liq))
+        return _fmt(safe_ustrip(us"mol/L", nᵢ / V_liq))
     end
 
     n_gas_total = state.n_phases[].gas
     function _partial_pressure(nᵢ)
         !show_ppart                     && return ""
         iszero(ustrip(n_gas_total))     && return "N/A"
-        xᵢ = ustrip(us"mol", nᵢ) / ustrip(us"mol", n_gas_total)
-        return _fmt(xᵢ * ustrip(us"bar", P))
+        xᵢ = safe_ustrip(us"mol", nᵢ) / safe_ustrip(us"mol", n_gas_total)
+        return _fmt(xᵢ * safe_ustrip(us"bar", P))
     end
 
     function _species_row(s, nᵢ, phase_key)
-        n_val = _fmt(ustrip(us"mol", nᵢ))
-        m_val = _fmt(ustrip(us"g", nᵢ * s[:M]))
+        n_val = _fmt(safe_ustrip(us"mol", nᵢ))
+        m_val = _fmt(safe_ustrip(us"g", nᵢ * s[:M]))
         V_val = if show_volume && _has_molar_volume(s)
-            _fmt(ustrip(us"cm^3", nᵢ * _molar_volume(s)(T = T, P = P; unit = true)))
+            _fmt(safe_ustrip(us"cm^3", nᵢ * _molar_volume(s)(T = T, P = P; unit = true)))
         elseif show_volume
             "N/A"
         else
@@ -1083,10 +1271,10 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
 
     function _print_phase(label, phase_key, indices)
         isempty(indices) && return
-        n_ph = _fmt(ustrip(us"mol", state.n_phases[][phase_key]))
-        m_ph = _fmt(ustrip(us"g", state.m_phases[][phase_key]))
+        n_ph = _fmt(safe_ustrip(us"mol", state.n_phases[][phase_key]))
+        m_ph = _fmt(safe_ustrip(us"g", state.m_phases[][phase_key]))
         V_ph = show_volume ?
-            _fmt(ustrip(us"cm^3", state.V_phases[][phase_key])) : ""
+            _fmt(safe_ustrip(us"cm^3", state.V_phases[][phase_key])) : ""
         # Column sub-header — only show relevant columns per phase
         c_hdr = phase_key == :liquid ? "c [mol/L]" : ""
         p_hdr = phase_key == :gas ? "p [bar]" : ""
@@ -1123,9 +1311,9 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     println(
         io, _row(
             "",
-            _fmt(ustrip(us"mol", state.n_phases[].total)),
-            _fmt(ustrip(us"g", state.m_phases[].total)),
-            show_volume ? _fmt(ustrip(us"cm^3", state.V_phases[].total)) : "",
+            _fmt(safe_ustrip(us"mol", state.n_phases[].total)),
+            _fmt(safe_ustrip(us"g", state.m_phases[].total)),
+            show_volume ? _fmt(safe_ustrip(us"cm^3", state.V_phases[].total)) : "",
             "", "",
         )
     )
