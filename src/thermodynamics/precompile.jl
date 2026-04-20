@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright © 2025-2026 Jean-François Barthélémy and Anthony Soive (Cerema, UMR MCD)
+
 using PrecompileTools: @compile_workload
 
 # Exercise the ThermoFactory → SymbolicFunc compilation pipeline at precompile time

@@ -250,7 +250,41 @@ See the [documentation and tutorials](https://ChemistryTools.github.io/Chemistry
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+ChemistryLab.jl is licensed under the **GNU Lesser General Public License,
+version 2.1 or (at your option) any later version** (LGPL-2.1-or-later).
+
+Parts of the thermodynamics and kinetics subsystems are Julia ports adapted
+from the [Reaktoro](https://github.com/reaktoro/reaktoro) C++ library
+(copyright © Allan Leal, LGPL-2.1-or-later):
+
+- the HKF standard thermodynamic model for aqueous solutes and the water
+  property functions (HGK 1984, Johnson-Norton 1991, Shock et al. 1992
+  g-function);
+- the Arrhenius rate constant, the saturation-ratio formulation, and the
+  Palandri-Kharaka / transition-state theory mineral rate factories
+  (`transition_state`, `first_order_rate`).
+
+The remainder of the package — chemical formula / species /
+stoichiometric-matrix infrastructure, equilibrium solver layer, database
+readers, `KineticsProblem` / `KineticsSolver` architecture, Parrot-Killoh
+cement hydration model, calorimetry — is original work copyright
+© Jean-François Barthélémy and Anthony Soive (Cerema, UMR MCD).
+
+See [`LICENSE`](LICENSE) for the full notice and
+[`COPYING.LESSER`](COPYING.LESSER) for the full LGPL-2.1 text.
+
+**Licensing history.** Versions 0.2.0 through 0.2.4 of this package were
+inadvertently published under the MIT license. This was an error: the HKF
+and water-property modules are Julia ports adapted from Reaktoro (LGPL-2.1),
+so ChemistryLab.jl as a whole is a derivative work under copyright law and
+cannot be legitimately relicensed under MIT without explicit authorisation
+from the upstream copyright holder. Version 0.3.0 corrects this oversight
+by adopting LGPL-2.1-or-later to match the upstream Reaktoro license.
+
+**Practical note for downstream users.** The LGPL permits `using ChemistryLab`
+from Julia code of **any** licence (MIT, Apache-2.0, proprietary). The
+copyleft applies only to modifications of ChemistryLab.jl itself, which must
+remain LGPL.
 
 ## Citation
 
@@ -272,3 +306,5 @@ See [CITATION.cff](CITATION.cff) for citation details.
 ## Credits and Acknowledgements
 
 Developed by [Jean-François Barthélémy](https://github.com/jfbarthelemy) and [Anthony Soive](https://github.com/anthonysoive), both researchers at [Cerema](https://www.cerema.fr/en) in the research team [UMR MCD](https://mcd.univ-gustave-eiffel.fr/).
+
+Parts of the codebase were developed with the support of [Claude Code](https://claude.ai/code) (Anthropic) as an AI pair-programming assistant.

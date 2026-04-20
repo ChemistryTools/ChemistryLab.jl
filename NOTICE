@@ -1,0 +1,49 @@
+ChemistryLab.jl
+===============
+
+A computational chemistry toolkit for thermodynamic equilibrium
+calculations.
+
+Copyright (C) 2025-2026 Jean-François Barthélémy and Anthony Soive
+                        (Cerema, UMR MCD)
+
+Portions of this software are Julia ports adapted from the Reaktoro
+C++ library (https://github.com/reaktoro/reaktoro),
+Copyright (C) 2014-2024 Allan Leal, distributed under the
+LGPL-2.1-or-later. The portions concerned are:
+
+- The Helgeson-Kirkham-Flowers (HKF) standard thermodynamic model for
+  aqueous solutes in `src/thermodynamics/thermo_models.jl`.
+- The Haar-Gallagher-Kell / Johnson-Norton / Shock water property
+  functions in `src/thermodynamics/water_properties.jl`.
+- The Arrhenius rate constant and the saturation-ratio formulation
+  used by the transition-state theory rate model in
+  `src/kinetics/rate_models.jl`.
+- The `transition_state` and `first_order_rate` rate factories
+  implementing the Palandri-Kharaka / transition-state theory model
+  of mineral dissolution-precipitation kinetics in
+  `src/kinetics/kinetics_reactions.jl`.
+
+The remainder of the package — including the `StateView`, `KineticFunc`,
+`KineticsProblem`, `KineticsSolver` abstractions, the Parrot-Killoh
+cement hydration model, the calorimetry model, the Gibbs
+energy minimisation equilibrium layer, the chemical formula / species /
+stoichiometric-matrix infrastructure, and the database readers — is
+original work.
+
+ChemistryLab.jl is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation; either version 2.1 of the
+License, or (at your option) any later version.
+
+ChemistryLab.jl is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this program; if not, see the file COPYING.LESSER
+distributed with this source, or
+<https://www.gnu.org/licenses/lgpl-2.1.html>.
+
+SPDX-License-Identifier: LGPL-2.1-or-later

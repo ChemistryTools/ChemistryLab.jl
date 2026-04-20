@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright © 2025-2026 Jean-François Barthélémy and Anthony Soive (Cerema, UMR MCD)
+# Portions of this file are Julia ports adapted from the Reaktoro C++ library
+# (https://github.com/reaktoro/reaktoro), Copyright © 2014-2024 Allan Leal,
+# distributed under the LGPL-2.1-or-later.
+
 using ForwardDiff
 
 """
