@@ -139,7 +139,7 @@ import{_ as n,o as t,c as e,ao as i,j as s}from"./chunks/framework.neklfv_E.js";
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 29</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 28</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 6.692</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 9.826</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">pH at [CO₂]₀ = 1.0e-5 mol (atmospheric, ~400 ppm) : 5.72</span></span>
@@ -219,7 +219,7 @@ import{_ as n,o as t,c as e,ao as i,j as s}from"./chunks/framework.neklfv_E.js";
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 32</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 31</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.003</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.005</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">pH at [CO₂]₀ = 0.001 mol (lightly carbonated) : 4.68</span></span>
@@ -294,7 +294,7 @@ import{_ as n,o as t,c as e,ao as i,j as s}from"./chunks/framework.neklfv_E.js";
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 28</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 27</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.003</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.004</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">pH at [CO₂]₀ = 0.1 mol (strongly carbonated) : 3.68</span></span></code></pre></div><p>For the full scan used to generate the plots below, loop over 60 log-spaced points:</p><div class="language-julia vp-adaptive-theme"><button title="Copy Code" class="copy"></button><span class="lang">julia</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">sp_idx </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;"> Dict</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;">symbol</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(s) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">=&gt;</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> i </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">for</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> (i, s) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">in</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;"> enumerate</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(cs</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">.</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">species))</span></span>
