@@ -140,6 +140,89 @@ work: measured, it does not move off the cold state, leaving the linear
 objective at -723.8 where -755.9 was feasible. A simplex-based initial
 approximation remains the principled option and would need an LP dependency.
 
+### Added — the rest of the CEMDATA18 solid solutions, and a model of any arity
+
+`data/solid_solutions.toml` went from six phases to **eleven**. The five added
+complete the set of multi-end-member phases a GEM-Selektor CEMDATA18 run of a
+Portland cement is given: `Straetlingite_ss` (straetlingite / straetlingite7),
+`AFm_SO4_OH` (C4AH13 / monosulphate12), `AFt_SO4_CO3` (tricarboalu03 /
+ettringite03_ss), `Hydrotalcite_AlFe` (Mg3AlC0.5OH / Mg3FeC0.5OH) and `MSH`
+(M075SH / M15SH). Every end-member is in both shipped databases.
+
+Ideal mixing is an **assumption** there, and the file says so. CEMDATA18
+documents non-ideal parameters for some of these; they are not reproduced
+because they could not be sourced with confidence, and a mixing parameter
+written from memory is worse than an ideal model honestly labeled. The file also
+records what was measured on a CEM I paste: all five are undersaturated
+(LogSI −0.032 to −9.981, and a binary ideal solid solution gains at most
+log10 2 = 0.301 over its best pure end-member, so mixing cannot bring them in),
+and a solid solution whose every end-member sits at the solver's lower bound is
+numerically awkward — Reaktoro fails to converge when any single one of the five
+is declared on that paste.
+
+**`RegularSolutionModel`** fills a gap in arity, not in chemistry.
+`RedlichKisterModel` is the general binary form and is restricted to two
+end-members; `IdealSolidSolutionModel` takes any number but no interaction at
+all. A C-S-H with six end-members, or the CNASH and ECSH families of CEMDATA18,
+had no non-ideal option. The new model is the symmetric multi-component
+Margules form, `G^ex = Σ_{i<j} W_ij x_i x_j`, with
+
+    ln γ_k = (1/RT) [ Σ_{j≠k} W_kj x_j − Σ_{i<j} W_ij x_i x_j ]
+
+and `W` in J/mol, symmetric. The tests check the three things that matter: it
+reduces **exactly** to `RedlichKisterModel(a0 = W₁₂)` for two end-members, it
+satisfies `Σ x_k ln γ_k = G^ex/RT` in a ternary — the Gibbs-Duhem consistency a
+hand-written `ln γ` usually gets wrong — and a six-end-member phase accepts it
+where Redlich-Kister raises. `build_solid_solutions` reads it from
+`model = "regular"` with either `w` (a binary) or `W` (a full matrix).
+
+### Added — two ionic strengths, and a Setschenow coefficient per species
+
+`ionic_strength(state; kind = :effective | :stoichiometric)`. The effective one
+(the default, and the previous behavior) sums over the speciated free ions, so a
+neutral pair such as `Ca(SO4)@` contributes nothing; it is the one every activity
+model here is a function of. The stoichiometric one sums as if every complex were
+fully dissociated over the system's primaries, which is the analytical ionic
+strength of the recipe and what some salting-out and diffusivity correlations are
+fitted against. The gap between them measures how much salt is associated: 0.7 %
+on a Portland cement pore solution, far more on a sulfate brine. The
+stoichiometric sum reuses the decomposition the mass balance already uses
+(`SM.A`), so it needs no separate table of dissociation reactions.
+
+Neither is a difference of *formula* — all three codes compute `½ Σ mⱼ zⱼ²`, and
+the spread between GEM-Selektor (0.2097), this package (0.2121) and Reaktoro
+(0.2178) on that pore solution comes from their converged compositions, not from
+their definitions.
+
+The Setschenow (salting-out) coefficient of a neutral aqueous species is now read
+from `sp[:Kₙ]` when present, falling back on the model's global `Kₙ`. CO₂(aq),
+the noble gases and the neutral silicates are not equally salted out, and one
+coefficient for all of them was the B-dot literature's simplification rather than
+a fact. No table of coefficients is shipped: a table is data, and data belongs in
+a database or in the caller's hands.
+
+### Verified — the water activity, against Gibbs-Duhem
+
+A benchmark was added for the property that separates this package from its
+neighbors. For a 1:1 electrolyte the osmotic coefficient of the extended
+Debye-Hückel model has a closed form, and integrating Gibbs-Duhem over the
+model's own activity coefficients must reproduce it. `HKFActivityModel` does, and
+the test pins NaCl(aq) at 25 °C to a_w = 0.996657, 0.983603 and 0.966898 at 0.1,
+0.5 and 1.0 mol/kg — the Gibbs-Duhem-consistent values, which coincide with the
+tabulated water activities of NaCl.
+
+Reaktoro's `ActivityModelDebyeHuckel` does not. Measured on the same three
+molalities, its reported water activity is 0.20 %, 1.70 % and 3.92 % below what
+its **own** activity coefficients imply, so the inconsistency is internal and
+needs no external data to demonstrate. On a CEM I pore solution it reports
+a_w = 0.8824 where GEM-Selektor gives 0.992588 and this package 0.993723, and the
+consequence is quantitative: `ettringite` and `ettringite30` differ by two water
+molecules, so their ratio goes as `1/a_w²`, and `(0.9926/0.8824)² = 1.265`
+against a measured ratio of ratios of 1.266. That single discrepancy accounts for
+the whole difference in the AFt split. Anything whose stoichiometry differs by
+water — the C-S-H hydration states, the AFm and AFt series, the hydrogarnets — is
+sensitive to it, which is most of a cement.
+
 ### Added — a common ion size, settable on the model
 
 `HKFActivityModel(; å)` imposes **one** effective radius on every charged
@@ -160,6 +243,15 @@ ion-size parameter at all.
 
 ### Fixed
 
+- `STRICT_CONVERGENCE[] = true` disabled the new initial approximation instead
+  of hardening it. The continuation's early rungs are *expected* to fall short —
+  they are starting points on the way to `λ = 1`, not results — so under the
+  strict flag each one raised, was caught, and every later rung started cold
+  again, leaving the walk useless in exactly the mode a careful caller turns on.
+  The flag is now saved, cleared for the duration of the walk and restored in a
+  `finally`, so a non-converged *result* still raises while an intermediate rung
+  does not. Found by running a caller's script with the flag on, and pinned by a
+  regression test that checks both the outcome and that the flag comes back.
 - `docs/src/tutorials/equilibrium.md` and `README.md` built an AFm solid
   solution from `dict["Ms"]` and `dict["Mc"]`. Neither symbol exists in any
   shipped database, so those examples could never have run. They now use
