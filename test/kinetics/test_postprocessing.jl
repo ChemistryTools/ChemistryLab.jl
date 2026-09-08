@@ -447,10 +447,15 @@ end
     )
 
     names = Set(p.name for p in ss)
+    # Eleven since 0.15.0: the five last entries complete the set of
+    # multi-end-member phases a GEM-Selektor CEMDATA18 run of a Portland cement
+    # is given. `test/solid_solutions.jl` checks the count and the new names;
+    # here the point is only that every declared entry actually builds.
     @test names == Set(
         [
             "CSHQ", "C3(AF)S0.84H", "AFm", "Hydrogarnet", "Ettringite_ss",
-            "Hydrotalcite",
+            "Hydrotalcite", "Straetlingite_ss", "AFm_SO4_OH", "AFt_SO4_CO3",
+            "Hydrotalcite_AlFe", "MSH",
         ]
     )
 
@@ -467,7 +472,8 @@ end
         length(end_members(byname[n])) == 2
             for n in (
                 "C3(AF)S0.84H", "AFm", "Hydrogarnet", "Ettringite_ss",
-                "Hydrotalcite",
+                "Hydrotalcite", "Straetlingite_ss", "AFm_SO4_OH", "AFt_SO4_CO3",
+                "Hydrotalcite_AlFe", "MSH",
             )
     )
     @test model(byname["AFm"]) isa RedlichKisterModel
@@ -475,7 +481,8 @@ end
         model(byname[n]) isa IdealSolidSolutionModel
             for n in (
                 "CSHQ", "C3(AF)S0.84H", "Hydrogarnet", "Ettringite_ss",
-                "Hydrotalcite",
+                "Hydrotalcite", "Straetlingite_ss", "AFm_SO4_OH", "AFt_SO4_CO3",
+                "Hydrotalcite_AlFe", "MSH",
             )
     )
 
