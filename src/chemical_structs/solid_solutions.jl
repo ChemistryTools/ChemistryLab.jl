@@ -72,6 +72,30 @@ julia> m.W[1, 2]
 """
 struct RegularSolutionModel{T <: Real} <: AbstractSolidSolutionModel
     W::Matrix{T}
+
+    # The validation lives in an *inner* constructor on purpose. As an outer
+    # method on `AbstractMatrix` it was dead code for the commonest call: the
+    # constructor Julia generates from the field declaration,
+    # `RegularSolutionModel(::Matrix{T})`, is more specific than
+    # `AbstractMatrix`, so a plain `Matrix` argument went straight into the
+    # struct and a non-square or asymmetric `W` was accepted in silence.
+    # Declaring an inner constructor suppresses the generated ones, which leaves
+    # this the only way in.
+    function RegularSolutionModel{T}(W::AbstractMatrix) where {T <: Real}
+        n, m = size(W)
+        n == m || throw(
+            ArgumentError("RegularSolutionModel: W must be square, got $(size(W)).")
+        )
+        for i in 1:n, j in (i + 1):n
+            isapprox(W[i, j], W[j, i]; rtol = 1.0e-12) || throw(
+                ArgumentError(
+                    "RegularSolutionModel: W must be symmetric; W[$i,$j] = $(W[i, j]) " *
+                        "but W[$j,$i] = $(W[j, i]).",
+                )
+            )
+        end
+        return new{T}(Matrix{T}(W))
+    end
 end
 
 """
@@ -79,22 +103,10 @@ end
 
 Construct a [`RegularSolutionModel`](@ref) from a symmetric matrix of
 interaction parameters in J/mol. Raises if `W` is not square or not symmetric;
-the diagonal is ignored.
+the diagonal is ignored. Integer entries are promoted to a floating-point type.
 """
-function RegularSolutionModel(W::AbstractMatrix)
-    n, m = size(W)
-    n == m || throw(ArgumentError("RegularSolutionModel: W must be square, got $(size(W))"))
-    for i in 1:n, j in (i + 1):n
-        isapprox(W[i, j], W[j, i]; rtol = 1.0e-12) || throw(
-            ArgumentError(
-                "RegularSolutionModel: W must be symmetric; W[$i,$j] = $(W[i, j]) " *
-                    "but W[$j,$i] = $(W[j, i]).",
-            )
-        )
-    end
-    Wf = float.(collect(W))
-    return RegularSolutionModel{eltype(Wf)}(Wf)
-end
+RegularSolutionModel(W::AbstractMatrix) =
+    RegularSolutionModel{float(eltype(W))}(W)
 
 """
     struct RedlichKisterModel{T<:Real} <: AbstractSolidSolutionModel
