@@ -252,6 +252,18 @@ function hkf_debye_huckel_params(T_K, P_Pa)
     return (A = A, B = B)
 end
 
+# Internal: Setschenow (salting-out) coefficient lookup for a neutral aqueous
+# species. `model.Kₙ` is one coefficient for every neutral species, which is what
+# the B-dot literature assumes; a per-species value is what actually varies —
+# CO2(aq), the noble gases and the neutral silicates are not equally salted out.
+# Priority: `sp[:Kₙ]`, then the model's global value. No table is shipped,
+# because a table of Setschenow coefficients is data, and data belongs in a
+# database or in the caller's hands, not hard-coded here.
+function _setschenow(sp::AbstractSpecies, model)
+    haskey(properties(sp), :Kₙ) && return float(sp[:Kₙ])
+    return float(model.Kₙ)
+end
+
 # Internal: ionic radius priority lookup. A model-level `å` short-circuits the
 # whole chain — that is the point of it: a common radius must not be silently
 # overridden by a per-species table entry.
@@ -307,7 +319,11 @@ Ionic strength: `I = ½ Σ mⱼ zⱼ²`
   - `A`: Debye-Hückel A parameter [(kg/mol)^(1/2)]. Default 0.5114 at 25 °C/1 bar.
   - `B`: Debye-Hückel B parameter [Å⁻¹(kg/mol)^(1/2)]. Default 0.3288.
   - `Ḃ`: B-dot extended term [kg/mol]. Default 0.041.
-  - `Kₙ`: salting-out coefficient for neutral species [kg/mol]. Default 0.1.
+  - `Kₙ`: Setschenow (salting-out) coefficient for neutral species [kg/mol],
+    used for every neutral species that does not carry its own. Default 0.1.
+    A per-species value is read from `sp[:Kₙ]` when present and wins over this
+    one, which is how a species whose salting-out is actually known — CO₂(aq),
+    say — is given its own coefficient without changing the model.
   - `å_default`: last-resort effective ionic radius [Å], reached only for a
     charge that no table covers. Default 3.72.
   - `å`: one common effective ionic radius [Å] for every charged aqueous
@@ -456,6 +472,11 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
     idx_ions = [i for i in idx_solutes if !iszero(zv[i])]
     idx_neutrals = [i for i in idx_solutes if  iszero(zv[i])]
+    # Setschenow coefficient per neutral species, resolved once (see
+    # `_setschenow`): `sp[:Kₙ]` when set, the model's global value otherwise.
+    Kₙv = Float64[
+        iszero(zv[i]) ? _setschenow(cs.species[i], model) : 0.0 for i in eachindex(zv)
+    ]
 
     ln10 = log(10.0)
 
@@ -510,7 +531,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
         # ── Neutral solute log-activities ──────────────────────────────────
         @inbounds for i in idx_neutrals
-            log10γᵢ = _log10γ_neutral(model, I)
+            log10γᵢ = _log10γ_neutral(model, I, Kₙv[i])
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
@@ -640,6 +661,8 @@ concentration_scale(::DaviesActivityModel) = :molality
     return -A * z^2 * sqrtI / (1 + B * å * sqrtI) + model.Ḃ * I
 end
 @inline _log10γ_neutral(model::HKFActivityModel, I) = model.Kₙ * I
+# Per-species variant: `Kₙᵢ I` with the species' own coefficient.
+@inline _log10γ_neutral(model::HKFActivityModel, I, Kₙᵢ) = Kₙᵢ * I
 
 @inline function _log10γ_ion(model::DaviesActivityModel, z, å, I, sqrtI, A, B)
     return -A * z^2 * (sqrtI / (1 + sqrtI) - model.b * I)
@@ -761,6 +784,26 @@ Methods:
 """
 _excess_ln_gamma(::IdealSolidSolutionModel, k::Int, x::AbstractVector, T::Real) =
     zero(eltype(x))
+
+# Symmetric multi-component Margules. `ln γ_k` is the partial molar derivative
+# of `n G^ex / RT` with `G^ex = Σ_{i<j} W_ij x_i x_j`, which gives
+# `Σ_{j≠k} W_kj x_j − Σ_{i<j} W_ij x_i x_j`. For two end-members this reduces to
+# `W₁₂ x₂²` and `W₁₂ x₁²`, i.e. `RedlichKisterModel(a0 = W₁₂)`.
+function _excess_ln_gamma(m::RegularSolutionModel, k::Int, x::AbstractVector, T::Real)
+    RT = 8.31446261815324 * T   # J/mol
+    n = length(x)
+    W = m.W
+    lin = zero(eltype(x))
+    @inbounds for j in 1:n
+        j == k && continue
+        lin = lin + (W[k, j] / RT) * x[j]
+    end
+    quad = zero(eltype(x))
+    @inbounds for i in 1:n, j in (i + 1):n
+        quad = quad + (W[i, j] / RT) * x[i] * x[j]
+    end
+    return lin - quad
+end
 
 function _excess_ln_gamma(m::RedlichKisterModel, k::Int, x::AbstractVector, T::Real)
     x1, x2 = x[1], x[2]

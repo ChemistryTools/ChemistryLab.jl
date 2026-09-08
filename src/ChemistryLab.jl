@@ -257,6 +257,7 @@ module ChemistryLab
         AbstractSolidSolutionModel,
         IdealSolidSolutionModel,
         RedlichKisterModel,
+        RegularSolutionModel,
         AbstractSolidSolutionPhase,
         SolidSolutionPhase,
         end_members,

@@ -96,37 +96,89 @@ function molalities(state::ChemicalState; ϵ::Float64 = 1.0e-16)
 end
 
 """
-    ionic_strength(state::ChemicalState; ϵ = 1e-16) -> Float64
+    ionic_strength(state::ChemicalState; kind = :effective, ϵ = 1e-16) -> Float64
 
 Molality-basis ionic strength `I = ½ Σⱼ mⱼ zⱼ²`, in mol/kg.
 
-This is a property of the composition, not of the activity model: every model in
-the package computes it this way, and it is the quantity their coefficients are
-functions of. Compare it before comparing anything else — an ionic strength that
-disagrees means the two codes are not describing the same solution, whatever
-their volumes happen to agree on.
+`kind` selects which of the two ionic strengths is meant, and they are different
+quantities:
 
-Throws if the system has no aqueous phase.
+  - `:effective` (the default) sums over the **speciated free ions** — the
+    composition as solved, with every complex and ion pair counted at its own
+    charge. A neutral pair such as `Ca(SO4)@` contributes nothing. This is the
+    one every activity model in this package is a function of, and the one to
+    pass to any of them.
+  - `:stoichiometric` sums as if every complex were **fully dissociated** into
+    the components of `state.system`, so `Ca(SO4)@` contributes as
+    `Ca²⁺ + SO₄²⁻`. This is the analytical ionic strength of the recipe rather
+    than of the solution, and it is what some correlations for salting-out and
+    for diffusivity are fitted against.
+
+The gap between them measures how much of the salt is associated. On a Portland
+cement pore solution it is small — 0.2121 against 0.2136 mol/kg, 0.7 % — because
+little is paired at that ionic strength; on a sulfate brine it is not.
+
+Neither is a property of the activity model: both are properties of the
+composition. Compare the effective one before comparing anything else — an
+ionic strength that disagrees between two codes means they are not describing
+the same solution, whatever their volumes happen to agree on.
+
+The stoichiometric sum uses the decomposition of each species over the system's
+primaries (`state.system.SM.A`), counting `|νₚ| zₚ²` for each charged primary
+`p`. That is the same decomposition the mass balance uses, so it needs no
+separate table of dissociation reactions; note that it attributes `OH⁻`, which
+CEMDATA18 writes as `H₂O − H⁺`, one unit of charge through the `H⁺` component,
+which is the right count.
+
+Throws if the system has no aqueous phase, or on an unknown `kind`.
 
 # Examples
 
 ```julia
-ionic_strength(eq)           # e.g. 0.212 mol/kg for a CEM I pore solution
+ionic_strength(eq)                          # 0.2121 mol/kg — free ions
+ionic_strength(eq; kind = :stoichiometric)  # 0.2136 — fully dissociated
 ```
 
 See also: [`molalities`](@ref), [`activity_coefficients`](@ref).
 """
-function ionic_strength(state::ChemicalState; ϵ::Float64 = 1.0e-16)
+function ionic_strength(
+        state::ChemicalState; kind::Symbol = :effective, ϵ::Float64 = 1.0e-16
+    )
     cs = state.system
     _require_aqueous(cs, "ionic_strength")
     m = molalities(state; ϵ = ϵ)
-    I = 0.0
-    for i in cs.idx_solutes
-        z = Int(charge(cs.species[i]))
-        iszero(z) && continue
-        I += m[symbol(cs.species[i])] * z^2
+
+    if kind === :effective
+        I = 0.0
+        for i in cs.idx_solutes
+            z = Int(charge(cs.species[i]))
+            iszero(z) && continue
+            I += m[symbol(cs.species[i])] * z^2
+        end
+        return I / 2
+    elseif kind === :stoichiometric
+        A = cs.SM.A
+        prim = cs.SM.primaries
+        # `Zz` is the charge pseudo-component of CEMDATA18, not an ion.
+        charged = [
+            (p, Int(charge(prim[p]))^2) for p in eachindex(prim)
+                if symbol(prim[p]) != "Zz" && !iszero(charge(prim[p]))
+        ]
+        I = 0.0
+        for i in cs.idx_solutes
+            mi = m[symbol(cs.species[i])]
+            iszero(mi) && continue
+            for (p, z2) in charged
+                I += mi * abs(Float64(A[p, i])) * z2
+            end
+        end
+        return I / 2
     end
-    return I / 2
+    throw(
+        ArgumentError(
+            "ionic_strength: kind must be :effective or :stoichiometric, got :$kind",
+        )
+    )
 end
 
 """
@@ -237,8 +289,14 @@ function activity_coefficients(
     out = OrderedDict{String, Float64}()
     for i in cs.idx_solutes
         z = Int(charge(cs.species[i]))
-        log10γ = iszero(z) ? _log10γ_neutral(model, I) :
+        log10γ = if iszero(z)
+            # Same per-species Setschenow coefficient the closure uses.
+            model isa HKFActivityModel ?
+                _log10γ_neutral(model, I, _setschenow(cs.species[i], model)) :
+                _log10γ_neutral(model, I)
+        else
             _log10γ_ion(model, z, åv[i], I, sqrtI, AB.A, AB.B)
+        end
         out[symbol(cs.species[i])] = 10.0^_primal(log10γ)
     end
 
@@ -408,6 +466,25 @@ function homotopy_initial_state(
     i_w = only(cs.idx_solvent)
     n0 = ustrip.(us"mol", state.n)
 
+    # `STRICT_CONVERGENCE[]` has to be off along the walk, and restored after.
+    #
+    # The walk *relies* on its early rungs being allowed to fall short: measured
+    # on a CEM I paste, the first one (λ = 0.01) does not converge and it does
+    # not matter, because all it has to be is close to the next. Under strict
+    # convergence that rung raises instead, the step is skipped, every later rung
+    # starts cold again, and the continuation degenerates into the very failure
+    # it exists to avoid. These are guesses, not answers; the answer is the
+    # certified solve that follows, and that one is still judged strictly.
+    strict = STRICT_CONVERGENCE[]
+    STRICT_CONVERGENCE[] = false
+    try
+        return _homotopy_walk(cs, i_w, n0, model, steps, ϵ, verbose)
+    finally
+        STRICT_CONVERGENCE[] = strict
+    end
+end
+
+function _homotopy_walk(cs, i_w, n0, model, steps, ϵ, verbose)
     current = nothing
     for λ in steps
         nλ = [i == i_w ? n0[i] : λ * n0[i] for i in eachindex(n0)]

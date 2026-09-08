@@ -302,4 +302,86 @@ end
     # because the non-ideal ones do not walk. Passing one explicitly is allowed.
     guess_hkf = homotopy_initial_state(st; model = HKFActivityModel())
     @test guess_hkf === nothing || guess_hkf isa ChemicalState
+
+    # `STRICT_CONVERGENCE[]` must not break the walk, and must be restored.
+    #
+    # This is a regression: the walk relies on its early rungs being allowed to
+    # fall short, and under strict convergence they raise instead — every later
+    # rung then starts cold and the continuation degenerates into the failure it
+    # exists to avoid. Measured on a cement, that turned a certified answer into
+    # `optimal = false` with nothing dissolved.
+    was = ChemistryLab.STRICT_CONVERGENCE[]
+    try
+        ChemistryLab.STRICT_CONVERGENCE[] = true
+        strict_guess = homotopy_initial_state(st)
+        @test strict_guess isa ChemicalState
+        @test A * ustrip.(us"mol", strict_guess.n) ≈ b0 rtol = 1.0e-6
+        # And the flag is put back, including when the walk throws.
+        @test ChemistryLab.STRICT_CONVERGENCE[] === true
+    finally
+        ChemistryLab.STRICT_CONVERGENCE[] = was
+    end
+end
+
+@testsection "the two ionic strengths" begin
+    substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    species = speciation(
+        substances, ["Gp", "H2O@"]; aggregate_state = [AS_AQUEOUS]
+    )
+    cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 55.5u"mol")
+    set_quantity!(st, "Ca+2", 0.05u"mol")
+    set_quantity!(st, "SO4-2", 0.05u"mol")
+    set_quantity!(st, "Ca(SO4)@", 0.02u"mol")   # a neutral ion pair
+
+    I_eff = ionic_strength(st)
+    I_sto = ionic_strength(st; kind = :stoichiometric)
+
+    # The pair is neutral, so it contributes nothing to the effective sum and
+    # 1/2 (4 + 4) m to the stoichiometric one. The stoichiometric value must
+    # therefore be the larger, by about that much.
+    m = molalities(st)
+    @test I_sto > I_eff
+    @test I_sto - I_eff ≈ 4 * m["Ca(SO4)@"] rtol = 0.05
+
+    # With no ion pairs at all the two coincide.
+    st2 = ChemicalState(cs)
+    set_quantity!(st2, "H2O@", 55.5u"mol")
+    set_quantity!(st2, "Ca+2", 0.05u"mol")
+    set_quantity!(st2, "SO4-2", 0.05u"mol")
+    @test ionic_strength(st2) ≈ ionic_strength(st2; kind = :stoichiometric) rtol = 1.0e-3
+
+    @test_throws ArgumentError ionic_strength(st; kind = :nonsense)
+end
+
+@testsection "water activity against the Gibbs-Duhem osmotic coefficient" begin
+    # The property that separates this package from Reaktoro, pinned.
+    #
+    # For a 1:1 electrolyte the osmotic coefficient of the extended
+    # Debye-Huckel model has a closed form (Helgeson et al. 1981, the sigma
+    # function), and integrating Gibbs-Duhem over the model's own activity
+    # coefficients must reproduce it. Reaktoro's `ActivityModelDebyeHuckel`
+    # does not: measured on NaCl(aq) at 25 C its reported water activity is
+    # 0.20 %, 1.70 % and 3.92 % below what its own gamma imply at 0.1, 0.5 and
+    # 1.0 mol/kg. The values below are the Gibbs-Duhem-consistent ones, and
+    # they agree with the tabulated water activities of NaCl.
+    substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    species = [
+        s for s in substances
+            if symbol(s) in ("H2O@", "H+", "OH-", "Na+", "Cl-")
+    ]
+    cs = ChemicalSystem(species, ["H2O@", "H+", "Na+", "Cl-", "Zz"])
+    model = HKFActivityModel(å = 3.72, Ḃ = 0.041, Kₙ = 0.041)
+
+    for (m, a_w_expected) in ((0.1, 0.996657), (0.5, 0.983603), (1.0, 0.966898))
+        st = ChemicalState(cs)
+        set_quantity!(st, "H2O@", (1.0 / 0.01801528)u"mol")   # 1 kg of water
+        set_quantity!(st, "Na+", m * u"mol")
+        set_quantity!(st, "Cl-", m * u"mol")
+        a = activities(st, model)
+        # 2e-4 absolute: the H+/OH- the state carries at neutral pH shift the
+        # solute sum by ~1e-7 mol/kg, and the reference is quoted to 6 digits.
+        @test isapprox(a["H2O@"], a_w_expected; atol = 2.0e-4)
+    end
 end

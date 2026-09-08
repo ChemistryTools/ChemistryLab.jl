@@ -32,6 +32,71 @@ IdealSolidSolutionModel()
 struct IdealSolidSolutionModel <: AbstractSolidSolutionModel end
 
 """
+    struct RegularSolutionModel{T<:Real} <: AbstractSolidSolutionModel
+
+Symmetric regular (multi-component Margules) solid solution.
+
+The gap this fills is arity. [`RedlichKisterModel`](@ref) is the general binary
+form and is restricted to two end-members, while [`IdealSolidSolutionModel`](@ref)
+takes any number but no interaction at all. A C-S-H with six end-members, or the
+CNASH and ECSH families of CEMDATA18, had no non-ideal option here.
+
+Excess Gibbs energy, with one symmetric interaction parameter per pair:
+
+```
+G^ex = Σ_{i<j} W_ij x_i x_j
+ln γ_k = (1/RT) [ Σ_{j≠k} W_kj x_j  −  Σ_{i<j} W_ij x_i x_j ]
+```
+
+`W` is in J/mol, symmetric, with a zero diagonal; only the off-diagonal entries
+are read and `W[i,j]` is used for the pair `(i,j)`. `W_ij > 0` is repulsive —
+it favors unmixing — and `W_ij = 0` recovers ideal mixing.
+
+For two end-members this is exactly `RedlichKisterModel(a0 = W₁₂)`, which the
+test suite checks; the point of it is `n > 2`.
+
+AD-compatible: all computations propagate `ForwardDiff.Dual` numbers.
+
+# Examples
+
+```jldoctest
+julia> m = RegularSolutionModel([0.0 4000.0; 4000.0 0.0]);
+
+julia> m.W[1, 2]
+4000.0
+```
+
+# References
+
+  - Guggenheim, E.A. (1937). *Trans. Faraday Soc.* **33**, 151–159.
+"""
+struct RegularSolutionModel{T <: Real} <: AbstractSolidSolutionModel
+    W::Matrix{T}
+end
+
+"""
+    RegularSolutionModel(W::AbstractMatrix) -> RegularSolutionModel
+
+Construct a [`RegularSolutionModel`](@ref) from a symmetric matrix of
+interaction parameters in J/mol. Raises if `W` is not square or not symmetric;
+the diagonal is ignored.
+"""
+function RegularSolutionModel(W::AbstractMatrix)
+    n, m = size(W)
+    n == m || throw(ArgumentError("RegularSolutionModel: W must be square, got $(size(W))"))
+    for i in 1:n, j in (i + 1):n
+        isapprox(W[i, j], W[j, i]; rtol = 1.0e-12) || throw(
+            ArgumentError(
+                "RegularSolutionModel: W must be symmetric; W[$i,$j] = $(W[i, j]) " *
+                    "but W[$j,$i] = $(W[j, i]).",
+            )
+        )
+    end
+    Wf = float.(collect(W))
+    return RegularSolutionModel{eltype(Wf)}(Wf)
+end
+
+"""
     struct RedlichKisterModel{T<:Real} <: AbstractSolidSolutionModel
 
 Binary Redlich-Kister (asymmetric Margules) model for non-ideal solid solutions.
