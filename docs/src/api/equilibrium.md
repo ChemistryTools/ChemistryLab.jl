@@ -11,6 +11,18 @@ Modules = [ChemistryLab]
 Pages = ["equilibrium/activities.jl"]
 ```
 
+## Aqueous properties
+
+Molalities, ionic strength, activity coefficients and the activity-convention
+pH, read back off a solved state. See
+[Reading the aqueous properties back](@ref sec-aqueous-properties) for the two
+traps these exist to avoid.
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["equilibrium/aqueous_properties.jl"]
+```
+
 ## Solid solutions
 
 ```@autodocs

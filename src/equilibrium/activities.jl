@@ -252,8 +252,13 @@ function hkf_debye_huckel_params(T_K, P_Pa)
     return (A = A, B = B)
 end
 
-# Internal: four-level ionic radius priority lookup.
+# Internal: ionic radius priority lookup. A model-level `å` short-circuits the
+# whole chain — that is the point of it: a common radius must not be silently
+# overridden by a per-species table entry.
 function _hkf_lookup_å(sp::AbstractSpecies, model)
+    if hasproperty(model, :å) && model.å !== nothing
+        return float(model.å)
+    end
     if haskey(properties(sp), :å)
         v = sp[:å]
         return v isa Number ? float(v) : float(safe_ustrip(1.0u"Å", v))
@@ -303,7 +308,11 @@ Ionic strength: `I = ½ Σ mⱼ zⱼ²`
   - `B`: Debye-Hückel B parameter [Å⁻¹(kg/mol)^(1/2)]. Default 0.3288.
   - `Ḃ`: B-dot extended term [kg/mol]. Default 0.041.
   - `Kₙ`: salting-out coefficient for neutral species [kg/mol]. Default 0.1.
-  - `å_default`: global fallback effective ionic radius [Å]. Default 3.72.
+  - `å_default`: last-resort effective ionic radius [Å], reached only for a
+    charge that no table covers. Default 3.72.
+  - `å`: one common effective ionic radius [Å] for every charged aqueous
+    species, overriding the tables. `nothing` (the default) uses the lookup
+    chain below. `å = 0` gives the Debye-Hückel limiting law plus `Ḃ I`.
   - `temperature_dependent`: if `true`, recompute A and B from `p.T`, `p.P`
     at each call to the activity closure (requires `T` and `P` in `p`).
     Default `false`.
@@ -311,10 +320,13 @@ Ionic strength: `I = ½ Σ mⱼ zⱼ²`
 # Ionic radius lookup
 
 The effective radius åᵢ is resolved in order:
-1. `sp[:å]` — explicit value in the species properties dict.
-2. [`REJ_HKF`](@ref) — Helgeson et al. (1981) Table 3, keyed by PHREEQC formula.
-3. [`REJ_CHARGE_DEFAULT`](@ref) — fallback by formal charge.
-4. `model.å_default` — global fallback.
+1. `model.å` — a common radius for every ion, when given. Short-circuits the
+   rest of the chain, so a per-species table entry cannot silently override it.
+2. `sp[:å]` — explicit value in the species properties dict.
+3. [`REJ_HKF`](@ref) — Helgeson et al. (1981) Table 3, keyed by PHREEQC formula.
+4. [`REJ_CHARGE_DEFAULT`](@ref) — fallback by formal charge.
+5. `model.å_default` — reached only for a charge no table covers, i.e. |z| ≥ 5.
+   It is **not** a way to impose a common radius; pass `å` for that.
 
 # Valid range
 
@@ -343,16 +355,41 @@ struct HKFActivityModel{T <: Real} <: AbstractActivityModel
     Ḃ::T
     Kₙ::T
     å_default::T
+    å::Union{Nothing, T}
     temperature_dependent::Bool
 end
 
 """
     HKFActivityModel(; A=0.5114, B=0.3288, Ḃ=0.041, Kₙ=0.1, å_default=3.72,
-                       temperature_dependent=false) -> HKFActivityModel
+                       å=nothing, temperature_dependent=false) -> HKFActivityModel
 
 Construct an [`HKFActivityModel`](@ref) with the given parameters.
 
 Default values are from Helgeson et al. (1981), Table 1, at 25 °C / 1 bar.
+
+`å` imposes **one common** effective radius on every charged aqueous species,
+overriding the per-species tables. Use it to reproduce a published model that
+was run with a single ion-size parameter — which is what GEM-Selektor, PHREEQC's
+`-gamma` and most cement models do. Note that `å_default` does **not** do this:
+it is only the last resort of the lookup chain and is reached only for charges
+no table covers. `å = 0` gives the Debye-Hückel limiting law plus the B-dot
+term.
+
+# Examples
+
+```julia
+# The package default: per-species radii from REJ_HKF, EQ3/6 NaCl B-dot.
+HKFActivityModel()
+
+# One common radius of 3.72 Å for every ion.
+HKFActivityModel(å = 3.72)
+
+# The Debye-Hückel limiting law with a KOH-background B-dot, which is what a
+# GEM-Selektor CEMDATA18 run of a Portland cement uses: CEMDATA18 carries no
+# ion-size parameter, so GEMS starts from å = 0, and the B-dot term is not
+# applied to neutral species.
+HKFActivityModel(å = 0.0, Ḃ = 0.097637, Kₙ = 0.0)
+```
 """
 function HKFActivityModel(;
         A::Real = 0.5114,
@@ -360,10 +397,17 @@ function HKFActivityModel(;
         Ḃ::Real = 0.041,
         Kₙ::Real = 0.1,
         å_default::Real = 3.72,
+        å::Union{Nothing, Real} = nothing,
         temperature_dependent::Bool = false,
     )
-    vals = promote(A, B, Ḃ, Kₙ, å_default)
-    return HKFActivityModel{eltype(vals)}(vals..., temperature_dependent)
+    if å === nothing
+        vals = promote(A, B, Ḃ, Kₙ, å_default)
+        T = eltype(vals)
+        return HKFActivityModel{T}(vals..., nothing, temperature_dependent)
+    end
+    vals = promote(A, B, Ḃ, Kₙ, å_default, å)
+    T = eltype(vals)
+    return HKFActivityModel{T}(vals[1:5]..., vals[6], temperature_dependent)
 end
 
 """
@@ -400,8 +444,6 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
 
     A_fixed = model.A
     B_fixed = model.B
-    Ḃ = model.Ḃ
-    Kₙ = model.Kₙ
     temp_dep = model.temperature_dependent
 
     # Per-species data (Float64 — not differentiated).
@@ -450,20 +492,25 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
             sum_mz2a = sum_mz2a + (_n[i] / denom_mol) * zv[i]^2 * åv[i]
         end
         sum_mz2 = 2 * I                 # Σ mⱼ zⱼ² = 2I by definition
-        # Smooth blend: avoids branching on Dual values at ionic-strength ≈ 0
-        å_eff = (sum_mz2a + model.å_default * ϵ) / (sum_mz2 + ϵ)
+        # Smooth blend: avoids branching on Dual values at ionic-strength ≈ 0.
+        # The ϵ term only sets the value in the I → 0 limit, where the osmotic
+        # coefficient is 1 regardless; it uses the imposed radius when there is
+        # one so that `å = 0` really means a vanishing `B å √I` everywhere.
+        å_fallback = model.å === nothing ? model.å_default : model.å
+        å_eff = (sum_mz2a + å_fallback * ϵ) / (sum_mz2 + ϵ)
 
         # ── Ion log-activity coefficients ──────────────────────────────────
+        # The formula lives in `_log10γ_ion`, which `activity_coefficients`
+        # also calls, so the accessor cannot drift from the solver.
         @inbounds for i in idx_ions
-            denom_dh = 1 + B * åv[i] * sqrtI
-            log10γᵢ = -A * zv[i]^2 * sqrtI / denom_dh + Ḃ * I
+            log10γᵢ = _log10γ_ion(model, zv[i], åv[i], I, sqrtI, A, B)
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
 
         # ── Neutral solute log-activities ──────────────────────────────────
         @inbounds for i in idx_neutrals
-            log10γᵢ = Kₙ * I
+            log10γᵢ = _log10γ_neutral(model, I)
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
@@ -476,7 +523,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
         x_arg = B * å_eff * sqrtI
         σ = _hkf_sigma(x_arg)
         φ = 1 - (A * ln10 / 3) * (sum_mz2 / (sum_m + ϵ)) * sqrtI * σ +
-            (Ḃ * ln10 / 2) * I
+            (model.Ḃ * ln10 / 2) * I
         out[idx_solvent] = -M_w * sum_m * φ
 
         # ── Gas: ideal mixture ─────────────────────────────────────────────
@@ -555,6 +602,57 @@ function DaviesActivityModel(;
     return DaviesActivityModel{eltype(vals)}(vals..., temperature_dependent)
 end
 
+# ── Concentration scale and activity-coefficient formulas ────────────────────
+#
+# Each model is asked two things beyond its log-activity closure: which
+# concentration scale its solute standard state uses, and what its activity
+# coefficient is. Both are needed by `activity_coefficients`, `pH(state, model)`
+# and the rest of `aqueous_properties.jl`, and the second is called from inside
+# the log-activity closures as well, so the formula exists in exactly one place
+# and the accessor cannot drift from the solver.
+
+"""
+    concentration_scale(model::AbstractActivityModel) -> Symbol
+
+The concentration scale of the model's solute standard state, `:molality` or
+`:molarity`.
+
+An activity coefficient is only defined relative to a scale: `a = γ m` on the
+molality scale, `a = γ c / c°` on the molarity scale. Nothing in the numbers
+says which one a given model used — [`DiluteSolutionModel`](@ref) is on the
+molarity scale but takes ρ = 1 kg/L, so its activities coincide numerically with
+molalities — so the scale has to be asked rather than inferred. It stops being a
+formality as soon as the density departs from 1 kg/L, and it is the origin of
+the 0.0013 pH offset that model carries.
+
+See also: [`activity_coefficients`](@ref), [`molalities`](@ref).
+"""
+concentration_scale(::DiluteSolutionModel) = :molarity
+concentration_scale(::HKFActivityModel) = :molality
+concentration_scale(::DaviesActivityModel) = :molality
+
+# `log10γ_ion(model, z, å, I, sqrtI, A, B)` and `log10γ_neutral(model, I)` are
+# the models' activity-coefficient formulas, as scalars. `å`, `A` and `B` are
+# passed in even where a model ignores them, so that all three share one
+# signature. AD-safe: arithmetic only.
+
+@inline function _log10γ_ion(model::HKFActivityModel, z, å, I, sqrtI, A, B)
+    return -A * z^2 * sqrtI / (1 + B * å * sqrtI) + model.Ḃ * I
+end
+@inline _log10γ_neutral(model::HKFActivityModel, I) = model.Kₙ * I
+
+@inline function _log10γ_ion(model::DaviesActivityModel, z, å, I, sqrtI, A, B)
+    return -A * z^2 * (sqrtI / (1 + sqrtI) - model.b * I)
+end
+@inline _log10γ_neutral(model::DaviesActivityModel, I) = model.bₙ * I
+
+# The dilute model is ideal *on its own scale*: γ = 1 by construction. It is the
+# conversion from molality to molarity that makes its activities differ from a
+# molality-scale ideal model, not an activity coefficient.
+@inline _log10γ_ion(::DiluteSolutionModel, z, å, I, sqrtI, A, B) = zero(I * A)
+@inline _log10γ_neutral(::DiluteSolutionModel, I) = zero(I)
+
+
 """
     activity_model(cs::ChemicalSystem, model::DaviesActivityModel) -> Function
 
@@ -577,8 +675,6 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
     M_w = ustrip(us"kg/mol", cs.species[idx_solvent][:M])
 
     A_fixed = model.A
-    b = model.b
-    bₙ = model.bₙ
     temp_dep = model.temperature_dependent
 
     zv = Int8[charge(sp) for sp in cs.species]
@@ -610,11 +706,10 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
         end
         I = I / 2
         sqrtI = sqrt(I + ϵ)
-        dI = sqrtI / (1 + sqrtI)     # √I / (1 + √I)
 
-        # Ions
+        # Ions — `_log10γ_ion` is shared with `activity_coefficients`.
         @inbounds for i in idx_ions
-            log10γᵢ = -A * zv[i]^2 * (dI - b * I)
+            log10γᵢ = _log10γ_ion(model, zv[i], 0.0, I, sqrtI, A, 0.0)
             mᵢ = _n[i] / denom_mol
             out[i] = ln10 * log10γᵢ + log(mᵢ + ϵ)
         end
@@ -622,7 +717,7 @@ function activity_model(cs::ChemicalSystem, model::DaviesActivityModel)
         # Neutral solutes
         @inbounds for i in idx_neutrals
             mᵢ = _n[i] / denom_mol
-            out[i] = ln10 * bₙ * I + log(mᵢ + ϵ)
+            out[i] = ln10 * _log10γ_neutral(model, I) + log(mᵢ + ϵ)
         end
 
         # Water activity — Raoult (mole fraction) approximation

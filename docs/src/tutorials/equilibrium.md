@@ -690,9 +690,9 @@ state_eq = equilibrate(state)   # DiluteSolutionModel is the default
 
 ### `HKFActivityModel` (extended Debye-Hückel B-dot)
 
-Implements the extended Debye-Hückel model of Helgeson (1969) and
-Helgeson, Kirkham & Flowers (1981), identical to the model used by
-PHREEQC and EQ3/6.
+Implements the extended Debye-Hückel model of Helgeson [Helgeson1969](@cite)
+and Helgeson, Kirkham & Flowers [Helgeson1981](@cite), identical to the model
+used by PHREEQC [ParkhurstAppelo2013](@cite) and EQ3/6.
 
 **Ion activity coefficient:**
 ```
@@ -708,10 +708,20 @@ log₁₀ γᵢ = Kₙ I
 (not Raoult), which is accurate up to `I ≈ 1 mol/kg`.
 
 **Ionic radius lookup** (priority order):
-1. `sp[:å]` — explicit value set in species properties.
-2. [`REJ_HKF`](@ref) — Helgeson et al. (1981) Table 3 (27 common ions).
-3. [`REJ_CHARGE_DEFAULT`](@ref) — fallback by formal charge.
-4. `model.å_default` (default: 3.72 Å).
+1. `model.å` — one common radius for every ion, when given. Short-circuits the
+   rest of the chain.
+2. `sp[:å]` — explicit value set in species properties.
+3. [`REJ_HKF`](@ref) — Helgeson et al. (1981) Table 3 (27 common ions)
+   [Helgeson1981](@cite).
+4. [`REJ_CHARGE_DEFAULT`](@ref) — fallback by formal charge [Xu2011](@cite).
+5. `model.å_default` (default: 3.72 Å).
+
+!!! warning "`å_default` does not impose a common ionic radius"
+    It is the **last resort** of the chain above, reached only for a charge that
+    neither table covers — in practice `|z| ≥ 5`. Setting it changes essentially
+    nothing for a real solution. Pass `å` to impose one common radius, which is
+    what GEM-Selektor, PHREEQC's `-gamma` and most published cement models
+    actually use.
 
 **Usage:**
 
@@ -724,7 +734,29 @@ state_eq = equilibrate(state; model=HKFActivityModel(temperature_dependent=true)
 
 # Custom parameters
 model = HKFActivityModel(A=0.52, B=0.33, Ḃ=0.04)
+
+# One common ion size of 3.72 Å, overriding the per-species tables
+model = HKFActivityModel(å = 3.72)
+
+# å = 0 collapses the denominator to 1: the Debye-Hückel limiting law plus Ḃ I
+model = HKFActivityModel(å = 0.0)
 ```
+
+!!! tip "Reproducing a GEM-Selektor CEMDATA18 run"
+    CEMDATA18 [Lothenbach2019](@cite) carries no ion-size parameter, so a
+    GEM-Selektor run of a Portland cement starts from `å = 0` and carries the
+    whole non-ideality in the B-dot term, with no salting-out on the neutral
+    species. For a KOH-dominated pore solution that is
+
+    ```julia
+    model = HKFActivityModel(å = 0.0, Ḃ = 0.097637, Kₙ = 0.0)
+    ```
+
+    which reproduces the activity coefficients such a run reports to 0.25 % on
+    the monovalent ions and 1.2 % on the divalent ones. The package defaults are
+    a different and more defensible model — the limiting law has no validity at
+    `I ≈ 0.2 mol/kg` — and give divalent coefficients about twice as large, so
+    the two must not be mixed in one comparison.
 
 The A and B parameters depend on the water dielectric constant and density
 and can be computed explicitly via [`hkf_debye_huckel_params`](@ref):
@@ -741,8 +773,9 @@ ab = hkf_debye_huckel_params(298.15, 1e5)   # → (A=0.5114, B=0.3288)
 
 ### `DaviesActivityModel` (Davies equation)
 
-Simpler alternative with no species-specific ionic radii. Suitable when
-ionic radii data are unavailable or for rapid screening calculations.
+Simpler alternative with no species-specific ionic radii
+[Davies1962](@cite). Suitable when ionic radii data are unavailable or for rapid
+screening calculations.
 
 **Ion activity coefficient:**
 ```
@@ -792,6 +825,79 @@ Pass your model to `equilibrate` or `EquilibriumSolver`:
 state_eq = equilibrate(state; model=MyModel(...))
 ```
 
+A custom model should also declare its solute concentration scale, so that
+[`activity_coefficients`](@ref) divides by the right thing:
+
+```julia
+ChemistryLab.concentration_scale(::MyModel) = :molality
+```
+
+---
+
+## [Reading the aqueous properties back](@id sec-aqueous-properties)
+
+The activity closures compute the molalities, the ionic strength and the
+activity coefficients on their way to the log-activities. All of it is readable
+off a state:
+
+| call | returns |
+|:--|:--|
+| [`molalities`](@ref)`(state)` | `mᵢ` of every solute, mol/kg of solvent |
+| [`ionic_strength`](@ref)`(state)` | `I = ½ Σ mⱼ zⱼ²`, mol/kg |
+| [`activity_coefficients`](@ref)`(state, model)` | `γᵢ` of every aqueous species |
+| [`log_activities`](@ref)`(state, model)` | `ln aᵢ` of **every** species |
+| [`activities`](@ref)`(state, model)` | `aᵢ` of every species |
+| [`pH`](@ref)`(state, model)` | `−log₁₀ a(H⁺)` |
+| [`pOH`](@ref)`(state, model)` | `−log₁₀ a(OH⁻)` |
+
+```julia
+eq = equilibrate(state; model = HKFActivityModel())
+
+ionic_strength(eq)                      # 0.212 mol/kg
+molalities(eq)["K+"]                    # 0.146 mol/kg
+activity_coefficients(eq, model)["Ca+2"]
+activities(eq, model)["H2O@"]           # water activity
+pH(eq, model)                           # activity convention
+```
+
+`molalities` and `ionic_strength` need no model: they are properties of the
+composition, and every model in the package computes the ionic strength this
+way. When comparing against another code, **compare the ionic strength first** —
+if it disagrees, the two are not describing the same solution, whatever their
+volumes happen to agree on.
+
+### Two conventions of pH, 0.2 units apart
+
+The one-argument [`pH`](@ref)`(state)` and the two-argument
+[`pH`](@ref)`(state, model)` are **different quantities**:
+
+- `pH(state)` is `−log₁₀ c(H⁺)`, a **concentration** in mol/L over the computed
+  liquid volume, and in an alkaline solution it is reconstructed from OH⁻
+  through `pKw`. It is stored on the state and needs no activity model.
+- `pH(state, model)` is `−log₁₀ a(H⁺)`, the **activity** on the molality scale.
+  This is what GEM-Selektor, PHREEQC and Reaktoro report.
+
+On a Portland cement pore solution at `I ≈ 0.2 mol/kg`, with `γ(H⁺) ≈ 0.61`, the
+two differ by about **0.21 units** (13.31 against 13.10). Comparing the wrong
+one against another code means chasing a discrepancy that is a convention, not a
+result.
+
+### γ comes from the formula, not from a ratio
+
+[`activity_coefficients`](@ref) evaluates the model's own expression, rather than
+dividing an activity by a concentration. The ratio agrees for an abundant
+solute — the test suite checks that it does — but a species parked at the
+solver's `1e-16 mol` lower bound has its log-activity dominated by the closures'
+`+ ϵ` regularization, and the ratio then returns values of order `1e300` for a
+charge class whose only members are trace. The formula depends on the ionic
+strength and the charge alone, so it is exact at any amount.
+
+Relatedly, an activity is a number on a *scale*, and nothing in the number says
+which. [`DiluteSolutionModel`](@ref) puts its solutes on the molarity scale and
+takes `ρ = 1 kg/L`, so its activities coincide numerically with molalities even
+though the scale differs; the other two models are on the molality scale.
+[`concentration_scale`](@ref) is the only way to tell them apart.
+
 ---
 
 ## Solid solutions
@@ -815,7 +921,8 @@ substances = build_species(datapath("cemdata18-thermofun.json"))
 dict = Dict(symbol(s) => s for s in substances)
 
 # SolidSolutionPhase requalifies SC_COMPONENT → SC_SSENDMEMBER automatically
-ss_afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]])
+ss_afm = SolidSolutionPhase("AFm",
+    [dict["monosulphate12"], dict["monocarbonate"]])
 ```
 
 **Workflow B — automated via [`build_solid_solutions`](@ref) and a TOML file:**
@@ -832,7 +939,7 @@ Then pass `solid_solutions` as a keyword to `ChemicalSystem`:
 
 ```julia
 cs = ChemicalSystem(
-    [H2O_sp, dict["Ms"], dict["Mc"], ...],
+    [H2O_sp, dict["monosulphate12"], dict["monocarbonate"], ...],
     ["H2O@", "Al+3", ...];           # primaries
     solid_solutions = [ss_afm],      # or solid_solutions = ss_phases
 )
