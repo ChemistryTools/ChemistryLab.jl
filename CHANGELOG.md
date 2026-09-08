@@ -1,5 +1,136 @@
 # Changelog
 
+## v0.15.0 — the alkali end-members of the C-S-H, and a readable aqueous state
+
+The shipped `data/solid_solutions.toml` described a C-S-H that could not hold
+alkalis. `CSHQ` was declared with four end-members, and CEMDATA18's `KSiOH` and
+`NaSiOH` — the alkali-uptake end-members of that same phase — were reachable
+from no file in the package, although both are fully parameterized in both
+shipped databases (Cemdata18, Lothenbach et al. 2019; the CSHQ model itself is
+Kulik 2011). Uptake of alkalis by the C-S-H is not a refinement: it is what sets
+the pore-solution pH of a real paste. `docs/src/examples/cement_wc_ratio.md` said so already, in its
+list of limitations — "the alkalis themselves, which in a real paste raise the
+pore-solution pH to 13 or above".
+
+Measured against a GEM-Selektor reference on a CEM I at w/c = 0.5 (100 g of
+oxides, 50 g of water, the CEMDATA18 phase list, and the extended
+Debye-Huckel model that run used): GEMS puts **74 % of the total potassium and
+90 % of the total sodium into the C-S-H**. With the six-end-member phase
+declared and `HKFActivityModel(Ḃ = 0.097637, Kₙ = 0.0)` on an ion size of zero,
+this package now returns pH 13.0994 against GEMS' 13.0957, a total volume of
+74.1888 cm3 against 74.2136, `KSiOH` to -0.46 % and `NaSiOH` to +0.06 %, and
+activity coefficients within 0.25 % (monovalent) and 1.16 % (divalent) of the
+ones GEMS printed. Reaktoro 2.13 on the same problem agrees to 0.08 % on the
+volume.
+
+### Added
+
+- **`CSHQ` now has six end-members**: `CSHQ-TobD`, `CSHQ-TobH`, `CSHQ-JenH`,
+  `CSHQ-JenD`, `KSiOH`, `NaSiOH`.
+- **`C3(AF)S0.84H`**, the CEMDATA18 Fe-siliceous hydrogarnet
+  (`C3AFS0.84H4.32` + `C3FS0.84H4.32`), ideal mixing. It is where the iron of a
+  ferrite phase ends up, and it took 0.0507 mol in the reference run — second
+  only to the C-S-H and the portlandite among the aluminate and ferrite
+  hydrates. `build_solid_solutions` therefore returns six phases where it
+  returned five.
+- The `"C-S-H"` reporting group of `volume_fractions` covers the two alkali
+  end-members, which would otherwise have been counted under `"other"`.
+
+### Added — the aqueous state is readable
+
+The activity closures computed the molalities, the ionic strength and the
+activity coefficients on their way to the log-activities, and kept all three to
+themselves. Anyone comparing a state against GEM-Selektor, PHREEQC or Reaktoro
+needs them species by species, and had to reach into
+`activity_model(cs, model)` and `ChemistryLab._build_params(state)` to get them.
+They are public now, together with the two things that make them meaningful:
+
+- **`molalities(state)`** — `mᵢ = nᵢ / (n_w Mw)` for every solute, mol/kg.
+- **`ionic_strength(state)`** — `I = ½ Σ mⱼ zⱼ²`, mol/kg. Model-independent: it
+  is a property of the composition, and it is the first thing to compare
+  against another code, because an ionic strength that disagrees means the two
+  are not describing the same solution whatever their volumes agree on.
+- **`activity_coefficients(state, model)`** — γᵢ of every aqueous species,
+  evaluated from **the model's own formula** rather than as a ratio `a/m`. The
+  ratio agrees for an abundant solute, and the tests check that it does, but a
+  species parked at the solver's 1e-16 mol lower bound has its log-activity
+  dominated by the closures' `+ ϵ` regularization, and the ratio then returns
+  values of order 1e300 for a charge class whose only members are trace. The
+  formula depends on the ionic strength and the charge alone, so it is exact at
+  any amount. Measured on a CEM I pore solution: the charge classes |z| = 3 and
+  4 now come back at -2.7 % and -4.7 % of the coefficients GEM-Selektor
+  reports, where the ratio gave 1e300.
+- **`log_activities(state, model)`** and **`activities(state, model)`** — the
+  vector the Gibbs energy is built from, for every species.
+- **`concentration_scale(model)`** — `:molality` or `:molarity`. An activity is
+  a number on a scale and nothing in the number says which:
+  `DiluteSolutionModel` is on the molarity scale but takes ρ = 1 kg/L, so its
+  activities coincide numerically with molalities, while the other two are on
+  the molality scale. A custom model should declare its own.
+- **`pH(state, model)`** and **`pOH(state, model)`** — `−log₁₀ a(H⁺)` and
+  `−log₁₀ a(OH⁻)`, the **activity** convention that GEM-Selektor, PHREEQC and
+  Reaktoro report. The existing one-argument `pH(state)` is a different
+  quantity: `−log₁₀ c(H⁺)` in mol/L over the computed liquid volume,
+  reconstructed through `pKw` when the solution is basic. On a Portland cement
+  pore solution at I ≈ 0.2 mol/kg, with γ(H⁺) ≈ 0.61, the two differ by
+  **0.21 units** (13.31 against 13.10) — enough to be mistaken for a modeling
+  error. Both are now documented side by side.
+
+### Added — a common ion size, settable on the model
+
+`HKFActivityModel(; å)` imposes **one** effective radius on every charged
+aqueous species, short-circuiting the per-species tables. That is what
+GEM-Selektor, PHREEQC's `-gamma` and most published cement models actually use,
+and it was previously reachable only by mutating `sp[:å]` on every species
+before building the `ChemicalSystem`. `å_default` looks like the knob for it and
+is not: it is the last resort of the lookup chain and is never reached for an
+ion either table covers, so setting it changes essentially nothing. Both facts
+are now stated in the docstring and asserted in the tests.
+
+`å = 0` collapses the Debye-Hückel denominator to 1, giving the limiting law
+plus the B-dot term. With `HKFActivityModel(å = 0.0, Ḃ = 0.097637, Kₙ = 0.0)`
+the package reproduces the activity coefficients of a GEM-Selektor CEMDATA18
+run to 0.25 % on the monovalent ions and 1.2 % on the divalent ones — a run
+whose model can be recovered from its own output, since CEMDATA18 carries no
+ion-size parameter at all.
+
+### Fixed
+
+- `docs/src/tutorials/equilibrium.md` and `README.md` built an AFm solid
+  solution from `dict["Ms"]` and `dict["Mc"]`. Neither symbol exists in any
+  shipped database, so those examples could never have run. They now use
+  `monosulphate12` and `monocarbonate`, which is what the TOML has always used.
+- The TOML-format example in `docs/src/tutorials/databases.md` showed the same
+  two symbols, and a four-member `CSHQ` that no longer matches the file.
+- `docs/src/examples/simplified_clinker_dissolution.md` said "the only built-in
+  model is `DiluteSolutionModel`". There are three.
+
+### Documentation
+
+- A new tutorial section,
+  [Reading the aqueous properties back](https://micropochemomechanics.github.io/ChemistryLab.jl/stable/tutorials/equilibrium/#sec-aqueous-properties),
+  covering the accessors above, the two conventions of pH and why γ is not a
+  ratio; and an `Aqueous properties` section in the equilibrium API reference.
+- The bibliography gained Helgeson (1969), Helgeson, Kirkham & Flowers (1981),
+  Davies (1962), Kulik (2011), Parkhurst & Appelo (2013), Robie & Hemingway
+  (1995) and Xu et al. (2011), which the activity-model docstrings had been
+  citing in prose without entries. Every DOI was resolved against the Crossref
+  REST API; Davies (1962) is a Butterworths monograph that Crossref does not
+  index, and its author, title and publisher are confirmed by the
+  contemporary review in *Science* (doi:10.1126/science.143.3601.37), while the
+  authorship of USGS Bulletin 2131, absent from its Crossref record, is
+  confirmed by the USGS publications catalog.
+- `data/solid_solutions.toml` now says at its head what it is **not**. `CSHQ`
+  and `C3(AF)S0.84H` match the GEM-Selektor phases of those names, but `AFm`,
+  `Hydrogarnet` and `Hydrotalcite` are deliberate alternatives to the CEMDATA18
+  phase model: GEMS treats `monocarbonate`, `C3AH6`, `C3FH6` and `hydrotalcite`
+  as *pure* phases, its AFm solid solution is `C4AH13` + `monosulphate12`, and
+  its hydrotalcite solid solution is `Mg3AlC0.5OH` + `Mg3FeC0.5OH` at
+  Mg:Al = 3. Reproducing a GEMS result means declaring the phases in the script,
+  not taking this file wholesale — and the file no longer lets a reader assume
+  otherwise.
+
+
 ## v0.14.2 — holding AMD at a version that still has `SS_Int`
 
 A release with no change to ChemistryLab itself. It exists because an upstream
