@@ -259,3 +259,47 @@ end
     ratio = γ_def(2, REJ_HKF["Ca+2"]) / 0.1212781
     @test 1.8 < ratio < 1.95
 end
+
+@testsection "the initial approximation is computed, not asked for" begin
+    # `homotopy_initial_state` walks the solute amount up from a dilute system.
+    # What must hold of its result is that it is a *feasible* starting point:
+    # at λ = 1 the composition is the one given, so the component amounts are
+    # unchanged. It is not an equilibrium and nothing here asserts that it is.
+    substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    species = speciation(
+        substances, ["Cal", "H2O@", "CO2@"]; aggregate_state = [AS_AQUEOUS]
+    )
+    cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 55.5u"mol")
+    set_quantity!(st, "Cal", 0.05u"mol")
+    set_quantity!(st, "CO2@", 0.01u"mol")
+
+    A = Float64.(cs.SM.A)
+    b0 = A * ustrip.(us"mol", st.n)
+
+    guess = homotopy_initial_state(st)
+    @test guess isa ChemicalState
+    # The element balance of the endpoint is the one it was given: the walk ends
+    # at λ = 1, which is the state itself.
+    @test A * ustrip.(us"mol", guess.n) ≈ b0 rtol = 1.0e-6
+    @test all(>(0), ustrip.(us"mol", guess.n))
+
+    # A system with no aqueous solvent has nothing to walk: `nothing`, not an
+    # error, so `equilibrate_certified` can simply carry on without it.
+    dry = ChemicalSystem([s for s in substances if symbol(s) == "Cal"])
+    @test homotopy_initial_state(ChemicalState(dry)) === nothing
+
+    # On a problem that certifies without help, declining the fallback must not
+    # change the answer — it is only ever consulted when nothing else certified.
+    eq_on, cert_on = equilibrate_certified(st)
+    eq_off, cert_off = equilibrate_certified(st; autostart = false)
+    @test cert_on.optimal
+    @test cert_off.optimal
+    @test ustrip.(us"mol", eq_on.n) ≈ ustrip.(us"mol", eq_off.n) rtol = 1.0e-6
+
+    # The walk is done under the ideal model by default, whatever the target,
+    # because the non-ideal ones do not walk. Passing one explicitly is allowed.
+    guess_hkf = homotopy_initial_state(st; model = HKFActivityModel())
+    @test guess_hkf === nothing || guess_hkf isa ChemicalState
+end

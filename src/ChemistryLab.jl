@@ -321,6 +321,8 @@ module ChemistryLab
         REJ_CHARGE_DEFAULT,
         hkf_debye_huckel_params
 
+    export homotopy_initial_state
+
     # Aqueous properties read back off a solved state.
     export molalities,
         ionic_strength,

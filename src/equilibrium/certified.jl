@@ -26,11 +26,26 @@
 # keeping a proved answer is exact, not heuristic.
 
 """
-    equilibrate_certified(state; model, ϵ, b, verbose) -> (state, certificate)
+    equilibrate_certified(state; model, ϵ, b, verbose, autostart) -> (state, certificate)
 
 Equilibrium composition together with a proof of its global optimality, obtained
 by solving from every registered back end and keeping the answer
 [`optimality_certificate`](@ref) proves optimal.
+
+# The starting point is found, not asked for
+
+When no back end certifies from the state as given, an initial approximation is
+computed by continuation — [`homotopy_initial_state`](@ref) — and every back end
+is run again from it. This is what makes a realistic cement solvable without the
+caller knowing anything about the answer: from the cold state of a CEM I paste
+(all the mass in the reactants, every product at the `ϵ` floor) no route reaches
+the optimum, and with the continuation the same call certifies.
+
+It costs nothing in the ordinary case, because it only runs when nothing else
+certified. `autostart = false` declines it, which is what the coupled kinetic
+step does: there the caller already supplies the previous instant as a warm
+start, and a handful of extra solves inside an implicit ODE step would be paid
+at every step.
 
 `certificate.optimal == true` is a **proof**, valid because the Gibbs
 minimization is convex when the mixing terms are — ideal mixing and any activity
@@ -68,6 +83,7 @@ function equilibrate_certified(
         verbose::Bool = false,
         constraint::EquilibriumConstraint = FixedTP(),
         parameters::Union{Nothing, Base.RefValue} = nothing,
+        autostart::Bool = true,
         kwargs...,
     )
     if !_DUAL_AVAILABLE[]
@@ -123,6 +139,7 @@ function equilibrate_certified(
             verbose && @info "start rejected" backend = f err
         end
     end
+
     # The state as given is a legitimate start too, and the only one available if
     # every back end threw.
     push!(starts, state)
@@ -130,6 +147,44 @@ function equilibrate_certified(
     eq, cert = solve_certified(
         des, starts; b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
     )
+
+    # An automatic initial approximation, computed rather than asked for.
+    #
+    # Only when nothing above certified, so the common case pays nothing for it.
+    # A realistic cement does not converge from the state as given — all the mass
+    # in the reactants, every product at the `ϵ` floor — and the caller should
+    # not have to know that, nor supply a chemically informed guess.
+    # `homotopy_initial_state` walks the solute amount up from a dilute system,
+    # which costs a handful of extra solves and needs nothing from the caller.
+    if autostart && !cert.optimal
+        # Walked under the IDEAL model, deliberately, whatever `model` is: the
+        # non-ideal ones do not walk (the a = 0 Debye-Huckel runs away to
+        # I = 18 mol/kg, its coefficients falling with I raising solubility
+        # raising I). The ideal endpoint is then a good start for `model`,
+        # which is what the back-end loop below does with it.
+        guess = homotopy_initial_state(state; ϵ = ϵ, verbose = verbose)
+        if guess !== nothing
+            extra = ChemicalState[guess]
+            for f in _SOLVER_FACTORIES
+                try
+                    esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
+                    push!(extra, SciMLBase.solve(esolver, guess; ϵ = ϵ, b = bfix))
+                catch err
+                    verbose && @info "start from the continuation rejected" backend = f err
+                end
+            end
+            eq2, cert2 = solve_certified(
+                des, vcat(extra, starts); b = bfix, ϵ = ϵ,
+                constraint = constraint, parameters = parameters,
+            )
+            # Keep it only if it is actually better: certified beats
+            # uncertified, and among uncertified the smaller KKT error wins.
+            if cert2.optimal || cert2.stationarity < cert.stationarity
+                eq, cert = eq2, cert2
+            end
+        end
+    end
+
     if !cert.optimal
         @warn "no route produced a certifiable equilibrium; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" stationarity = cert.stationarity balance = cert.balance worst_supersaturation = cert.worst_supersaturation maxlog = 1
     end

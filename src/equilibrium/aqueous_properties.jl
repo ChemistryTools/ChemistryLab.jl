@@ -309,3 +309,123 @@ function _p_activity(
     lna = log_activities(state, model; ϵ = ϵ)
     return -lna[sym] / log(10)
 end
+
+# ── Automatic initial approximation by continuation ──────────────────────────
+#
+# A Gibbs energy minimization needs a starting point, and on a cement the choice
+# decides whether it converges at all. From the "cold" state — all the mass in
+# the reactants, every product at the `ϵ` floor — no back end reaches the
+# optimum on a CEM I paste of 135 species: the answer comes back
+# `optimal = false` with a worst supersaturation of order 1e1 and a total volume
+# 13 % wrong. The problem is convex, so this is not a local minimum; it is the
+# conditioning of an interior-point method started against the boundary. With
+# 120 of 135 species at 1e-16 and nine at ~1 mol, the barrier gradients span
+# sixteen orders of magnitude and the fraction-to-the-boundary rule crawls; and
+# a solid-solution end-member has `ln a = ln x → −∞` as its mole fraction goes
+# to zero, so the objective's gradient is unbounded on exactly the face where a
+# mixing phase vanishes.
+#
+# GEM-Selektor solves this by computing an initial approximation rather than
+# asking for one: `AutoInitialApproximation` (GEMS3K, `ipm_simplex.cpp`) is an
+# "LPP-based automatic initial approximation of the primal vector x" obtained
+# with a "modified simplex method with two-side constraints". Reproducing that
+# needs a genuine LP solver — a barrier method on a linear objective is not one,
+# and measured here it does not move off the cold state at all.
+#
+# What does work, and needs no new algorithm, is continuation. Scale everything
+# but the solvent by λ and walk λ from a small value to 1, each step started
+# from the answer to the previous one. At small λ the reactants are dilute, the
+# solid amounts are small, and the problem sits far from the awkward face; the
+# assemblage then grows continuously with λ. Measured on the CEM I paste: the
+# first rung does not certify and it does not matter — every rung from λ = 0.02
+# on certifies, and the endpoint is identical, to the digits printed, to the
+# answer from a chemically informed seed.
+#
+# Nothing here is chemical. "Everything but the solvent" needs no knowledge of
+# which hydrates will form, and λ is not a physical parameter: at λ = 1 the
+# state is exactly the one given.
+
+"""
+    homotopy_initial_state(state::ChemicalState; model = DiluteSolutionModel(),
+                           steps = ..., ϵ = 1e-16, verbose = false)
+        -> Union{ChemicalState, Nothing}
+
+An automatic initial approximation obtained by continuation in the amount of
+solute.
+
+Scales every species except the aqueous solvent by a factor `λ`, and walks `λ`
+through `steps` up to 1, solving at each value from the answer to the previous
+one. At `λ = 1` the composition is exactly `state`, so the returned composition
+respects the same element balance; it is a **starting point**, not a certified
+equilibrium.
+
+This is what makes a realistic cement solvable from a cold start: with all the
+mass in the reactants and every product at the `ϵ` floor, no back end reaches
+the optimum, because an interior-point method started against the boundary of a
+system spanning sixteen orders of magnitude in amount cannot take a useful step.
+At small `λ` the same system is dilute and well away from that boundary.
+
+It requires **nothing** from the caller beyond the initial state: no guess at
+which phases will form, no knowledge of the answer. [`equilibrate_certified`](@ref)
+calls it automatically when its ordinary starting points fail to certify, so
+ordinary use never needs it.
+
+The walk is done under `model`, which defaults to [`DiluteSolutionModel`](@ref)
+and should normally be left there **even when the target is a non-ideal model**.
+Measured on the CEM I paste: walking under the extended Debye-Hückel model with
+a common ion size of zero runs away to an ionic strength of 18 mol/kg, because
+that model's coefficients fall steeply with `I`, which raises solubility, which
+raises `I`. The ideal model has no such feedback, walks cleanly, and its answer
+is a good starting point for the non-ideal one — which is how
+[`equilibrate_certified`](@ref) uses it.
+
+Returns `nothing` if the walk produced nothing usable.
+
+Differentiability is unaffected. Under `ForwardDiff`, `equilibrate_certified`
+strips to the primal state, solves in `Float64` and attaches the sensitivity
+through the implicit function theorem, so this never sees a `Dual` and the
+derivative does not depend on how the starting point was found.
+
+# Examples
+
+```julia
+# What `equilibrate_certified` does for you when the cold start fails:
+guess = homotopy_initial_state(state)
+eq, cert = equilibrate_certified(guess; model = HKFActivityModel())
+```
+
+See also: [`equilibrate_certified`](@ref).
+"""
+function homotopy_initial_state(
+        state::ChemicalState;
+        model::AbstractActivityModel = DiluteSolutionModel(),
+        steps = (0.01, 0.02, 0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 0.85, 1.0),
+        ϵ::Float64 = 1.0e-16,
+        verbose::Bool = false,
+    )
+    cs = state.system
+    isempty(cs.idx_solvent) && return nothing
+    i_w = only(cs.idx_solvent)
+    n0 = ustrip.(us"mol", state.n)
+
+    current = nothing
+    for λ in steps
+        nλ = [i == i_w ? n0[i] : λ * n0[i] for i in eachindex(n0)]
+        bλ = Float64.(cs.SM.A) * nλ
+        start = current === nothing ? ChemicalState(cs, nλ .* u"mol") : current
+        stepped = nothing
+        for f in _SOLVER_FACTORIES
+            try
+                esolver = EquilibriumSolver(cs, model, f())
+                stepped = SciMLBase.solve(esolver, start; ϵ = ϵ, b = bλ)
+                break
+            catch err
+                verbose && @info "homotopy step rejected" λ = λ backend = f err
+            end
+        end
+        stepped === nothing && continue
+        current = stepped
+        verbose && @info "homotopy step" λ = λ
+    end
+    return current
+end

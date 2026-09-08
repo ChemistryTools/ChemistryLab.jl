@@ -76,6 +76,70 @@ They are public now, together with the two things that make them meaningful:
   **0.21 units** (13.31 against 13.10) — enough to be mistaken for a modeling
   error. Both are now documented side by side.
 
+### Added — the starting point is found, not asked for
+
+`equilibrate_certified` computes an initial approximation when its ordinary
+starting points fail to certify, so a realistic cement is solvable without the
+caller knowing anything about the answer.
+
+This was the practical obstacle. From the cold state of a CEM I paste of 135
+species — all the mass in the reactants, every product at the `ϵ` floor — **no
+back end reached the optimum**: the answer came back `optimal = false` with a
+worst supersaturation of order 1e1 and a total volume 13 % wrong, and
+`equilibrate` exited on `MaxIters` in both `Val(:linear)` and `Val(:log)`. The
+problem is convex, so this was never a local minimum; it is the conditioning of
+an interior-point method started against the boundary. With 120 of 135 species
+at 1e-16 and nine at ~1 mol the barrier gradients span sixteen orders of
+magnitude, and a solid-solution end-member has `ln a = ln x → −∞` as its mole
+fraction goes to zero, so the objective's gradient is unbounded on exactly the
+face where a mixing phase vanishes.
+
+`homotopy_initial_state(state)` walks the solute amount up from a dilute system:
+everything but the aqueous solvent is scaled by `λ`, and `λ` goes to 1 with each
+step started from the answer to the previous one. At `λ = 1` the composition is
+the one given, so the element balance is unchanged; it is a starting point, not
+a certified equilibrium. Nothing in it is chemical — "everything but the
+solvent" needs no guess at which hydrates will form, and `λ` is not a physical
+parameter.
+
+Measured on that paste, `equilibrate_certified(state)` from the cold state now
+certifies and returns a total volume of 74.1888 cm3 against GEM-Selektor's
+74.2136 (-0.033 %) and pH 13.0994 against 13.0957, identical to what a
+chemically informed seed gives. With `autostart = false` the same call fails, at
+83.7 cm3.
+
+Two design points:
+
+- **It costs nothing in the ordinary case**, because it only runs when nothing
+  else certified, and its answer is kept only if it is actually better —
+  certified beats uncertified, and among uncertified the smaller KKT error wins.
+- **`autostart = false` declines it**, and the coupled kinetic step passes that.
+  There the caller already supplies a starting point — the previous instant of
+  the integration — and a handful of extra solves inside an implicit ODE step
+  would be paid at every step. This is the same principle as a coupled Reaktoro
+  run, where the solver is carried across instants.
+
+Differentiability is unaffected: under `ForwardDiff` the certified route strips
+to the primal state, solves in `Float64` and attaches the sensitivity through
+the implicit function theorem, so the continuation never sees a `Dual` and the
+derivative does not depend on how the starting point was found.
+
+The walk is done under `DiluteSolutionModel` whatever the target model is, and
+deliberately: walking under the extended Debye-Hückel model with a common ion
+size of zero runs away to an ionic strength of 18 mol/kg, its coefficients
+falling with `I` raising solubility raising `I`. The ideal model has no such
+feedback, and its endpoint is a good start for the non-ideal one.
+
+For the record, the approach this replaced: GEM-Selektor computes its initial
+approximation by linear programming — `AutoInitialApproximation` in GEMS3K's
+`ipm_simplex.cpp`, an "LPP-based automatic initial approximation of the primal
+vector x" using a "modified simplex method with two-side constraints" (Kulik et
+al., *Comput. Geosci.* 2013). Reproducing that needs a genuine LP solver. Posing
+the same linear program and handing it to the barrier method here does **not**
+work: measured, it does not move off the cold state, leaving the linear
+objective at -723.8 where -755.9 was feasible. A simplex-based initial
+approximation remains the principled option and would need an LP dependency.
+
 ### Added — a common ion size, settable on the model
 
 `HKFActivityModel(; å)` imposes **one** effective radius on every charged
