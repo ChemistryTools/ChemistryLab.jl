@@ -422,7 +422,7 @@ Each end-member species is automatically requalified to `SC_SSENDMEMBER` via
 ```toml
 [[solid_solution]]
 name        = "CSHQ"
-end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD", "KSiOH", "NaSiOH"]
 model       = "ideal"          # or "redlich_kister"
 # For redlich_kister only:
 a0          = 3000.0           # J/mol

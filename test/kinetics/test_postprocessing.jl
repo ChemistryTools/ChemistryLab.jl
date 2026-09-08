@@ -447,13 +447,37 @@ end
     )
 
     names = Set(p.name for p in ss)
-    @test names == Set(["CSHQ", "AFm", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"])
+    @test names == Set(
+        [
+            "CSHQ", "C3(AF)S0.84H", "AFm", "Hydrogarnet", "Ettringite_ss",
+            "Hydrotalcite",
+        ]
+    )
 
     byname = Dict(p.name => p for p in ss)
-    @test length(end_members(byname["CSHQ"])) == 4
-    @test all(length(end_members(byname[n])) == 2 for n in ("AFm", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"))
+    # Six, not four: `KSiOH` and `NaSiOH` are the alkali-uptake end-members of
+    # the CEMDATA18 CSHQ phase, added in 0.15.0.
+    @test length(end_members(byname["CSHQ"])) == 6
+    @test Set(symbol.(end_members(byname["CSHQ"]))) == Set(
+        [
+            "CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD", "KSiOH", "NaSiOH",
+        ]
+    )
+    @test all(
+        length(end_members(byname[n])) == 2
+            for n in (
+                "C3(AF)S0.84H", "AFm", "Hydrogarnet", "Ettringite_ss",
+                "Hydrotalcite",
+            )
+    )
     @test model(byname["AFm"]) isa RedlichKisterModel
-    @test all(model(byname[n]) isa IdealSolidSolutionModel for n in ("CSHQ", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"))
+    @test all(
+        model(byname[n]) isa IdealSolidSolutionModel
+            for n in (
+                "CSHQ", "C3(AF)S0.84H", "Hydrogarnet", "Ettringite_ss",
+                "Hydrotalcite",
+            )
+    )
 
 end
 

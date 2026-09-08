@@ -133,14 +133,15 @@ symbols (as they appear in the database), and the mixing model:
 # Ideal solid solution (any number of end-members)
 [[solid_solution]]
 name        = "CSHQ"
-end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD",
+               "KSiOH", "NaSiOH"]
 model       = "ideal"
 source      = "Lothenbach2015"
 
 # Binary Redlich-Kister (exactly 2 end-members, parameters in J/mol)
 [[solid_solution]]
 name        = "AFm"
-end_members = ["Ms", "Mc"]
+end_members = ["monosulphate12", "monocarbonate"]
 model       = "redlich_kister"
 a0          = 3000.0
 a1          = 500.0

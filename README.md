@@ -256,8 +256,9 @@ cshq = SolidSolutionPhase("CSHQ", [dict["CSHQ-TobD"], dict["CSHQ-TobH"],
                                     dict["CSHQ-JenH"], dict["CSHQ-JenD"]])
 
 # Non-ideal binary: Redlich-Kister (parameters in J/mol)
-afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]];
-          model = RedlichKisterModel(a0 = 3000.0, a1 = 500.0))
+afm = SolidSolutionPhase("AFm",
+    [dict["monosulphate12"], dict["monocarbonate"]];
+    model = RedlichKisterModel(a0 = 3000.0, a1 = 500.0))
 
 # Or load all solid solution phases at once from a TOML file
 ss_phases = build_solid_solutions(datapath("solid_solutions.toml"), dict)

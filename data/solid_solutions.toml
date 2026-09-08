@@ -10,13 +10,46 @@
 # Sources
 #   Lothenbach2019 : Lothenbach et al., Cement and Concrete Research 115 (2019) 472-506
 #   Lothenbach2015 : Lothenbach & Nonat, Cement and Concrete Research 78 (2015) 57-70
+#
+# NOTE — this file is not the CEMDATA18/GEM-Selektor phase model, and is not
+# meant to be. `CSHQ` and `C3(AF)S0.84H` below match the GEMS phases of the same
+# names, but `AFm`, `Hydrogarnet` and `Hydrotalcite` are deliberate alternatives:
+# GEMS treats `monocarbonate`, `C3AH6`, `C3FH6` and `hydrotalcite` as *pure*
+# phases, its AFm solid solution is `C4AH13` + `monosulphate12`, and its
+# hydrotalcite solid solution (`hydrotalc-pyro`) is `Mg3AlC0.5OH` +
+# `Mg3FeC0.5OH` at Mg:Al = 3. Anyone reproducing a GEMS result should declare
+# the phases in the script rather than take this file wholesale.
 
-# ── C-S-H gel (CSHQ) — 4 end-members, ideal mixing ───────────────────────────
+# ── C-S-H gel (CSHQ) — 6 end-members, ideal mixing ───────────────────────────
+# `KSiOH` = ((KOH)2.5SiO2H2O)0.2 and `NaSiOH` = ((NaOH)2.5SiO2H2O)0.2 are the
+# alkali-uptake end-members of the CEMDATA18 CSHQ phase, and they are the
+# mechanism that fixes the pore-solution pH of a real paste. In the reference
+# GEM-Selektor run of a CEM I at w/c = 0.5 they hold 74 % of the total potassium
+# and 90 % of the total sodium; leaving them out strands all of it in solution.
+# They were absent here until 0.15.0 although both are fully parameterized in
+# both shipped databases. Their records name their own sources as the GEMS keys
+# `Lothenbach_ea_b:2012` and `Robie_Hem:1995`; the second is USGS Bulletin 2131
+# (doi:10.3133/b2131), the first is ambiguous between two 2012 Cement and
+# Concrete Research papers with Lothenbach as first author and the shipped
+# database carries no reference list to settle it, so the parameters are cited
+# to Cemdata18 itself (Lothenbach2019).
 [[solid_solution]]
 name        = "CSHQ"
-end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD",
+               "KSiOH", "NaSiOH"]
 model       = "ideal"
 source      = "Lothenbach2015"
+
+# ── Fe-siliceous hydrogarnet — binary ideal ──────────────────────────────────
+# The GEMS `C3(AF)S0.84H` phase: the Al and Fe end-members of the siliceous
+# hydrogarnet, which is where the iron of a CEM I ferrite phase ends up. It
+# takes 0.0507 mol in the reference run, second only to the C-S-H and the
+# portlandite among the aluminate/ferrite hydrates.
+[[solid_solution]]
+name        = "C3(AF)S0.84H"
+end_members = ["C3AFS0.84H4.32", "C3FS0.84H4.32"]
+model       = "ideal"
+source      = "Lothenbach2019"
 
 # ── AFm phases (monosulfate / monocarbonate) — binary Redlich-Kister ─────────
 # The end-members were spelled "Ms" and "Mc", which exist in neither shipped
