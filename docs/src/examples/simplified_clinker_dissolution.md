@@ -190,7 +190,7 @@ state_eq2 = solve(solver, state)
 All activity models inherit from [`AbstractActivityModel`](@ref). There are
 three built-in ones — [`DiluteSolutionModel`](@ref),
 [`HKFActivityModel`](@ref) and [`DaviesActivityModel`](@ref); see
-[Activity models](@ref) for the other two and for
+[Activity models](@ref sec-activity-models) for the other two and for
 [Reading the aqueous properties back](@ref sec-aqueous-properties). This page
 uses the first, which implements:
 

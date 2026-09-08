@@ -657,7 +657,7 @@ plot(p1, p2, layout = (1, 2), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm
 
 ---
 
-## Activity models
+## [Activity models](@id sec-activity-models)
 
 All activity models inherit from [`AbstractActivityModel`](@ref). Three built-in
 models are provided, covering ideal behavior through to the extended Debye-Hückel
@@ -934,6 +934,23 @@ ss_phases = build_solid_solutions(datapath("solid_solutions.toml"), dict)
 
 See the [Databases](@ref sec-databases) tutorial for the TOML format and the
 pre-built `data/solid_solutions.toml` file shipped with ChemistryLab.
+
+!!! note "What the shipped file is, and is not"
+    Two of its entries reproduce CEMDATA18 [Lothenbach2019](@cite) phases of the
+    same name. `CSHQ` is the six-end-member C-S-H of Kulik's downscaled solid
+    solution model [Kulik2011](@cite); its `KSiOH` and `NaSiOH` members carry the
+    uptake of potassium and sodium, whose records name Robie & Hemingway
+    [RobieHemingway1995](@cite) among their sources, and they are what fixes the
+    pore-solution pH of a Portland cement — leaving them out strands the alkalis
+    in solution. `C3(AF)S0.84H` is the Fe-siliceous hydrogarnet.
+
+    `AFm`, `Hydrogarnet` and `Hydrotalcite` are **deliberate alternatives** to
+    the CEMDATA18 phase model, not reproductions of it: GEM-Selektor treats
+    `monocarbonate`, `C3AH6`, `C3FH6` and `hydrotalcite` as *pure* phases, its
+    AFm solid solution is `C4AH13` + `monosulphate12`, and its hydrotalcite
+    solid solution is `Mg3AlC0.5OH` + `Mg3FeC0.5OH` at Mg:Al = 3. Reproducing a
+    published GEM-Selektor result means declaring the phases in the script, as
+    above, rather than taking this file wholesale.
 
 Then pass `solid_solutions` as a keyword to `ChemicalSystem`:
 
