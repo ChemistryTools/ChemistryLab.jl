@@ -207,11 +207,21 @@ end
     # puts everything in ONE of them; declared as a solution, the same system is
     # certified and distributes over all four, which is what a solid solution is.
     substances = build_species(DUAL_DATA)
-    toml = datapath("solid_solutions.toml")
     members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
     sp = speciation(substances, vcat("Portlandite", members); aggregate_state = [AS_AQUEOUS])
-    ss = [x for x in build_solid_solutions(toml, Dict(symbol(s) => s for s in sp)) if x.name == "CSHQ"]
+    # The four-member CSHQ is built here rather than loaded from
+    # `data/solid_solutions.toml`, deliberately. The shipped phase has six
+    # end-members since 0.15.0 — `KSiOH` and `NaSiOH` carry the alkali uptake —
+    # and this system is Ca-Si only, so those two could not exist for want of
+    # potassium and sodium: a mixing phase with end-members the element balance
+    # forbids is the degenerate case, not a test of anything. The loader has its
+    # own tests in `databases.jl` and against the shipped file in
+    # `kinetics/test_postprocessing.jl`; what is under test here does not depend
+    # on it.
+    byname = Dict(symbol(s) => s for s in sp)
+    ss = [SolidSolutionPhase("CSHQ", [byname[m] for m in members])]
     @test length(ss) == 1
+    @test length(end_members(only(ss))) == 4
 
     # Portlandite plus silica at C/S = 1.7, electrically neutral by construction.
     function solve_cs(cs)

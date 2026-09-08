@@ -64,6 +64,26 @@ end
 
 # ── Constructors ──────────────────────────────────────────────────────────────
 
+# An empty collection means "no solid solutions", and has to be accepted as
+# such. Julia gives an empty *filtered* comprehension the element type `Any`,
+# so `[x for x in build_solid_solutions(...) if x.name == "CSHQ"]` that selects
+# nothing is a `Vector{Any}`; annotating the keyword as
+# `AbstractVector{<:AbstractSolidSolutionPhase}` turned that into a `TypeError`
+# on the keyword rather than a system without solid solutions, which hides the
+# real problem — that the phase was skipped — behind a type error.
+function _normalize_solid_solutions(ss)
+    ss === nothing && return nothing
+    isempty(ss) && return nothing
+    all(x -> x isa AbstractSolidSolutionPhase, ss) || throw(
+        ArgumentError(
+            "solid_solutions must hold `AbstractSolidSolutionPhase` values; got " *
+                "element types $(unique(typeof.(ss))).",
+        )
+    )
+    return collect(AbstractSolidSolutionPhase, ss)
+end
+
+
 """
     ChemicalSystem(species, primaries=species; kinetic_species, solid_solutions) -> ChemicalSystem
 
@@ -129,8 +149,9 @@ function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractSpecies} = species;
         kinetic_species = nothing,
-        solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
+        solid_solutions::Union{Nothing, AbstractVector} = nothing,
     ) where {T <: AbstractSpecies}
+    solid_solutions = _normalize_solid_solutions(solid_solutions)
     idx(f) = findall(f, species)
     # Extract kinetic species keys for StoichMatrix construction
     kin_keys = if isnothing(kinetic_species)
@@ -260,7 +281,7 @@ function ChemicalSystem(
         species::AbstractVector{T},
         primaries::AbstractVector{<:AbstractString};
         kinetic_species = nothing,
-        solid_solutions::Union{Nothing, AbstractVector{<:AbstractSolidSolutionPhase}} = nothing,
+        solid_solutions::Union{Nothing, AbstractVector} = nothing,
     ) where {T <: AbstractSpecies}
     # Resolve string symbols to species objects, preserving order
     primaries_species = species[symbol.(species) .∈ Ref(primaries)]
