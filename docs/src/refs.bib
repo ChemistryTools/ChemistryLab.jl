@@ -265,9 +265,12 @@
 
 % Authorship is not in the Crossref record for this report; it is confirmed by
 % the USGS publications catalog entry for Bulletin 2131.
+% The superscript in the title is a Unicode character on purpose:
+% DocumenterCitations rejects `\textsuperscript` with "Unsupported command",
+% which fails the documentation build.
 @techreport{RobieHemingway1995,
   author      = {Robie, Richard A. and Hemingway, Bruce S.},
-  title       = {Thermodynamic properties of minerals and related substances at 298.15 {K} and 1 bar (10\textsuperscript{5} pascals) pressure and at higher temperatures},
+  title       = {Thermodynamic properties of minerals and related substances at 298.15 {K} and 1 bar (10⁵ pascals) pressure and at higher temperatures},
   institution = {U.S. Geological Survey},
   type        = {Bulletin},
   number      = {2131},
