@@ -1,5 +1,69 @@
 # Changelog
 
+## v0.15.1 — a starting point that conserves mass, and a strict flag that is read
+
+The automatic initial approximation shipped in 0.15.0 could hand the solver a
+starting point that is not on the constraint surface, and then build every later
+step on it. Reported from a Windows run of the same cement paste that certifies
+here: `optimal = false`, an element balance off by **6.7 mol**, every hydrate at
+zero — and a table of amounts that reads like a result.
+
+### Fixed — a rung is accepted only if it conserves mass
+
+Two things can go wrong at a rung of the continuation, and only one of them
+raised. A back end can throw, which was handled; or it can *return* a
+composition that violates the element balance, which was accepted and carried
+forward as the start of every rung after it. The walk then walks away from the
+problem it was posed.
+
+`homotopy_initial_state` now tests each rung before accepting it: the relative
+element-balance residual, row by row against that row's own budget, so the water
+row (~10² mol) cannot hide the charge row (~10⁻⁴ mol). A refused rung is retaken
+by halving the distance back to the last `λ` that worked, up to `max_bisections`
+times per target — the fixed `steps` ladder becomes a suggestion, and a rung that
+cannot be taken in one jump is taken in two.
+
+`balance_tol` is deliberately loose at 1e-3, and the two new keywords are there
+to be raised or lowered rather than to be a hidden constant. A rung is a guess:
+the interior point misses the balance by about 3e-6 mol on this class of problem,
+which is perfectly usable. The threshold exists to reject a rung three orders of
+magnitude off the surface, not to certify anything — the certificate does that,
+afterwards, and it is unchanged.
+
+Measured on the CEM I paste at w/c = 0.5, the answer is the same and its balance
+is better: certified at 74.1899 cm3 against GEM-Selektor's 74.2136 and
+pH 13.0994 against 13.0957, with an element balance of 4.4e-15 where it was
+6.3e-14.
+
+The coupled kinetic step is untouched by construction: `implicit_step` passes
+`autostart = false`, so it never enters the continuation.
+
+### Changed — `STRICT_CONVERGENCE[] = true` now raises on an uncertified answer
+
+This is what should have made that Windows run loud instead of plausible. The
+flag was read only on the interior-point return code, so a caller who set it —
+asking that a non-converged solve never pass as a result — still got an
+uncertified answer out of `equilibrate_certified` with nothing but a `@warn`.
+An uncertified answer from that route is precisely what the flag exists to
+refuse: it can violate mass conservation by moles and still be an ordinary
+`ChemicalState`.
+
+**This changes behavior for code that sets the flag**, which is why it is called
+out rather than filed under fixes. The default is untouched: with
+`STRICT_CONVERGENCE[]` at its default `false`, an uncertified answer is still
+returned with a warning, and `optimality_certificate` is still the way to audit
+it. Only the opt-in path is affected, and only in the direction the flag asks
+for.
+
+One consequence had to be handled inside the package. The coupled kinetic step
+computes its warm start with `equilibrate_certified`; that answer is a *starting
+point*, not a result, so the flag is cleared around it and restored in a
+`finally` — the same distinction the continuation already makes for its own
+rungs. Left set, the strict flag would have turned that guess into a raise, the
+surrounding `catch` would have swallowed it, and a caller asking for strict
+results would have silently got a worse start than a caller who did not.
+
+
 ## v0.15.0 — the alkali end-members of the C-S-H, and a readable aqueous state
 
 The shipped `data/solid_solutions.toml` described a C-S-H that could not hold
