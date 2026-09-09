@@ -16,19 +16,28 @@ composition that violates the element balance, which was accepted and carried
 forward as the start of every rung after it. The walk then walks away from the
 problem it was posed.
 
-`homotopy_initial_state` now tests each rung before accepting it: the relative
-element-balance residual, row by row against that row's own budget, so the water
-row (~10² mol) cannot hide the charge row (~10⁻⁴ mol). A refused rung is retaken
-by halving the distance back to the last `λ` that worked, up to `max_bisections`
-times per target — the fixed `steps` ladder becomes a suggestion, and a rung that
-cannot be taken in one jump is taken in two.
+`homotopy_initial_state` now tests each rung before accepting it, and a refused
+rung is retaken by halving the distance back to the last `λ` that worked, up to
+`max_bisections` times per target — the fixed `steps` ladder becomes a
+suggestion, and a rung that cannot be taken in one jump is taken in two.
 
-`balance_tol` is deliberately loose at 1e-3, and the two new keywords are there
-to be raised or lowered rather than to be a hidden constant. A rung is a guess:
-the interior point misses the balance by about 3e-6 mol on this class of problem,
-which is perfectly usable. The threshold exists to reject a rung three orders of
-magnitude off the surface, not to certify anything — the certificate does that,
-afterwards, and it is unchanged.
+The test is `|rᵢ| ≤ balance_atol + balance_rtol · scaleᵢ` on the element-balance
+residual, row by row, with `scaleᵢ = max(|bᵢ|, Σⱼ |Aᵢⱼ| nⱼ)`, and it **has** to
+be mixed rather than relative. Two conservation rows of this problem carry a
+legitimately negligible budget: electroneutrality is exactly zero, and a cement
+recipe is routinely given a carbon trace of 1e-9 mol. Measured at λ = 0.01 on
+the paste, a residual of 1.7e-10 mol on the charge row scores 168 against its
+own budget and 1.1e-10 mol on the carbon row scores 10.6 — both physically
+nothing. A purely relative criterion rejected 35 of 66 rungs on that walk and
+never reached its first three targets; the mixed one accepts all ten rungs and
+reaches every target. A row holding 1e-11 mol cannot be balanced better than the
+solver's absolute floor, and asking it to be is a category error.
+
+Neither tolerance certifies anything, and both are exposed as keywords rather
+than buried as constants. `balance_atol` sits above the accuracy the interior
+point itself reaches — about 3e-6 mol on this class of problem — because a rung
+is a guess and not an answer. The certificate judges the result, afterwards, and
+it is unchanged.
 
 Measured on the CEM I paste at w/c = 0.5, the answer is the same and its balance
 is better: certified at 74.1899 cm3 against GEM-Selektor's 74.2136 and
