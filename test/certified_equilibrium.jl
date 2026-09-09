@@ -206,15 +206,37 @@ end
     # from ever making the answer worse.
     kb = ChemistryLab._keep_better
     a, b = :A, :B
-    cert(opt, stat) = (; optimal = opt, stationarity = stat)
+    cert(opt, stat; bal = 0.0, si = -1.0) =
+        (;
+        optimal = opt, stationarity = stat, balance = bal,
+        worst_supersaturation = si,
+    )
 
     # Certified beats uncertified, in both directions and whatever the errors.
     @test first(kb(a, cert(false, 1.0e-16), b, cert(true, 1.0e-3))) === b
     @test first(kb(a, cert(true, 1.0e-3), b, cert(false, 1.0e-16))) === a
 
-    # Among uncertified, the smaller stationarity wins.
+    # Among uncertified, the smaller KKT error wins.
     @test first(kb(a, cert(false, 1.0e-6), b, cert(false, 1.0e-9))) === b
     @test first(kb(a, cert(false, 1.0e-9), b, cert(false, 1.0e-6))) === a
+
+    # And that error is the worst of ALL THREE residuals, not the stationarity
+    # alone. This is the case that was wrong, and it is not academic: a Windows
+    # run of a CEM I paste came back stationary to 2.4e-3 with an element
+    # balance off by 6.7 mol and a phase supersaturated by 45, and it beat every
+    # candidate the continuation produced — those being stationary to only 1e-2
+    # while conserving mass. Ranked on stationarity, the answer that is not an
+    # answer wins; ranked on the worst residual, the usable one does. It is also
+    # the ranking `solve_certified` already used internally, so the two agree.
+    bad = cert(false, 2.4e-3; bal = 6.7, si = 45.3)
+    good = cert(false, 1.0e-2; bal = 1.0e-13, si = -0.5)
+    @test ChemistryLab._kkt_error(bad) > ChemistryLab._kkt_error(good)
+    @test first(kb(a, bad, b, good)) === b
+    @test first(kb(a, good, b, bad)) === a
+
+    # A negative worst supersaturation is not an error: every absent phase
+    # undersaturated is what optimality requires, so it must not be counted.
+    @test ChemistryLab._kkt_error(cert(false, 1.0e-9; si = -12.0)) == 1.0e-9
 
     # Between two certified answers the KKT error still decides, and a tie keeps
     # the incumbent: a round that buys nothing changes nothing, which is what

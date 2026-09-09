@@ -47,6 +47,31 @@ pH 13.0994 against 13.0957, with an element balance of 4.4e-15 where it was
 The coupled kinetic step is untouched by construction: `implicit_step` passes
 `autostart = false`, so it never enters the continuation.
 
+### Fixed — the multi-start search could discard the answer it just computed
+
+`equilibrate_certified` ranks the answers of its multi-start search, and the
+comparison was on the **stationarity alone**. A composition can be stationary to
+1e-3 while violating mass conservation by moles, and that is not a near-answer:
+it is not an answer to the problem posed. Reported from that Windows run, the
+first route came back stationary to 2.4e-3 with an element balance off by 6.7 mol
+and a phase supersaturated by 45 — and it beat every candidate the continuation
+produced, because those were stationary to only 1e-2 while conserving mass. The
+search computed a usable answer and threw it away, which is why the certificate
+came back **bit-identical** across two successive library fixes.
+
+The ranking is now `_kkt_error` — the worst of stationarity, element balance and
+supersaturation, with a negative supersaturation counted as zero since every
+absent phase undersaturated is what optimality requires. That is the ranking
+`solve_certified` already used internally over its own starts, so the two agree
+where they previously disagreed, and there is one definition of the quantity
+instead of two.
+
+The certificate of a failed solve now also reports what the automatic initial
+approximation did — not reached, declined, produced no usable start, ran without
+improving, improved without certifying, or certified. On a solve that fails on
+one machine and not another, that is the first thing anyone needs to know, and
+it should not require a second run with `verbose = true`.
+
 ### Changed — `STRICT_CONVERGENCE[] = true` now raises on an uncertified answer
 
 This is what should have made that Windows run loud instead of plausible. The

@@ -242,6 +242,26 @@ function optimality_certificate(
 end
 
 """
+    _kkt_error(cert) -> Float64
+
+How far a composition is from satisfying the KKT conditions: the worst of the
+three residuals the certificate reports, in one number.
+
+All three, and not the stationarity alone. A composition can be stationary to
+1e-3 while violating mass conservation by **moles** — measured, an answer with
+stationarity 2.4e-3, an element balance off by 6.7 mol and a phase supersaturated
+by 45 — and that is not a near-answer, it is not an answer to this problem at
+all. Ranking on stationarity alone lets such a point beat a candidate that
+conserves mass, which is how a multi-start search can discard the good answer it
+just computed.
+
+`worst_supersaturation` is clamped at zero because a negative value is not an
+error: it means every absent phase is undersaturated, as optimality requires.
+"""
+_kkt_error(cert) =
+    max(cert.stationarity, cert.balance, max(cert.worst_supersaturation, 0.0))
+
+"""
     solve_certified(des, starts; b = nothing, ϵ = 1e-16, floor = 1e-25)
         -> (state, certificate)
 
@@ -306,9 +326,7 @@ function solve_certified(
         # stationarity of a different problem.
         cert = optimality_certificate(des, eq; b = b, ϵ = ϵ, floor = floor)
         cert.optimal && return (eq, cert)
-        err = max(
-            cert.stationarity, cert.balance, max(cert.worst_supersaturation, 0.0),
-        )
+        err = _kkt_error(cert)
         if err < best_err
             best_err = err
             best = eq

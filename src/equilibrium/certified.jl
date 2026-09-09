@@ -42,12 +42,19 @@ otherwise the smaller KKT error wins. A round that buys nothing changes nothing,
 which is what lets the restart loop run without ever making the answer worse.
 
 The optimality flag is compared **first**, in both directions. Ranking on the
-KKT error alone would let an uncertified point with a smaller stationarity
-displace a certified one, and no residual is worth trading a proof for.
+residuals alone would let an uncertified point displace a certified one, and no
+residual is worth trading a proof for.
+
+Among uncertified answers the comparison is [`_kkt_error`](@ref) — the worst of
+the three residuals — and not the stationarity alone, which is the same ranking
+[`solve_certified`](@ref) uses internally. The distinction is not academic: an
+answer stationary to 2.4e-3 whose element balance was off by 6.7 mol beat every
+candidate the continuation produced, because those were stationary to only 1e-2
+while conserving mass. The search computed a usable answer and discarded it.
 """
 function _keep_better(eq, cert, eq2, cert2)
     cert2.optimal == cert.optimal || return cert2.optimal ? (eq2, cert2) : (eq, cert)
-    return cert2.stationarity < cert.stationarity ? (eq2, cert2) : (eq, cert)
+    return _kkt_error(cert2) < _kkt_error(cert) ? (eq2, cert2) : (eq, cert)
 end
 
 """
@@ -185,6 +192,11 @@ function equilibrate_certified(
     # not have to know that, nor supply a chemically informed guess.
     # `homotopy_initial_state` walks the solute amount up from a dilute system,
     # which costs a handful of extra solves and needs nothing from the caller.
+    # What the automatic start did, in words, for the diagnostic below. When a
+    # solve fails on one machine and not another, the first thing anyone needs to
+    # know is whether the continuation ran at all and whether it helped — and
+    # asking for that should not require a second run with `verbose = true`.
+    note = autostart ? "not reached (the first route certified)" : "declined (autostart = false)"
     if autostart && !cert.optimal
         # Walked under the IDEAL model, deliberately, whatever `model` is: the
         # non-ideal ones do not walk (the a = 0 Debye-Huckel runs away to
@@ -192,7 +204,11 @@ function equilibrate_certified(
         # raising I). The ideal endpoint is then a good start for `model`,
         # which is what the back-end loop below does with it.
         guess = homotopy_initial_state(state; ϵ = ϵ, verbose = verbose)
-        if guess !== nothing
+        if guess === nothing
+            note = "the continuation produced no usable start: every rung was " *
+                "refused, or the system has no aqueous solvent to walk"
+        else
+            before = _kkt_error(cert)
             eq, cert = _keep_better(
                 eq, cert,
                 solve_certified(
@@ -200,6 +216,15 @@ function equilibrate_certified(
                     b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
                 )...,
             )
+            note = cert.optimal ?
+                "the continuation certified it" :
+                (
+                    _kkt_error(cert) < before ?
+                    "the continuation improved the KKT error from $before to " *
+                    "$(_kkt_error(cert)) without certifying" :
+                    "the continuation ran and its answer was no better than " *
+                    "$before, so it was discarded"
+                )
         end
 
         # Restart from the answer. The continuation ends on a composition that is
@@ -219,7 +244,7 @@ function equilibrate_certified(
                 des, starts_from(eq, "restart from the answer"); b = bfix, ϵ = ϵ,
                 constraint = constraint, parameters = parameters,
             )
-            improved = cert2.optimal || cert2.stationarity < cert.stationarity
+            improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
             eq, cert = _keep_better(eq, cert, eq2, cert2)
             improved || break
         end
@@ -237,12 +262,13 @@ function equilibrate_certified(
         # audits it), but under the strict flag it must raise.
         msg = "no route produced a certifiable equilibrium: stationarity " *
             "$(cert.stationarity), element balance $(cert.balance), worst " *
-            "supersaturation $(cert.worst_supersaturation)"
+            "supersaturation $(cert.worst_supersaturation). Automatic initial " *
+            "approximation: $note"
         STRICT_CONVERGENCE[] && error(
             msg * ". `ChemistryLab.STRICT_CONVERGENCE[]` is set, so this raises " *
                 "rather than returning an answer that is not an equilibrium. " *
-                "Audit it with `optimality_certificate`, and see `autostart` for " *
-                "the automatic initial approximation."
+                "Audit it with `optimality_certificate`; " *
+                "`homotopy_initial_state(state; verbose = true)` reports each rung."
         )
         @warn msg * "; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" maxlog = 1
     end
