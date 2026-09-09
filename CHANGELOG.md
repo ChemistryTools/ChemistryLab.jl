@@ -108,6 +108,23 @@ certifies and returns a total volume of 74.1888 cm3 against GEM-Selektor's
 chemically informed seed gives. With `autostart = false` the same call fails, at
 83.7 cm3.
 
+The route also **restarts from its own answer**. The continuation ends on a
+composition that is nearly the equilibrium but not certifiably so, and returning
+it as the least-bad answer left the last step to the caller: measured on that
+same paste under the per-species Debye-Huckel model, stationarity 9.9e-7 and no
+certificate, where one more solve started from that answer gives 1.5e-16 with
+the worst absent phase 1.4e-5 below saturation. It is the same observation that
+motivates the continuation, applied once more — a start near the answer is what
+this problem needs, and the best one available is the answer already in hand.
+Bounded, and it stops as soon as a round buys nothing.
+
+Doing that exposed a flaw in how rounds were compared: ranking on the KKT error
+whenever the new answer was uncertified let an uncertified point with a smaller
+stationarity displace a certified one, trading a proof for a residual. It could
+not fire while the incumbent was always uncertified; the restart loop reaches
+that rule from a certified state, so the optimality flag is now compared first,
+in both directions.
+
 Two design points:
 
 - **It costs nothing in the ordinary case**, because it only runs when nothing
