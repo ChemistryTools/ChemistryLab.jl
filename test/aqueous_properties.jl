@@ -290,6 +290,39 @@ end
     dry = ChemicalSystem([s for s in substances if symbol(s) == "Cal"])
     @test homotopy_initial_state(ChemicalState(dry)) === nothing
 
+    # A rung is accepted only if it conserves mass, and the two tolerances are
+    # the contract. Made impossible, every rung is refused: the walk must then
+    # return `nothing` — no start at all — rather than the last composition it
+    # happened to have, and it must terminate, which is what `max_bisections`
+    # is for.
+    @test homotopy_initial_state(
+        st; balance_atol = 0.0, balance_rtol = 0.0
+    ) === nothing
+
+    # And the healthy case must not be refused by the guard. The test has to be
+    # mixed absolute/relative: two conservation rows here carry a legitimately
+    # negligible budget — electroneutrality is exactly zero, and the carbon
+    # trace of a cement recipe is 1e-9 mol — so a purely relative criterion
+    # rejects residuals of 1e-10 mol as failures. Measured on a CEM I paste,
+    # that rejected 35 of 66 rungs and left the first three targets unreached.
+    # `balance_atol = 0` with a loose `balance_rtol` is exactly that purely
+    # relative criterion, and it is what must NOT be required to work.
+    @test homotopy_initial_state(st; balance_atol = 1.0e-5) isa ChemicalState
+
+    # A back end that throws must not take the walk down: the rung moves on to
+    # the next factory. Registered first, since a rung returns as soon as one
+    # factory answers.
+    factories = ChemistryLab._SOLVER_FACTORIES
+    saved = copy(factories)
+    try
+        pushfirst!(factories, () -> error("this back end is unavailable"))
+        @test homotopy_initial_state(st) isa ChemicalState
+    finally
+        empty!(factories)
+        append!(factories, saved)
+    end
+    @test ChemistryLab._SOLVER_FACTORIES == saved
+
     # On a problem that certifies without help, declining the fallback must not
     # change the answer — it is only ever consulted when nothing else certified.
     eq_on, cert_on = equilibrate_certified(st)

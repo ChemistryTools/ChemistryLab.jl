@@ -406,7 +406,8 @@ end
 """
     homotopy_initial_state(state::ChemicalState; model = DiluteSolutionModel(),
                            steps = ..., ϵ = 1e-16, max_bisections = 6,
-                           balance_tol = 1e-3, verbose = false)
+                           balance_atol = 1e-5, balance_rtol = 1e-3,
+                           verbose = false)
         -> Union{ChemicalState, Nothing}
 
 An automatic initial approximation obtained by continuation in the amount of
@@ -419,15 +420,21 @@ respects the same element balance; it is a **starting point**, not a certified
 equilibrium.
 
 `steps` is a suggestion, not a schedule. A rung is **accepted only if it
-conserves mass** — a relative element-balance residual under `balance_tol`, row
-by row against that row's own budget — and a refused rung is retaken by halving
-the distance back to the last `λ` that worked, up to `max_bisections` times per
-target. Both halves of that matter: a rung that has wandered off the balance
-would otherwise be carried forward as the start of every later rung, and a rung
-that simply cannot be taken in one jump can be taken in two. `balance_tol` is
-deliberately loose (a rung is a guess, and the interior point misses the balance
-by about 3e-6 mol on this class of problem); its job is to reject a rung three
-orders of magnitude away from the constraint surface, not to certify anything.
+conserves mass**, and a refused rung is retaken by halving the distance back to
+the last `λ` that worked, up to `max_bisections` times per target. Both halves of
+that matter: a rung that has wandered off the balance would otherwise be carried
+forward as the start of every later rung, and a rung that simply cannot be taken
+in one jump can be taken in two.
+
+The acceptance test is `|rᵢ| ≤ balance_atol + balance_rtol · scaleᵢ` on the
+element-balance residual, row by row, with
+`scaleᵢ = max(|bᵢ|, Σⱼ |Aᵢⱼ| nⱼ)`. It has to be mixed rather than relative: two
+conservation rows carry a legitimately negligible budget — electroneutrality is
+exactly zero, and a cement recipe is routinely given a carbon trace of 1e-9 mol
+— so a relative test rejects residuals of 1e-10 mol as if they were failures.
+Neither tolerance certifies anything; `balance_atol` sits above the accuracy the
+interior point itself reaches (~3e-6 mol here) because a rung is a guess, and
+the certificate judges the result afterwards.
 
 This is what makes a realistic cement solvable from a cold start: with all the
 mass in the reactants and every product at the `ϵ` floor, no back end reaches
@@ -472,7 +479,8 @@ function homotopy_initial_state(
         steps = (0.01, 0.02, 0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 0.85, 1.0),
         ϵ::Float64 = 1.0e-16,
         max_bisections::Int = 6,
-        balance_tol::Float64 = 1.0e-3,
+        balance_atol::Float64 = 1.0e-5,
+        balance_rtol::Float64 = 1.0e-3,
         verbose::Bool = false,
     )
     cs = state.system
@@ -493,7 +501,8 @@ function homotopy_initial_state(
     STRICT_CONVERGENCE[] = false
     try
         return _homotopy_walk(
-            cs, i_w, n0, model, steps, ϵ, verbose, max_bisections, balance_tol,
+            cs, i_w, n0, model, steps, ϵ, verbose, max_bisections,
+            balance_atol, balance_rtol,
         )
     finally
         STRICT_CONVERGENCE[] = strict
@@ -501,7 +510,7 @@ function homotopy_initial_state(
 end
 
 """
-    _homotopy_rung(cs, A, i_w, n0, model, λ, start, ϵ, verbose, balance_tol)
+    _homotopy_rung(cs, A, i_w, n0, model, λ, start, ϵ, verbose, atol, rtol)
         -> Union{ChemicalState, Nothing}
 
 Solve one rung of the continuation, and **accept it only if it conserves mass**.
@@ -515,14 +524,26 @@ rung off the balance by moles takes the whole walk with it, and
 `equilibrate_certified` ends on an answer with an element balance of 6.7 mol —
 every hydrate at zero, and a table of amounts that reads like a result.
 
-The threshold is on the *relative* residual, row by row against that row's own
-budget, so the water row (~10² mol) cannot hide the charge row (~10⁻⁴ mol). It
-is deliberately loose: a rung is a guess, and the interior point reaching it
-misses the balance by about 3e-6 mol on this class of problem, which is
-perfectly usable. `balance_tol` is there to catch the rung that has *wandered*,
-three orders of magnitude away, not to certify anything.
+The test is the mixed one, `|rᵢ| ≤ atol + rtol · scaleᵢ`, and it has to be mixed.
+A purely relative test is meaningless on this problem because two conservation
+rows carry a legitimately negligible budget: electroneutrality is **exactly
+zero**, and a cement recipe is routinely given a carbon trace of 1e-9 mol.
+Measured at λ = 0.01 on that paste, a residual of 1.7e-10 mol on the charge row
+scores 168 against its own budget and a residual of 1.1e-10 mol on the carbon
+row scores 10.6 — both physically nothing, both rejected, and the walk then
+never reached its first three targets while still appearing to work. A row
+holding 1e-11 mol cannot be balanced better than the solver's absolute floor,
+and asking it to be is a category error.
+
+`scaleᵢ = max(|bλᵢ|, Σⱼ |Aᵢⱼ| nⱼ)`: the row's own budget, or the amount of that
+component actually being moved around when the budget is near zero — the natural
+yardstick for a conservation row that nets to nothing. `atol` sits above the
+accuracy the interior point itself reaches (about 3e-6 mol on this class of
+problem), because a rung is a guess and not an answer. Neither number certifies
+anything: they are there to reject a rung that has *wandered*, and the
+certificate judges the result afterwards.
 """
-function _homotopy_rung(cs, A, i_w, n0, model, λ, start, ϵ, verbose, balance_tol)
+function _homotopy_rung(cs, A, i_w, n0, model, λ, start, ϵ, verbose, atol, rtol)
     nλ = [i == i_w ? n0[i] : λ * n0[i] for i in eachindex(n0)]
     bλ = A * nλ
     from = start === nothing ? ChemicalState(cs, nλ .* u"mol") : start
@@ -535,19 +556,21 @@ function _homotopy_rung(cs, A, i_w, n0, model, λ, start, ϵ, verbose, balance_t
             verbose && @info "homotopy rung raised" λ = λ backend = f err
             continue
         end
-        r = A * Float64[ustrip(us"mol", x) for x in stepped.n] - bλ
-        scale = max.(abs.(bλ), 1.0e-12)
-        off = maximum(abs.(r) ./ scale)
-        if off <= balance_tol
+        n = Float64[ustrip(us"mol", x) for x in stepped.n]
+        scale = max.(abs.(bλ), abs.(A) * n)
+        # Dimensionless, and 1 is the boundary: the largest residual measured
+        # against the tolerance allowed for its own row.
+        off = maximum(abs.(A * n - bλ) ./ (atol .+ rtol .* scale))
+        if off <= 1
             return stepped
         end
-        verbose && @info "homotopy rung off the balance" λ = λ backend = f relative = off
+        verbose && @info "homotopy rung off the balance" λ = λ backend = f excess = off
     end
     return nothing
 end
 
 function _homotopy_walk(
-        cs, i_w, n0, model, steps, ϵ, verbose, max_bisections, balance_tol,
+        cs, i_w, n0, model, steps, ϵ, verbose, max_bisections, atol, rtol,
     )
     A = Float64.(cs.SM.A)
     current = nothing        # the answer at `done`
@@ -563,7 +586,7 @@ function _homotopy_walk(
         for _ in 0:max_bisections
             done >= target && break
             stepped = _homotopy_rung(
-                cs, A, i_w, n0, model, λ, current, ϵ, verbose, balance_tol,
+                cs, A, i_w, n0, model, λ, current, ϵ, verbose, atol, rtol,
             )
             if stepped === nothing
                 λ = 0.5 * (done + λ)
