@@ -13,12 +13,16 @@ porosity of the hardened paste in the sealed-curing convention.
 !!! warning "Equilibrium answers a narrower question than mix design does"
     Read the scan below for what it is: the assemblage a paste would reach if
     every reaction ran to completion. It is **not** the state of a real paste at
-    an age, and three of the effects usually attributed to w/c are absent from it
-    by construction — no clinker survives at any w/c, there is no water-limited
-    regime, and there is no optimum. Those are **kinetic** limitations, carried
-    by [`powers_alpha_max`](@ref) and the rate laws of the
-    [kinetics tutorial](@ref sec-kinetics), not by the Gibbs minimum. This page
-    is the reference the kinetic calculation converges toward; the
+    an age, and two of the effects usually attributed to w/c are absent from it
+    by construction — over the range scanned no clinker survives, and there is no
+    optimum. Those are **kinetic** limitations, carried by
+    [`powers_alpha_max`](@ref) and the rate laws of the
+    [kinetics tutorial](@ref sec-kinetics), not by the Gibbs minimum. A
+    water-limited regime does exist in the Gibbs minimum, but it starts far below
+    Powers' 0.42 — measured on this species list, between w/c = 0.28 and 0.30 —
+    and the two limits are not the same statement, which the analysis below
+    takes apart.
+    This page is the reference the kinetic calculation converges toward; the
     [coupled hydration example](@ref sec-coupled-hydration) is the one to read
     for an age.
 
@@ -57,30 +61,52 @@ c     = sum(last.(compo))   # cement mass fraction (= 0.984 here)
 
 ---
 
-## Building the equilibrium solver
+## The solver
 
-A single [`EquilibriumSolver`](@ref) is compiled once and reused for every w/c point:
+[`equilibrate_certified`](@ref) is used throughout, which needs nothing but
+`OptimaSolver` loaded:
 
 ```@example wc_setup
-using Optimization, OptimizationIpopt
-
-opt = IpoptOptimizer(
-    acceptable_tol        = 1e-10,
-    dual_inf_tol          = 1e-10,
-    acceptable_iter       = 100,
-    constr_viol_tol       = 1e-10,
-    warm_start_init_point = "no",
-)
-
-solver = EquilibriumSolver(
-    cs,
-    DiluteSolutionModel(),
-    opt;
-    variable_space = Val(:linear),
-    abstol  = 1e-8,
-    reltol  = 1e-8,
-)
+using OptimaSolver
 ```
+
+That route returns `(state, certificate)`, and the certificate is what makes the
+numbers below quotable: for a convex problem the KKT conditions are *sufficient*,
+so `cert.optimal == true` is a **proof** that the composition is the Gibbs
+minimum and not merely the point an iteration stopped at. Every value on this
+page is checked that way, and the check is not idle — on a cement the difference
+between "the solver returned" and "the answer is proved" has been measured at
+13 % of the total volume and four units of pH.
+
+!!! note "Solving through Ipopt instead"
+    An `EquilibriumSolver` around any nonlinear back end still works, and reaches
+    the same assemblage here:
+
+    ```julia
+    using Optimization, OptimizationIpopt
+
+    opt = IpoptOptimizer(
+        acceptable_tol        = 1e-10,
+        dual_inf_tol          = 1e-10,
+        acceptable_iter       = 100,
+        constr_viol_tol       = 1e-10,
+        warm_start_init_point = "no",
+    )
+    solver = EquilibriumSolver(
+        cs, DiluteSolutionModel(), opt;
+        variable_space = Val(:linear), abstol = 1e-8, reltol = 1e-8,
+    )
+    eq = solve(solver, deepcopy(fresh))     # no certificate
+    ```
+
+    It is left out of the executed page for two reasons, neither of them about
+    the quality of Ipopt as an optimizer. It is a **bare interior point**: it
+    returns an iterate and no statement about it, so a caller has to audit the
+    answer with [`optimality_certificate`](@ref) anyway. And it is an extra
+    binary dependency for a calculation the package can already prove. The
+    visible difference on this page is small but telling: the interior point
+    leaves the absent phases at its lower bound, around `1e-8` mol, while the
+    certified route puts them at exactly zero.
 
 ---
 
@@ -118,10 +144,13 @@ n_ett      = Float64[]
 n_jennite  = Float64[]
 n_clinker  = Float64[]
 
+certified = Bool[]
+
 for wc in wc_range
-    fresh = fresh_paste(wc)
-    eq    = solve(solver, deepcopy(fresh))   # solve mutates its argument
-    ϕ     = porosity(eq, fresh)              # sealed-curing convention
+    fresh    = fresh_paste(wc)
+    eq, cert = equilibrate_certified(deepcopy(fresh))   # the solve may mutate its argument
+    push!(certified, cert.optimal)
+    ϕ = porosity(eq, fresh)                  # sealed-curing convention
     amount(sym) = ustrip(eq.n[sp_idx[sym]])
     push!(pH_vals,   pH(eq))
     push!(ϕ_liquid,  ϕ.liquid)
@@ -207,8 +236,9 @@ plot(p3; left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size = (700, 420))
 
 ```@example wc_setup
 using Printf
-@printf "ettringite, largest value over the scan : %.3e mol\n" maximum(n_ett)
-@printf "clinker left, largest value over the scan : %.3e mol\n" maximum(n_clinker)
+@printf "every point certified                    : %s\n" all(certified)
+@printf "ettringite, largest value over the scan  : %.3e mol\n" maximum(n_ett)
+@printf "clinker left, largest value over the scan: %.3e mol\n" maximum(n_clinker)
 ```
 
 ---
@@ -219,8 +249,8 @@ using Printf
 |:--|:--|:--|
 | **pH** | 12.39, constant to three decimals | buffered by portlandite saturation; independent of pore volume in a dilute model |
 | **Portlandite, C-S-H, AFm** | decrease with w/c, in proportion to the cement fraction | amounts are per kg of *paste*; adding water dilutes the binder, it does not change what a gram of cement produces |
-| **Ettringite** | at the solver's lower bound, ``10^{-8}`` mol, i.e. absent | see below |
-| **Clinker left** | at the same bound at every w/c, 0.30 included | see below |
+| **Ettringite** | exactly zero at every w/c | see below |
+| **Clinker left** | exactly zero at every w/c of *this* scan | see below, and it is not "at any w/c" |
 | **Total porosity** | 12.2 % to 41.0 %, monotone, no optimum | the excess water has nowhere to go but the pore space |
 | **Empty porosity** | 9.8 % down to 6.6 % | the Le Chatelier contraction is roughly fixed per gram of cement, so it is a smaller fraction of a larger reference volume |
 
@@ -230,29 +260,84 @@ the other way.
 !!! warning "Ettringite does not form here, and that is correct"
     AFt needs about three sulfates per aluminate; this clinker has 2.8 % gypsum
     against 4.0 % C₃A plus the ferrite, so at **equilibrium** the sulfate is all
-    taken up by the AFm phase `monosulphate12`, and `ettringite` stays at the
-    solver's lower bound — ``1.3 \times 10^{-8}`` mol at most over the whole
-    scan, which is absence, not a small amount. Ettringite is the phase that forms **early**, while
+    taken up by the AFm phase `monosulphate12`, and `ettringite` comes back at
+    exactly zero — absence, not a small amount. Ettringite is the phase that forms **early**, while
     sulfate is still locally abundant, and then converts to AFm as it runs out.
     It is a kinetic intermediate for this mix, so an equilibrium scan cannot show
     it. Raise the gypsum content and AFt becomes stable — that is the
     sulfate-balance calculation, and it is worth doing before reading anything
     into an AFt amount.
 
-!!! warning "No clinker survives, so there is no water-limited regime"
-    A Gibbs minimization consumes the clinker at every w/c, including 0.30 — the
-    four anhydrous phases together never exceed ``1.7 \times 10^{-8}`` mol, again
-    the lower bound. The
-    reason is that the anhydrous phases are never the stable ones in the presence
-    of water, and the minimum can always form a less hydrous assemblage rather
-    than leave alite standing. The **water-limited regime** of mix design — the
-    unreacted clinker of a low-w/c paste, and the maximum degree of hydration
-    ``\alpha_{\max} \le w/c \,/\, 0.42`` of [Powers1948](@cite) — is a
-    statement about **rates and access to water**, not about the Gibbs minimum.
-    It enters ChemistryLab through [`powers_alpha_max`](@ref) in the kinetic rate
-    laws. Consequently this scan shows **no optimum w/c and no inflection**: the
-    porosity rises monotonically, and the minimum-porosity mix design does not
-    appear. Looking for it here is looking in the wrong calculation.
+!!! warning "No clinker survives *over this range*, and Powers' 0.42 is not the reason"
+    The four anhydrous phases come back at exactly zero at every w/c of the scan,
+    0.30 included, and the certificate proves it. That looks like it contradicts
+    [Powers1948](@cite), whose ``\alpha_{\max} = w/c \,/\, 0.42`` leaves
+    unreacted clinker in any paste below w/c = 0.42 — 0.36 with curing water. It
+    does not, and the reason is worth stating because the two numbers measure
+    different things.
+
+    Powers' 0.42 g of water per gram of cement is **not** a stoichiometric
+    demand. It is about 0.23 g of *non-evaporable* water, which is the water
+    written into the hydrate formulae, plus about 0.19 g of **gel water** held in
+    the C-S-H gel pores. Only the first is a mass balance that a Gibbs
+    minimization must respect. The second is water that is physically there and
+    chemically unavailable: in a sealed paste it is immobilized in pores too fine
+    to feed further reaction, and hydration stops by self-desiccation with water
+    still in the specimen. That is a statement about **transport and access**,
+    which no equilibrium calculation contains, and it is what
+    [`powers_alpha_max`](@ref) carries into the kinetic rate laws.
+
+    So between roughly 0.23 and 0.42 the two disagree **and both are right**: the
+    water suffices to write the hydrates, and a real sealed paste still cannot
+    reach them. Below the stoichiometric demand they agree, because there the
+    limit is mass balance and the Gibbs minimum obeys it like anything else.
+
+    Where that crossover falls is a property of the hydrate assemblage, not a
+    constant, so it is measured rather than quoted:
+
+```@example wc_setup
+# Below the scanned range the water runs out, and the minimum leaves clinker.
+low = [0.15, 0.20, 0.25, 0.28, 0.30]
+println(" w/c   clinker left (% of the cement)   certified")
+for wc in low
+    fr = fresh_paste(wc)
+    m0 = sum(
+        ustrip(us"kg", fr.n[sp_idx[s]] * cs.species[sp_idx[s]][:M])
+            for s in ("C3S", "C2S", "C3A", "C4AF")
+    )
+    # The warnings are the point of the last column, not of the transcript.
+    eq, cert = Base.CoreLogging.with_logger(Base.CoreLogging.NullLogger()) do
+        equilibrate_certified(deepcopy(fr))
+    end
+    ml = sum(
+        ustrip(us"kg", eq.n[sp_idx[s]] * cs.species[sp_idx[s]][:M])
+            for s in ("C3S", "C2S", "C3A", "C4AF")
+    )
+    @printf("%5.2f   %26.1f   %9s\n", wc, 100 * ml / m0, cert.optimal)
+end
+```
+
+!!! warning "Read the last column"
+    The water-limited points are **not certified**. Their amounts are the best
+    answers the multi-start route found, not proved minima, and the reason is the
+    one the [equilibrium tutorial](@ref sec-equilibrium) gives for cold starts in
+    general: a water-starved paste is the badly conditioned end of this problem.
+    What does not depend on the solver is the **existence** of the regime — 5 g
+    of water cannot hydrate 100 g of cement whatever the algorithm, since the
+    hydrates would need some 23 g. Read the table for that, and for the order of
+    magnitude; do not quote its numbers as equilibrium values.
+
+    The previous version of this page said no clinker survives *at any* w/c and
+    explained it by the minimum "always forming a less hydrous assemblage". The
+    first half is true only over the range scanned, and the second is false: the
+    least hydrous assemblage available still binds water, and when there is not
+    enough, alite stays.
+
+    What remains true is the rest of the original claim, and it matters for mix
+    design: over 0.30–0.60 this scan shows **no optimum w/c and no inflection**.
+    The porosity rises monotonically and the minimum-porosity mix design does not
+    appear, because it is set by the degree of hydration a paste actually
+    reaches, not by the assemblage it would reach given time.
 
 ### Assumptions behind these numbers
 
