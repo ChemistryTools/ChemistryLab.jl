@@ -61,6 +61,54 @@ end
 _ion_sizes(cs::ChemicalSystem, ::AbstractActivityModel) = zeros(Float64, length(cs.species))
 
 """
+    solvent_fraction(state) -> Float64
+
+Mole fraction of the aqueous solvent within the aqueous phase,
+`n_w / Σ_aqueous n`. One for pure water, and the number that says whether there
+is still a solution to speak of.
+
+Every quantity built on the aqueous phase — molality, ionic strength, activity,
+pH — is defined *per kilogram of solvent*, and the dual solver parameterizes its
+interior variables by the solvent's chemical potential. All of that presumes the
+solvent is the phase, not one species in it. A real electrolyte, even a
+concentrated one, keeps `x_w` above about 0.9: seawater is 0.99, a saturated NaCl
+brine 0.90.
+
+Below [`SOLVENT_FRACTION_FLOOR`](@ref) the formulation has no ground left.
+Measured on a sealed cement paste driven under its stoichiometric water demand —
+w/c = 0.28 on the mix of the [w/c example](@ref sec-wc-ratio) — the Gibbs
+minimum consumes the free water down to 6e-9 mol, `x_w` falls to 0.21, and the
+ionic strength comes out at 409 mol/kg against a Debye-Huckel model valid to
+about one. The amounts such a solve reports are not equilibrium values; the
+answer is that the question was posed outside the model's domain.
+
+See also: [`molalities`](@ref), [`ionic_strength`](@ref),
+[`equilibrate_certified`](@ref), which checks this on the answer it returns.
+"""
+function solvent_fraction(state::ChemicalState)
+    cs = state.system
+    isempty(cs.idx_solvent) && return 0.0
+    i_w = only(cs.idx_solvent)
+    n = ustrip.(us"mol", state.n)
+    tot = sum(_primal(n[i]) for i in cs.idx_aqueous; init = 0.0)
+    return tot <= 0 ? 0.0 : _primal(n[i_w]) / tot
+end
+
+"""
+    SOLVENT_FRACTION_FLOOR
+
+The mole fraction of solvent below which an aqueous phase is no longer a
+solution, and every quantity derived from it is meaningless. See
+[`solvent_fraction`](@ref).
+
+`0.5` is not a modeling choice but a floor no real solution comes near: it is
+about 28 mol of solute per kilogram of water, past saturation for anything. A
+value below it means the solve has driven the water into the solids, not that the
+solution is concentrated.
+"""
+const SOLVENT_FRACTION_FLOOR = 0.5
+
+"""
     molalities(state::ChemicalState; ϵ = 1e-16) -> OrderedDict{String,Float64}
 
 Molality `mᵢ = nᵢ / (n_w Mw)` of every aqueous solute, in mol per kg of solvent.

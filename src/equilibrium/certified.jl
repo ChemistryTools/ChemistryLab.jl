@@ -411,7 +411,48 @@ function equilibrate_certified(
         )
         @warn msg * "; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" maxlog = 1
     end
+    _check_solvent(eq)
     return (eq, cert)
+end
+
+"""
+    _check_solvent(eq)
+
+Say so when the answer has no solution left to be an answer about.
+
+A certificate proves that a composition minimizes the Gibbs energy of the
+problem as posed. It says nothing about whether the problem was posed inside the
+model's domain, and there is one way to leave it that produces an ordinary-looking
+`ChemicalState`: let the solids take all the water. Every aqueous quantity is
+then computed per kilogram of a solvent that is not there.
+
+Measured on a sealed cement paste below its stoichiometric water demand, at
+w/c = 0.28: the free water goes to 6e-9 mol, the solvent falls to a **fifth** of
+its own aqueous phase, and the ionic strength is reported as 409 mol/kg by a
+Debye-Huckel model valid to about one. Nothing in the certificate objects,
+because nothing is wrong with the minimization — the mix simply does not contain
+enough water to be a solution chemistry problem.
+
+Warned, not raised, under the default flag: the composition of the *solids* in
+such a solve still carries the mass-balance information a caller may legitimately
+want, and it is the caller who knows whether that is what they asked for. Under
+`STRICT_CONVERGENCE[]` it raises, like any other answer that is not one.
+"""
+function _check_solvent(eq::ChemicalState)
+    x_w = solvent_fraction(eq)
+    x_w >= SOLVENT_FRACTION_FLOOR && return nothing
+    msg = "the aqueous phase has effectively vanished: the solvent is only " *
+        "$(round(x_w; sigdigits = 3)) of it in mole fraction, against a floor of " *
+        "$(SOLVENT_FRACTION_FLOOR). Molality, ionic strength, activity and pH are " *
+        "defined per kilogram of solvent and are meaningless here, and the " *
+        "activity model is being evaluated far outside its range. The solids " *
+        "have taken the water: this is a mix below its stoichiometric water " *
+        "demand, not an equilibrium the model can describe"
+    STRICT_CONVERGENCE[] && error(
+        msg * ". `ChemistryLab.STRICT_CONVERGENCE[]` is set, so this raises."
+    )
+    @warn msg maxlog = 1
+    return nothing
 end
 
 """

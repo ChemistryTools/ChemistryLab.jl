@@ -1070,8 +1070,20 @@ end
     powers_alpha_max(w_c) -> Real
 
 Powers (1948) upper bound on the degree of hydration set by the availability of
-water, `α_max = min(1, w/c / 0.42)`: hydrating one gram of cement binds about
-0.42 g of water, so a paste below `w/c = 0.42` cannot hydrate completely.
+water, `α_max = min(1, w/c / 0.42)`: a sealed paste below `w/c = 0.42` cannot
+hydrate completely.
+
+The 0.42 is **not** a stoichiometric demand, and reading it as one leads to the
+wrong conclusion about what a Gibbs minimization should return. It is about
+0.23 g of *non-evaporable* water per gram of cement — the water written into the
+hydrate formulae, which is a mass balance — plus about 0.19 g of **gel water**
+held in the C-S-H gel pores, which is physically present and chemically
+unavailable. In a sealed paste hydration stops by self-desiccation with water
+still in the specimen, so this bound is a statement about transport and access,
+not about thermodynamics: an equilibrium calculation on the same mix consumes all
+the clinker well below 0.42, and only runs out of water near the stoichiometric
+demand. With curing water supplied from outside the bound is nearer 0.36, the
+capillary space emptied by chemical shrinkage being refilled.
 
 Pass the result as the `α_max` keyword of [`parrot_killoh`](@ref),
 [`parrot_killoh_avrami`](@ref) or [`waller`](@ref).

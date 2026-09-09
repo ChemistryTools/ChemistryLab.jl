@@ -1,5 +1,116 @@
 # Changelog
 
+## v0.15.2 — a solution that is no longer a solution
+
+A certificate proves that a composition minimizes the Gibbs energy of the problem
+**as posed**. It says nothing about whether the problem was posed inside the
+model's domain, and there is one way to leave that domain while producing an
+ordinary-looking `ChemicalState`: let the solids take all the water.
+
+### Added — `solvent_fraction`, and a guard on the answer
+
+`solvent_fraction(state)` is the mole fraction of the aqueous solvent within the
+aqueous phase, `n_w / Σ_aqueous n`. Every quantity built on that phase —
+molality, ionic strength, activity, pH — is defined *per kilogram of solvent*,
+and `DualEquilibriumSolver` parameterizes its interior variables by the solvent's
+chemical potential. All of it presumes the solvent **is** the phase. A real
+electrolyte keeps `x_w` above about 0.9: seawater is 0.99, a saturated NaCl brine
+0.90.
+
+Measured on a sealed cement paste taken below its stoichiometric water demand —
+w/c = 0.28 on the mix of the w/c example — the Gibbs minimum consumes the free
+water down to **6e-9 mol**, the solver's floor. The solvent then holds a **fifth**
+of its own aqueous phase and the ionic strength is reported as **409 mol/kg** by
+a Debye-Huckel model valid to about one. Nothing in the certificate objects,
+because nothing is wrong with the minimization: forming more hydrate always
+lowers the energy, and nothing in the model penalizes a solution concentrated
+past any physical meaning. The water activity of a real paste collapses as the
+pores empty and stops the reaction; an activity model extrapolated that far goes
+on returning finite numbers.
+
+`equilibrate_certified` now checks `solvent_fraction` on the answer it returns
+and says so, naming what happened, when it falls below `SOLVENT_FRACTION_FLOOR`.
+Warned rather than raised under the default flag, because the composition of the
+*solids* still carries the mass-balance information a caller may legitimately
+want; under `STRICT_CONVERGENCE[]` it raises, like any other answer that is not
+one.
+
+`SOLVENT_FRACTION_FLOOR = 0.5` is not a modeling choice but a floor no real
+solution comes near — about 28 mol of solute per kilogram of water, past
+saturation for anything. A value below it means the solve drove the water into
+the solids, not that the solution is concentrated.
+
+### Documentation — a usable answer below the stoichiometric demand
+
+A high-performance concrete is mixed at w/c between 0.25 and 0.35, which is an
+ordinary regime and must be computable, with a certificate and with all three of
+the things one wants from it: how much clinker stays unhydrated, which hydrates
+form, and what the pore solution contains. The w/c example now works that case.
+
+The construction is to stop the reaction where the physics stops it rather than
+ask the minimizer to discover an arrest point it has no term for: react a fraction
+α of the clinker with **all** the water, and leave the rest unhydrated. The
+equilibrium is then computed on a system that still has a solution in it, and α
+is what `powers_alpha_max` supplies. Imposing the reacted fraction is the standard
+construction of cement thermodynamic modeling — it is how Lothenbach & Winnefeld
+(2006) compute a hydrating paste.
+
+Measured: at w/c = 0.25 with α = 0.595 the solve certifies, the solvent holds
+0.9993 of its phase, the ionic strength is 0.0351 mol/kg and the pH 12.39, with
+40.5 % of the clinker unhydrated and a total porosity of 0.2056 — against the
+409 mol/kg and vanished solvent of the unconstrained solve at the same w/c.
+
+Predicting the arrest point instead of imposing it is a well-posed thermodynamic
+question the package cannot answer yet, and the page says which two ingredients
+are missing. An **activity model valid at very high concentration**, Pitzer-class,
+because what physically stops hydration is the collapse of the water activity as
+the last of the pore solution is consumed, and an extended Debye-Huckel model
+extrapolated to 409 mol/kg goes on returning finite numbers instead of collapsing.
+And a **coupling between pore structure and water activity**, the Kelvin term,
+because water in a fine pore is held at a reduced activity whatever its
+composition — which is what self-desiccation is, and it is poromechanics rather
+than solution chemistry.
+
+### Documentation — the water-limited regime, and Powers' 0.42
+
+`docs/src/examples/cement_wc_ratio.md` claimed that "no clinker survives at any
+w/c", explained by the minimum "always forming a less hydrous assemblage rather
+than leave alite standing". The first half is true only over the 0.30-0.60 range
+it scans, and the second is false: the least hydrous assemblage available still
+binds water, and when there is not enough, alite stays.
+
+Measured on the page's own species list, clinker left as a fraction of the
+cement: 54.6 % at w/c = 0.15, 34.3 % at 0.20, 14.1 % at 0.25, 2.0 % at 0.28, and
+zero from 0.30 up. The crossover is a property of the hydrate assemblage, not a
+constant, so the page measures it in an executed block instead of quoting one —
+and reads it for one thing only, the *existence* of the regime, since past it the
+aqueous phase has vanished and the amounts are not equilibrium values.
+
+That does not put the page at odds with Powers, and the reason is worth stating
+because the two numbers measure different things. Powers' 0.42 g of water per
+gram of cement is **not** a stoichiometric demand: it is about 0.23 g of
+non-evaporable water, written into the hydrate formulae and a mass balance any
+Gibbs minimization must respect, plus about 0.19 g of **gel water** held in the
+C-S-H gel pores, physically present and chemically unavailable. A sealed paste
+stops by self-desiccation with water still in the specimen. So between roughly
+0.23 and 0.42 the equilibrium and Powers disagree and **both are right**, and
+below the stoichiometric demand they agree. `powers_alpha_max`'s docstring said
+"hydrating one gram of cement binds about 0.42 g of water", which is the
+misreading that produced the wrong claim; it now separates the two halves and
+notes that curing water moves the bound to about 0.36.
+
+The page also solves with `equilibrate_certified` rather than through Ipopt, and
+prints whether every point certified. Ipopt is kept as a documented alternative
+in an admonition, not executed: not a worse optimizer, but a bare interior point
+that returns an iterate and no statement about it, and an extra binary dependency
+for a calculation the package can already prove. The visible difference is small
+and telling — absent phases come back at exactly zero instead of sitting at the
+solver's 1e-8 lower bound. Every number on the page was re-measured on the
+certified route and is unchanged: pH 12.3924 flat across the scan, porosity
+12.2 % to 41.0 %, and at w/c = 0.50 the one-argument porosity 0.2846 against a
+two-argument total of 0.3376 with the volume shrinking 7.41 %.
+
+
 ## v0.15.1 — a starting point that conserves mass, and a strict flag that is read
 
 The automatic initial approximation shipped in 0.15.0 could hand the solver a

@@ -418,3 +418,57 @@ end
         @test isapprox(a["H2O@"], a_w_expected; atol = 2.0e-4)
     end
 end
+
+@testsection "a solution that is no longer a solution" begin
+    # Every aqueous quantity — molality, ionic strength, activity, pH — is
+    # defined per kilogram of solvent, and the dual solver parameterizes its
+    # interior variables by the solvent's chemical potential. All of it presumes
+    # the solvent IS the phase. There is one way to leave that domain while
+    # producing an ordinary-looking state: let the solids take all the water.
+    #
+    # Measured on a sealed cement paste below its stoichiometric water demand
+    # (w/c = 0.28 on the mix of the w/c example): the free water goes to 6e-9
+    # mol, the solvent falls to a fifth of its own aqueous phase, and the ionic
+    # strength is reported as 409 mol/kg by a model valid to about one. Nothing
+    # in the certificate objects, because nothing is wrong with the
+    # minimization; the mix simply does not hold enough water to be a solution
+    # chemistry problem.
+    substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    species = speciation(
+        substances, ["Cal", "H2O@", "CO2@"]; aggregate_state = [AS_AQUEOUS]
+    )
+    cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+
+    wet = ChemicalState(cs)
+    set_quantity!(wet, "H2O@", 55.5u"mol")
+    set_quantity!(wet, "Ca+2", 1.0e-3u"mol")
+    @test solvent_fraction(wet) > 0.99
+
+    # A "solution" whose solvent is outnumbered by its solutes. Nothing here is
+    # a modeling choice: 0.5 is about 28 mol of solute per kilogram of water,
+    # past saturation for anything.
+    dry = ChemicalState(cs)
+    set_quantity!(dry, "H2O@", 1.0e-9u"mol")
+    set_quantity!(dry, "Ca+2", 1.0e-8u"mol")
+    set_quantity!(dry, "CO3-2", 1.0e-8u"mol")
+    @test solvent_fraction(dry) < ChemistryLab.SOLVENT_FRACTION_FLOOR
+
+    # A system with no solvent at all reports zero rather than dividing by it.
+    dryer = ChemicalSystem([s for s in substances if symbol(s) == "Cal"])
+    @test solvent_fraction(ChemicalState(dryer)) == 0.0
+
+    # The guard the certified route applies to its answer: quiet above the
+    # floor, loud below it, and under the strict flag it raises like any other
+    # answer that is not one.
+    @test ChemistryLab._check_solvent(wet) === nothing
+    @test_logs (:warn,) ChemistryLab._check_solvent(dry)
+    strict = ChemistryLab.STRICT_CONVERGENCE[]
+    try
+        ChemistryLab.STRICT_CONVERGENCE[] = true
+        @test ChemistryLab._check_solvent(wet) === nothing
+        @test_throws "the aqueous phase has effectively vanished" ChemistryLab._check_solvent(dry)
+    finally
+        ChemistryLab.STRICT_CONVERGENCE[] = strict
+    end
+
+end
