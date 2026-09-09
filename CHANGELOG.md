@@ -40,6 +40,37 @@ solution comes near — about 28 mol of solute per kilogram of water, past
 saturation for anything. A value below it means the solve drove the water into
 the solids, not that the solution is concentrated.
 
+### Documentation — a usable answer below the stoichiometric demand
+
+A high-performance concrete is mixed at w/c between 0.25 and 0.35, which is an
+ordinary regime and must be computable, with a certificate and with all three of
+the things one wants from it: how much clinker stays unhydrated, which hydrates
+form, and what the pore solution contains. The w/c example now works that case.
+
+The construction is to stop the reaction where the physics stops it rather than
+ask the minimizer to discover an arrest point it has no term for: react a fraction
+α of the clinker with **all** the water, and leave the rest unhydrated. The
+equilibrium is then computed on a system that still has a solution in it, and α
+is what `powers_alpha_max` supplies. Imposing the reacted fraction is the standard
+construction of cement thermodynamic modeling — it is how Lothenbach & Winnefeld
+(2006) compute a hydrating paste.
+
+Measured: at w/c = 0.25 with α = 0.595 the solve certifies, the solvent holds
+0.9993 of its phase, the ionic strength is 0.0351 mol/kg and the pH 12.39, with
+40.5 % of the clinker unhydrated and a total porosity of 0.2056 — against the
+409 mol/kg and vanished solvent of the unconstrained solve at the same w/c.
+
+Predicting the arrest point instead of imposing it is a well-posed thermodynamic
+question the package cannot answer yet, and the page says which two ingredients
+are missing. An **activity model valid at very high concentration**, Pitzer-class,
+because what physically stops hydration is the collapse of the water activity as
+the last of the pore solution is consumed, and an extended Debye-Huckel model
+extrapolated to 409 mol/kg goes on returning finite numbers instead of collapsing.
+And a **coupling between pore structure and water activity**, the Kelvin term,
+because water in a fine pore is held at a reduced activity whatever its
+composition — which is what self-desiccation is, and it is poromechanics rather
+than solution chemistry.
+
 ### Documentation — the water-limited regime, and Powers' 0.42
 
 `docs/src/examples/cement_wc_ratio.md` claimed that "no clinker survives at any
