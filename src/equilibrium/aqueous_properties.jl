@@ -404,6 +404,75 @@ end
 # state is exactly the one given.
 
 """
+    saturation_indices(state, model; ϵ = 1e-16) -> OrderedDict{String, <:Real}
+
+`LogSI` for every species at `state`: `log₁₀(IAP/K)` of the reaction that forms it
+from the system's primaries.
+
+Zero for a phase at equilibrium with the solution, negative for one that is
+undersaturated, positive for one that **should have precipitated**. It is the
+quantity GEM-Selektor prints as `LogSI`, and the one an
+[`optimality_certificate`](@ref) summarizes into a single worst violation without
+saying which phase that is.
+
+No fitting is involved. The row labels of the conservation matrix are the primary
+species, so a component's element potential is that primary's chemical potential,
+`y_c = μ_c/RT`, and
+
+```
+LogSI_s = [Σ_c A_cs y_c − μ_s/RT] / ln 10
+```
+
+which is [`saturation_ratio`](@ref) written for the formation reaction
+`s = Σ_c A_cs (primary c)`. A conservation row that labels no species — the
+charge row — contributes nothing, since the coefficient of any neutral phase
+there is zero.
+
+Two things to know before reading the numbers:
+
+  - **The check is built in.** Every phase actually present at an equilibrium
+    must come out at `LogSI = 0`; measured on a CEM I paste, the twelve present
+    solids land within 1.2e-12. If they do not, the state is not an equilibrium
+    and no other index in the result means anything.
+  - **A solid-solution end-member's index is relative to its current mole
+    fraction**, since its activity is `ln x`. For an end-member at the solver's
+    lower bound that is a statement about a vanishing phase, not about whether
+    the solid solution would form.
+
+# Examples
+
+```julia
+si = saturation_indices(eq, model)
+si["hydrotalcite"]                     # +5.58: absent, and it should not be
+[k for (k, v) in si if v > 1e-4]       # everything supersaturated
+```
+
+See also: [`optimality_certificate`](@ref), [`saturation_ratio`](@ref),
+[`log_activities`](@ref).
+"""
+function saturation_indices(
+        state::ChemicalState, model::AbstractActivityModel = DiluteSolutionModel();
+        ϵ::Float64 = 1.0e-16,
+    )
+    cs = state.system
+    lna = log_activities(state, model; ϵ = ϵ)
+    p = _build_params(state; ϵ = ϵ)
+    g = [p.ΔₐG⁰overT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
+    A = cs.SM.A
+    idx = Dict(symbol(sp) => i for (i, sp) in enumerate(cs.species))
+    # A row whose primary is not among the species — the charge row — gets zero,
+    # which is exact for every neutral phase.
+    y = [get(idx, symbol(pr), 0) for pr in cs.SM.primaries]
+    yv = [k == 0 ? zero(eltype(g)) : g[k] for k in y]
+    inv_ln10 = inv(log(10))
+    return OrderedDict(
+        symbol(cs.species[i]) =>
+            (sum(A[c, i] * yv[c] for c in eachindex(yv)) - g[i]) * inv_ln10
+            for i in eachindex(cs.species)
+    )
+end
+
+"""
     homotopy_initial_state(state::ChemicalState; model = DiluteSolutionModel(),
                            steps = ..., ϵ = 1e-16, max_bisections = 6,
                            balance_atol = 1e-5, balance_rtol = 1e-3,

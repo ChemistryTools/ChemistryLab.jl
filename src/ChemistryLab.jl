@@ -329,7 +329,8 @@ module ChemistryLab
         ionic_strength,
         log_activities,
         activities,
-        activity_coefficients
+        activity_coefficients,
+        saturation_indices
 
     export EquilibriumProblem
 

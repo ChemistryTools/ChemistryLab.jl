@@ -351,3 +351,84 @@ end
     )
 
 end
+
+@testsection "the certificate names the missing phase, and the route puts it in" begin
+    # A positive worst supersaturation means a phase sits at the lower bound
+    # while the solution is supersaturated with respect to it. On a convex
+    # problem that is a genuine KKT failure: the active set is wrong and the
+    # answer is not the answer. The certificate reports it as one number;
+    # `saturation_indices` says which phase, and `_repair_start` puts it in.
+    #
+    # The case this exists for is a phase SWAP, which an active-set loop that
+    # admits one phase at a time cannot perform. Reproduced exactly on a CEM I
+    # paste by solving it with `hydrotalcite` out of the phase list: all
+    # 0.02515 mol of magnesium goes to brucite, the aqueous phase equilibrates
+    # with that assemblage, and putting hydrotalcite back leaves it absent and
+    # supersaturated by 5.58 log units while the solve is otherwise impeccable —
+    # stationarity 5.9e-16, element balance 1.6e-14. That is the reported
+    # failure, and `equilibrate_certified` from that state now certifies at
+    # 74.1899 cm3 with the magnesium back where it belongs. Too heavy for this
+    # suite; what is asserted here is the mechanism, on a system of eight
+    # species.
+    sp4 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs4 = ChemicalSystem(
+        [sp4[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    A4 = Float64.(cs4.SM.A)
+    model4 = DiluteSolutionModel()
+
+    # At a certified equilibrium every phase present is at LogSI = 0 and no
+    # absent one is supersaturated. That is the built-in check on the whole
+    # computation: if the present phases are not at zero, nothing else in the
+    # result means anything.
+    st4 = ChemicalState(cs4)
+    set_quantity!(st4, "H2O@", 1.0u"kg")
+    set_quantity!(st4, "Cal", 1.0e-3u"mol")
+    eq4, cert4 = equilibrate_certified(st4; model = model4)
+    @test cert4.optimal
+    si4 = saturation_indices(eq4, model4)
+    @test si4 isa AbstractDict
+    @test length(si4) == length(cs4.species)
+    @test abs(si4["Cal"]) < 1.0e-8            # present, hence saturated
+    # Nothing to repair at an answer that certifies, and the route must say so
+    # rather than invent a start.
+    @test ChemistryLab._repair_start(
+        eq4, model4, A4 * ustrip.(us"mol", eq4.n), 1.0e-16
+    ) === nothing
+
+    # Now a state where calcite is absent and the solution is grossly
+    # supersaturated with respect to it — the shape of the reported failure,
+    # without its size.
+    st5 = ChemicalState(cs4)
+    set_quantity!(st5, "H2O@", 1.0u"kg")
+    set_quantity!(st5, "Ca+2", 0.1u"mol")
+    set_quantity!(st5, "CO3-2", 0.1u"mol")
+    si5 = saturation_indices(st5, model4)
+    @test si5["Cal"] > 1.0
+    b5 = A4 * ustrip.(us"mol", st5.n)
+
+    fixed = ChemistryLab._repair_start(st5, model4, b5, 1.0e-16)
+    @test fixed isa ChemicalState
+    n5 = ustrip.(us"mol", fixed.n)
+    i_cal = findfirst(s -> symbol(s) == "Cal", cs4.species)
+    # The amount is what the recipe could make of it, scaled: a chemical bound,
+    # not a guess at the answer. Calcite takes one Ca and one CO3, and there are
+    # 0.1 mol of each.
+    @test n5[i_cal] ≈ ChemistryLab._REPAIR_FRACTION * 0.1 rtol = 1.0e-8
+    @test n5[i_cal] > 0
+    # Everything else is left alone: the element balance of a start is not this
+    # function's business, since `b` is fixed by the caller and every start is
+    # projected onto it.
+    @test all(
+        n5[i] == ustrip(us"mol", st5.n[i]) for i in eachindex(n5) if i != i_cal
+    )
+    # And the temperature and pressure of the state it came from are carried.
+    @test temperature(fixed) == temperature(st5)
+    @test pressure(fixed) == pressure(st5)
+
+end

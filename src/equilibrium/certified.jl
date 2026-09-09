@@ -58,6 +58,79 @@ function _keep_better(eq, cert, eq2, cert2)
 end
 
 """
+    _repair_start(eq, model, bfix, ϵ) -> Union{ChemicalState, Nothing}
+
+Build a starting point that makes the phases the certificate says are missing
+actually present. `nothing` when there are none.
+
+This is what turns a diagnosis into a repair. `optimality_certificate` reports a
+positive worst supersaturation when a phase sits at the lower bound while the
+solution is supersaturated with respect to it — a genuine KKT failure on a convex
+problem, so the active set is wrong and the answer is not the answer.
+[`saturation_indices`](@ref) says *which* phase, and the obvious move is then to
+put it in and solve again.
+
+The failure it exists for is a **phase swap**, which an active-set loop that
+admits one phase at a time cannot perform. Measured on a CEM I paste, reported
+from one machine while another certified the same source: all 0.02515 mol of
+magnesium sat in brucite with `hydrotalcite` absent and supersaturated by 5.58
+log units, and admitting the hydrotalcite requires dissolving the brucite
+entirely and taking aluminum back from the hydrogarnet in the same step. The
+solve was otherwise impeccable — stationarity 1.5e-16, element balance 1.8e-14 —
+which is exactly what a converged-onto-the-wrong-active-set answer looks like.
+
+The amount each missing phase is given is what the recipe could make of it,
+`min_c b_c / A_cs` over the components it consumes, scaled by `_REPAIR_FRACTION`.
+That is a chemical bound, not a guess at the answer: a carbonate in a system with
+1e-9 mol of carbon is offered 1e-9 mol and no more. What matters is only that the
+phase starts well away from the boundary, since being *at* the boundary is what
+the active-set loop cannot recover from. The element balance of the result is not
+this function's business — `b` is fixed once by the caller and every start is
+projected onto it, so a start that over-spends the budget costs nothing.
+"""
+function _repair_start(eq::ChemicalState, model, bfix, ϵ::Float64)
+    cs = eq.system
+    si = saturation_indices(eq, model; ϵ = ϵ)
+    n = Float64[ustrip(us"mol", x) for x in eq.n]
+    A = cs.SM.A
+    # Solid-solution end-members are excluded: their activity is `ln x`, so the
+    # index of one sitting at the bound says its mole fraction is small, not that
+    # the phase should form. Only pure phases are repaired here.
+    ss = Set(cs.idx_ssendmembers)
+    missing_phases = [
+        i for i in cs.idx_crystal
+            if !(i in ss) && n[i] <= 10ϵ && get(si, symbol(cs.species[i]), -Inf) > 1.0e-4
+    ]
+    isempty(missing_phases) && return nothing
+
+    n2 = copy(n)
+    for i in missing_phases
+        cap = minimum(
+            (
+                bfix[c] / A[c, i]
+                    for c in eachindex(bfix) if A[c, i] > 0 && bfix[c] > 0
+            );
+            init = Inf,
+        )
+        isfinite(cap) && cap > 0 || continue
+        n2[i] = max(n2[i], _REPAIR_FRACTION * cap)
+    end
+    n2 == n && return nothing
+    return ChemicalState(
+        cs, n2 .* u"mol"; T = temperature(eq), P = pressure(eq),
+    )
+end
+
+"""
+    _REPAIR_FRACTION
+
+What fraction of the amount the recipe could make of a missing phase
+[`_repair_start`](@ref) puts in. Far enough off the boundary for the active-set
+loop to work with, small enough not to pretend it knows the answer.
+"""
+const _REPAIR_FRACTION = 0.1
+
+"""
     equilibrate_certified(state; model, ϵ, b, verbose, autostart) -> (state, certificate)
 
 Equilibrium composition together with a proof of its global optimality, obtained
@@ -264,6 +337,30 @@ function equilibrate_certified(
         for _ in 1:_MAX_RESTARTS
             cert.optimal && break
             eq2, cert2 = search(starts_from(eq, "restart from the answer"))
+            improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
+            eq, cert = _keep_better(eq, cert, eq2, cert2)
+            improved || break
+        end
+
+        # Act on what the certificate says. A positive worst supersaturation
+        # names a phase that should be present and is not, which no amount of
+        # restarting from the same active set will fix: see `_repair_start`.
+        for _ in 1:_MAX_RESTARTS
+            cert.optimal && break
+            fixed = _repair_start(eq, model, bfix, ϵ)
+            fixed === nothing && break
+            verbose && @info "repairing a missing phase" worst_si = cert.worst_supersaturation
+            # The accumulated starts go back in with it. Measured on the paste,
+            # a solve from the repair start alone reaches the right assemblage
+            # -- 74.19 cm3, all the magnesium back in the hydrotalcite -- and
+            # still fails its certificate on an unrelated trace component: the
+            # recipe's 1e-9 mol of carbon is lost, leaving an element balance of
+            # exactly 1e-9 against a tolerance of 1e-10. Ranked on the worst
+            # residual, that answer loses to the very point it was meant to
+            # replace. Handing the search the repaired composition *and* the
+            # candidates it already had lets it keep the chemistry of the one
+            # and the trace components of the others.
+            eq2, cert2 = search(vcat(starts_from(fixed, "repair start"), starts))
             improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
             eq, cert = _keep_better(eq, cert, eq2, cert2)
             improved || break

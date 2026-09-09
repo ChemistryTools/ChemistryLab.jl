@@ -8,6 +8,47 @@ step on it. Reported from a Windows run of the same cement paste that certifies
 here: `optimal = false`, an element balance off by **6.7 mol**, every hydrate at
 zero — and a table of amounts that reads like a result.
 
+### Added — the certificate names the missing phase, and the route puts it in
+
+`saturation_indices(state, model)` returns `LogSI` for every species: zero for a
+phase at equilibrium with the solution, negative for an undersaturated one,
+positive for one that **should have precipitated**. It is what GEM-Selektor
+prints as `LogSI`, and what `optimality_certificate` had been compressing into a
+single worst violation without saying which phase it was.
+
+No fitting is involved: the row labels of the conservation matrix are the primary
+species, so a component's element potential is that primary's chemical potential
+and `LogSI_s = [Σ_c A_cs μ_c/RT − μ_s/RT] / ln 10`. The check comes with it —
+every phase actually present at an equilibrium must come out at zero, and on a
+CEM I paste the twelve present solids land within 1.2e-12.
+
+`equilibrate_certified` now **acts** on that. When its answer is uncertified
+because a phase sits at the lower bound while the solution is supersaturated with
+respect to it, the route puts that phase in and solves again, at most
+`_MAX_RESTARTS` times.
+
+The failure this exists for is a **phase swap**, which an active-set loop that
+admits one phase at a time cannot perform. Reported from one machine while
+another certified the same source: all 0.02515 mol of magnesium sat in brucite
+with `hydrotalcite` absent and supersaturated by 5.58 log units, and admitting
+the hydrotalcite requires dissolving the brucite entirely and taking aluminum
+back from the hydrogarnet in the same step. The solve was otherwise impeccable —
+stationarity 1.5e-16, element balance 1.8e-14 — which is exactly what an answer
+converged onto the wrong active set looks like.
+
+It is reproduced exactly, and now fixed: solving the paste with `hydrotalcite`
+out of the phase list gives a certified 74.1514 cm3 with all the magnesium in
+brucite, which is the reported state to seven digits; putting hydrotalcite back
+and starting from there,`equilibrate_certified` certifies at 74.1899 cm3 with the
+magnesium where GEM-Selektor puts it.
+
+Each missing phase is given what the recipe could make of it,
+`min_c b_c / A_cs` over the components it consumes, scaled by a tenth — a
+chemical bound, not a guess at the answer. A carbonate in a system holding
+1e-9 mol of carbon is offered 1e-9 mol and no more. What matters is only that
+the phase starts well away from the boundary, since being *at* the boundary is
+what the active-set loop cannot recover from.
+
 ### Fixed — a rung is accepted only if it conserves mass
 
 Two things can go wrong at a rung of the continuation, and only one of them
