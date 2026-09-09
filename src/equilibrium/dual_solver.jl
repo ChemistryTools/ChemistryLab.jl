@@ -186,8 +186,11 @@ function SciMLBase.solve(
 
     res.converged || begin
         NONCONVERGED[] += 1
-        @warn """the dual equilibrium solve did not certify optimality; audit it with \
-        `optimality_certificate`.""" maxlog = 1
+        # Silent while a multi-start route is trying candidates: one of them not
+        # converging is what the search is for, and the verdict belongs to the
+        # certificate of the answer, not to a candidate.
+        _EXPLORING_STARTS[] || @warn """the dual equilibrium solve did not certify \
+        optimality; audit it with `optimality_certificate`.""" maxlog = 1
     end
 
     # The parameters the constrained solve FOUND — the temperature an adiabatic

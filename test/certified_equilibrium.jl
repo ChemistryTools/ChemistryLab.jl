@@ -250,3 +250,104 @@ end
     @test ChemistryLab._MAX_RESTARTS >= 1
 
 end
+
+@testsection "a candidate's diagnostics are not the answer's" begin
+    # `equilibrate_certified` runs every back end from several compositions
+    # precisely because none of them works on every problem, and keeps whichever
+    # answer the certificate proves. A candidate that does not converge is
+    # therefore ordinary. Left unguarded it printed "returned `MaxIters`" and
+    # "did not certify optimality" from candidates along the way, so a call that
+    # ended `optimal = true` read as a failed solve.
+
+    # The scope sets the flag and restores it, including when the body throws —
+    # a start search that raises must not leave the whole session quiet.
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+    inside = ChemistryLab._exploring_starts() do
+        ChemistryLab._EXPLORING_STARTS[]
+    end
+    @test inside
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+    @test_throws ErrorException ChemistryLab._exploring_starts() do
+        error("a back end failed")
+    end
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+
+    # Nested scopes restore the previous value, not `false`: the walk runs inside
+    # the search, and the inner scope ending must not un-quiet the outer one.
+    ChemistryLab._exploring_starts() do
+        ChemistryLab._exploring_starts() do
+        end
+        @test ChemistryLab._EXPLORING_STARTS[]
+    end
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+
+    # The contract as a caller sees it: a call that ends with a certificate emits
+    # nothing at all. `@test_logs` installs a fresh logger, so the `maxlog = 1`
+    # carried by those warnings does not make this depend on what ran before.
+    #
+    # This one assertion also guards the other silence in this release: SciMLBase
+    # warns "arrays or dicts to store parameters of different types can hurt
+    # performance" the moment a conservation matrix with an abstract element type
+    # reaches the problem's parameters, so a regression in
+    # `_concrete_conservation` shows up here as a stray record.
+    # Built here rather than with `calcite()`, which is a local of another
+    # testset in this file.
+    sp3 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs3 = ChemicalSystem(
+        [sp3[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    st3 = ChemicalState(cs3)
+    set_quantity!(st3, "H2O@", 1.0u"kg")
+    set_quantity!(st3, "Cal", 1.0e-3u"mol")
+    eq3, cert3 = @test_logs equilibrate_certified(st3)
+    @test cert3.optimal
+
+end
+
+@testsection "the conservation matrix reaching the solver is concretely typed" begin
+    # `ChemicalSystem` stores its stoichiometry as `Matrix{Real}` whenever
+    # integer and rational coefficients coexist — a cement's does, through
+    # `C3AFS0.84H4.32` and its kind — which is right for the chemistry and wrong
+    # for the solver. An abstract element type boxes every entry and makes
+    # `mul!(res, A, x)` the generic fallback with a dispatch per element, on a
+    # product evaluated at every objective and constraint call. SciMLBase warns
+    # about exactly this as soon as such an array reaches a problem's parameters,
+    # and the warning was correct.
+    abstract_A = Matrix{Real}([1 0 2 // 5; 0 1 3])
+    @test !isconcretetype(eltype(abstract_A))
+    narrowed = ChemistryLab._concrete_float(abstract_A)
+    @test isconcretetype(eltype(narrowed))
+    @test eltype(narrowed) <: AbstractFloat      # not Rational: the pipeline is float
+    @test !ChemistryLab.SciMLBase.should_warn_paramtype(narrowed)
+
+    # Lossy for a non-dyadic rational, and deliberately so: `2//5` becomes `0.4`,
+    # which is not equal to it. It is the same rounding the rest of the solver
+    # already applies, and the exact matrix stays in `system.SM.A`.
+    @test narrowed ≈ abstract_A
+    @test narrowed[1, 3] == 0.4
+    @test narrowed[1, 3] != 2 // 5
+
+    # A concrete array is returned untouched, identically — the narrowing is for
+    # the abstract case and nothing else. An exact rational stoichiometry stays
+    # exact, and a caller differentiating through `A` keeps their number type.
+    for m in (Rational{Int}[1 0; 0 1], Int[1 2; 3 4], Float32[1 0; 0 1])
+        @test ChemistryLab._concrete_float(m) === m
+    end
+
+    # And what the solver actually receives. The default `b = A * u0` inherits
+    # the abstract element type from `A`, so it has to be narrowed too — this is
+    # the assertion that caught it.
+    ep = EquilibriumProblem(abstract_A, (n, q) -> n, [1.0, 1.0, 1.0])
+    @test isconcretetype(eltype(ep.A))
+    @test isconcretetype(eltype(ep.b))
+    @test ep.A ≈ abstract_A
+    @test !ChemistryLab.SciMLBase.should_warn_paramtype(
+        (; A = ep.A, b = ep.b, T = 298.15)
+    )
+
+end

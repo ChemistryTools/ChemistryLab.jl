@@ -164,25 +164,51 @@ function equilibrate_certified(
 
     # Every back end's answer from `from`, and `from` itself — the only start
     # available if they all threw.
+    #
+    # `STRICT_CONVERGENCE[]` is cleared for the duration and restored after: what
+    # this computes is a STARTING POINT, not a result. Left set, a back end that
+    # reports `MaxIters` raises, the `catch` below swallows it, and the search
+    # silently loses that candidate — so a caller asking for strict results gets
+    # a *worse* search than a caller who did not. Measured on a CEM I paste where
+    # the interior point ends on `MaxIters`: with the flag set the route returned
+    # an element balance of 27.6 mol, and with it clear the very same call
+    # returned 1.8e-14. The result is still judged strictly, at the end of this
+    # function, which is where the flag belongs.
     function starts_from(from::ChemicalState, what::AbstractString)
         out = ChemicalState[]
-        for f in _SOLVER_FACTORIES
-            try
-                esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
-                push!(out, SciMLBase.solve(esolver, from; ϵ = ϵ, b = bfix))
-            catch err
-                verbose && @info "$what rejected" backend = f err
+        strict = STRICT_CONVERGENCE[]
+        STRICT_CONVERGENCE[] = false
+        try
+            _exploring_starts() do
+                for f in _SOLVER_FACTORIES
+                    try
+                        esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
+                        push!(out, SciMLBase.solve(esolver, from; ϵ = ϵ, b = bfix))
+                    catch err
+                        verbose && @info "$what rejected" backend = f err
+                    end
+                end
             end
+        finally
+            STRICT_CONVERGENCE[] = strict
         end
         push!(out, from)
         return out
     end
 
+    # Every candidate the search tries is a candidate, and a candidate that does
+    # not converge is what the search exists for. Its diagnostics stay quiet; the
+    # verdict on the answer is pronounced once, below, on the certificate.
+    search(starts) = _exploring_starts() do
+        solve_certified(
+            des, starts; b = bfix, ϵ = ϵ,
+            constraint = constraint, parameters = parameters,
+        )
+    end
+
     starts = starts_from(state, "start")
 
-    eq, cert = solve_certified(
-        des, starts; b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
-    )
+    eq, cert = search(starts)
 
     # An automatic initial approximation, computed rather than asked for.
     #
@@ -211,10 +237,7 @@ function equilibrate_certified(
             before = _kkt_error(cert)
             eq, cert = _keep_better(
                 eq, cert,
-                solve_certified(
-                    des, vcat(starts_from(guess, "start from the continuation"), starts);
-                    b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
-                )...,
+                search(vcat(starts_from(guess, "start from the continuation"), starts))...,
             )
             note = cert.optimal ?
                 "the continuation certified it" :
@@ -240,10 +263,7 @@ function equilibrate_certified(
         # hard case costs a fixed handful of solves rather than looping.
         for _ in 1:_MAX_RESTARTS
             cert.optimal && break
-            eq2, cert2 = solve_certified(
-                des, starts_from(eq, "restart from the answer"); b = bfix, ϵ = ϵ,
-                constraint = constraint, parameters = parameters,
-            )
+            eq2, cert2 = search(starts_from(eq, "restart from the answer"))
             improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
             eq, cert = _keep_better(eq, cert, eq2, cert2)
             improved || break

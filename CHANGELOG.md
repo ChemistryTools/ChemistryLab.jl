@@ -47,6 +47,51 @@ pH 13.0994 against 13.0957, with an element balance of 4.4e-15 where it was
 The coupled kinetic step is untouched by construction: `implicit_step` passes
 `autostart = false`, so it never enters the continuation.
 
+### Fixed — a successful solve printed warnings about its own candidates
+
+A call ending `optimal = true` still printed "equilibrium solve returned
+`MaxIters`" and "the dual equilibrium solve did not certify optimality", which
+reads as a failed solve and is not one. Those come from **candidates**:
+`equilibrate_certified` runs every back end from several compositions precisely
+because none of them works on every problem, and keeps whichever answer the
+certificate proves, so a candidate falling short is what the search is for.
+
+An internal scope now marks the stretches where starting points are computed or
+tried — the back-end solves, the continuation's rungs, the multi-start search
+itself, and the coupled kinetic step's warm start — and the two diagnostics stay
+quiet inside it. Nothing is hidden: the verdict on the *answer* is still
+pronounced once, on its certificate, and `verbose = true` still reports every
+rung and every rejected start.
+
+The same distinction fixes something worse than noise. The back-end start solves
+are wrapped in a `try`, so under `STRICT_CONVERGENCE[] = true` a `MaxIters`
+candidate **raised**, was swallowed, and the search silently lost it — leaving a
+caller who asked for strict results with a worse search than one who did not.
+Measured on a CEM I paste where the interior point ends on `MaxIters`: with the
+flag set the route returned an element balance of 27.6 mol, and with it clear the
+very same call returned 1.8e-14. A start is not a result, and the flag now
+applies only to results.
+
+### Fixed — the conservation matrix reached the solver with an abstract type
+
+`ChemicalSystem` stores its stoichiometry as `Matrix{Real}` whenever integer and
+rational coefficients coexist, which a cement's does — `C3AFS0.84H4.32` and its
+kind. That is right for the chemistry and wrong for the solver: an abstract
+element type boxes every entry and turns `mul!(res, A, x)` into the generic
+fallback with a dynamic dispatch per element, on a product evaluated at every
+objective and constraint call. SciMLBase had been saying so on every run of such
+a system, warning that "arrays or dicts to store parameters of different types
+can hurt performance" — a warning that looked like noise about the library's
+internals and was in fact a correct report of a type instability in the hot loop.
+
+`EquilibriumProblem` now narrows the conservation matrix, and the default
+`b = A * u0` which inherits the same abstract element type, to a concrete
+floating-point array. `DualEquilibriumSolver` had always converted; the
+interior-point path had not. A caller who passes a concrete array keeps exactly
+what they passed — an exact `Matrix{Rational{Int}}`, a `Matrix{Int}`, or a
+`Matrix{<:Dual}` for someone differentiating through it — and the exact
+stoichiometry is untouched in `system.SM.A`, where it belongs.
+
 ### Fixed — the multi-start search could discard the answer it just computed
 
 `equilibrate_certified` ranks the answers of its multi-start search, and the

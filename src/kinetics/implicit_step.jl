@@ -342,6 +342,8 @@ function kinetic_step(
         # results would silently get a worse start than a caller who did not.
         strict = STRICT_CONVERGENCE[]
         STRICT_CONVERGENCE[] = false
+        was = _EXPLORING_STARTS[]
+        _EXPLORING_STARTS[] = true
         try
             # `autostart = false`: the continuation fallback of
             # `equilibrate_certified` is for a caller who has no starting
@@ -359,6 +361,7 @@ function kinetic_step(
             n0
         finally
             STRICT_CONVERGENCE[] = strict
+            _EXPLORING_STARTS[] = was
         end
     else
         n0

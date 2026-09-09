@@ -497,13 +497,20 @@ function homotopy_initial_state(
     # starts cold again, and the continuation degenerates into the very failure
     # it exists to avoid. These are guesses, not answers; the answer is the
     # certified solve that follows, and that one is still judged strictly.
+    #
+    # `_EXPLORING_STARTS` goes with it, for the same reason one step further: a
+    # rung that ends on `MaxIters` is expected, and warning about it makes a walk
+    # that worked read as a walk that failed. `verbose = true` reports every rung
+    # either way.
     strict = STRICT_CONVERGENCE[]
     STRICT_CONVERGENCE[] = false
     try
-        return _homotopy_walk(
-            cs, i_w, n0, model, steps, ϵ, verbose, max_bisections,
-            balance_atol, balance_rtol,
-        )
+        return _exploring_starts() do
+            _homotopy_walk(
+                cs, i_w, n0, model, steps, ϵ, verbose, max_bisections,
+                balance_atol, balance_rtol,
+            )
+        end
     finally
         STRICT_CONVERGENCE[] = strict
     end
