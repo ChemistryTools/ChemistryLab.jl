@@ -296,42 +296,60 @@ the other way.
     constant, so it is measured rather than quoted:
 
 ```@example wc_setup
-# Below the scanned range the water runs out, and the minimum leaves clinker.
+# Below the scanned range the water runs out. What the minimum does then is the
+# point of the last two columns.
 low = [0.15, 0.20, 0.25, 0.28, 0.30]
-println(" w/c   clinker left (% of the cement)   certified")
+clinker(st) = sum(
+    ustrip(us"kg", st.n[sp_idx[s]] * cs.species[sp_idx[s]][:M])
+        for s in ("C3S", "C2S", "C3A", "C4AF")
+)
+println(" w/c   clinker left (%)   certified   free water (mol)   x(solvent)   I (mol/kg)")
 for wc in low
     fr = fresh_paste(wc)
-    m0 = sum(
-        ustrip(us"kg", fr.n[sp_idx[s]] * cs.species[sp_idx[s]][:M])
-            for s in ("C3S", "C2S", "C3A", "C4AF")
-    )
-    # The warnings are the point of the last column, not of the transcript.
+    # The warnings are what the table reports; they are not the transcript.
     eq, cert = Base.CoreLogging.with_logger(Base.CoreLogging.NullLogger()) do
         equilibrate_certified(deepcopy(fr))
     end
-    ml = sum(
-        ustrip(us"kg", eq.n[sp_idx[s]] * cs.species[sp_idx[s]][:M])
-            for s in ("C3S", "C2S", "C3A", "C4AF")
+    @printf(
+        "%5.2f   %16.1f   %9s   %16.3e   %10.3f   %10.4g\n",
+        wc, 100 * clinker(eq) / clinker(fr), cert.optimal,
+        ustrip(us"mol", eq.n[sp_idx["H2O@"]]), solvent_fraction(eq),
+        ionic_strength(eq),
     )
-    @printf("%5.2f   %26.1f   %9s\n", wc, 100 * ml / m0, cert.optimal)
 end
 ```
 
-!!! warning "Read the last column"
-    The water-limited points are **not certified**. Their amounts are the best
-    answers the multi-start route found, not proved minima, and the reason is the
-    one the [equilibrium tutorial](@ref sec-equilibrium) gives for cold starts in
-    general: a water-starved paste is the badly conditioned end of this problem.
-    What does not depend on the solver is the **existence** of the regime — 5 g
+!!! warning "Read the last three columns: this is outside the model, not inside it"
+    Below w/c = 0.30 the free water does not become small — it goes to **6e-9
+    mol**, the solver's floor. The solids take all of it. The solvent then holds
+    barely a **fifth** of its own aqueous phase, and the ionic strength is
+    reported as **409 mol/kg** by a Debye-Huckel model valid to about one.
+
+    That is not the solver failing to converge, and "hydrate a little and leave a
+    large stock of anhydrous clinker" is not what a Gibbs minimum does here.
+    Forming more hydrate always lowers the energy, and nothing in the model
+    penalizes a solution concentrated past any physical meaning: the water
+    activity of a real paste collapses as the pores empty and stops the reaction,
+    while an activity model extrapolated to 409 mol/kg goes on returning finite
+    numbers. The minimization runs off the end of its own domain, and the
+    certificate cannot see it — a certificate proves the composition minimizes
+    the problem *as posed*, not that the problem was posed inside the model.
+
+    So this table is read for **one** thing: residual clinker exists in the Gibbs
+    minimum below the stoichiometric water demand, which is a mass balance — 15 g
     of water cannot hydrate 100 g of cement whatever the algorithm, since the
-    hydrates would need some 23 g. Read the table for that, and for the order of
-    magnitude; do not quote its numbers as equilibrium values.
+    hydrates would need some 23 g. Its molar amounts, its pH, its ionic strength
+    are **not** equilibrium values and must not be quoted as such. Since 0.15.2
+    the package says so itself: [`equilibrate_certified`](@ref) checks
+    [`solvent_fraction`](@ref) on the answer it returns and warns — or raises,
+    under `STRICT_CONVERGENCE[]` — when the aqueous phase has effectively
+    vanished.
 
     The previous version of this page said no clinker survives *at any* w/c and
     explained it by the minimum "always forming a less hydrous assemblage". The
     first half is true only over the range scanned, and the second is false: the
     least hydrous assemblage available still binds water, and when there is not
-    enough, alite stays.
+    enough, alite stays — and then, shortly after, the model stops applying.
 
     What remains true is the rest of the original claim, and it matters for mix
     design: over 0.30–0.60 this scan shows **no optimum w/c and no inflection**.

@@ -330,7 +330,9 @@ module ChemistryLab
         log_activities,
         activities,
         activity_coefficients,
-        saturation_indices
+        saturation_indices,
+        solvent_fraction,
+        SOLVENT_FRACTION_FLOOR
 
     export EquilibriumProblem
 
