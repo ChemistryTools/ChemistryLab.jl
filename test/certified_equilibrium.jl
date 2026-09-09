@@ -431,4 +431,93 @@ end
     @test temperature(fixed) == temperature(st5)
     @test pressure(fixed) == pressure(st5)
 
+    # A round of the repair, with the search injected. The situation it exists
+    # for -- a back end converging onto the wrong active set -- needs a system of
+    # some 135 species to arise, while the round's logic needs eight, so the
+    # search is passed in rather than closed over.
+    solve_from(f) = equilibrate_certified(f; model = model4, b = b5, autostart = false)
+    # The certificate the round is handed stands for "the back ends failed",
+    # which is what it is only ever called after.
+    failed = (;
+        optimal = false, stationarity = 1.0, balance = 1.0,
+        worst_supersaturation = 10.0,
+    )
+    eq6, cert6, improved6 = ChemistryLab._repair_round(
+        st5, failed, model4, b5, 1.0e-16, solve_from, false,
+    )
+    @test improved6                          # anything beats that certificate
+    @test cert6.optimal                      # and here the repair certifies
+    @test ustrip(us"mol", eq6.n[i_cal]) > 1.0e-6    # calcite precipitated
+    @test abs(saturation_indices(eq6, model4)["Cal"]) < 1.0e-8   # and is saturated
+
+    # Nothing to repair: the round says so and changes nothing, which is what
+    # stops the loop.
+    eq7, cert7, improved7 = ChemistryLab._repair_round(
+        eq4, failed, model4, A4 * ustrip.(us"mol", eq4.n), 1.0e-16, solve_from, false,
+    )
+    @test !improved7
+    @test eq7 === eq4
+    @test cert7 === failed
+
+end
+
+@testsection "an infeasible budget is neither certified nor made to hang" begin
+    # The automatic cascade — continuation, restart from the answer, repair of a
+    # missing phase — runs only when the ordinary starts fail to certify, and on
+    # a well-posed small system they never do. A budget no composition can meet
+    # gets into it, and what must hold there is that the route terminates, says
+    # plainly that it has no certificate, and does not fabricate one.
+    #
+    # `-b` is infeasible by construction: every component budget is negative and
+    # every stoichiometric coefficient non-negative, so no `n >= 0` can meet it.
+    sp8 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs8 = ChemicalSystem(
+        [sp8[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    A8 = Float64.(cs8.SM.A)
+    st8 = ChemicalState(cs8)
+    set_quantity!(st8, "H2O@", 1.0u"kg")
+    set_quantity!(st8, "Cal", 1.0e-3u"mol")
+    b8 = A8 * ustrip.(us"mol", st8.n)
+
+    strict = ChemistryLab.STRICT_CONVERGENCE[]
+    try
+        ChemistryLab.STRICT_CONVERGENCE[] = false
+        eq8, cert8 = equilibrate_certified(st8; b = -b8)
+        @test !cert8.optimal
+        @test eq8 isa ChemicalState
+        # A budget with a negative component offers nothing to lift a phase off
+        # its bound with, so the repair declines rather than inventing an amount.
+        @test ChemistryLab._repair_start(eq8, DiluteSolutionModel(), -b8, 1.0e-16) ===
+            nothing
+
+        # A back end that throws is reported under `verbose` and costs the search
+        # only that candidate. Registered first, since a start is taken from the
+        # first factory that answers; the logger swallows the dual solver's own
+        # iteration trace, which `verbose` also turns on.
+        factories = ChemistryLab._SOLVER_FACTORIES
+        saved = copy(factories)
+        try
+            pushfirst!(factories, () -> error("this back end is unavailable"))
+            # `Base.CoreLogging` rather than `using Logging`, which would have
+            # to be declared in the test target for one call.
+            eq9, cert9 = Base.CoreLogging.with_logger(Base.CoreLogging.NullLogger()) do
+                equilibrate_certified(st8; b = -b8, verbose = true)
+            end
+            @test !cert9.optimal
+            @test eq9 isa ChemicalState
+        finally
+            empty!(factories)
+            append!(factories, saved)
+        end
+        @test ChemistryLab._SOLVER_FACTORIES == saved
+    finally
+        ChemistryLab.STRICT_CONVERGENCE[] = strict
+    end
+
 end

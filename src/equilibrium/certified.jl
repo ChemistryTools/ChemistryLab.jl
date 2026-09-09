@@ -131,6 +131,30 @@ loop to work with, small enough not to pretend it knows the answer.
 const _REPAIR_FRACTION = 0.1
 
 """
+    _repair_round(eq, cert, model, bfix, ϵ, solve_from, verbose)
+        -> (eq, cert, improved)
+
+One round of "the certificate names a missing phase, so put it in and solve
+again". Returns the better of the two answers and whether the round bought
+anything, so the caller can stop as soon as it does not.
+
+`solve_from` is the search, injected: given a starting composition it returns
+`(state, certificate)`. Passing it in rather than closing over the caller's
+solver is what makes this round testable on its own — the situation it exists
+for, a back end that converges onto the wrong active set, needs a system of some
+135 species to arise, while the round's logic needs eight.
+"""
+function _repair_round(eq, cert, model, bfix, ϵ::Float64, solve_from, verbose::Bool)
+    fixed = _repair_start(eq, model, bfix, ϵ)
+    fixed === nothing && return (eq, cert, false)
+    verbose && @info "repairing a missing phase" worst_si = cert.worst_supersaturation
+    eq2, cert2 = solve_from(fixed)
+    improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
+    kept, kept_cert = _keep_better(eq, cert, eq2, cert2)
+    return (kept, kept_cert, improved)
+end
+
+"""
     equilibrate_certified(state; model, ϵ, b, verbose, autostart) -> (state, certificate)
 
 Equilibrium composition together with a proof of its global optimality, obtained
@@ -345,24 +369,22 @@ function equilibrate_certified(
         # Act on what the certificate says. A positive worst supersaturation
         # names a phase that should be present and is not, which no amount of
         # restarting from the same active set will fix: see `_repair_start`.
+        # The accumulated starts go back in with the repaired composition.
+        # Measured on the paste, a solve from the repair start alone reaches the
+        # right assemblage -- 74.19 cm3, all the magnesium back in the
+        # hydrotalcite -- and still fails its certificate on an unrelated trace
+        # component: the recipe's 1e-9 mol of carbon is lost, leaving an element
+        # balance of exactly 1e-9 against a tolerance of 1e-10. Ranked on the
+        # worst residual, that answer loses to the very point it was meant to
+        # replace. Handing the search the repaired composition *and* the
+        # candidates it already had keeps the chemistry of the one and the trace
+        # components of the others.
+        repair_search(f) = search(vcat(starts_from(f, "repair start"), starts))
         for _ in 1:_MAX_RESTARTS
             cert.optimal && break
-            fixed = _repair_start(eq, model, bfix, ϵ)
-            fixed === nothing && break
-            verbose && @info "repairing a missing phase" worst_si = cert.worst_supersaturation
-            # The accumulated starts go back in with it. Measured on the paste,
-            # a solve from the repair start alone reaches the right assemblage
-            # -- 74.19 cm3, all the magnesium back in the hydrotalcite -- and
-            # still fails its certificate on an unrelated trace component: the
-            # recipe's 1e-9 mol of carbon is lost, leaving an element balance of
-            # exactly 1e-9 against a tolerance of 1e-10. Ranked on the worst
-            # residual, that answer loses to the very point it was meant to
-            # replace. Handing the search the repaired composition *and* the
-            # candidates it already had lets it keep the chemistry of the one
-            # and the trace components of the others.
-            eq2, cert2 = search(vcat(starts_from(fixed, "repair start"), starts))
-            improved = cert2.optimal || _kkt_error(cert2) < _kkt_error(cert)
-            eq, cert = _keep_better(eq, cert, eq2, cert2)
+            eq, cert, improved = _repair_round(
+                eq, cert, model, bfix, ϵ, repair_search, verbose,
+            )
             improved || break
         end
     end
