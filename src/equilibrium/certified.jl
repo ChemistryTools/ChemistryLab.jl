@@ -26,6 +26,31 @@
 # keeping a proved answer is exact, not heuristic.
 
 """
+    _MAX_RESTARTS
+
+How many times [`equilibrate_certified`](@ref) may restart from its own answer
+before giving up. One round is what the measured cases need; the bound exists so
+a case that improves by a hair every round cannot loop.
+"""
+const _MAX_RESTARTS = 3
+
+"""
+    _keep_better(eq, cert, eq2, cert2) -> (eq, cert)
+
+Keep the better of two answers: a certificate of optimality beats none, and
+otherwise the smaller KKT error wins. A round that buys nothing changes nothing,
+which is what lets the restart loop run without ever making the answer worse.
+
+The optimality flag is compared **first**, in both directions. Ranking on the
+KKT error alone would let an uncertified point with a smaller stationarity
+displace a certified one, and no residual is worth trading a proof for.
+"""
+function _keep_better(eq, cert, eq2, cert2)
+    cert2.optimal == cert.optimal || return cert2.optimal ? (eq2, cert2) : (eq, cert)
+    return cert2.stationarity < cert.stationarity ? (eq2, cert2) : (eq, cert)
+end
+
+"""
     equilibrate_certified(state; model, ϵ, b, verbose, autostart) -> (state, certificate)
 
 Equilibrium composition together with a proof of its global optimality, obtained
@@ -130,19 +155,23 @@ function equilibrate_certified(
         des.A * Float64[ustrip(us"mol", x) for x in state.n] :
         Float64.(collect(b))
 
-    starts = ChemicalState[]
-    for f in _SOLVER_FACTORIES
-        try
-            esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
-            push!(starts, SciMLBase.solve(esolver, state; ϵ = ϵ, b = bfix))
-        catch err
-            verbose && @info "start rejected" backend = f err
+    # Every back end's answer from `from`, and `from` itself — the only start
+    # available if they all threw.
+    function starts_from(from::ChemicalState, what::AbstractString)
+        out = ChemicalState[]
+        for f in _SOLVER_FACTORIES
+            try
+                esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
+                push!(out, SciMLBase.solve(esolver, from; ϵ = ϵ, b = bfix))
+            catch err
+                verbose && @info "$what rejected" backend = f err
+            end
         end
+        push!(out, from)
+        return out
     end
 
-    # The state as given is a legitimate start too, and the only one available if
-    # every back end threw.
-    push!(starts, state)
+    starts = starts_from(state, "start")
 
     eq, cert = solve_certified(
         des, starts; b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
@@ -164,24 +193,35 @@ function equilibrate_certified(
         # which is what the back-end loop below does with it.
         guess = homotopy_initial_state(state; ϵ = ϵ, verbose = verbose)
         if guess !== nothing
-            extra = ChemicalState[guess]
-            for f in _SOLVER_FACTORIES
-                try
-                    esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
-                    push!(extra, SciMLBase.solve(esolver, guess; ϵ = ϵ, b = bfix))
-                catch err
-                    verbose && @info "start from the continuation rejected" backend = f err
-                end
-            end
+            eq, cert = _keep_better(
+                eq, cert,
+                solve_certified(
+                    des, vcat(starts_from(guess, "start from the continuation"), starts);
+                    b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
+                )...,
+            )
+        end
+
+        # Restart from the answer. The continuation ends on a composition that is
+        # nearly the equilibrium but not certifiably so, and one more solve from
+        # there closes the gap — measured on a CEM I paste under the per-species
+        # Debye-Huckel model, stationarity 9.9e-7 (uncertified) becomes 1.5e-16
+        # with the worst absent phase 1.4e-5 below saturation. It is the same
+        # observation that motivates the continuation, applied once more: a start
+        # near the answer is what this problem needs, and the best one available
+        # is the answer already in hand.
+        #
+        # Bounded, and it stops as soon as a round buys nothing, so a genuinely
+        # hard case costs a fixed handful of solves rather than looping.
+        for _ in 1:_MAX_RESTARTS
+            cert.optimal && break
             eq2, cert2 = solve_certified(
-                des, vcat(extra, starts); b = bfix, ϵ = ϵ,
+                des, starts_from(eq, "restart from the answer"); b = bfix, ϵ = ϵ,
                 constraint = constraint, parameters = parameters,
             )
-            # Keep it only if it is actually better: certified beats
-            # uncertified, and among uncertified the smaller KKT error wins.
-            if cert2.optimal || cert2.stationarity < cert.stationarity
-                eq, cert = eq2, cert2
-            end
+            improved = cert2.optimal || cert2.stationarity < cert.stationarity
+            eq, cert = _keep_better(eq, cert, eq2, cert2)
+            improved || break
         end
     end
 
