@@ -1,5 +1,189 @@
 # Changelog
 
+## v0.15.1 — a starting point that conserves mass, and a strict flag that is read
+
+The automatic initial approximation shipped in 0.15.0 could hand the solver a
+starting point that is not on the constraint surface, and then build every later
+step on it. Reported from a Windows run of the same cement paste that certifies
+here: `optimal = false`, an element balance off by **6.7 mol**, every hydrate at
+zero — and a table of amounts that reads like a result.
+
+### Added — the certificate names the missing phase, and the route puts it in
+
+`saturation_indices(state, model)` returns `LogSI` for every species: zero for a
+phase at equilibrium with the solution, negative for an undersaturated one,
+positive for one that **should have precipitated**. It is what GEM-Selektor
+prints as `LogSI`, and what `optimality_certificate` had been compressing into a
+single worst violation without saying which phase it was.
+
+No fitting is involved: the row labels of the conservation matrix are the primary
+species, so a component's element potential is that primary's chemical potential
+and `LogSI_s = [Σ_c A_cs μ_c/RT − μ_s/RT] / ln 10`. The check comes with it —
+every phase actually present at an equilibrium must come out at zero, and on a
+CEM I paste the twelve present solids land within 1.2e-12.
+
+`equilibrate_certified` now **acts** on that. When its answer is uncertified
+because a phase sits at the lower bound while the solution is supersaturated with
+respect to it, the route puts that phase in and solves again, at most
+`_MAX_RESTARTS` times.
+
+The failure this exists for is a **phase swap**, which an active-set loop that
+admits one phase at a time cannot perform. Reported from one machine while
+another certified the same source: all 0.02515 mol of magnesium sat in brucite
+with `hydrotalcite` absent and supersaturated by 5.58 log units, and admitting
+the hydrotalcite requires dissolving the brucite entirely and taking aluminum
+back from the hydrogarnet in the same step. The solve was otherwise impeccable —
+stationarity 1.5e-16, element balance 1.8e-14 — which is exactly what an answer
+converged onto the wrong active set looks like.
+
+It is reproduced exactly, and now fixed: solving the paste with `hydrotalcite`
+out of the phase list gives a certified 74.1514 cm3 with all the magnesium in
+brucite, which is the reported state to seven digits; putting hydrotalcite back
+and starting from there,`equilibrate_certified` certifies at 74.1899 cm3 with the
+magnesium where GEM-Selektor puts it.
+
+Each missing phase is given what the recipe could make of it,
+`min_c b_c / A_cs` over the components it consumes, scaled by a tenth — a
+chemical bound, not a guess at the answer. A carbonate in a system holding
+1e-9 mol of carbon is offered 1e-9 mol and no more. What matters is only that
+the phase starts well away from the boundary, since being *at* the boundary is
+what the active-set loop cannot recover from.
+
+### Fixed — a rung is accepted only if it conserves mass
+
+Two things can go wrong at a rung of the continuation, and only one of them
+raised. A back end can throw, which was handled; or it can *return* a
+composition that violates the element balance, which was accepted and carried
+forward as the start of every rung after it. The walk then walks away from the
+problem it was posed.
+
+`homotopy_initial_state` now tests each rung before accepting it, and a refused
+rung is retaken by halving the distance back to the last `λ` that worked, up to
+`max_bisections` times per target — the fixed `steps` ladder becomes a
+suggestion, and a rung that cannot be taken in one jump is taken in two.
+
+The test is `|rᵢ| ≤ balance_atol + balance_rtol · scaleᵢ` on the element-balance
+residual, row by row, with `scaleᵢ = max(|bᵢ|, Σⱼ |Aᵢⱼ| nⱼ)`, and it **has** to
+be mixed rather than relative. Two conservation rows of this problem carry a
+legitimately negligible budget: electroneutrality is exactly zero, and a cement
+recipe is routinely given a carbon trace of 1e-9 mol. Measured at λ = 0.01 on
+the paste, a residual of 1.7e-10 mol on the charge row scores 168 against its
+own budget and 1.1e-10 mol on the carbon row scores 10.6 — both physically
+nothing. A purely relative criterion rejected 35 of 66 rungs on that walk and
+never reached its first three targets; the mixed one accepts all ten rungs and
+reaches every target. A row holding 1e-11 mol cannot be balanced better than the
+solver's absolute floor, and asking it to be is a category error.
+
+Neither tolerance certifies anything, and both are exposed as keywords rather
+than buried as constants. `balance_atol` sits above the accuracy the interior
+point itself reaches — about 3e-6 mol on this class of problem — because a rung
+is a guess and not an answer. The certificate judges the result, afterwards, and
+it is unchanged.
+
+Measured on the CEM I paste at w/c = 0.5, the answer is the same and its balance
+is better: certified at 74.1899 cm3 against GEM-Selektor's 74.2136 and
+pH 13.0994 against 13.0957, with an element balance of 4.4e-15 where it was
+6.3e-14.
+
+The coupled kinetic step is untouched by construction: `implicit_step` passes
+`autostart = false`, so it never enters the continuation.
+
+### Fixed — a successful solve printed warnings about its own candidates
+
+A call ending `optimal = true` still printed "equilibrium solve returned
+`MaxIters`" and "the dual equilibrium solve did not certify optimality", which
+reads as a failed solve and is not one. Those come from **candidates**:
+`equilibrate_certified` runs every back end from several compositions precisely
+because none of them works on every problem, and keeps whichever answer the
+certificate proves, so a candidate falling short is what the search is for.
+
+An internal scope now marks the stretches where starting points are computed or
+tried — the back-end solves, the continuation's rungs, the multi-start search
+itself, and the coupled kinetic step's warm start — and the two diagnostics stay
+quiet inside it. Nothing is hidden: the verdict on the *answer* is still
+pronounced once, on its certificate, and `verbose = true` still reports every
+rung and every rejected start.
+
+The same distinction fixes something worse than noise. The back-end start solves
+are wrapped in a `try`, so under `STRICT_CONVERGENCE[] = true` a `MaxIters`
+candidate **raised**, was swallowed, and the search silently lost it — leaving a
+caller who asked for strict results with a worse search than one who did not.
+Measured on a CEM I paste where the interior point ends on `MaxIters`: with the
+flag set the route returned an element balance of 27.6 mol, and with it clear the
+very same call returned 1.8e-14. A start is not a result, and the flag now
+applies only to results.
+
+### Fixed — the conservation matrix reached the solver with an abstract type
+
+`ChemicalSystem` stores its stoichiometry as `Matrix{Real}` whenever integer and
+rational coefficients coexist, which a cement's does — `C3AFS0.84H4.32` and its
+kind. That is right for the chemistry and wrong for the solver: an abstract
+element type boxes every entry and turns `mul!(res, A, x)` into the generic
+fallback with a dynamic dispatch per element, on a product evaluated at every
+objective and constraint call. SciMLBase had been saying so on every run of such
+a system, warning that "arrays or dicts to store parameters of different types
+can hurt performance" — a warning that looked like noise about the library's
+internals and was in fact a correct report of a type instability in the hot loop.
+
+`EquilibriumProblem` now narrows the conservation matrix, and the default
+`b = A * u0` which inherits the same abstract element type, to a concrete
+floating-point array. `DualEquilibriumSolver` had always converted; the
+interior-point path had not. A caller who passes a concrete array keeps exactly
+what they passed — an exact `Matrix{Rational{Int}}`, a `Matrix{Int}`, or a
+`Matrix{<:Dual}` for someone differentiating through it — and the exact
+stoichiometry is untouched in `system.SM.A`, where it belongs.
+
+### Fixed — the multi-start search could discard the answer it just computed
+
+`equilibrate_certified` ranks the answers of its multi-start search, and the
+comparison was on the **stationarity alone**. A composition can be stationary to
+1e-3 while violating mass conservation by moles, and that is not a near-answer:
+it is not an answer to the problem posed. Reported from that Windows run, the
+first route came back stationary to 2.4e-3 with an element balance off by 6.7 mol
+and a phase supersaturated by 45 — and it beat every candidate the continuation
+produced, because those were stationary to only 1e-2 while conserving mass. The
+search computed a usable answer and threw it away, which is why the certificate
+came back **bit-identical** across two successive library fixes.
+
+The ranking is now `_kkt_error` — the worst of stationarity, element balance and
+supersaturation, with a negative supersaturation counted as zero since every
+absent phase undersaturated is what optimality requires. That is the ranking
+`solve_certified` already used internally over its own starts, so the two agree
+where they previously disagreed, and there is one definition of the quantity
+instead of two.
+
+The certificate of a failed solve now also reports what the automatic initial
+approximation did — not reached, declined, produced no usable start, ran without
+improving, improved without certifying, or certified. On a solve that fails on
+one machine and not another, that is the first thing anyone needs to know, and
+it should not require a second run with `verbose = true`.
+
+### Changed — `STRICT_CONVERGENCE[] = true` now raises on an uncertified answer
+
+This is what should have made that Windows run loud instead of plausible. The
+flag was read only on the interior-point return code, so a caller who set it —
+asking that a non-converged solve never pass as a result — still got an
+uncertified answer out of `equilibrate_certified` with nothing but a `@warn`.
+An uncertified answer from that route is precisely what the flag exists to
+refuse: it can violate mass conservation by moles and still be an ordinary
+`ChemicalState`.
+
+**This changes behavior for code that sets the flag**, which is why it is called
+out rather than filed under fixes. The default is untouched: with
+`STRICT_CONVERGENCE[]` at its default `false`, an uncertified answer is still
+returned with a warning, and `optimality_certificate` is still the way to audit
+it. Only the opt-in path is affected, and only in the direction the flag asks
+for.
+
+One consequence had to be handled inside the package. The coupled kinetic step
+computes its warm start with `equilibrate_certified`; that answer is a *starting
+point*, not a result, so the flag is cleared around it and restored in a
+`finally` — the same distinction the continuation already makes for its own
+rungs. Left set, the strict flag would have turned that guess into a raise, the
+surrounding `catch` would have swallowed it, and a caller asking for strict
+results would have silently got a worse start than a caller who did not.
+
+
 ## v0.15.0 — the alkali end-members of the C-S-H, and a readable aqueous state
 
 The shipped `data/solid_solutions.toml` described a C-S-H that could not hold

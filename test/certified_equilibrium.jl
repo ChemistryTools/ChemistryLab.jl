@@ -105,6 +105,42 @@
         @test !ChemistryLab._dual_applicable(no_solvent)
     end
 
+
+    @testsection "STRICT_CONVERGENCE is honored by the certified route" begin
+        # The flag existed only on the interior-point retcode, so a caller who set
+        # it — asking that a non-converged solve never pass as a result — still got
+        # an uncertified answer back with a `@warn`. That answer can violate the
+        # element balance by moles and still look like an ordinary `ChemicalState`:
+        # measured on a cement paste, a balance off by 6.7 mol, every hydrate at
+        # zero, and a table of amounts that reads as a result.
+        #
+        # `-b` is infeasible by construction: every component budget is negative and
+        # every stoichiometric coefficient is non-negative, so no composition with
+        # `n >= 0` can meet it and no route can certify.
+        st = calcite()
+        b_bad = -(A * [ustrip(us"mol", x) for x in st.n])
+
+        strict = ChemistryLab.STRICT_CONVERGENCE[]
+        try
+            ChemistryLab.STRICT_CONVERGENCE[] = true
+            @test_throws "no route produced a certifiable equilibrium" equilibrate_certified(
+                st; b = b_bad, autostart = false
+            )
+
+            # The default stays a warning: the answer is still the best one found,
+            # and `optimality_certificate` is there to audit it.
+            ChemistryLab.STRICT_CONVERGENCE[] = false
+            eq, cert = equilibrate_certified(st; b = b_bad, autostart = false)
+            @test cert.optimal == false
+            @test eq isa ChemicalState
+        finally
+            ChemistryLab.STRICT_CONVERGENCE[] = strict
+        end
+
+        # And the flag is left exactly as it was found.
+        @test ChemistryLab.STRICT_CONVERGENCE[] == strict
+
+    end
 end
 
 @testsection "ForwardDiff through the certified route" begin
@@ -170,15 +206,37 @@ end
     # from ever making the answer worse.
     kb = ChemistryLab._keep_better
     a, b = :A, :B
-    cert(opt, stat) = (; optimal = opt, stationarity = stat)
+    cert(opt, stat; bal = 0.0, si = -1.0) =
+        (;
+        optimal = opt, stationarity = stat, balance = bal,
+        worst_supersaturation = si,
+    )
 
     # Certified beats uncertified, in both directions and whatever the errors.
     @test first(kb(a, cert(false, 1.0e-16), b, cert(true, 1.0e-3))) === b
     @test first(kb(a, cert(true, 1.0e-3), b, cert(false, 1.0e-16))) === a
 
-    # Among uncertified, the smaller stationarity wins.
+    # Among uncertified, the smaller KKT error wins.
     @test first(kb(a, cert(false, 1.0e-6), b, cert(false, 1.0e-9))) === b
     @test first(kb(a, cert(false, 1.0e-9), b, cert(false, 1.0e-6))) === a
+
+    # And that error is the worst of ALL THREE residuals, not the stationarity
+    # alone. This is the case that was wrong, and it is not academic: a Windows
+    # run of a CEM I paste came back stationary to 2.4e-3 with an element
+    # balance off by 6.7 mol and a phase supersaturated by 45, and it beat every
+    # candidate the continuation produced — those being stationary to only 1e-2
+    # while conserving mass. Ranked on stationarity, the answer that is not an
+    # answer wins; ranked on the worst residual, the usable one does. It is also
+    # the ranking `solve_certified` already used internally, so the two agree.
+    bad = cert(false, 2.4e-3; bal = 6.7, si = 45.3)
+    good = cert(false, 1.0e-2; bal = 1.0e-13, si = -0.5)
+    @test ChemistryLab._kkt_error(bad) > ChemistryLab._kkt_error(good)
+    @test first(kb(a, bad, b, good)) === b
+    @test first(kb(a, good, b, bad)) === a
+
+    # A negative worst supersaturation is not an error: every absent phase
+    # undersaturated is what optimality requires, so it must not be counted.
+    @test ChemistryLab._kkt_error(cert(false, 1.0e-9; si = -12.0)) == 1.0e-9
 
     # Between two certified answers the KKT error still decides, and a tie keeps
     # the incumbent: a round that buys nothing changes nothing, which is what
@@ -190,5 +248,276 @@ end
     # The bound exists so a case improving by a hair every round cannot loop.
     @test ChemistryLab._MAX_RESTARTS isa Integer
     @test ChemistryLab._MAX_RESTARTS >= 1
+
+end
+
+@testsection "a candidate's diagnostics are not the answer's" begin
+    # `equilibrate_certified` runs every back end from several compositions
+    # precisely because none of them works on every problem, and keeps whichever
+    # answer the certificate proves. A candidate that does not converge is
+    # therefore ordinary. Left unguarded it printed "returned `MaxIters`" and
+    # "did not certify optimality" from candidates along the way, so a call that
+    # ended `optimal = true` read as a failed solve.
+
+    # The scope sets the flag and restores it, including when the body throws —
+    # a start search that raises must not leave the whole session quiet.
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+    inside = ChemistryLab._exploring_starts() do
+        ChemistryLab._EXPLORING_STARTS[]
+    end
+    @test inside
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+    @test_throws ErrorException ChemistryLab._exploring_starts() do
+        error("a back end failed")
+    end
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+
+    # Nested scopes restore the previous value, not `false`: the walk runs inside
+    # the search, and the inner scope ending must not un-quiet the outer one.
+    ChemistryLab._exploring_starts() do
+        ChemistryLab._exploring_starts() do
+        end
+        @test ChemistryLab._EXPLORING_STARTS[]
+    end
+    @test ChemistryLab._EXPLORING_STARTS[] == false
+
+    # The contract as a caller sees it: a call that ends with a certificate emits
+    # nothing at all. `@test_logs` installs a fresh logger, so the `maxlog = 1`
+    # carried by those warnings does not make this depend on what ran before.
+    #
+    # This one assertion also guards the other silence in this release: SciMLBase
+    # warns "arrays or dicts to store parameters of different types can hurt
+    # performance" the moment a conservation matrix with an abstract element type
+    # reaches the problem's parameters, so a regression in
+    # `_concrete_conservation` shows up here as a stray record.
+    # Built here rather than with `calcite()`, which is a local of another
+    # testset in this file.
+    sp3 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs3 = ChemicalSystem(
+        [sp3[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    st3 = ChemicalState(cs3)
+    set_quantity!(st3, "H2O@", 1.0u"kg")
+    set_quantity!(st3, "Cal", 1.0e-3u"mol")
+    eq3, cert3 = @test_logs equilibrate_certified(st3)
+    @test cert3.optimal
+
+end
+
+@testsection "the conservation matrix reaching the solver is concretely typed" begin
+    # `ChemicalSystem` stores its stoichiometry as `Matrix{Real}` whenever
+    # integer and rational coefficients coexist — a cement's does, through
+    # `C3AFS0.84H4.32` and its kind — which is right for the chemistry and wrong
+    # for the solver. An abstract element type boxes every entry and makes
+    # `mul!(res, A, x)` the generic fallback with a dispatch per element, on a
+    # product evaluated at every objective and constraint call. SciMLBase warns
+    # about exactly this as soon as such an array reaches a problem's parameters,
+    # and the warning was correct.
+    abstract_A = Matrix{Real}([1 0 2 // 5; 0 1 3])
+    @test !isconcretetype(eltype(abstract_A))
+    narrowed = ChemistryLab._concrete_float(abstract_A)
+    @test isconcretetype(eltype(narrowed))
+    @test eltype(narrowed) <: AbstractFloat      # not Rational: the pipeline is float
+    @test !ChemistryLab.SciMLBase.should_warn_paramtype(narrowed)
+
+    # Lossy for a non-dyadic rational, and deliberately so: `2//5` becomes `0.4`,
+    # which is not equal to it. It is the same rounding the rest of the solver
+    # already applies, and the exact matrix stays in `system.SM.A`.
+    @test narrowed ≈ abstract_A
+    @test narrowed[1, 3] == 0.4
+    @test narrowed[1, 3] != 2 // 5
+
+    # A concrete array is returned untouched, identically — the narrowing is for
+    # the abstract case and nothing else. An exact rational stoichiometry stays
+    # exact, and a caller differentiating through `A` keeps their number type.
+    for m in (Rational{Int}[1 0; 0 1], Int[1 2; 3 4], Float32[1 0; 0 1])
+        @test ChemistryLab._concrete_float(m) === m
+    end
+
+    # And what the solver actually receives. The default `b = A * u0` inherits
+    # the abstract element type from `A`, so it has to be narrowed too — this is
+    # the assertion that caught it.
+    ep = EquilibriumProblem(abstract_A, (n, q) -> n, [1.0, 1.0, 1.0])
+    @test isconcretetype(eltype(ep.A))
+    @test isconcretetype(eltype(ep.b))
+    @test ep.A ≈ abstract_A
+    @test !ChemistryLab.SciMLBase.should_warn_paramtype(
+        (; A = ep.A, b = ep.b, T = 298.15)
+    )
+
+end
+
+@testsection "the certificate names the missing phase, and the route puts it in" begin
+    # A positive worst supersaturation means a phase sits at the lower bound
+    # while the solution is supersaturated with respect to it. On a convex
+    # problem that is a genuine KKT failure: the active set is wrong and the
+    # answer is not the answer. The certificate reports it as one number;
+    # `saturation_indices` says which phase, and `_repair_start` puts it in.
+    #
+    # The case this exists for is a phase SWAP, which an active-set loop that
+    # admits one phase at a time cannot perform. Reproduced exactly on a CEM I
+    # paste by solving it with `hydrotalcite` out of the phase list: all
+    # 0.02515 mol of magnesium goes to brucite, the aqueous phase equilibrates
+    # with that assemblage, and putting hydrotalcite back leaves it absent and
+    # supersaturated by 5.58 log units while the solve is otherwise impeccable —
+    # stationarity 5.9e-16, element balance 1.6e-14. That is the reported
+    # failure, and `equilibrate_certified` from that state now certifies at
+    # 74.1899 cm3 with the magnesium back where it belongs. Too heavy for this
+    # suite; what is asserted here is the mechanism, on a system of eight
+    # species.
+    sp4 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs4 = ChemicalSystem(
+        [sp4[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    A4 = Float64.(cs4.SM.A)
+    model4 = DiluteSolutionModel()
+
+    # At a certified equilibrium every phase present is at LogSI = 0 and no
+    # absent one is supersaturated. That is the built-in check on the whole
+    # computation: if the present phases are not at zero, nothing else in the
+    # result means anything.
+    st4 = ChemicalState(cs4)
+    set_quantity!(st4, "H2O@", 1.0u"kg")
+    set_quantity!(st4, "Cal", 1.0e-3u"mol")
+    eq4, cert4 = equilibrate_certified(st4; model = model4)
+    @test cert4.optimal
+    si4 = saturation_indices(eq4, model4)
+    @test si4 isa AbstractDict
+    @test length(si4) == length(cs4.species)
+    @test abs(si4["Cal"]) < 1.0e-8            # present, hence saturated
+    # Nothing to repair at an answer that certifies, and the route must say so
+    # rather than invent a start.
+    @test ChemistryLab._repair_start(
+        eq4, model4, A4 * ustrip.(us"mol", eq4.n), 1.0e-16
+    ) === nothing
+
+    # Now a state where calcite is absent and the solution is grossly
+    # supersaturated with respect to it — the shape of the reported failure,
+    # without its size.
+    st5 = ChemicalState(cs4)
+    set_quantity!(st5, "H2O@", 1.0u"kg")
+    set_quantity!(st5, "Ca+2", 0.1u"mol")
+    set_quantity!(st5, "CO3-2", 0.1u"mol")
+    si5 = saturation_indices(st5, model4)
+    @test si5["Cal"] > 1.0
+    b5 = A4 * ustrip.(us"mol", st5.n)
+
+    fixed = ChemistryLab._repair_start(st5, model4, b5, 1.0e-16)
+    @test fixed isa ChemicalState
+    n5 = ustrip.(us"mol", fixed.n)
+    i_cal = findfirst(s -> symbol(s) == "Cal", cs4.species)
+    # The amount is what the recipe could make of it, scaled: a chemical bound,
+    # not a guess at the answer. Calcite takes one Ca and one CO3, and there are
+    # 0.1 mol of each.
+    @test n5[i_cal] ≈ ChemistryLab._REPAIR_FRACTION * 0.1 rtol = 1.0e-8
+    @test n5[i_cal] > 0
+    # Everything else is left alone: the element balance of a start is not this
+    # function's business, since `b` is fixed by the caller and every start is
+    # projected onto it.
+    @test all(
+        n5[i] == ustrip(us"mol", st5.n[i]) for i in eachindex(n5) if i != i_cal
+    )
+    # And the temperature and pressure of the state it came from are carried.
+    @test temperature(fixed) == temperature(st5)
+    @test pressure(fixed) == pressure(st5)
+
+    # A round of the repair, with the search injected. The situation it exists
+    # for -- a back end converging onto the wrong active set -- needs a system of
+    # some 135 species to arise, while the round's logic needs eight, so the
+    # search is passed in rather than closed over.
+    solve_from(f) = equilibrate_certified(f; model = model4, b = b5, autostart = false)
+    # The certificate the round is handed stands for "the back ends failed",
+    # which is what it is only ever called after.
+    failed = (;
+        optimal = false, stationarity = 1.0, balance = 1.0,
+        worst_supersaturation = 10.0,
+    )
+    eq6, cert6, improved6 = ChemistryLab._repair_round(
+        st5, failed, model4, b5, 1.0e-16, solve_from, false,
+    )
+    @test improved6                          # anything beats that certificate
+    @test cert6.optimal                      # and here the repair certifies
+    @test ustrip(us"mol", eq6.n[i_cal]) > 1.0e-6    # calcite precipitated
+    @test abs(saturation_indices(eq6, model4)["Cal"]) < 1.0e-8   # and is saturated
+
+    # Nothing to repair: the round says so and changes nothing, which is what
+    # stops the loop.
+    eq7, cert7, improved7 = ChemistryLab._repair_round(
+        eq4, failed, model4, A4 * ustrip.(us"mol", eq4.n), 1.0e-16, solve_from, false,
+    )
+    @test !improved7
+    @test eq7 === eq4
+    @test cert7 === failed
+
+end
+
+@testsection "an infeasible budget is neither certified nor made to hang" begin
+    # The automatic cascade — continuation, restart from the answer, repair of a
+    # missing phase — runs only when the ordinary starts fail to certify, and on
+    # a well-posed small system they never do. A budget no composition can meet
+    # gets into it, and what must hold there is that the route terminates, says
+    # plainly that it has no certificate, and does not fabricate one.
+    #
+    # `-b` is infeasible by construction: every component budget is negative and
+    # every stoichiometric coefficient non-negative, so no `n >= 0` can meet it.
+    sp8 = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
+    cs8 = ChemicalSystem(
+        [sp8[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    A8 = Float64.(cs8.SM.A)
+    st8 = ChemicalState(cs8)
+    set_quantity!(st8, "H2O@", 1.0u"kg")
+    set_quantity!(st8, "Cal", 1.0e-3u"mol")
+    b8 = A8 * ustrip.(us"mol", st8.n)
+
+    strict = ChemistryLab.STRICT_CONVERGENCE[]
+    try
+        ChemistryLab.STRICT_CONVERGENCE[] = false
+        eq8, cert8 = equilibrate_certified(st8; b = -b8)
+        @test !cert8.optimal
+        @test eq8 isa ChemicalState
+        # A budget with a negative component offers nothing to lift a phase off
+        # its bound with, so the repair declines rather than inventing an amount.
+        @test ChemistryLab._repair_start(eq8, DiluteSolutionModel(), -b8, 1.0e-16) ===
+            nothing
+
+        # A back end that throws is reported under `verbose` and costs the search
+        # only that candidate. Registered first, since a start is taken from the
+        # first factory that answers; the logger swallows the dual solver's own
+        # iteration trace, which `verbose` also turns on.
+        factories = ChemistryLab._SOLVER_FACTORIES
+        saved = copy(factories)
+        try
+            pushfirst!(factories, () -> error("this back end is unavailable"))
+            # `Base.CoreLogging` rather than `using Logging`, which would have
+            # to be declared in the test target for one call.
+            eq9, cert9 = Base.CoreLogging.with_logger(Base.CoreLogging.NullLogger()) do
+                equilibrate_certified(st8; b = -b8, verbose = true)
+            end
+            @test !cert9.optimal
+            @test eq9 isa ChemicalState
+        finally
+            empty!(factories)
+            append!(factories, saved)
+        end
+        @test ChemistryLab._SOLVER_FACTORIES == saved
+    finally
+        ChemistryLab.STRICT_CONVERGENCE[] = strict
+    end
 
 end

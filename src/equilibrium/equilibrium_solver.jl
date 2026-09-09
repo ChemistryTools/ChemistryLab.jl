@@ -282,6 +282,41 @@ strictest possible reading.
 const STRICT_CONVERGENCE = Ref(false)
 
 """
+    _EXPLORING_STARTS
+
+Set while a multi-start route is computing or trying **starting points**, so the
+diagnostics of a candidate are not reported as diagnostics of the answer.
+
+A start that does not converge is ordinary and expected: `equilibrate_certified`
+runs every back end from several compositions precisely because none of them
+works on every problem, and it keeps whichever answer the certificate proves.
+Left unguarded, a call that ends `optimal = true` still printed "returned
+`MaxIters`" and "did not certify optimality" from candidates along the way, which
+reads as a failed solve and is not one.
+
+The verdict on the *answer* is untouched: `equilibrate_certified` warns or raises
+on its own certificate after the search, and `verbose = true` still reports every
+rejected start.
+"""
+const _EXPLORING_STARTS = Ref(false)
+
+"""
+    _exploring_starts(f)
+
+Run `f` with [`_EXPLORING_STARTS`](@ref) set, restoring it afterwards. Nested
+calls are safe: the previous value is saved rather than assumed `false`.
+"""
+function _exploring_starts(f)
+    was = _EXPLORING_STARTS[]
+    _EXPLORING_STARTS[] = true
+    try
+        return f()
+    finally
+        _EXPLORING_STARTS[] = was
+    end
+end
+
+"""
     NONCONVERGED :: Ref{Int}
 
 Running count of equilibrium solves that returned a non-success retcode.
@@ -360,9 +395,9 @@ function _check_converged(sol, what::AbstractString)
     SciMLBase.successful_retcode(sol) && return sol
     NONCONVERGED[] += 1
     if !STRICT_CONVERGENCE[]
-        @warn "$what returned `$(sol.retcode)`; the composition may not be an \
-               equilibrium. Set `ChemistryLab.STRICT_CONVERGENCE[] = true` to \
-               raise instead." maxlog = 1
+        _EXPLORING_STARTS[] || @warn "$what returned `$(sol.retcode)`; the \
+               composition may not be an equilibrium. Set \
+               `ChemistryLab.STRICT_CONVERGENCE[] = true` to raise instead." maxlog = 1
         return sol
     end
     throw(

@@ -32,6 +32,46 @@ struct EquilibriumProblem{F <: Function, Tb, TA, Tu, P}
 end
 
 """
+    _concrete_float(x) -> AbstractArray
+
+Narrow a numeric array to a concrete floating-point element type, returning an
+already-concrete one untouched.
+
+`ChemicalSystem` stores its stoichiometry as `Matrix{Real}` whenever integer and
+rational coefficients coexist, which a cement's does — `C3AFS0.84H4.32` and its
+kind. That is right for the chemistry and wrong for the solver: an abstract
+element type boxes every entry and turns `mul!(res, A, x)` into the generic
+fallback with a dynamic dispatch per element, on a product evaluated at every
+objective and constraint call. SciMLBase says so out loud, warning that "arrays
+or dicts to store parameters of different types can hurt performance" as soon as
+such an array reaches the problem's parameters, and the warning is correct.
+
+Applies to the default `b = A * u0` as well, which inherits the same abstract
+element type from `A`.
+
+Floating point rather than the promoted exact type (`Rational{Int}` here) because
+the numeric pipeline downstream is `Float64` throughout — `u0`, the bounds and
+`DualEquilibriumSolver.A`, which has always converted — so keeping rationals
+would only pay for a rational-to-float conversion at every entry of every
+product. The conversion is **lossy for a non-dyadic rational**: `2//5` becomes
+`0.4`, which is not equal to it. That is the same rounding the rest of the solver
+already applies, and the exact matrix is untouched in `system.SM.A`, where the
+stoichiometry belongs.
+
+A caller who passes a concrete array keeps exactly what they passed, identically:
+an exact `Matrix{Rational{Int}}`, a `Matrix{Int}`, or a `Matrix{<:Dual}` for
+someone differentiating through it.
+"""
+function _concrete_float(x::AbstractArray)
+    # Not restricted to `AbstractArray{<:Number}`: the array that most needs this
+    # is the default `b = A * u0`, and `Matrix{Real} * Vector{Float64}` comes out
+    # as `Vector{Any}`, whose element type is not a `Number` subtype at all.
+    isconcretetype(eltype(x)) && return x
+    Tc = float(mapreduce(typeof, promote_type, x; init = Bool))
+    return convert(typeof(similar(x, Tc)), x)
+end
+
+"""
     EquilibriumProblem(A, μ, u0; b=A*u0, p=nothing, lb=fill(Tu(1e-16), length(u0)), ub=maximum(abs.(A))/minimum(abs.(A[.!iszero.(A)]))*sum(u0)*one.(u0))
 
 Construct an `EquilibriumProblem` with the given stoichiometric matrix `A`, chemical potential function `μ`, and initial guess `u0`.
@@ -64,9 +104,13 @@ function EquilibriumProblem(
     ub = max.(ub, ϵ)
     # Ensure u0 has no zeros or negative values
     u0 = max.(u0, ϵ)
-    Tb = eltype(b)
-    return EquilibriumProblem{F, Tb, TA, Tu, typeof(p)}(
-        Vector{Tb}(b), Matrix{TA}(A), μ, Vector{Tu}(u0), p,
+    # `A` arrives with an abstract element type, and the default `b = A * u0`
+    # inherits it. See `_concrete_float`.
+    Ac = _concrete_float(A)
+    bc = _concrete_float(b)
+    Tb = eltype(bc)
+    return EquilibriumProblem{F, Tb, eltype(Ac), Tu, typeof(p)}(
+        Vector{Tb}(bc), Matrix{eltype(Ac)}(Ac), μ, Vector{Tu}(u0), p,
         Vector{Tu}(lb), Vector{Tu}(ub),
     )
 end
