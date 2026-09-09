@@ -150,12 +150,20 @@ end
 
     data = datapath("cemdata18-thermofun.json")
     substances = build_species(data)
-    toml = datapath("solid_solutions.toml")
 
     members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
     sp = speciation(substances, vcat("C3S", "Portlandite", members); aggregate_state = [AS_AQUEOUS])
     byname = Dict(symbol(s) => s for s in sp)
-    ss = [x for x in build_solid_solutions(toml, byname) if x.name == "CSHQ"]
+    # The four-member CSHQ is built here rather than loaded from
+    # `data/solid_solutions.toml`, deliberately. The shipped phase has six
+    # end-members since 0.15.0 — `KSiOH` and `NaSiOH` carry the alkali uptake —
+    # and this system is Ca-Si only, so those two could not exist for want of
+    # potassium and sodium: a mixing phase with end-members the element balance
+    # forbids is the degenerate case, not a test of anything. The loader has its
+    # own tests in `databases.jl` and against the shipped file in
+    # `kinetics/test_postprocessing.jl`; what is under test here does not depend
+    # on it.
+    ss = [SolidSolutionPhase("CSHQ", [byname[m] for m in members])]
     @test length(ss) == 1                       # the declaration is usable at all
 
     cs = ChemicalSystem(sp, CEMDATA_PRIMARIES; solid_solutions = ss)

@@ -26,11 +26,51 @@
 # keeping a proved answer is exact, not heuristic.
 
 """
-    equilibrate_certified(state; model, ϵ, b, verbose) -> (state, certificate)
+    _MAX_RESTARTS
+
+How many times [`equilibrate_certified`](@ref) may restart from its own answer
+before giving up. One round is what the measured cases need; the bound exists so
+a case that improves by a hair every round cannot loop.
+"""
+const _MAX_RESTARTS = 3
+
+"""
+    _keep_better(eq, cert, eq2, cert2) -> (eq, cert)
+
+Keep the better of two answers: a certificate of optimality beats none, and
+otherwise the smaller KKT error wins. A round that buys nothing changes nothing,
+which is what lets the restart loop run without ever making the answer worse.
+
+The optimality flag is compared **first**, in both directions. Ranking on the
+KKT error alone would let an uncertified point with a smaller stationarity
+displace a certified one, and no residual is worth trading a proof for.
+"""
+function _keep_better(eq, cert, eq2, cert2)
+    cert2.optimal == cert.optimal || return cert2.optimal ? (eq2, cert2) : (eq, cert)
+    return cert2.stationarity < cert.stationarity ? (eq2, cert2) : (eq, cert)
+end
+
+"""
+    equilibrate_certified(state; model, ϵ, b, verbose, autostart) -> (state, certificate)
 
 Equilibrium composition together with a proof of its global optimality, obtained
 by solving from every registered back end and keeping the answer
 [`optimality_certificate`](@ref) proves optimal.
+
+# The starting point is found, not asked for
+
+When no back end certifies from the state as given, an initial approximation is
+computed by continuation — [`homotopy_initial_state`](@ref) — and every back end
+is run again from it. This is what makes a realistic cement solvable without the
+caller knowing anything about the answer: from the cold state of a CEM I paste
+(all the mass in the reactants, every product at the `ϵ` floor) no route reaches
+the optimum, and with the continuation the same call certifies.
+
+It costs nothing in the ordinary case, because it only runs when nothing else
+certified. `autostart = false` declines it, which is what the coupled kinetic
+step does: there the caller already supplies the previous instant as a warm
+start, and a handful of extra solves inside an implicit ODE step would be paid
+at every step.
 
 `certificate.optimal == true` is a **proof**, valid because the Gibbs
 minimization is convex when the mixing terms are — ideal mixing and any activity
@@ -68,6 +108,7 @@ function equilibrate_certified(
         verbose::Bool = false,
         constraint::EquilibriumConstraint = FixedTP(),
         parameters::Union{Nothing, Base.RefValue} = nothing,
+        autostart::Bool = true,
         kwargs...,
     )
     if !_DUAL_AVAILABLE[]
@@ -114,22 +155,76 @@ function equilibrate_certified(
         des.A * Float64[ustrip(us"mol", x) for x in state.n] :
         Float64.(collect(b))
 
-    starts = ChemicalState[]
-    for f in _SOLVER_FACTORIES
-        try
-            esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
-            push!(starts, SciMLBase.solve(esolver, state; ϵ = ϵ, b = bfix))
-        catch err
-            verbose && @info "start rejected" backend = f err
+    # Every back end's answer from `from`, and `from` itself — the only start
+    # available if they all threw.
+    function starts_from(from::ChemicalState, what::AbstractString)
+        out = ChemicalState[]
+        for f in _SOLVER_FACTORIES
+            try
+                esolver = EquilibriumSolver(state.system, model, f(); kwargs...)
+                push!(out, SciMLBase.solve(esolver, from; ϵ = ϵ, b = bfix))
+            catch err
+                verbose && @info "$what rejected" backend = f err
+            end
         end
+        push!(out, from)
+        return out
     end
-    # The state as given is a legitimate start too, and the only one available if
-    # every back end threw.
-    push!(starts, state)
+
+    starts = starts_from(state, "start")
 
     eq, cert = solve_certified(
         des, starts; b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
     )
+
+    # An automatic initial approximation, computed rather than asked for.
+    #
+    # Only when nothing above certified, so the common case pays nothing for it.
+    # A realistic cement does not converge from the state as given — all the mass
+    # in the reactants, every product at the `ϵ` floor — and the caller should
+    # not have to know that, nor supply a chemically informed guess.
+    # `homotopy_initial_state` walks the solute amount up from a dilute system,
+    # which costs a handful of extra solves and needs nothing from the caller.
+    if autostart && !cert.optimal
+        # Walked under the IDEAL model, deliberately, whatever `model` is: the
+        # non-ideal ones do not walk (the a = 0 Debye-Huckel runs away to
+        # I = 18 mol/kg, its coefficients falling with I raising solubility
+        # raising I). The ideal endpoint is then a good start for `model`,
+        # which is what the back-end loop below does with it.
+        guess = homotopy_initial_state(state; ϵ = ϵ, verbose = verbose)
+        if guess !== nothing
+            eq, cert = _keep_better(
+                eq, cert,
+                solve_certified(
+                    des, vcat(starts_from(guess, "start from the continuation"), starts);
+                    b = bfix, ϵ = ϵ, constraint = constraint, parameters = parameters,
+                )...,
+            )
+        end
+
+        # Restart from the answer. The continuation ends on a composition that is
+        # nearly the equilibrium but not certifiably so, and one more solve from
+        # there closes the gap — measured on a CEM I paste under the per-species
+        # Debye-Huckel model, stationarity 9.9e-7 (uncertified) becomes 1.5e-16
+        # with the worst absent phase 1.4e-5 below saturation. It is the same
+        # observation that motivates the continuation, applied once more: a start
+        # near the answer is what this problem needs, and the best one available
+        # is the answer already in hand.
+        #
+        # Bounded, and it stops as soon as a round buys nothing, so a genuinely
+        # hard case costs a fixed handful of solves rather than looping.
+        for _ in 1:_MAX_RESTARTS
+            cert.optimal && break
+            eq2, cert2 = solve_certified(
+                des, starts_from(eq, "restart from the answer"); b = bfix, ϵ = ϵ,
+                constraint = constraint, parameters = parameters,
+            )
+            improved = cert2.optimal || cert2.stationarity < cert.stationarity
+            eq, cert = _keep_better(eq, cert, eq2, cert2)
+            improved || break
+        end
+    end
+
     if !cert.optimal
         @warn "no route produced a certifiable equilibrium; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" stationarity = cert.stationarity balance = cert.balance worst_supersaturation = cert.worst_supersaturation maxlog = 1
     end

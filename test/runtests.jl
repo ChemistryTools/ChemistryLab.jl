@@ -90,6 +90,7 @@ end
 
 @testsection "Equilibrium tests" begin
     include("activities.jl")
+    include("aqueous_properties.jl")
     include("solid_solutions.jl")
     include("equilibrium_reference.jl")
     include("published_values.jl")

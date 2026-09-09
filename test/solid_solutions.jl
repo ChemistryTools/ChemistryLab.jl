@@ -333,3 +333,79 @@ end
     lna_out = activity_model(cs, DiluteSolutionModel())(n, p)
     @test out ≈ ΔaGoT .+ lna_out rtol = 1.0e-10
 end
+
+@testsection "RegularSolutionModel" begin
+    # Construction and its guards.
+    m = RegularSolutionModel([0.0 4000.0; 4000.0 0.0])
+    @test m isa RegularSolutionModel
+    @test m.W[1, 2] == 4000.0
+    @test_throws ArgumentError RegularSolutionModel([0.0 1.0 2.0; 1.0 0.0 3.0])
+    @test_throws ArgumentError RegularSolutionModel([0.0 4000.0; 1.0 0.0])
+
+    # The binary limit is exactly Redlich-Kister with a0 = W and a1 = a2 = 0.
+    # That is what makes this the right generalization rather than a new model:
+    # `ln γ₁ = W x₂²/RT`, `ln γ₂ = W x₁²/RT`.
+    T = 298.15
+    RT = 8.31446261815324 * T
+    W = 4000.0
+    reg = RegularSolutionModel([0.0 W; W 0.0])
+    rk = RedlichKisterModel(a0 = W)
+    for x1 in (0.05, 0.3, 0.5, 0.7, 0.95)
+        x = [x1, 1 - x1]
+        for k in 1:2
+            @test ChemistryLab._excess_ln_gamma(reg, k, x, T) ≈
+                ChemistryLab._excess_ln_gamma(rk, k, x, T) rtol = 1.0e-12
+        end
+        @test ChemistryLab._excess_ln_gamma(reg, 1, x, T) ≈ W * x[2]^2 / RT rtol = 1.0e-12
+        @test ChemistryLab._excess_ln_gamma(reg, 2, x, T) ≈ W * x[1]^2 / RT rtol = 1.0e-12
+    end
+
+    # W = 0 is ideal mixing, at any arity.
+    ideal3 = RegularSolutionModel(zeros(3, 3))
+    for k in 1:3
+        @test ChemistryLab._excess_ln_gamma(ideal3, k, [0.2, 0.3, 0.5], T) ≈ 0.0 atol = 1.0e-15
+    end
+
+    # Ternary: the closed form, checked against the definition
+    # `ln γ_k = Σ_{j≠k} W_kj x_j − Σ_{i<j} W_ij x_i x_j`, all over RT.
+    W3 = [0.0 3000.0 -1500.0; 3000.0 0.0 2000.0; -1500.0 2000.0 0.0]
+    reg3 = RegularSolutionModel(W3)
+    x = [0.2, 0.3, 0.5]
+    quad = sum(W3[i, j] * x[i] * x[j] for i in 1:3 for j in (i + 1):3) / RT
+    for k in 1:3
+        lin = sum(W3[k, j] * x[j] for j in 1:3 if j != k) / RT
+        @test ChemistryLab._excess_ln_gamma(reg3, k, x, T) ≈ lin - quad rtol = 1.0e-12
+    end
+
+    # Gibbs-Duhem at fixed T: Σ x_k d(ln γ_k) = 0, so Σ x_k ln γ_k must equal
+    # G^ex/RT. This is the property that makes the partial derivatives mutually
+    # consistent, and it is what a hand-written `ln γ` most often gets wrong.
+    gex = sum(W3[i, j] * x[i] * x[j] for i in 1:3 for j in (i + 1):3) / RT
+    @test sum(x[k] * ChemistryLab._excess_ln_gamma(reg3, k, x, T) for k in 1:3) ≈
+        gex rtol = 1.0e-12
+
+    # A phase of any arity accepts it, unlike Redlich-Kister which is binary.
+    substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    dict = Dict(symbol(s) => s for s in substances)
+    six = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD", "KSiOH", "NaSiOH"]
+    ss = SolidSolutionPhase(
+        "CSHQ", [dict[m] for m in six]; model = RegularSolutionModel(zeros(6, 6))
+    )
+    @test length(end_members(ss)) == 6
+    @test model(ss) isa RegularSolutionModel
+    @test_throws ErrorException SolidSolutionPhase(
+        "CSHQ", [dict[m] for m in six]; model = RedlichKisterModel(a0 = 1.0)
+    )
+
+    # And the shipped file loads, with the five phases added in 0.15.0.
+    ss_all = build_solid_solutions(datapath("solid_solutions.toml"), dict)
+    names = Set(p.name for p in ss_all)
+    @test length(ss_all) == 11
+    for n in (
+            "Straetlingite_ss", "AFm_SO4_OH", "AFt_SO4_CO3",
+            "Hydrotalcite_AlFe", "MSH",
+        )
+        @test n in names
+    end
+    @test all(length(end_members(p)) >= 2 for p in ss_all)
+end

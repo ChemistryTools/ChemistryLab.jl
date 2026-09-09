@@ -172,7 +172,8 @@ two groups raises an error rather than being counted twice.
 ```julia
 groups = [
     "anhydrous" => ["C3S", "C2S", "C3A", "C4AF"],
-    "C-S-H"     => ["CSHQ-TobH", "CSHQ-TobD", "CSHQ-JenH", "CSHQ-JenD"],
+    "C-S-H"     => ["CSHQ-TobH", "CSHQ-TobD", "CSHQ-JenH", "CSHQ-JenD",
+                    "KSiOH", "NaSiOH"],
     "CH"        => "Portlandite",
     "AFt"       => "ettringite",
     "water"     => "H2O@",

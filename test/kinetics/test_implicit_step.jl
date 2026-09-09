@@ -240,11 +240,11 @@ end
     spc = speciation(
         substances, vcat("Portlandite", "C3S", members); aggregate_state = [AS_AQUEOUS],
     )
-    ss = [
-        x for x in build_solid_solutions(
-                datapath("solid_solutions.toml"), Dict(symbol(s) => s for s in spc),
-            ) if x.name == "CSHQ"
-    ]
+    # Built here, not loaded from `data/solid_solutions.toml`: the shipped CSHQ
+    # has six end-members since 0.15.0, and the two alkali ones could not exist
+    # in this Ca-Si system. See the note in `test/test_dual_solver.jl`.
+    byname = Dict(symbol(s) => s for s in spc)
+    ss = [SolidSolutionPhase("CSHQ", [byname[m] for m in members])]
     cs2 = ChemicalSystem(spc, CEMDATA_PRIMARIES; solid_solutions = ss)
     S(x) = cs2[x]
 

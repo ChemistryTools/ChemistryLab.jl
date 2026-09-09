@@ -1,5 +1,309 @@
 # Changelog
 
+## v0.15.0 — the alkali end-members of the C-S-H, and a readable aqueous state
+
+The shipped `data/solid_solutions.toml` described a C-S-H that could not hold
+alkalis. `CSHQ` was declared with four end-members, and CEMDATA18's `KSiOH` and
+`NaSiOH` — the alkali-uptake end-members of that same phase — were reachable
+from no file in the package, although both are fully parameterized in both
+shipped databases (Cemdata18, Lothenbach et al. 2019; the CSHQ model itself is
+Kulik 2011). Uptake of alkalis by the C-S-H is not a refinement: it is what sets
+the pore-solution pH of a real paste. `docs/src/examples/cement_wc_ratio.md` said so already, in its
+list of limitations — "the alkalis themselves, which in a real paste raise the
+pore-solution pH to 13 or above".
+
+Measured against a GEM-Selektor reference on a CEM I at w/c = 0.5 (100 g of
+oxides, 50 g of water, the CEMDATA18 phase list, and the extended
+Debye-Huckel model that run used): GEMS puts **74 % of the total potassium and
+90 % of the total sodium into the C-S-H**. With the six-end-member phase
+declared and `HKFActivityModel(Ḃ = 0.097637, Kₙ = 0.0)` on an ion size of zero,
+this package now returns pH 13.0994 against GEMS' 13.0957, a total volume of
+74.1888 cm3 against 74.2136, `KSiOH` to -0.46 % and `NaSiOH` to +0.06 %, and
+activity coefficients within 0.25 % (monovalent) and 1.16 % (divalent) of the
+ones GEMS printed. Reaktoro 2.13 on the same problem agrees to 0.08 % on the
+volume.
+
+### Added
+
+- **`CSHQ` now has six end-members**: `CSHQ-TobD`, `CSHQ-TobH`, `CSHQ-JenH`,
+  `CSHQ-JenD`, `KSiOH`, `NaSiOH`.
+- **`C3(AF)S0.84H`**, the CEMDATA18 Fe-siliceous hydrogarnet
+  (`C3AFS0.84H4.32` + `C3FS0.84H4.32`), ideal mixing. It is where the iron of a
+  ferrite phase ends up, and it took 0.0507 mol in the reference run — second
+  only to the C-S-H and the portlandite among the aluminate and ferrite
+  hydrates. `build_solid_solutions` therefore returns six phases where it
+  returned five.
+- The `"C-S-H"` reporting group of `volume_fractions` covers the two alkali
+  end-members, which would otherwise have been counted under `"other"`.
+
+### Added — the aqueous state is readable
+
+The activity closures computed the molalities, the ionic strength and the
+activity coefficients on their way to the log-activities, and kept all three to
+themselves. Anyone comparing a state against GEM-Selektor, PHREEQC or Reaktoro
+needs them species by species, and had to reach into
+`activity_model(cs, model)` and `ChemistryLab._build_params(state)` to get them.
+They are public now, together with the two things that make them meaningful:
+
+- **`molalities(state)`** — `mᵢ = nᵢ / (n_w Mw)` for every solute, mol/kg.
+- **`ionic_strength(state)`** — `I = ½ Σ mⱼ zⱼ²`, mol/kg. Model-independent: it
+  is a property of the composition, and it is the first thing to compare
+  against another code, because an ionic strength that disagrees means the two
+  are not describing the same solution whatever their volumes agree on.
+- **`activity_coefficients(state, model)`** — γᵢ of every aqueous species,
+  evaluated from **the model's own formula** rather than as a ratio `a/m`. The
+  ratio agrees for an abundant solute, and the tests check that it does, but a
+  species parked at the solver's 1e-16 mol lower bound has its log-activity
+  dominated by the closures' `+ ϵ` regularization, and the ratio then returns
+  values of order 1e300 for a charge class whose only members are trace. The
+  formula depends on the ionic strength and the charge alone, so it is exact at
+  any amount. Measured on a CEM I pore solution: the charge classes |z| = 3 and
+  4 now come back at -2.7 % and -4.7 % of the coefficients GEM-Selektor
+  reports, where the ratio gave 1e300.
+- **`log_activities(state, model)`** and **`activities(state, model)`** — the
+  vector the Gibbs energy is built from, for every species.
+- **`concentration_scale(model)`** — `:molality` or `:molarity`. An activity is
+  a number on a scale and nothing in the number says which:
+  `DiluteSolutionModel` is on the molarity scale but takes ρ = 1 kg/L, so its
+  activities coincide numerically with molalities, while the other two are on
+  the molality scale. A custom model should declare its own.
+- **`pH(state, model)`** and **`pOH(state, model)`** — `−log₁₀ a(H⁺)` and
+  `−log₁₀ a(OH⁻)`, the **activity** convention that GEM-Selektor, PHREEQC and
+  Reaktoro report. The existing one-argument `pH(state)` is a different
+  quantity: `−log₁₀ c(H⁺)` in mol/L over the computed liquid volume,
+  reconstructed through `pKw` when the solution is basic. On a Portland cement
+  pore solution at I ≈ 0.2 mol/kg, with γ(H⁺) ≈ 0.61, the two differ by
+  **0.21 units** (13.31 against 13.10) — enough to be mistaken for a modeling
+  error. Both are now documented side by side.
+
+### Added — the starting point is found, not asked for
+
+`equilibrate_certified` computes an initial approximation when its ordinary
+starting points fail to certify, so a realistic cement is solvable without the
+caller knowing anything about the answer.
+
+This was the practical obstacle. From the cold state of a CEM I paste of 135
+species — all the mass in the reactants, every product at the `ϵ` floor — **no
+back end reached the optimum**: the answer came back `optimal = false` with a
+worst supersaturation of order 1e1 and a total volume 13 % wrong, and
+`equilibrate` exited on `MaxIters` in both `Val(:linear)` and `Val(:log)`. The
+problem is convex, so this was never a local minimum; it is the conditioning of
+an interior-point method started against the boundary. With 120 of 135 species
+at 1e-16 and nine at ~1 mol the barrier gradients span sixteen orders of
+magnitude, and a solid-solution end-member has `ln a = ln x → −∞` as its mole
+fraction goes to zero, so the objective's gradient is unbounded on exactly the
+face where a mixing phase vanishes.
+
+`homotopy_initial_state(state)` walks the solute amount up from a dilute system:
+everything but the aqueous solvent is scaled by `λ`, and `λ` goes to 1 with each
+step started from the answer to the previous one. At `λ = 1` the composition is
+the one given, so the element balance is unchanged; it is a starting point, not
+a certified equilibrium. Nothing in it is chemical — "everything but the
+solvent" needs no guess at which hydrates will form, and `λ` is not a physical
+parameter.
+
+Measured on that paste, `equilibrate_certified(state)` from the cold state now
+certifies and returns a total volume of 74.1888 cm3 against GEM-Selektor's
+74.2136 (-0.033 %) and pH 13.0994 against 13.0957, identical to what a
+chemically informed seed gives. With `autostart = false` the same call fails, at
+83.7 cm3.
+
+The route also **restarts from its own answer**. The continuation ends on a
+composition that is nearly the equilibrium but not certifiably so, and returning
+it as the least-bad answer left the last step to the caller: measured on that
+same paste under the per-species Debye-Huckel model, stationarity 9.9e-7 and no
+certificate, where one more solve started from that answer gives 1.5e-16 with
+the worst absent phase 1.4e-5 below saturation. It is the same observation that
+motivates the continuation, applied once more — a start near the answer is what
+this problem needs, and the best one available is the answer already in hand.
+Bounded, and it stops as soon as a round buys nothing.
+
+Doing that exposed a flaw in how rounds were compared: ranking on the KKT error
+whenever the new answer was uncertified let an uncertified point with a smaller
+stationarity displace a certified one, trading a proof for a residual. It could
+not fire while the incumbent was always uncertified; the restart loop reaches
+that rule from a certified state, so the optimality flag is now compared first,
+in both directions.
+
+Two design points:
+
+- **It costs nothing in the ordinary case**, because it only runs when nothing
+  else certified, and its answer is kept only if it is actually better —
+  certified beats uncertified, and among uncertified the smaller KKT error wins.
+- **`autostart = false` declines it**, and the coupled kinetic step passes that.
+  There the caller already supplies a starting point — the previous instant of
+  the integration — and a handful of extra solves inside an implicit ODE step
+  would be paid at every step. This is the same principle as a coupled Reaktoro
+  run, where the solver is carried across instants.
+
+Differentiability is unaffected: under `ForwardDiff` the certified route strips
+to the primal state, solves in `Float64` and attaches the sensitivity through
+the implicit function theorem, so the continuation never sees a `Dual` and the
+derivative does not depend on how the starting point was found.
+
+The walk is done under `DiluteSolutionModel` whatever the target model is, and
+deliberately: walking under the extended Debye-Hückel model with a common ion
+size of zero runs away to an ionic strength of 18 mol/kg, its coefficients
+falling with `I` raising solubility raising `I`. The ideal model has no such
+feedback, and its endpoint is a good start for the non-ideal one.
+
+For the record, the approach this replaced: GEM-Selektor computes its initial
+approximation by linear programming — `AutoInitialApproximation` in GEMS3K's
+`ipm_simplex.cpp`, an "LPP-based automatic initial approximation of the primal
+vector x" using a "modified simplex method with two-side constraints" (Kulik et
+al., *Comput. Geosci.* 2013). Reproducing that needs a genuine LP solver. Posing
+the same linear program and handing it to the barrier method here does **not**
+work: measured, it does not move off the cold state, leaving the linear
+objective at -723.8 where -755.9 was feasible. A simplex-based initial
+approximation remains the principled option and would need an LP dependency.
+
+### Added — the rest of the CEMDATA18 solid solutions, and a model of any arity
+
+`data/solid_solutions.toml` went from six phases to **eleven**. The five added
+complete the set of multi-end-member phases a GEM-Selektor CEMDATA18 run of a
+Portland cement is given: `Straetlingite_ss` (straetlingite / straetlingite7),
+`AFm_SO4_OH` (C4AH13 / monosulphate12), `AFt_SO4_CO3` (tricarboalu03 /
+ettringite03_ss), `Hydrotalcite_AlFe` (Mg3AlC0.5OH / Mg3FeC0.5OH) and `MSH`
+(M075SH / M15SH). Every end-member is in both shipped databases.
+
+Ideal mixing is an **assumption** there, and the file says so. CEMDATA18
+documents non-ideal parameters for some of these; they are not reproduced
+because they could not be sourced with confidence, and a mixing parameter
+written from memory is worse than an ideal model honestly labeled. The file also
+records what was measured on a CEM I paste: all five are undersaturated
+(LogSI −0.032 to −9.981, and a binary ideal solid solution gains at most
+log10 2 = 0.301 over its best pure end-member, so mixing cannot bring them in),
+and a solid solution whose every end-member sits at the solver's lower bound is
+numerically awkward — Reaktoro fails to converge when any single one of the five
+is declared on that paste.
+
+**`RegularSolutionModel`** fills a gap in arity, not in chemistry.
+`RedlichKisterModel` is the general binary form and is restricted to two
+end-members; `IdealSolidSolutionModel` takes any number but no interaction at
+all. A C-S-H with six end-members, or the CNASH and ECSH families of CEMDATA18,
+had no non-ideal option. The new model is the symmetric multi-component
+Margules form, `G^ex = Σ_{i<j} W_ij x_i x_j`, with
+
+    ln γ_k = (1/RT) [ Σ_{j≠k} W_kj x_j − Σ_{i<j} W_ij x_i x_j ]
+
+and `W` in J/mol, symmetric. The tests check the three things that matter: it
+reduces **exactly** to `RedlichKisterModel(a0 = W₁₂)` for two end-members, it
+satisfies `Σ x_k ln γ_k = G^ex/RT` in a ternary — the Gibbs-Duhem consistency a
+hand-written `ln γ` usually gets wrong — and a six-end-member phase accepts it
+where Redlich-Kister raises. `build_solid_solutions` reads it from
+`model = "regular"` with either `w` (a binary) or `W` (a full matrix).
+
+### Added — two ionic strengths, and a Setschenow coefficient per species
+
+`ionic_strength(state; kind = :effective | :stoichiometric)`. The effective one
+(the default, and the previous behavior) sums over the speciated free ions, so a
+neutral pair such as `Ca(SO4)@` contributes nothing; it is the one every activity
+model here is a function of. The stoichiometric one sums as if every complex were
+fully dissociated over the system's primaries, which is the analytical ionic
+strength of the recipe and what some salting-out and diffusivity correlations are
+fitted against. The gap between them measures how much salt is associated: 0.7 %
+on a Portland cement pore solution, far more on a sulfate brine. The
+stoichiometric sum reuses the decomposition the mass balance already uses
+(`SM.A`), so it needs no separate table of dissociation reactions.
+
+Neither is a difference of *formula* — all three codes compute `½ Σ mⱼ zⱼ²`, and
+the spread between GEM-Selektor (0.2097), this package (0.2121) and Reaktoro
+(0.2178) on that pore solution comes from their converged compositions, not from
+their definitions.
+
+The Setschenow (salting-out) coefficient of a neutral aqueous species is now read
+from `sp[:Kₙ]` when present, falling back on the model's global `Kₙ`. CO₂(aq),
+the noble gases and the neutral silicates are not equally salted out, and one
+coefficient for all of them was the B-dot literature's simplification rather than
+a fact. No table of coefficients is shipped: a table is data, and data belongs in
+a database or in the caller's hands.
+
+### Verified — the water activity, against Gibbs-Duhem
+
+A benchmark was added for the property that separates this package from its
+neighbors. For a 1:1 electrolyte the osmotic coefficient of the extended
+Debye-Hückel model has a closed form, and integrating Gibbs-Duhem over the
+model's own activity coefficients must reproduce it. `HKFActivityModel` does, and
+the test pins NaCl(aq) at 25 °C to a_w = 0.996657, 0.983603 and 0.966898 at 0.1,
+0.5 and 1.0 mol/kg — the Gibbs-Duhem-consistent values, which coincide with the
+tabulated water activities of NaCl.
+
+Reaktoro's `ActivityModelDebyeHuckel` does not. Measured on the same three
+molalities, its reported water activity is 0.20 %, 1.70 % and 3.92 % below what
+its **own** activity coefficients imply, so the inconsistency is internal and
+needs no external data to demonstrate. On a CEM I pore solution it reports
+a_w = 0.8824 where GEM-Selektor gives 0.992588 and this package 0.993723, and the
+consequence is quantitative: `ettringite` and `ettringite30` differ by two water
+molecules, so their ratio goes as `1/a_w²`, and `(0.9926/0.8824)² = 1.265`
+against a measured ratio of ratios of 1.266. That single discrepancy accounts for
+the whole difference in the AFt split. Anything whose stoichiometry differs by
+water — the C-S-H hydration states, the AFm and AFt series, the hydrogarnets — is
+sensitive to it, which is most of a cement.
+
+### Added — a common ion size, settable on the model
+
+`HKFActivityModel(; å)` imposes **one** effective radius on every charged
+aqueous species, short-circuiting the per-species tables. That is what
+GEM-Selektor, PHREEQC's `-gamma` and most published cement models actually use,
+and it was previously reachable only by mutating `sp[:å]` on every species
+before building the `ChemicalSystem`. `å_default` looks like the knob for it and
+is not: it is the last resort of the lookup chain and is never reached for an
+ion either table covers, so setting it changes essentially nothing. Both facts
+are now stated in the docstring and asserted in the tests.
+
+`å = 0` collapses the Debye-Hückel denominator to 1, giving the limiting law
+plus the B-dot term. With `HKFActivityModel(å = 0.0, Ḃ = 0.097637, Kₙ = 0.0)`
+the package reproduces the activity coefficients of a GEM-Selektor CEMDATA18
+run to 0.25 % on the monovalent ions and 1.2 % on the divalent ones — a run
+whose model can be recovered from its own output, since CEMDATA18 carries no
+ion-size parameter at all.
+
+### Fixed
+
+- `STRICT_CONVERGENCE[] = true` disabled the new initial approximation instead
+  of hardening it. The continuation's early rungs are *expected* to fall short —
+  they are starting points on the way to `λ = 1`, not results — so under the
+  strict flag each one raised, was caught, and every later rung started cold
+  again, leaving the walk useless in exactly the mode a careful caller turns on.
+  The flag is now saved, cleared for the duration of the walk and restored in a
+  `finally`, so a non-converged *result* still raises while an intermediate rung
+  does not. Found by running a caller's script with the flag on, and pinned by a
+  regression test that checks both the outcome and that the flag comes back.
+- `docs/src/tutorials/equilibrium.md` and `README.md` built an AFm solid
+  solution from `dict["Ms"]` and `dict["Mc"]`. Neither symbol exists in any
+  shipped database, so those examples could never have run. They now use
+  `monosulphate12` and `monocarbonate`, which is what the TOML has always used.
+- The TOML-format example in `docs/src/tutorials/databases.md` showed the same
+  two symbols, and a four-member `CSHQ` that no longer matches the file.
+- `docs/src/examples/simplified_clinker_dissolution.md` said "the only built-in
+  model is `DiluteSolutionModel`". There are three.
+
+### Documentation
+
+- A new tutorial section,
+  [Reading the aqueous properties back](https://micropochemomechanics.github.io/ChemistryLab.jl/stable/tutorials/equilibrium/#sec-aqueous-properties),
+  covering the accessors above, the two conventions of pH and why γ is not a
+  ratio; and an `Aqueous properties` section in the equilibrium API reference.
+- The bibliography gained Helgeson (1969), Helgeson, Kirkham & Flowers (1981),
+  Davies (1962), Kulik (2011), Parkhurst & Appelo (2013), Robie & Hemingway
+  (1995) and Xu et al. (2011), which the activity-model docstrings had been
+  citing in prose without entries. Every DOI was resolved against the Crossref
+  REST API; Davies (1962) is a Butterworths monograph that Crossref does not
+  index, and its author, title and publisher are confirmed by the
+  contemporary review in *Science* (doi:10.1126/science.143.3601.37), while the
+  authorship of USGS Bulletin 2131, absent from its Crossref record, is
+  confirmed by the USGS publications catalog.
+- `data/solid_solutions.toml` now says at its head what it is **not**. `CSHQ`
+  and `C3(AF)S0.84H` match the GEM-Selektor phases of those names, but `AFm`,
+  `Hydrogarnet` and `Hydrotalcite` are deliberate alternatives to the CEMDATA18
+  phase model: GEMS treats `monocarbonate`, `C3AH6`, `C3FH6` and `hydrotalcite`
+  as *pure* phases, its AFm solid solution is `C4AH13` + `monosulphate12`, and
+  its hydrotalcite solid solution is `Mg3AlC0.5OH` + `Mg3FeC0.5OH` at
+  Mg:Al = 3. Reproducing a GEMS result means declaring the phases in the script,
+  not taking this file wholesale — and the file no longer lets a reader assume
+  otherwise.
+
+
 ## v0.14.2 — holding AMD at a version that still has `SS_Int`
 
 A release with no change to ChemistryLab itself. It exists because an upstream

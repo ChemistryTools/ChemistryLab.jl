@@ -422,7 +422,7 @@ Each end-member species is automatically requalified to `SC_SSENDMEMBER` via
 ```toml
 [[solid_solution]]
 name        = "CSHQ"
-end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+end_members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD", "KSiOH", "NaSiOH"]
 model       = "ideal"          # or "redlich_kister"
 # For redlich_kister only:
 a0          = 3000.0           # J/mol
@@ -477,6 +477,15 @@ function build_solid_solutions(
                 a1 = get(entry, "a1", 0.0),
                 a2 = get(entry, "a2", 0.0),
             )
+        elseif model_str == "regular"
+            # `W` as a list of rows (a full symmetric matrix), or `w` as the
+            # single interaction parameter of a binary.
+            if haskey(entry, "W")
+                RegularSolutionModel(reduce(vcat, permutedims.(entry["W"])))
+            else
+                w = float(get(entry, "w", 0.0))
+                RegularSolutionModel([0.0 w; w 0.0])
+            end
         elseif model_str == "ideal"
             IdealSolidSolutionModel()
         else

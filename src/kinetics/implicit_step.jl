@@ -335,7 +335,17 @@ function kinetic_step(
     # start, not to the kinetics — a plain equilibrium fails the same way.
     x0 = if warm_start && !isempty(des.ss_groups) && _DUAL_AVAILABLE[]
         try
-            eq = first(equilibrate_certified(state; model = des.model, ϵ = ϵ))
+            # `autostart = false`: the continuation fallback of
+            # `equilibrate_certified` is for a caller who has no starting
+            # point. Here `state` IS one — the previous instant of the
+            # integration — and a handful of extra solves would be paid at
+            # every implicit step. Same principle as Reaktoro's coupled
+            # use, where the solver is reused across instants.
+            eq = first(
+                equilibrate_certified(
+                    state; model = des.model, ϵ = ϵ, autostart = false
+                )
+            )
             Float64[ustrip(us"mol", x) for x in eq.n]
         catch
             n0

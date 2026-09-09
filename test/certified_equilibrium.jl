@@ -162,3 +162,33 @@ end
     ) atol = 1.0e-12
 
 end
+
+@testsection "the certified route restarts from its own answer" begin
+    # `_keep_better` is the arbiter of every round of the multi-start search:
+    # certified beats uncertified, and among uncertified the smaller KKT error
+    # wins. It is unit-testable without a solve, and it is what keeps a restart
+    # from ever making the answer worse.
+    kb = ChemistryLab._keep_better
+    a, b = :A, :B
+    cert(opt, stat) = (; optimal = opt, stationarity = stat)
+
+    # Certified beats uncertified, in both directions and whatever the errors.
+    @test first(kb(a, cert(false, 1.0e-16), b, cert(true, 1.0e-3))) === b
+    @test first(kb(a, cert(true, 1.0e-3), b, cert(false, 1.0e-16))) === a
+
+    # Among uncertified, the smaller stationarity wins.
+    @test first(kb(a, cert(false, 1.0e-6), b, cert(false, 1.0e-9))) === b
+    @test first(kb(a, cert(false, 1.0e-9), b, cert(false, 1.0e-6))) === a
+
+    # Between two certified answers the KKT error still decides, and a tie keeps
+    # the incumbent: a round that buys nothing changes nothing, which is what
+    # makes the restart loop safe to run and what stops it.
+    @test first(kb(a, cert(true, 1.0e-12), b, cert(true, 1.0e-16))) === b
+    @test first(kb(a, cert(false, 1.0e-9), b, cert(false, 1.0e-9))) === a
+    @test first(kb(a, cert(true, 1.0e-16), b, cert(true, 1.0e-16))) === a
+
+    # The bound exists so a case improving by a hair every round cannot loop.
+    @test ChemistryLab._MAX_RESTARTS isa Integer
+    @test ChemistryLab._MAX_RESTARTS >= 1
+
+end

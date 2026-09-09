@@ -129,6 +129,7 @@ module ChemistryLab
     include("equilibrium/equilibrium_solver.jl")
     include("equilibrium/dual_solver.jl")
     include("equilibrium/certified.jl")
+    include("equilibrium/aqueous_properties.jl")
 
     include("kinetics/rate_models.jl")
     include("kinetics/kinetics_reactions.jl")
@@ -256,6 +257,7 @@ module ChemistryLab
         AbstractSolidSolutionModel,
         IdealSolidSolutionModel,
         RedlichKisterModel,
+        RegularSolutionModel,
         AbstractSolidSolutionPhase,
         SolidSolutionPhase,
         end_members,
@@ -315,9 +317,19 @@ module ChemistryLab
         DaviesActivityModel,
         activity_model,
         build_potentials,
+        concentration_scale,
         REJ_HKF,
         REJ_CHARGE_DEFAULT,
         hkf_debye_huckel_params
+
+    export homotopy_initial_state
+
+    # Aqueous properties read back off a solved state.
+    export molalities,
+        ionic_strength,
+        log_activities,
+        activities,
+        activity_coefficients
 
     export EquilibriumProblem
 
