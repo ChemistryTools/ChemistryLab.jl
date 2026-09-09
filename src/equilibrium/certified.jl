@@ -226,7 +226,25 @@ function equilibrate_certified(
     end
 
     if !cert.optimal
-        @warn "no route produced a certifiable equilibrium; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" stationarity = cert.stationarity balance = cert.balance worst_supersaturation = cert.worst_supersaturation maxlog = 1
+        # `STRICT_CONVERGENCE[]` is honored here, not only on the interior-point
+        # retcode. A caller who sets it is asking that a non-converged solve
+        # never pass as a result, and an uncertified answer from this route is
+        # exactly that: it can violate the element balance by moles and still
+        # come back looking like an ordinary `ChemicalState` — measured, a paste
+        # returned with a balance off by 6.7 mol, every hydrate at zero and a
+        # table of amounts that reads as a result. A warning is the right default
+        # (the answer is still the best one found, and `optimality_certificate`
+        # audits it), but under the strict flag it must raise.
+        msg = "no route produced a certifiable equilibrium: stationarity " *
+            "$(cert.stationarity), element balance $(cert.balance), worst " *
+            "supersaturation $(cert.worst_supersaturation)"
+        STRICT_CONVERGENCE[] && error(
+            msg * ". `ChemistryLab.STRICT_CONVERGENCE[]` is set, so this raises " *
+                "rather than returning an answer that is not an equilibrium. " *
+                "Audit it with `optimality_certificate`, and see `autostart` for " *
+                "the automatic initial approximation."
+        )
+        @warn msg * "; returning the answer with the smallest KKT error — audit it with `optimality_certificate`" maxlog = 1
     end
     return (eq, cert)
 end

@@ -105,6 +105,42 @@
         @test !ChemistryLab._dual_applicable(no_solvent)
     end
 
+
+    @testsection "STRICT_CONVERGENCE is honored by the certified route" begin
+        # The flag existed only on the interior-point retcode, so a caller who set
+        # it — asking that a non-converged solve never pass as a result — still got
+        # an uncertified answer back with a `@warn`. That answer can violate the
+        # element balance by moles and still look like an ordinary `ChemicalState`:
+        # measured on a cement paste, a balance off by 6.7 mol, every hydrate at
+        # zero, and a table of amounts that reads as a result.
+        #
+        # `-b` is infeasible by construction: every component budget is negative and
+        # every stoichiometric coefficient is non-negative, so no composition with
+        # `n >= 0` can meet it and no route can certify.
+        st = calcite()
+        b_bad = -(A * [ustrip(us"mol", x) for x in st.n])
+
+        strict = ChemistryLab.STRICT_CONVERGENCE[]
+        try
+            ChemistryLab.STRICT_CONVERGENCE[] = true
+            @test_throws "no route produced a certifiable equilibrium" equilibrate_certified(
+                st; b = b_bad, autostart = false
+            )
+
+            # The default stays a warning: the answer is still the best one found,
+            # and `optimality_certificate` is there to audit it.
+            ChemistryLab.STRICT_CONVERGENCE[] = false
+            eq, cert = equilibrate_certified(st; b = b_bad, autostart = false)
+            @test cert.optimal == false
+            @test eq isa ChemicalState
+        finally
+            ChemistryLab.STRICT_CONVERGENCE[] = strict
+        end
+
+        # And the flag is left exactly as it was found.
+        @test ChemistryLab.STRICT_CONVERGENCE[] == strict
+
+    end
 end
 
 @testsection "ForwardDiff through the certified route" begin

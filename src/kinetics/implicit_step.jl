@@ -334,6 +334,14 @@ function kinetic_step(
     # 3.6e-13 with all four end-members present. The failure belongs to the cold
     # start, not to the kinetics — a plain equilibrium fails the same way.
     x0 = if warm_start && !isempty(des.ss_groups) && _DUAL_AVAILABLE[]
+        # What this computes is a STARTING POINT, not a result, so
+        # `STRICT_CONVERGENCE[]` is cleared for it and restored after — the same
+        # distinction the continuation makes. Left set, the strict flag would
+        # turn an uncertified guess into a raise, the `catch` below would swallow
+        # it, and the step would fall back on `n0`: a caller asking for strict
+        # results would silently get a worse start than a caller who did not.
+        strict = STRICT_CONVERGENCE[]
+        STRICT_CONVERGENCE[] = false
         try
             # `autostart = false`: the continuation fallback of
             # `equilibrate_certified` is for a caller who has no starting
@@ -349,6 +357,8 @@ function kinetic_step(
             Float64[ustrip(us"mol", x) for x in eq.n]
         catch
             n0
+        finally
+            STRICT_CONVERGENCE[] = strict
         end
     else
         n0
