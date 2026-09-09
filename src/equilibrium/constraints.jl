@@ -344,6 +344,181 @@ function _constraint_blocks(c::FixedpH, des, state, p, n0)
 end
 
 """
+    CapillaryWater(retention, V_ref)
+    CapillaryWater(retention; reference)
+
+Hydration arrested by self-desiccation: the water left in the pore space is held
+at reduced activity, and the reaction stops when that activity no longer supports
+the hydrates.
+
+This is the only constraint here that adds **physics** rather than a boundary
+condition. The others say what is held fixed; this one says that water in a fine
+pore is not the same water as bulk water of the same composition. Its chemical
+potential is lower by the Kelvin term, `RT ln(a_w/a_w^chem) = -2 γ V_m / r`, so
+hydrates that consume water become less stable as the pore space empties. A
+sealed paste therefore stops hydrating **with water still in it** — which is what
+Powers' `α_max = w/c / 0.42` describes empirically, and what
+[`powers_alpha_max`](@ref) carries into the kinetic rate laws.
+
+`retention` is a [`WaterRetention`](@ref): the material's own relation between
+the degree of saturation of its pore space and the activity of the water in it.
+It is measured, not assumed, and it is the caller's to supply.
+
+`V_ref` is the volume the pore space is referred to — the fresh paste, exactly as
+for the two-argument [`porosity`](@ref). Pass the fresh state and the volume is
+taken from it. The degree of saturation the constraint uses is then
+`S = V_liquid / (V_ref - V_solid)`, both volumes recomputed from the current
+composition at every evaluation.
+
+# What it does to the solve
+
+One unknown, `q[1] = ln(a_w/a_w^chem) ≤ 0`, the Kelvin shift; one equation, the
+retention law evaluated at the current saturation. Mass is conserved — unlike
+[`FixedActivity`](@ref), no titrant column is added, because a sealed specimen
+exchanges water with nothing. The shift reaches the caller through the
+`parameters` keyword, as the titrant amount does.
+
+# What the certificate then proves
+
+Less than usual, and the difference matters. For the unconstrained problem `G` is
+convex, so `cert.optimal` is a proof of a **global** minimum. A composition-
+dependent shift of `ln a_w` is not derived from a convex `G` for an arbitrary
+retention law, so under `CapillaryWater` the certificate proves a **KKT point of
+the constrained problem** — stationarity, mass balance, no absent phase
+supersaturated, and the capillary closure satisfied — but not global optimality.
+The multi-start route still runs, so agreement across starts is evidence; it is
+not the proof the fixed-(T, P) route gives.
+
+# Examples
+
+```julia
+fresh = fresh_paste(0.30)                     # the volume reference
+r     = TabulatedRetention(; S = [...], a_w = [...])
+eq, cert = equilibrate_certified(
+    state; constraint = CapillaryWater(r; reference = fresh),
+)
+```
+
+See also: [`WaterRetention`](@ref), [`kelvin_activity`](@ref),
+[`powers_alpha_max`](@ref), [`porosity`](@ref).
+"""
+struct CapillaryWater{R <: WaterRetention, Q} <: EquilibriumConstraint
+    retention::R
+    V_ref::Q
+end
+
+CapillaryWater(retention::WaterRetention; reference) =
+    CapillaryWater(retention, volume(reference).total)
+
+CapillaryWater(f, V_ref) = CapillaryWater(FunctionRetention(f), V_ref)
+CapillaryWater(f; reference) = CapillaryWater(FunctionRetention(f); reference = reference)
+
+"""
+    _molar_volumes(system, T, P) -> Vector{Float64}
+
+Standard molar volume of every species at `T`, `P`, in m³/mol, and zero for a
+species that has none.
+
+The zero is why [`CapillaryWater`](@ref) refuses a system with a missing molar
+volume before it starts: such a species contributes nothing to the volume
+balance, silently, and the saturation the whole coupling rests on would be wrong
+with nothing to show for it.
+"""
+function _molar_volumes(system, T, P)
+    return Float64[
+        _has_molar_volume(sp) ? ustrip(us"m^3/mol", sp[:V⁰](T = T, P = P; unit = true)) : 0.0
+            for sp in system.species
+    ]
+end
+
+function _constraint_blocks(c::CapillaryWater, des, state, p, n0)
+    cs = des.system
+    isempty(cs.idx_solvent) && throw(
+        ArgumentError(
+            "CapillaryWater needs an aqueous solvent: the constraint shifts the " *
+                "chemical potential of the water, and there is none in this system."
+        )
+    )
+    j_w = only(cs.idx_solvent)
+
+    # A species with no standard molar volume contributes zero to the volume
+    # balance without saying so, which would corrupt the saturation. Refuse
+    # eagerly and name the species, in the spirit of `_pressure_lever`.
+    missing_V = missing_molar_volumes(state)
+    isempty(missing_V) || throw(
+        ArgumentError(
+            "CapillaryWater needs a volume balance it can trust, and these species " *
+                "are present with no standard molar volume: " * join(missing_V, ", ") *
+                ". They would contribute zero to the pore volume in silence, so the " *
+                "degree of saturation — and with it the Kelvin shift — would be wrong."
+        )
+    )
+
+    T_K = ustrip(us"K", temperature(state))
+    V̄ = _molar_volumes(cs, temperature(state), pressure(state))
+    V_ref = ustrip(us"m^3", c.V_ref)
+    # The liquid and the solid, as two fixed index sets and one molar-volume
+    # vector: `S(x)` is then two dot products and allocates nothing. `hq` and
+    # `cq` are called once per Jacobian column and inside the inner inversion
+    # loop, so this matters.
+    idx_liq = cs.idx_aqueous
+    idx_sol = cs.idx_crystal
+    V_m_w = V̄[j_w]
+
+    V_solid0 = sum(V̄[i] * n0[i] for i in idx_sol; init = 0.0)
+    V_ref > V_solid0 || throw(
+        ArgumentError(
+            "CapillaryWater: the reference volume ($(V_ref) m³) does not exceed the " *
+                "solid volume of the initial state ($(V_solid0) m³), so there is no " *
+                "pore space for the constraint to act on. The reference should be the " *
+                "FRESH state, before the reactions consumed any volume."
+        )
+    )
+
+    function saturation_of(x)
+        V_liq = zero(eltype(x))
+        for i in idx_liq
+            V_liq += V̄[i] * x[i]
+        end
+        V_sol = zero(eltype(x))
+        for i in idx_sol
+            V_sol += V̄[i] * x[i]
+        end
+        V_pore = V_ref - V_sol
+        V_pore > 0 || return one(eltype(x))
+        return clamp(V_liq / V_pore, 0.0, 1.0)
+    end
+
+    ln_a_of(x) = log(_retention_activity(c.retention, saturation_of(x), V_m_w, T_K))
+
+    # A saturated pore space must hold its water at unit activity, or the shift
+    # is not a shift.
+    a1 = _retention_activity(c.retention, 1.0, V_m_w, T_K)
+    0 < a1 <= 1 + 1.0e-8 || throw(
+        ArgumentError(
+            "CapillaryWater: the retention law returns a_w = $a1 at full saturation, " *
+                "outside (0, 1]. At S = 1 the meniscus is flat and the water is held " *
+                "by nothing."
+        )
+    )
+
+    return (;
+        nq = 1,
+        gq = (q, params) -> params.ΔₐG⁰overT,
+        hq = (x, q, params) -> begin
+            v = des.lna(x, params)
+            v[j_w] += q[1]
+            v
+        end,
+        cq = (x, q, params) -> [q[1] - ln_a_of(x)],
+        Aq = zeros(size(des.A, 1), 1),
+        q0 = [0.0],
+        qscale = [1.0],
+        apply = (T, P, q) -> (T, P),
+    )
+end
+
+"""
     _species_index(des, s) -> Int
 
 Position of a species in the solver's system, by symbol or by object.

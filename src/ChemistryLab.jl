@@ -125,6 +125,7 @@ module ChemistryLab
 
     include("equilibrium/activities.jl")
     include("equilibrium/equilibrium_problems.jl")
+    include("equilibrium/retention.jl")
     include("equilibrium/constraints.jl")
     include("equilibrium/equilibrium_solver.jl")
     include("equilibrium/dual_solver.jl")
@@ -238,6 +239,14 @@ module ChemistryLab
         push_primaries,
         mass_matrix,
         reactions
+
+    export WaterRetention,
+        TabulatedRetention,
+        VanGenuchten,
+        FunctionRetention,
+        capillary_pressure,
+        kelvin_activity,
+        kelvin_radius
 
     export DualEquilibriumSolver,
         optimality_certificate,
