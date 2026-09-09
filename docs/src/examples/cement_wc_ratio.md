@@ -357,6 +357,78 @@ end
     appear, because it is set by the degree of hydration a paste actually
     reaches, not by the assemblage it would reach given time.
 
+### A usable answer below the stoichiometric demand
+
+A high-performance concrete is mixed at w/c between 0.25 and 0.35. That regime is
+ordinary, not pathological, and it must be computable — with a certificate, and
+with all three of the things one wants from it: how much clinker stays
+unhydrated, which hydrates form, and what the pore solution ends up containing.
+
+The way to get it is to stop the reaction where the physics stops it, instead of
+asking the minimizer to discover an arrest point it has no term for. React a
+fraction ``\alpha`` of the clinker with **all** the water; the rest stays
+unhydrated, and the equilibrium is then computed on a system that still has a
+solution in it. ``\alpha`` is exactly what [`powers_alpha_max`](@ref) supplies,
+and imposing the reacted fraction is the standard construction of cement
+thermodynamic modeling — it is how [LothenbachWinnefeld2006](@cite) computes a hydrating
+paste.
+
+```@example wc_setup
+function arrested(wc, α)
+    mtot = c + wc * c
+    st = ChemicalState(cs)
+    for (sym, mfrac) in compo
+        set_quantity!(st, sym, α * mfrac / mtot * u"kg")   # only α reacts
+    end
+    set_quantity!(st, "H2O@", wc * c / mtot * u"kg")       # all the water
+    V = volume(st)
+    set_quantity!(st, "H+", 1e-7u"mol/L" * V.liquid)
+    set_quantity!(st, "OH-", 1e-7u"mol/L" * V.liquid)
+    return st
+end
+
+println(" w/c   alpha   certified   x(solvent)   I (mol/kg)     pH   clinker %   porosity")
+for wc in (0.25, 0.30, 0.35, 0.42)
+    α        = powers_alpha_max(wc)
+    fresh    = fresh_paste(wc)                 # the volume reference, all of it
+    eq, cert = equilibrate_certified(arrested(wc, α))
+    # The unreacted clinker is put back for the volume and porosity accounting.
+    n = collect(eq.n)
+    for (sym, _) in compo
+        n[sp_idx[sym]] += (1 - α) * fresh.n[sp_idx[sym]]
+    end
+    final = ChemicalState(cs, n)
+    @printf(
+        "%5.2f  %6.3f   %9s   %10.4f   %10.4f  %5.2f   %9.1f   %8.4f\n",
+        wc, α, cert.optimal, solvent_fraction(eq), ionic_strength(eq), pH(eq),
+        100 * clinker(final) / clinker(fresh), porosity(final, fresh).total,
+    )
+end
+```
+
+Every point certifies, the solvent holds 0.999 of its phase, and the ionic
+strength is 0.035 mol/kg — a pore solution, not the 409 mol/kg of the table
+above. The residual clinker is ``1 - \alpha`` by construction, which is the
+point: the water limit enters as the closure it physically is, and everything
+else is then a proved Gibbs minimum.
+
+!!! note "What would remove the ``\alpha``"
+    Predicting the arrest point instead of imposing it is a well-posed
+    thermodynamic question, and this package cannot answer it yet. Two ingredients
+    are missing, and both are about water that is present but unavailable. An
+    **activity model valid at very high concentration** — Pitzer-class — because
+    what physically stops hydration is the collapse of the water activity as the
+    last of the pore solution is consumed, and an extended Debye-Huckel model
+    extrapolated to 409 mol/kg goes on returning finite numbers instead of
+    collapsing. And a **coupling between pore structure and water activity**, the
+    Kelvin term, because in a fine pore water is held at a reduced activity
+    whatever its composition; that is what self-desiccation is, and it is
+    poromechanics, not solution chemistry.
+
+    Until then, ``\alpha`` is not a fudge: it is where the missing physics is
+    parameterized, measured on real pastes, and the calculation downstream of it
+    is proved.
+
 ### Assumptions behind these numbers
 
   - **Complete reaction.** Full equilibrium, no time, no kinetic barrier.
