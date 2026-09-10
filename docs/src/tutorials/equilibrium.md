@@ -19,13 +19,26 @@ using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
 
 # Select the carbonate-system species, calcite and its dissolution product Ca²⁺
 dict = Dict(symbol(s) => s for s in substances)
 species = [dict[sym] for sym in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+nothing # hide
+```
+
+```@raw html
+<details><summary>The chemical system in full</summary>
+```
+
+```@example eq_setup
+cs
+```
+
+```@raw html
+</details>
 ```
 
 ```@example eq_setup
@@ -40,6 +53,19 @@ set_quantity!(state, "H+",  1e-4u"mol/L" * V.liquid)   # pH = 4
 set_quantity!(state, "OH-", 1e-10u"mol/L" * V.liquid)  # charge seed
 
 state_eq = equilibrate(state)
+nothing # hide
+```
+
+```@raw html
+<details><summary>The solved state in full — every species, with its amount</summary>
+```
+
+```@example eq_setup
+state_eq
+```
+
+```@raw html
+</details>
 ```
 
 !!! tip "Quick shortcut"
@@ -917,7 +943,7 @@ already `SC_SSENDMEMBER`, so database species with `SC_COMPONENT` can be passed 
 ```julia
 using ChemistryLab
 
-substances = build_species(datapath("cemdata18-thermofun.json"))
+substances = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
 dict = Dict(symbol(s) => s for s in substances)
 
 # SolidSolutionPhase requalifies SC_COMPONENT → SC_SSENDMEMBER automatically

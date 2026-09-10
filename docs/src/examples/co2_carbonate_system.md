@@ -42,6 +42,19 @@ dict = Dict(symbol(s) => s for s in substances)
 species = [dict[sym] for sym in split("H2O@ H+ OH- CO2@ HCO3- CO3-2")]
 
 cs = ChemicalSystem(species, ["H2O@", "H+", "CO3-2"])
+nothing # hide
+```
+
+```@raw html
+<details><summary>The chemical system in full</summary>
+```
+
+```@example carbonate_setup
+cs
+```
+
+```@raw html
+</details>
 ```
 
 !!! note "Larger carbonate systems"

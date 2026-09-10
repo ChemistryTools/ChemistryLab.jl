@@ -58,6 +58,19 @@ set_quantity!(state, "H+",  1e-7u"mol/L" * V.liquid)
 set_quantity!(state, "OH-", 1e-7u"mol/L" * V.liquid)
 
 state_eq = equilibrate(state)
+nothing # hide
+```
+
+```@raw html
+<details><summary>The solved state in full — every species, with its amount</summary>
+```
+
+```@example eq_setup
+state_eq
+```
+
+```@raw html
+</details>
 ```
 
 !!! tip "Quick shortcut"
