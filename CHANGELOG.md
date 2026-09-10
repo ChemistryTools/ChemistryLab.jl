@@ -1,5 +1,131 @@
 # Changelog
 
+## v0.16.0 — the water a paste cannot use
+
+A sealed cement paste stops hydrating before it runs out of cement, and until now
+nothing in the package represented why. `powers_alpha_max` supplied the empirical
+cap and said in its docstring that the bound is "a statement about transport and
+access, not about thermodynamics". This release supplies the missing state
+variable — the internal relative humidity of a partially saturated pore space —
+and the tutorial that validates it recovers Powers' coefficient from independent
+data.
+
+### Breaking changes
+
+Nothing in the API breaks and no default behavior changes. Two consequences are
+breaking in practice:
+
+- **The registry treats a minor bump below 1.0 as breaking whatever the API did**,
+  so `[compat] ChemistryLab = "0.15"` will not accept `0.16`. Downstream packages
+  must widen. `MeanFieldHomogenization.jl` depends on this package only in
+  `docs/Project.toml` and needs `"0.14, 0.15, 0.16"`.
+- **`solve_certified` now writes the *winning* candidate's parameters** into the
+  caller's `parameters` Ref. It wrote the last candidate's while returning the
+  best-by-error one, so a prescribed-pH scan reported a titrant amount belonging
+  to a different composition. Code that relied on the old value was reading a
+  mismatch.
+
+### Added — water retention, and the Kelvin relation
+
+`WaterRetention` and its subtypes describe how tightly a pore space holds the
+water still in it. That is a constitutive input, measured on a particular material
+at a particular age, so **nothing ships with a default value**: every named law
+takes its parameters as keywords without defaults, and Julia raises
+`UndefKeywordError` before any number is computed. The enforcement is the
+language's, not a check that can be forgotten.
+
+- `TabulatedRetention(; S, a_w)` takes a measured isotherm and interpolates
+  linearly in `ln a_w`, the variable the coupling reads. Its inner constructor
+  refuses a non-monotone table rather than interpolating nonsense, and leaving the
+  measured range clamps and warns once instead of extrapolating a logarithm into
+  confident absurdity.
+- `VanGenuchten(; a, m)`, with the published parameters of Baroghel-Bouny et al.
+  (1999) quoted in its docstring together with the convention they use — they
+  write the same expression with `b = 1/m`, and getting that inversion wrong is
+  silent.
+- `kelvin_activity`, `kelvin_radius`, `capillary_pressure`, `water_activity`.
+  RH 80 % is a meniscus of radius 4.8 nm, the gel-pore scale, which is why the
+  water Powers assigns to gel pores and the water a sealed paste cannot use are
+  the same water.
+
+### Added — `CapillaryWater`, a constraint with a certificate
+
+One unknown, the Kelvin shift of the solvent's chemical potential; one equation,
+the retention law at the current saturation `S = V_liquid/(V_ref − V_solid)`. No
+titrant column, because a sealed specimen exchanges water with nothing — the whole
+difference from `FixedActivity`. It refuses eagerly when a species present carries
+no standard molar volume, since such a species contributes zero to the pore volume
+in silence and would corrupt the saturation with nothing to show for it.
+
+Measured on a CEM I paste: certified at every w/c from 0.30 to 0.50, constraint
+residual between 1e-16 and 1e-13, internal humidity falling from 0.87 to 0.32 as
+the mix gets drier.
+
+Two caveats are in the docstring rather than left to be discovered. The
+certificate proves a **KKT point of the constrained problem** — stationarity, mass
+balance, no absent phase supersaturated, and the capillary closure satisfied — but
+not global optimality, because a composition-dependent shift of `ln a_w` is not
+derived from a convex `G` for an arbitrary retention law. And **`log_activities`
+does not know about the shift**: it evaluates the activity model, so with the
+shift at `ln 0.90` it returns `a_w = 0.999995` while the solve was posed at 0.90.
+
+### Added — `PoreHumidity`, and where the arrest actually comes from
+
+The Kelvin term is **two orders of magnitude too weak to arrest hydration**.
+Measured: imposing a water activity anywhere from 0.95 down to 0.05 leaves the
+equilibrium assemblage of a CEM I paste unchanged. At `a_w = 0.80` the shift is
+553 J per mole of water, worth about 1.8 kJ per mole of alite against a hydration
+Gibbs energy of order −100 kJ/mol; nulling it would need `a_w ≈ 5e-6`, a Kelvin
+radius smaller than a water molecule. A real paste stops at 75–80 % RH because
+transport and nucleation stop.
+
+So the humidity belongs in the rate law, and `humidity_factor` has implemented
+that cut all along. What was missing is that its argument was exogenous:
+`_humidity_at` took a constant or a function of **time**. The rate closure already
+receives the full composition, so `PoreHumidity(retention, system; reference)`
+computes the saturation and returns the pore humidity, and a third method reads
+it. The other two ignore the new argument, so nothing a caller wrote before
+changes.
+
+### Fixed — the certificate now audits the problem that was solved
+
+`optimality_certificate` rebuilt a `FixedTP` problem whatever constraint had been
+applied. That misses two things at once: the conservation rows lose their `Aq q`
+term, so a prescribed activity or pH is measured against a budget short by exactly
+the titrant amount; and `hq` is skipped, so a constraint that shifts a chemical
+potential is measured against the unshifted one and can never certify however
+right it is. It takes `constraint` and `q` keywords, both defaulting to the old
+behavior, and returns `param_residual`.
+
+`_kkt_error` counts that residual, so the multi-start search can no longer prefer
+a candidate that minimizes the Gibbs energy while violating the very equation that
+makes it a constrained answer.
+
+### Documentation — Powers' 0.42, taken apart
+
+A new tutorial, [Self-desiccation: where Powers' 0.42 comes from](https://micropochemomechanics.github.io/ChemistryLab.jl/stable/tutorials/self_desiccation/),
+with `scripts/self_desiccation_powers.jl` as its runnable companion.
+
+It derives `α_max = (w/c)/k` with `k = b + s S*/(1−S*)`, then fills each term from
+its own source: `b = 0.3095` g/g and `s = 0.0639` cm³/g from certified equilibria
+at imposed degree of hydration (both constant in α to four digits, which is the
+check on the linear budget the derivation assumes), and `S* = 0.7862` at RH 0.80
+from a measured desorption isotherm.
+
+**Inverted, Powers' 0.42 corresponds to an arrest at 77.5 % relative humidity** —
+assembled from a chemical shrinkage computed out of the thermodynamic database, an
+isotherm fitted for a drying study two decades earlier, and Powers' own water
+split. That is the window sealed pastes are independently reported to stop in.
+
+The page is explicit that the *proportionality* `α_max ∝ w/c` is structural and
+therefore no evidence, that only the coefficient is predicted, and that the
+residual 11 % is attributable: the model's formula water exceeds Powers'
+non-evaporable water by 0.0795 g/g, which is the interlayer water CEMDATA18 writes
+into the C-S-H formula and D-drying removes. Not the same quantity, so not an
+error — and the `CSHQ` solid solution binds more, 0.3684 g/g, so it moves away
+from Powers rather than toward him.
+
+
 ## v0.15.2 — a solution that is no longer a solution
 
 A certificate proves that a composition minimizes the Gibbs energy of the problem
