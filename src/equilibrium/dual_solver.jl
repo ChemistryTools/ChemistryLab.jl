@@ -224,13 +224,27 @@ one of them is undersaturated, as optimality requires).
 function optimality_certificate(
         des::DualEquilibriumSolver, state::ChemicalState;
         b = nothing, ϵ::Float64 = 1.0e-16, floor::Float64 = 1.0e-25,
+        constraint::EquilibriumConstraint = FixedTP(),
+        q = nothing,
     )
     p = _build_params(state; ϵ = ϵ)
     n = Float64[ustrip(us"mol", x) for x in state.n]
     bv = b === nothing ? des.A * n : Float64.(collect(b))
 
+    # The certificate has to audit the problem that was SOLVED, and a constraint
+    # is part of that problem. Rebuilt with `FixedTP` — which is what this did
+    # until 0.16 — the audit misses two things at once: the conservation rows
+    # lose their `Aq q` term, so a prescribed activity or pH is measured against
+    # a budget short by exactly the titrant amount; and `hq` is skipped, so a
+    # constraint that shifts a chemical potential is measured against the
+    # unshifted one and can never certify however right it is.
+    blocks = _constraint_blocks(constraint, des, state, p, n)
+    qv = blocks.nq == 0 ? nothing :
+        (q === nothing ? Float64.(collect(blocks.q0)) : Float64.(collect(q)))
+
     c = _optima_kkt_certificate(
-        _dual_problem(des, p, n), n, bv, floor, des.opts.tol, des.opts.si_tol,
+        _dual_problem(des, p, n, blocks), n, bv, floor,
+        des.opts.tol, des.opts.si_tol, qv,
     )
     return (;
         stationarity = c.stationarity, balance = c.feasibility,
@@ -240,7 +254,11 @@ function optimality_certificate(
         # cancellation — and this is the raw figure for reporting.
         stationarity_abs = c.stationarity_abs,
         worst_supersaturation = c.worst_violation, n_interior = c.n_interior,
-        n_absent_component = c.n_forced_zero, optimal = c.optimal,
+        n_absent_component = c.n_forced_zero,
+        # Zero on the unconstrained route, so it costs nothing there and is the
+        # constraint's own residual when there is one.
+        param_residual = hasproperty(c, :param_residual) ? c.param_residual : 0.0,
+        optimal = c.optimal,
     )
 end
 
@@ -250,7 +268,7 @@ end
 How far a composition is from satisfying the KKT conditions: the worst of the
 three residuals the certificate reports, in one number.
 
-All three, and not the stationarity alone. A composition can be stationary to
+All of them, and not the stationarity alone. A composition can be stationary to
 1e-3 while violating mass conservation by **moles** — measured, an answer with
 stationarity 2.4e-3, an element balance off by 6.7 mol and a phase supersaturated
 by 45 — and that is not a near-answer, it is not an answer to this problem at
@@ -258,11 +276,21 @@ all. Ranking on stationarity alone lets such a point beat a candidate that
 conserves mass, which is how a multi-start search can discard the good answer it
 just computed.
 
+The constraint's own residual counts too, when there is one. Leaving it out would
+rank a candidate that minimizes the Gibbs energy while violating the very
+equation that makes it a *constrained* answer above one that satisfies both —
+the same hole OptimaSolver records for the kinetic step, where "a march that
+should have stopped at saturation dissolved everything and was proved optimal".
+Read with `hasproperty` because a certificate also arrives from the kinetic
+route, which builds its own.
+
 `worst_supersaturation` is clamped at zero because a negative value is not an
 error: it means every absent phase is undersaturated, as optimality requires.
 """
-_kkt_error(cert) =
-    max(cert.stationarity, cert.balance, max(cert.worst_supersaturation, 0.0))
+_kkt_error(cert) = max(
+    cert.stationarity, cert.balance, max(cert.worst_supersaturation, 0.0),
+    hasproperty(cert, :param_residual) ? cert.param_residual : 0.0,
+)
 
 """
     solve_certified(des, starts; b = nothing, ϵ = 1e-16, floor = 1e-25)
@@ -319,23 +347,39 @@ function solve_certified(
     best = nothing
     best_cert = nothing
     best_err = Inf
+    best_q = Float64[]
     for s0 in starts
+        # Each candidate's own parameters, captured here rather than written
+        # straight into the caller's `Ref`. Written straight through, the `Ref`
+        # would end up holding the LAST candidate's parameters while the state
+        # returned is the best-by-error one — so a prescribed-pH scan would
+        # report a titrant amount belonging to a different composition.
+        qref = Ref(Float64[])
         eq = SciMLBase.solve(
-            des, s0; b = b, ϵ = ϵ, constraint = constraint, parameters = parameters,
+            des, s0; b = b, ϵ = ϵ, constraint = constraint, parameters = qref,
         )
         # The certificate is evaluated at the T and P the constrained solve
         # FOUND, which `eq` carries — not at the ones the start had. `∇f` depends
         # on both, so certifying against the start's conditions would measure the
-        # stationarity of a different problem.
-        cert = optimality_certificate(des, eq; b = b, ϵ = ϵ, floor = floor)
-        cert.optimal && return (eq, cert)
+        # stationarity of a different problem. `q` is part of what the solve
+        # found in exactly the same way, and is passed for the same reason.
+        cert = optimality_certificate(
+            des, eq; b = b, ϵ = ϵ, floor = floor,
+            constraint = constraint, q = qref[],
+        )
+        if cert.optimal
+            parameters === nothing || (parameters[] = qref[])
+            return (eq, cert)
+        end
         err = _kkt_error(cert)
         if err < best_err
             best_err = err
             best = eq
             best_cert = cert
+            best_q = qref[]
         end
     end
+    parameters === nothing || (parameters[] = best_q)
     return (best, best_cert)
 end
 

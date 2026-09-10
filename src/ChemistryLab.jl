@@ -125,6 +125,7 @@ module ChemistryLab
 
     include("equilibrium/activities.jl")
     include("equilibrium/equilibrium_problems.jl")
+    include("equilibrium/retention.jl")
     include("equilibrium/constraints.jl")
     include("equilibrium/equilibrium_solver.jl")
     include("equilibrium/dual_solver.jl")
@@ -239,6 +240,15 @@ module ChemistryLab
         mass_matrix,
         reactions
 
+    export WaterRetention,
+        TabulatedRetention,
+        VanGenuchten,
+        FunctionRetention,
+        capillary_pressure,
+        water_activity,
+        kelvin_activity,
+        kelvin_radius
+
     export DualEquilibriumSolver,
         optimality_certificate,
         solve_certified,
@@ -251,6 +261,7 @@ module ChemistryLab
         SealedVolume,
         FixedActivity,
         FixedpH,
+        CapillaryWater,
         KineticStepSolver,
         kinetic_step,
         kinetic_step_adaptive,
@@ -365,7 +376,9 @@ module ChemistryLab
         WALLER_PARAMS_SLAG,
         blaine_factor,
         humidity_factor,
-        powers_alpha_max
+        powers_alpha_max,
+        PoreHumidity,
+        pore_saturation
 
     export AbstractSurfaceModel,
         FixedSurfaceArea,

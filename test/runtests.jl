@@ -97,6 +97,7 @@ end
     include("test_dual_solver.jl")
     include("certified_equilibrium.jl")
     include("equilibrium_constraints.jl")
+    include("capillary.jl")
 end
 
 @testsection "Utils tests" begin

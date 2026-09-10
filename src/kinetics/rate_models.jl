@@ -760,7 +760,7 @@ function parrot_killoh_avrami(
         α = min(max(one(T) - n_m / n_init, zero(T)), α_max_f - oftype(T, 1.0e-10))
         ξ = α / α_max_f
         Aₜ = exp(-Ea / R_gas * (one(T) / T - one(T) / T_ref))
-        β_h = humidity === nothing ? one(ξ) : humidity_factor(_humidity_at(humidity, t))
+        β_h = humidity === nothing ? one(ξ) : humidity_factor(_humidity_at(humidity, t, n))
         one_m_ξ = max(one(ξ) - ξ, oftype(ξ, 1.0e-12))
         # α̇₁ — Avrami nucleation and growth. For n₁ < 1 the (-ln(1-ξ))^(1-n₁)
         # factor VANISHES at ξ = 0, so α̇ = 0 and α ≡ 0 solves the ODE: hydration
@@ -783,9 +783,13 @@ function parrot_killoh_avrami(
     return KineticFunc(f, refs, u"mol/s")
 end
 
-# Internal: a humidity keyword is either a constant or a function of time.
-@inline _humidity_at(h::Real, _t) = h
-@inline _humidity_at(h, t) = h(t)
+# Internal: a humidity keyword is a constant, a function of TIME, or a
+# `PoreHumidity`, which reads the current COMPOSITION. The composition is passed
+# to all three so the last one is reachable; the first two ignore it, so nothing
+# a caller wrote before changes.
+@inline _humidity_at(h::Real, _t, _n) = h
+@inline _humidity_at(h, t, _n) = h(t)
+# The `PoreHumidity` method is further down, where that type is defined.
 
 # ── Canonical Parrot & Killoh (1984) parameters ──────────────────────────────
 #
@@ -940,7 +944,7 @@ function waller(
         α = min(max(one(T) - n_m / n_init, zero(T)), α_max_f - oftype(T, 1.0e-10))
         ξ = α / α_max_f
         Aₜ = exp(-Ea / R_gas * (one(T) / T - one(T) / T_ref))
-        β_h = humidity === nothing ? one(ξ) : humidity_factor(_humidity_at(humidity, t))
+        β_h = humidity === nothing ? one(ξ) : humidity_factor(_humidity_at(humidity, t, n))
         # At ξ = 0 the closed form α̇(α) is singular (α^(1-1/n) → ∞ for n < 1).
         # Fall back to the explicit α̇(t) of the sigmoid, which is finite for t > 0
         # and vanishes as t → 0 — the induction period the sigmoid encodes.
@@ -1065,6 +1069,118 @@ julia> round(humidity_factor(0.801); digits = 4)
 function humidity_factor(h::Real)
     return _primal(h) > 0.8 ? ((h - oftype(h, 0.55)) / oftype(h, 0.45))^4 : zero(h)
 end
+
+"""
+    PoreHumidity(retention, system; reference, T = temperature(reference))
+
+The internal relative humidity of a sealed paste, computed from the composition
+it currently has.
+
+Pass it as the `humidity` keyword of [`parrot_killoh_avrami`](@ref) or
+[`waller`](@ref) and the rate law stops reading a humidity imposed from outside
+and starts reading the one the material makes for itself. That is what closes the
+loop: hydration consumes water, the pore space empties, the humidity falls, and
+[`humidity_factor`](@ref) throttles the reaction — self-desiccation, which is
+what Powers' `α_max = w/c / 0.42` describes empirically and what
+[`powers_alpha_max`](@ref) otherwise supplies as an input.
+
+The humidity is the water activity the `retention` law returns at the current
+degree of saturation of the pore space,
+`S = V_liquid / (V_ref − V_solid)`, both volumes recomputed from the composition
+the rate law is handed. `V_ref` is the fresh paste's total volume — the same
+reference the two-argument [`porosity`](@ref) uses, and the same sealed-curing
+convention: the volume the reactions destroy stays inside as empty porosity.
+
+!!! warning "This is where the arrest comes from, and it is kinetic"
+    The Kelvin term is far too small to arrest hydration thermodynamically.
+    Measured on a CEM I paste, imposing a water activity anywhere from 0.95 down
+    to 0.05 leaves the equilibrium assemblage unchanged: the shift is
+    `RT ln a_w = −553 J/mol` of water at `a_w = 0.80`, worth about 1.8 kJ per mole
+    of alite against a hydration Gibbs energy of order −100 kJ/mol. Nulling that
+    would need `a_w ≈ 5e-6`, a Kelvin radius smaller than a water molecule.
+
+    A real paste stops at 75–80 % RH because transport and nucleation stop, not
+    because the reaction has become unfavorable. So the humidity belongs in the
+    **rate law**, through `humidity_factor`, and [`CapillaryWater`](@ref) is what
+    makes the water activity of the equilibrium state mean the same thing.
+
+# Examples
+
+```julia
+h = PoreHumidity(retention, cs; reference = fresh)
+rxn[:rate] = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = h)
+```
+
+See also: [`humidity_factor`](@ref), [`WaterRetention`](@ref),
+[`CapillaryWater`](@ref), [`powers_alpha_max`](@ref).
+"""
+struct PoreHumidity{R <: WaterRetention, T <: Real}
+    retention::R
+    V̄::Vector{T}            # standard molar volume per species, m³/mol
+    idx_liquid::Vector{Int}
+    idx_solid::Vector{Int}
+    V_ref::T                # m³
+    V_m_w::T                # the solvent's molar volume, for the Kelvin conversion
+    T_K::T
+end
+
+function PoreHumidity(
+        retention::WaterRetention, system::ChemicalSystem;
+        reference::ChemicalState, T = temperature(reference),
+    )
+    missing_V = missing_molar_volumes(reference)
+    isempty(missing_V) || throw(
+        ArgumentError(
+            "PoreHumidity needs a volume balance it can trust, and these species " *
+                "are present in the reference with no standard molar volume: " *
+                join(missing_V, ", ") * ". They contribute zero to the pore volume " *
+                "in silence, so the saturation — and with it the humidity — would " *
+                "be wrong."
+        )
+    )
+    isempty(system.idx_solvent) && throw(
+        ArgumentError("PoreHumidity needs an aqueous solvent to compute a humidity for.")
+    )
+    P = pressure(reference)
+    V̄ = Float64[
+        _has_molar_volume(sp) ? ustrip(us"m^3/mol", sp[:V⁰](T = T, P = P; unit = true)) : 0.0
+            for sp in system.species
+    ]
+    V_ref = ustrip(us"m^3", volume(reference).total)
+    V_ref > 0 || throw(ArgumentError("PoreHumidity: the reference volume is zero."))
+    return PoreHumidity(
+        retention, V̄, collect(system.idx_aqueous), collect(system.idx_crystal),
+        V_ref, V̄[only(system.idx_solvent)], ustrip(us"K", T),
+    )
+end
+
+"""
+    pore_saturation(h::PoreHumidity, n) -> Real
+
+Degree of saturation of the pore space at composition `n`, `V_liquid / V_pore`
+with `V_pore = V_ref − V_solid`. Clamped to `[0, 1]`.
+"""
+function pore_saturation(h::PoreHumidity, n::AbstractVector)
+    V_liq = zero(eltype(n))
+    for i in h.idx_liquid
+        V_liq += h.V̄[i] * n[i]
+    end
+    V_sol = zero(eltype(n))
+    for i in h.idx_solid
+        V_sol += h.V̄[i] * n[i]
+    end
+    V_pore = h.V_ref - V_sol
+    V_pore > 0 || return one(eltype(n))
+    return clamp(V_liq / V_pore, zero(eltype(n)), one(eltype(n)))
+end
+
+(h::PoreHumidity)(n::AbstractVector) =
+    _retention_activity(h.retention, pore_saturation(h, n), h.V_m_w, h.T_K)
+
+# The third `_humidity_at` method lives here rather than beside the other two:
+# Julia needs `PoreHumidity` to exist when the method is defined, and the other
+# two are declared long before this type is.
+@inline _humidity_at(h::PoreHumidity, _t, n) = h(n.data)
 
 """
     powers_alpha_max(w_c) -> Real
