@@ -1,5 +1,202 @@
 # Changelog
 
+## v0.17.0 — the water that is there, and the water that counts
+
+Two halves. An **ion-interaction activity model**, which is the second of the
+two ingredients the roadmap named for predicting where a sealed paste stops; and
+the **coupled kinetic run** that 0.16.0 described and never performed, which
+turns out to have been impossible for a reason worth recording. Around them, the
+documentation was reorganized into four chapters, and every activity model in
+the package now states the physics behind its formulas and the provenance of
+every default it carries.
+
+### Breaking changes
+
+- **`ΔₐG⁰overT` is renamed `ΔₐG⁰overRT`.** It was a typo: the quantity is
+  `ΔₐG⁰/(RT)`, dimensionless, and it has to be, since it is added directly to
+  `ln aᵢ` to form `μᵢ/RT`. The parameter tuple is part of the documented
+  interface — an `activity_model` closure reads `p.ΔₐG⁰overRT` — so a custom
+  activity model written against the old name now fails with a
+  `NamedTuple has no field` error rather than silently. 45 occurrences renamed.
+- **The registry treats a minor bump below 1.0 as breaking whatever the API
+  did**, so `[compat] ChemistryLab = "0.16"` will not accept `0.17`. Downstream
+  packages must widen their bound. `MeanFieldHomogenization.jl` depends on this
+  package only in `docs/Project.toml`.
+- **`PoreHumidity` no longer differentiates its retention law at full
+  saturation.** Its value there is unchanged; its derivative is now zero instead
+  of infinite. Anything that read the derivative at `S = 1` — nothing could,
+  since the integration it exists for did not run — changes.
+
+### Added — `PitzerActivityModel`
+
+An ion-interaction model, and a different kind of object from everything else in
+`activities.jl`. Those are corrected Debye-Hückel laws: one screening term, one
+size correction, one empirical term for the rest. This one expands the excess
+Gibbs energy as a **virial series in the molalities** — a coefficient per ion
+pair, one per triplet, no per-species radius — which Anderson & Crerar derive as
+a cluster expansion with osmotic pressure in place of pressure.
+
+The consequence is the reason to have it: `γ` and the osmotic coefficient are
+partial derivatives of **one** function, so the Gibbs-Duhem relation between
+solutes and solvent is an identity of the algebra. Measured, with the derivative
+taken analytically: the residual is **exactly zero** along three composition
+directions at 0.1, 1 and 3 mol/kg, where the B-dot model's is not small. A
+finite difference cannot see this — its own truncation error at 0.1 mol/kg is
+larger than the quantity — which is why the test uses AD.
+
+Also validated: the dilute limit reproduces `log₁₀ γ± → −A|z₊z₋|√I`, and the
+model agrees with the independent B-dot implementation at a millimolal, as two
+models sharing a limit must.
+
+**Nothing is parameterized by default, and completeness is checked against the
+species list rather than against the set.** A table is complete or not
+*relative to a system*, so `PitzerParameters` takes every table as a keyword
+without a default — `UndefKeywordError` before a number is computed — and the
+check that matters happens when the model meets a `ChemicalSystem`: every
+cation-anion pair present must have a `β⁰`, and the error names those that do
+not. A missing `θ`, `ψ` or `λ` is zero, which is the convention of the
+literature the tables come from; a missing `β⁰` cannot be, because falling back
+on ideal behavior for one pair of a Pitzer calculation is not an answer.
+
+Two limitations are in the docstring rather than left to be discovered: the
+higher-order electrostatic terms are not implemented, which is exact for a
+symmetrical pair and an omission in a Na/Ca mixture; and no temperature
+dependence of the interaction parameters themselves.
+
+### Added — a cited cement parameter set, with its provenance per entry
+
+`data/pitzer-reardon1990.toml`, read through `build_pitzer_parameters`, from
+Reardon (1990), *Cement and Concrete Research* **20**, 175–192, whose tables are
+those of Harvie, Møller & Weare (1984) with three exceptions he names. Nothing
+about it is automatic: the file has to be named.
+
+Two properties of the set change what a user should conclude from it, so they
+are recorded in the file and readable from code:
+
+- the silicate, aluminate and ferrate parameters are **estimates, not
+  measurements**. Reardon says which analog each borrows — HSO₄⁻ for Fe(OH)₄⁻,
+  Al(OH)₄⁻ and H₃SiO₄⁻, SO₄²⁻ for H₂SiO₄²⁻, H₂CO₃⁰ for H₄SiO₄⁰ — and those are
+  exactly the ions a cement assemblage needs. Every affected entry carries
+  `origin = "estimated:<analog>"`, read back by `pitzer_origin`;
+- the set assumes a **fully dissociated** speciation. The association of Ca with
+  SO₄, of Na with OH, is already inside these β coefficients, so a species list
+  that also carries `Ca(SO4)@` or `CaOH+` — as CEMDATA18 does — counts each
+  association twice, and CEMDATA18 also names the silica species differently.
+  The completeness check refuses such a system rather than returning a number,
+  and that refusal is the correct outcome in any code, not a shortcoming here.
+
+Transcription was verified rather than trusted: Table 2's 216 values were
+checked against the PDF text layer and all matched, the only surplus tokens on
+the PDF side being OCR fragments of the Greek symbols. Tables 5 and 6 could not
+be checked that way — that text layer turns one −0.0677 into −0.0077 and drops
+two others — so they were read from the pages rendered at six times
+magnification, and the data file's header says so.
+
+### Fixed — `PoreHumidity` could not be integrated
+
+0.16.0 built it, wired the dispatch, and said in the self-desiccation page that
+handing it to `parrot_killoh_avrami` and integrating was how to obtain the
+arrest in time. Nothing ever did, and doing it found why: **the integration did
+not advance past `t = 0`.**
+
+Every retention law of the van Genuchten family has an unbounded `dp_c/dS` at
+full saturation, and a sealed paste starts saturated. An implicit solver
+differentiates the rate law at its first step, so it received an infinite
+Jacobian entry — the gradient of the humidity with respect to the composition
+came back with an infinite norm — and returned immediately with every degree of
+hydration at zero. No unit test on the object could see this: the object is well
+behaved, and only an integration reaches the singular point.
+
+The value at saturation is not in doubt, so it is now returned as a constant and
+the derivative there is zero. The code says plainly that this is a
+**regularization and not an identity**, that it applies within `1e-10` of
+saturation — the initial condition alone, in practice — and that the solver
+leaves that point on its first successful step, after which the real and stiff
+derivative applies.
+
+What the coupled run then gives, with `α_max = 1.0` and no Powers bound: the
+arrest is a **result**. The uncoupled rate reaches the same α(C3S) = 0.9164 at
+every w/c, because it knows nothing about how much water there is; coupled, α
+runs from 0.556 at w/c 0.25 to 0.837 at 0.50. The drier mixes stop at an
+internal humidity of 0.800 and a pore saturation of **0.786** — which is the
+`S*` the static water budget reads off the same measured retention curve at
+RH 0.80. The trajectory arrives at the number the budget assumes, by a different
+route, with nothing arranged to make it so.
+
+It also shows that the proportionality `α_max ∝ w/c`, exact in the static
+construction, does **not** survive integration: `k = (w/c)/α_max` is near 0.45
+at the dry end and rises with w/c. The static page is careful to say that the
+proportionality is structural and no evidence; this is what it looks like when
+the structure is removed.
+
+### Added — `water_activity`, and a `kelvin_shift` on `log_activities`
+
+0.16.0's own release notes recorded that `log_activities` did not know about the
+capillary shift, so a solve posed at `a_w = 0.90` read back as 0.999995. Both
+accessors now take a `kelvin_shift` keyword, `0.0` by default so that nothing
+changes for a caller who does not ask, and `water_activity(state, model;
+kelvin_shift)` returns the composed value. The chemical and capillary lowerings
+are independent, their chemical potentials add, and so their activities
+multiply — which is what the keyword implements and what the docstring derives.
+
+### Documentation — four chapters, and the physics behind every formula
+
+The page tree was four flat lists in the order the pages were written. It is now
+grouped, and each chapter answers one question: **Theory** why this is the right
+calculation, **Manual** how an object is written, **Tutorials** how to drive a
+calculation, **Applications** what a real case looks like and what the choices
+cost in numbers. Nine pages that were object syntax filed under Tutorials moved
+to the Manual. **Cementitious media is a subsection of four chapters rather than
+a chapter of its own**, because the material is the subject of the package and
+belongs wherever its question is being asked. No page was removed; three paths
+that released notes link by URL were deliberately left where they are.
+
+A **Theory** chapter, with the rule written on its own index that a theory page
+may show code where the correspondence with the implementation is the point, and
+does not build systems, solve, or print tables:
+
+- **Thermochemistry** — the definitions and identities in the code's own
+  notation, where `μ°(T,P)` comes from, equilibrium as a constrained
+  minimization with the component potentials as its multipliers, and the
+  saturation index as a difference of those potentials. That identity is now
+  asserted in the test suite, which recomputes `LogSI` by hand from the formula
+  the page states.
+- **Proving that an answer is the answer** — the convexity proof, the KKT
+  conditions and the dual solver, moved out of the tutorial they were living in.
+- **Activity models** — where the `√I` comes from, in three steps with the
+  assumptions each makes, since those assumptions are what later fails; why `A`
+  and `B` are properties of water rather than fitting constants; the Debye
+  length, which at a cement pore solution's ionic strength is 0.55 nm — the
+  width of the gel pores where a paste keeps its last water, so the
+  continuum-dielectric and mean-field assumptions are strained exactly where the
+  arrest happens; and `Ḃ` in its real status as a deviation function fitted to
+  one salt.
+- **Solid solutions** — mixing entropy, the excess Gibbs energy, the Margules
+  and Redlich-Kister forms as implemented, and what the sign of `W` means. Two
+  identities are checked rather than claimed: that Redlich-Kister reduces to a
+  regular solution, and that `W = 2RT` is the critical point.
+- **The water budget of a hydrating paste** — why a Gibbs minimization predicts
+  that clinker survives below `w/c ≈ 0.30` while Powers reports 0.42, and why
+  the gap is not a thermodynamic quantity: the capillary term is two orders of
+  magnitude too weak, and what stops a real paste is a broken liquid path
+  across four orders of magnitude of length, which a 0D model has no
+  representation of.
+
+Every default of every activity model is now classified as derived, tabulated,
+or **a convention with no source recorded in this package** — `Ḃ = 0.041`,
+`Kₙ = 0.1` and `å_default = 3.72` are in the third class, and that is said out
+loud rather than given a plausible citation.
+
+Long solver output is folded into collapsed blocks rather than unrolled: seven
+pages ended on an assignment whose value Documenter then displayed in full, up
+to 48 species and a whole conservation matrix between two paragraphs.
+
+### Compatibility
+
+Tested on Julia 1.12 and 1.13. `[compat] julia = "1.12"` is unchanged and
+already admitted 1.13.
+
+
 ## v0.16.0 — the water a paste cannot use
 
 A sealed cement paste stops hydrating before it runs out of cement, and until now
