@@ -210,3 +210,45 @@ end
     @test kelvin_radius(a_w_needed; γ = γ, V_m = V_m, T = T) < 1.0e-9
 
 end
+
+# ── the shift reaches the accessors ─────────────────────────────────────────
+
+@testsection "the capillary shift can be read back off a state" begin
+    # 0.16.0 shipped the shift in the solver's parameter block and nothing that
+    # read a state knew about it, so `log_activities` reported the chemical
+    # water activity after a solve posed at 0.90. Both accessors now take it.
+    subs = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
+    d = Dict(symbol(s) => s for s in subs)
+    cs = ChemicalSystem(
+        [d[s] for s in split("H2O@ H+ OH- Na+ Cl-")], ["H2O@", "H+", "Na+", "Cl-", "Zz"]
+    )
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 1.0u"kg")
+    set_quantity!(st, "Na+", 0.1u"mol")
+    set_quantity!(st, "Cl-", 0.1u"mol")
+    set_quantity!(st, "H+", 1.0e-7u"mol")
+    set_quantity!(st, "OH-", 1.0e-7u"mol")
+    model = HKFActivityModel()
+
+    chem = water_activity(st, model)
+    @test 0.99 < chem < 1.0                        # a dilute solution, barely lowered
+
+    # The shift multiplies the activity, so it adds to the logarithm.
+    shift = log(0.9)
+    held = water_activity(st, model; kelvin_shift = shift)
+    @test isapprox(held, chem * 0.9; rtol = 1.0e-12)
+    @test isapprox(
+        log_activities(st, model; kelvin_shift = shift)["H2O@"],
+        log_activities(st, model)["H2O@"] + shift; atol = 1.0e-14,
+    )
+
+    # A zero shift changes nothing, which is what makes the keyword safe to add.
+    @test log_activities(st, model; kelvin_shift = 0.0) == log_activities(st, model)
+    # Only the solvent moves.
+    a0 = log_activities(st, model)
+    a1 = log_activities(st, model; kelvin_shift = shift)
+    for k in keys(a0)
+        k == "H2O@" && continue
+        @test a0[k] == a1[k]
+    end
+end

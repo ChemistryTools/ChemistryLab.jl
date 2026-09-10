@@ -1174,8 +1174,30 @@ function pore_saturation(h::PoreHumidity, n::AbstractVector)
     return clamp(V_liq / V_pore, zero(eltype(n)), one(eltype(n)))
 end
 
-(h::PoreHumidity)(n::AbstractVector) =
-    _retention_activity(h.retention, pore_saturation(h, n), h.V_m_w, h.T_K)
+function (h::PoreHumidity)(n::AbstractVector)
+    S = pore_saturation(h, n)
+    # A saturated pore is the singular point of every retention law of the van
+    # Genuchten family: `dp_c/dS` is **unbounded** as `S → 1`, so a rate law
+    # differentiated there — which is what an implicit ODE solver does at the
+    # very first step, a fresh paste being saturated — inherits an infinite
+    # Jacobian entry and the integration cannot start at all. Measured: the
+    # gradient of this function comes back with an infinite norm at `S = 1`.
+    #
+    # The value at saturation is not in doubt: water held at zero suction has
+    # `a_w = 1`. So it is returned as a constant, branching on the primal the
+    # way `_hkf_sigma` and `_pitzer_g` do, which sets the derivative to zero
+    # there instead of to infinity.
+    #
+    # That is a **regularization and not an identity** — the true derivative is
+    # unbounded, not zero. It applies only within `1e-10` of full saturation,
+    # which in practice is the initial condition alone: the rate at `S = 1` is
+    # unhindered, so water is consumed and the solver leaves the singular point
+    # on its first successful step, after which the real derivative is used. It
+    # is large just below saturation (of order `(1-S)^(-m)`) and that is a
+    # stiffness, which is what the implicit solver is for.
+    _primal(S) >= 1 - 1.0e-10 && return one(eltype(n))
+    return _retention_activity(h.retention, S, h.V_m_w, h.T_K)
+end
 
 # The third `_humidity_at` method lives here rather than beside the other two:
 # Julia needs `PoreHumidity` to exist when the method is defined, and the other

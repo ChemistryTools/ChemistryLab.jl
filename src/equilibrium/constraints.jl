@@ -391,23 +391,27 @@ not the proof the fixed-(T, P) route gives.
 
 # Reading the shift back
 
-!!! warning "`log_activities` does not know about the shift"
-    The shift lives in the solver's parameter block, not in the activity model,
-    so [`log_activities`](@ref) and everything built on it — [`activities`](@ref),
-    `pH(state, model)`, [`saturation_indices`](@ref) — return the **chemical**
-    water activity, which this constraint barely moves. The activity the solve
-    actually worked with is that value plus the shift:
+!!! warning "The shift has to be passed to the accessors"
+    The shift lives in the solver's parameter block and not in the activity
+    model, because it is a property of the pore rather than of the composition.
+    So [`log_activities`](@ref) and everything built on it — [`activities`](@ref),
+    `pH(state, model)`, [`saturation_indices`](@ref) — report the **chemical**
+    water activity by default, which this constraint barely moves. Both
+    [`log_activities`](@ref) and [`water_activity`](@ref) take a `kelvin_shift`
+    keyword for the composed value:
 
     ```julia
     q = Ref(Float64[])
     eq, cert = equilibrate_certified(state; constraint = c, parameters = q)
-    a_w = exp(log_activities(eq, model)["H2O@"] + only(q[]))   # what the solver saw
+    water_activity(eq, model; kelvin_shift = only(q[]))        # what the solver saw
+    log_activities(eq, model; kelvin_shift = only(q[]))["H2O@"]
     ```
 
     Measured on a calcite system with the shift set to `ln 0.90`: the chemical
     log-activity comes back at `-5.3e-6`, i.e. `a_w = 0.999995`, while the
-    activity the solve was posed with is 0.90. A caller who reads the first and
-    concludes nothing happened has read the wrong number.
+    activity the solve was posed with is 0.90. A caller who reads the default
+    and concludes that nothing happened has read the wrong number — which is why
+    the keyword exists and why it is documented here rather than discovered.
 
 # Examples
 

@@ -230,7 +230,8 @@ function ionic_strength(
 end
 
 """
-    log_activities(state::ChemicalState, model::AbstractActivityModel)
+    log_activities(state::ChemicalState, model::AbstractActivityModel;
+                   ϵ = 1e-16, kelvin_shift = 0.0)
         -> OrderedDict{String,Float64}
 
 Natural log of the activity of **every** species, in the model's own convention.
@@ -252,10 +253,48 @@ lna["H2O@"]                                  # ln a_w
 exp(lna["Portlandite"])                      # 1.0 for a pure phase that is present
 ```
 
-See also: [`activities`](@ref), [`activity_coefficients`](@ref).
+# The capillary shift
+
+`kelvin_shift` is added to the solvent's log-activity, and it is `0.0` by
+default so that nothing changes for a caller who does not ask.
+
+It exists because an activity model computes the activity of water from the
+**composition** of the solution and knows nothing about the pore that holds it.
+Under [`CapillaryWater`](@ref) the solve is posed with a shifted solvent
+potential — the Kelvin term — and that shift is returned to the caller in the
+`parameters` reference, not stored in the state. Reading the activities back
+without it therefore reports the chemical value and not the pore value: after a
+solve posed at `a_w = 0.90` this function returns 0.999995 unless the shift is
+passed in.
+
+The two lowerings are independent and their chemical potentials add, so the
+activities multiply:
+
+```math
+a_w = a_w^{\\mathrm{chem}} \\cdot a_w^{\\mathrm{cap}}
+    = \\exp\\!\\left(-M_w\\varphi\\sum_i m_i\\right)
+      \\exp\\!\\left(-\\frac{2\\gamma V_m}{rRT}\\right)
+```
+
+with `kelvin_shift` the logarithm of the second factor — a **negative** number,
+since a meniscus lowers the activity. [`water_activity`](@ref) is the accessor
+for the composed value.
+
+# Examples
+
+```julia
+q = Ref{Vector{Float64}}()
+eq, cert = equilibrate_certified(state; constraint = CapillaryWater(law; reference = fresh),
+                                 parameters = q)
+lna = log_activities(eq, model; kelvin_shift = q[][1])   # the pore water
+```
+
+See also: [`activities`](@ref), [`activity_coefficients`](@ref),
+[`water_activity`](@ref), [`CapillaryWater`](@ref).
 """
 function log_activities(
-        state::ChemicalState, model::AbstractActivityModel; ϵ::Float64 = 1.0e-16
+        state::ChemicalState, model::AbstractActivityModel;
+        ϵ::Float64 = 1.0e-16, kelvin_shift::Real = 0.0,
     )
     cs = state.system
     lna_fun = activity_model(cs, model)
@@ -266,7 +305,54 @@ function log_activities(
     for (i, sp) in enumerate(cs.species)
         out[symbol(sp)] = _primal(lna[i])
     end
+    if !iszero(kelvin_shift)
+        i_w = only(cs.idx_solvent)
+        out[symbol(cs.species[i_w])] += _primal(kelvin_shift)
+    end
     return out
+end
+
+"""
+    water_activity(state::ChemicalState, model::AbstractActivityModel;
+                   ϵ = 1e-16, kelvin_shift = 0.0) -> Float64
+
+The activity of water in `state`, composed of both lowerings.
+
+```math
+a_w = \\underbrace{\\exp\\!\\left(-M_w\\varphi\\sum_i m_i\\right)}_{\\text{the solutes}}
+      \\cdot
+      \\underbrace{\\exp(\\texttt{kelvin\\_shift})}_{\\text{the pore}}
+```
+
+The first factor is what the activity model computes from the composition. The
+second is the capillary term, which is **not** a property of the composition: it
+depends on the pore the water sits in, so it has to be supplied. Pass the shift
+that [`CapillaryWater`](@ref) returned through its `parameters` reference, or
+compute one from a retention law with
+[`water_activity`](@ref)`(r, S; V_m, T)` and take its logarithm.
+
+Left at its default the function reports the chemical water activity alone,
+which is the right answer for a solution in a container and the wrong one for a
+solution in a gel pore.
+
+# Examples
+
+```julia
+water_activity(eq, model)                          # chemical only
+water_activity(eq, model; kelvin_shift = log(0.9)) # held at RH 90 % as well
+```
+
+See also: [`log_activities`](@ref), [`CapillaryWater`](@ref),
+[`kelvin_activity`](@ref), [`PoreHumidity`](@ref).
+"""
+function water_activity(
+        state::ChemicalState, model::AbstractActivityModel;
+        ϵ::Float64 = 1.0e-16, kelvin_shift::Real = 0.0,
+    )
+    cs = state.system
+    i_w = _require_aqueous(cs, "water_activity")
+    lna = log_activities(state, model; ϵ = ϵ, kelvin_shift = kelvin_shift)
+    return exp(lna[symbol(cs.species[i_w])])
 end
 
 """
