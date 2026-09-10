@@ -138,7 +138,7 @@ end
     # Very dilute: 1 kg water (≈ 55.5 mol), 1e-6 mol NaCl
     n_w = 1.0 / M_W
     n = [n_w, 1.0e-6, 1.0e-6]
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # ln aᵢ ≈ ln(mᵢ) as I → 0 (activity coefficient → 1)
@@ -160,7 +160,7 @@ end
     m = 0.1
     n_w = 1.0 / M_W
     n = _moles_from_molality(m, n_w)
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     A, B, Ḃ = 0.5114, 0.3288, 0.041
@@ -194,7 +194,7 @@ end
     m_co2 = 0.01
     n_w = 1.0 / M_W
     n = [n_w, m_NaCl * n_w * M_W, m_NaCl * n_w * M_W, m_co2 * n_w * M_W]
-    p = (ΔₐG⁰overT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     I = m_NaCl   # 1:1 electrolyte
@@ -269,8 +269,8 @@ end
     n_w = 1.0 / M_W
     n = _moles_from_molality(m, n_w)
 
-    p25 = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
-    p100 = (ΔₐG⁰overT = zeros(3), T = 373.15, P = 1.0e5, ϵ = 1.0e-30)
+    p25 = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p100 = (ΔₐG⁰overRT = zeros(3), T = 373.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # At 25 °C, fixed A/B ≈ T-dependent (same values)
     @test isapprox(lna_fixed(n, p25)[2], lna_tdep(n, p25)[2]; rtol = 1.0e-3)
@@ -293,7 +293,7 @@ end
     m = 0.3
     n_w = 1.0 / M_W
     n0 = _moles_from_molality(m, n_w)
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # Finite-difference perturbation along NaCl dissolution direction
     δ = 1.0e-6
@@ -323,7 +323,7 @@ end
 
     n_w = 1.0 / M_W
     n = [n_w, 0.3, 0.7]
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     @test isapprox(out[2], log(0.3 / 1.0); rtol = 1.0e-8)   # ln(x_CO2)
@@ -342,7 +342,7 @@ end
     n_w = 1.0 / M_W
     n = _moles_from_molality(m, n_w)
     ΔG = [-95.0, -4.0, -2.0]
-    p = (ΔₐG⁰overT = ΔG, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = ΔG, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     expected = ΔG .+ lna(n, p)
     result = μ(n, p)
@@ -373,7 +373,7 @@ end
     m = 0.3
     n_w = 1.0 / M_W
     n0 = _moles_from_molality(m, n_w)
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     g = ForwardDiff.gradient(n -> lna(n, p)[2], n0)
     @test all(isfinite, g)
@@ -393,7 +393,7 @@ end
     m = 0.1
     n_w = 1.0 / M_W
     n = _moles_from_molality(m, n_w)
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # Verify analytical Davies formula for NaCl: z=1, I=m

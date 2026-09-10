@@ -126,7 +126,7 @@ end
     cs = ChemicalSystem([em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # x₁ = 0.7, x₂ = 0.3
     n = [0.7, 0.3]
@@ -149,7 +149,7 @@ end
     cs = ChemicalSystem([em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     # n₂ very small → x₁ ≈ 1, ln a₁ ≈ 0
     n_pure = [1.0 - 1.0e-12, 1.0e-12]
@@ -175,7 +175,7 @@ end
     RT = 8.31446261815324 * T
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = T, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = T, P = 1.0e5, ϵ = 1.0e-30)
 
     # x₁ = 0.3, x₂ = 0.7
     x1, x2 = 0.3, 0.7
@@ -211,7 +211,7 @@ end
     n_Na = 0.1
     n1, n2 = 0.6, 0.4
     n = [n_w, n_Na, n1, n2]
-    p = (ΔₐG⁰overT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # SS end-members: should match ideal mixing formula
@@ -235,7 +235,7 @@ end
     n_w = 55.5
     n1, n2 = 0.6, 0.4
     n = [n_w, n1, n2]
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     out = lna(n, p)
 
     # SS end-members correct
@@ -251,7 +251,7 @@ end
     cs = ChemicalSystem([em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     n0 = [0.7, 0.3]
     # Perturbation: shift n₁ ↑ ε, n₂ ↓ ε (internal composition change, total constant)
@@ -274,7 +274,7 @@ end
     cs = ChemicalSystem([H2O, Na, em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(4), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     n0 = [55.5, 0.1, 0.7, 0.3]
 
     # Gradient of each component
@@ -295,7 +295,7 @@ end
     cs = ChemicalSystem([em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     n0 = [0.7, 0.3]
 
     J = ForwardDiff.jacobian(n -> lna(n, p), n0)
@@ -310,7 +310,7 @@ end
     cs = ChemicalSystem([em1, em2]; solid_solutions = [ss])
 
     lna = activity_model(cs, DiluteSolutionModel())
-    p = (ΔₐG⁰overT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(2), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     n0 = [0.6, 0.4]
 
     J = ForwardDiff.jacobian(n -> lna(n, p), n0)
@@ -326,7 +326,7 @@ end
     μ = build_potentials(cs, DiluteSolutionModel())
     n = [0.7, 0.3]
     ΔaGoT = [-100.0, -110.0]
-    p = (ΔₐG⁰overT = ΔaGoT, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = ΔaGoT, T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 
     out = μ(n, p)
     # μᵢ/RT = ΔₐG⁰ᵢ/RT + ln aᵢ

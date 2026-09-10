@@ -324,7 +324,7 @@ function _titrant_blocks(des, state, p, i_species, i_titrant, ln_a_target)
     scale = max(sum(Float64[ustrip(us"mol", x) for x in state.n]), 1.0) * 1.0e-6
     cq = (x, q, params) -> [des.lna(x, params)[i_species] - ln_a_target]
     return (;
-        nq = 1, gq = (q, params) -> params.ΔₐG⁰overT, hq = nothing, cq = cq,
+        nq = 1, gq = (q, params) -> params.ΔₐG⁰overRT, hq = nothing, cq = cq,
         Aq = Aq, q0 = [0.0], qscale = [scale],
         apply = (T, P, q) -> (T, P),
         titrant_amount = q -> q[1],
@@ -525,7 +525,7 @@ function _constraint_blocks(c::CapillaryWater, des, state, p, n0)
 
     return (;
         nq = 1,
-        gq = (q, params) -> params.ΔₐG⁰overT,
+        gq = (q, params) -> params.ΔₐG⁰overRT,
         hq = (x, q, params) -> begin
             v = des.lna(x, params)
             v[j_w] += q[1]

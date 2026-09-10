@@ -49,7 +49,7 @@ concentration_scale(model::YourModel)                          # :molality | :mo
 
 `lna(n, p)` receives the **full mole vector** `n`, indexed like `cs.species`,
 and the parameter tuple `p` carrying at least `ϵ` and usually `T`, `P` and
-`ΔₐG⁰overT`; it returns `ln aᵢ` for every species — solutes, solvent, pure
+`ΔₐG⁰overRT`; it returns `ln aᵢ` for every species — solutes, solvent, pure
 crystals (`0`), gases, and solid-solution end-members. Three properties are
 required rather than nice to have:
 
@@ -205,11 +205,11 @@ potentials `μ_i / RT` for all species.
 The returned function is compatible with SciML solvers:
 - `n`: dimensionless mole vector
 - `p`: `NamedTuple` containing:
-  - `ΔₐG⁰overT`: vector of standard Gibbs energies of formation divided by RT
+  - `ΔₐG⁰overRT`: vector of standard Gibbs energies of formation divided by RT
   - `ϵ`: regularization floor (e.g. `1e-30`)
 
 All quantities are dimensionless — caller is responsible for stripping units
-from `ΔₐG⁰overT` before passing them in `p`.
+from `ΔₐG⁰overRT` before passing them in `p`.
 
 # Examples
 ```jldoctest
@@ -222,7 +222,7 @@ julia> μ = build_potentials(cs, DiluteSolutionModel());
 
 julia> n = [55.5, 0.1];
 
-julia> p = (ΔₐG⁰overT = [-95.6, -105.6], ϵ = 1e-30);
+julia> p = (ΔₐG⁰overRT = [-95.6, -105.6], ϵ = 1e-30);
 
 julia> length(μ(n, p)) == 2
 true
@@ -234,7 +234,7 @@ function build_potentials(cs::ChemicalSystem, model::AbstractActivityModel)
     lna = activity_model(cs, model)
 
     function μ(n::AbstractVector, p)
-        return p.ΔₐG⁰overT .+ lna(n, p)       # μ_i/RT = ΔₐG⁰_i/RT + ln(a_i)
+        return p.ΔₐG⁰overRT .+ lna(n, p)       # μ_i/RT = ΔₐG⁰_i/RT + ln(a_i)
     end
 
     return μ

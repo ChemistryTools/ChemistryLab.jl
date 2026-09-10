@@ -505,7 +505,7 @@ function saturation_indices(
     cs = state.system
     lna = log_activities(state, model; ϵ = ϵ)
     p = _build_params(state; ϵ = ϵ)
-    g = [p.ΔₐG⁰overT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
+    g = [p.ΔₐG⁰overRT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
     A = cs.SM.A
     idx = Dict(symbol(sp) => i for (i, sp) in enumerate(cs.species))
     # A row whose primary is not among the species — the charge row — gets zero,

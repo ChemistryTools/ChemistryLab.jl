@@ -283,7 +283,7 @@ cs3 = ChemicalSystem([dict[s] for s in split("H2O@ Na+ Cl-")], ["H2O@", "Na+", "
 
 function gd_residual(mod, m, dn)
     μ = build_potentials(cs3, mod)
-    p = (ΔₐG⁰overT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
     n0 = [n_w, m, m]
     δ = 1.0e-6
     dμ = (μ(n0 + δ * dn, p) - μ(n0, p)) / δ

@@ -221,7 +221,7 @@
 
         # _build_params must return finite dimensionless values
         p = ChemistryLab._build_params(state_ad)
-        @test all(isfinite, p.ΔₐG⁰overT)
+        @test all(isfinite, p.ΔₐG⁰overRT)
         @test isfinite(p.T)
         @test isfinite(p.P)
 

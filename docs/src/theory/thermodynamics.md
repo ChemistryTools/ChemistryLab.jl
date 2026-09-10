@@ -27,13 +27,13 @@ Divide by ``RT`` and the code appears verbatim. [`build_potentials`](@ref)
 returns the closure
 
 ```julia
-μ(n, p) = p.ΔₐG⁰overT .+ lna(n, p)      #  μᵢ/RT  =  ΔₐG⁰ᵢ/RT  +  ln aᵢ
+μ(n, p) = p.ΔₐG⁰overRT .+ lna(n, p)      #  μᵢ/RT  =  ΔₐG⁰ᵢ/RT  +  ln aᵢ
 ```
 
 so throughout this documentation
 
 ```math
-g_i \;\equiv\; \frac{\mu_i}{RT} \;=\; \underbrace{\texttt{ΔₐG⁰overT[i]}}_{\text{database}}
+g_i \;\equiv\; \frac{\mu_i}{RT} \;=\; \underbrace{\texttt{ΔₐG⁰overRT[i]}}_{\text{database}}
       \;+\; \underbrace{\texttt{lna(n,p)[i]}}_{\text{activity model}} .
 ```
 
@@ -188,7 +188,7 @@ model = HKFActivityModel()
 # By hand, straight from the formula above.
 lna = log_activities(st, model)
 p = ChemistryLab._build_params(st; ϵ = 1.0e-16)
-g = [p.ΔₐG⁰overT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
+g = [p.ΔₐG⁰overRT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
 idx = Dict(symbol(sp) => i for (i, sp) in enumerate(cs.species))
 y = [haskey(idx, symbol(pr)) ? g[idx[symbol(pr)]] : 0.0 for pr in cs.SM.primaries]
 A = cs.SM.A

@@ -309,7 +309,7 @@ end
 
 """
     saturation_ratio(stoich::AbstractVector, lna::AbstractVector,
-                     ΔₐG⁰overT::AbstractVector; ϵ=1e-16) -> Real
+                     ΔₐG⁰overRT::AbstractVector; ϵ=1e-16) -> Real
 
 Compute the saturation ratio Ω = IAP / K for a kinetic reaction.
 
@@ -320,14 +320,14 @@ ln Ω = Σᵢ νᵢ ln aᵢ − ln K
 
 where `stoich[i]` is the stoichiometric coefficient (positive for products,
 negative for reactants), `lna[i]` is the log-activity of species `i`,
-and `ΔₐG⁰overT[i]` is the dimensionless standard Gibbs energy of formation
+and `ΔₐG⁰overRT[i]` is the dimensionless standard Gibbs energy of formation
 `ΔₐG⁰ᵢ / RT` for species `i`.
 
 # Arguments
 
   - `stoich`: stoichiometric coefficient vector for this reaction (length = number of species).
   - `lna`: log-activity vector (same indexing as species in system).
-  - `ΔₐG⁰overT`: dimensionless standard Gibbs energies `ΔₐG⁰ᵢ/RT`.
+  - `ΔₐG⁰overRT`: dimensionless standard Gibbs energies `ΔₐG⁰ᵢ/RT`.
   - `ϵ`: floor to avoid `exp` overflow when Ω → ∞.
 
 # Returns
@@ -339,13 +339,13 @@ AD-compatible (ForwardDiff-safe).
 function saturation_ratio(
         stoich::AbstractVector,
         lna::AbstractVector,
-        ΔₐG⁰overT::AbstractVector;
+        ΔₐG⁰overRT::AbstractVector;
         ϵ::Real = 1.0e-16,
     )
     # ln IAP = Σᵢ νᵢ ln aᵢ
     ln_iap = sum(stoich[i] * lna[i] for i in eachindex(stoich))
     # ln K = -ΔᵣG⁰/RT = -Σᵢ νᵢ ΔₐG⁰ᵢ/RT
-    ln_K = -sum(stoich[i] * ΔₐG⁰overT[i] for i in eachindex(stoich))
+    ln_K = -sum(stoich[i] * ΔₐG⁰overRT[i] for i in eachindex(stoich))
     return exp(ln_iap - ln_K)
 end
 

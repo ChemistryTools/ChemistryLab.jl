@@ -809,7 +809,7 @@ function ChemistryLab.activity_model(cs::ChemicalSystem, ::MyModel)
 
     # Return a closure lna(n, p) -> Vector compatible with ForwardDiff
     function lna(n::AbstractVector, p)
-        # p contains at minimum: p.ΔₐG⁰overT, p.T, p.P, p.ϵ
+        # p contains at minimum: p.ΔₐG⁰overRT, p.T, p.P, p.ϵ
         # n is dimensionless mole vector, same indexing as cs.species
         out = zeros(eltype(n), length(n))
         # ... fill log-activities ...
