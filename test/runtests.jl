@@ -98,6 +98,7 @@ end
     include("certified_equilibrium.jl")
     include("equilibrium_constraints.jl")
     include("capillary.jl")
+    include("pitzer.jl")
 end
 
 @testsection "Utils tests" begin
