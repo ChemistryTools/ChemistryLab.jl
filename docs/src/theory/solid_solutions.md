@@ -14,11 +14,6 @@ and hydroxide on the same interlayer site; alkalis partition into hydrates rathe
 than staying in solution. A model that only knows pure phases predicts sharp
 appearances and disappearances that are not observed.
 
-```@example ss
-using ChemistryLab, Printf
-nothing # hide
-```
-
 ## 1. Ideal mixing: the activity *is* the mole fraction
 
 Put ``n_k`` moles of each end-member into one phase, with mole fractions
@@ -109,17 +104,16 @@ unstable to unmixing where that function is concave, and
 ```
 
 which at ``x = 1/2`` is ``4 - 2W/RT``: negative as soon as ``W > 2RT``. So
-``W/RT = 2`` is the critical point of a symmetric regular solution — below it one
-homogeneous phase, above it a miscibility gap that widens as ``W`` grows:
+``W/RT = 2`` — about **5 kJ/mol at 25 °C** — is the critical point of a symmetric
+regular solution: below it one homogeneous phase, above it a miscibility gap
+that widens as ``W`` grows. The threshold is evaluated, and the sign of the
+second derivative tabulated on either side of it, in
+[Solid solution models, in numbers](@ref sec-app-solid-solutions).
 
-```@example ss
-d2G(x, w) = 1 / x + 1 / (1 - x) - 2w          # w = W/RT
-verdict(v) = abs(v) < 1.0e-12 ? "critical point" : v > 0 ? "one phase" : "unmixes"
-println("  W/RT     ∂²(G/RT)/∂x² at x = 0.5     verdict")
-for w in (0.0, 1.0, 1.9, 2.0, 2.1, 3.0)
-    @printf("%6.2f   %22.3f     %s\n", w, d2G(0.5, w), verdict(d2G(0.5, w)))
-end
-```
+This matters in practice because **nothing detects it**. A solid solution is
+entered as one phase, the activity expression goes on returning values past the
+threshold, and those values describe a metastable single phase. Checking
+``W/RT`` against 2 is the caller's job.
 
 ## 4. `RedlichKisterModel` — a binary that need not be symmetric
 
@@ -137,25 +131,11 @@ end-members,
 
 with ``a_0, a_1, a_2`` in J/mol. Read the roles off the formulas: ``a_0`` is the
 symmetric term and is exactly a regular solution's ``W_{12}``; ``a_1`` and
-``a_2`` are the asymmetric corrections, and setting them to zero must reproduce
-the regular model. That is an identity between two independently written methods,
-so it is worth testing rather than trusting:
-
-```@example ss
-W = 12_000.0        # J/mol
-T = 298.15
-x = [0.3, 0.7]
-
-reg = RegularSolutionModel([0.0 W; W 0.0])
-rk = RedlichKisterModel(a0 = W, a1 = 0.0, a2 = 0.0)
-
-for k in 1:2
-    lr = ChemistryLab._excess_ln_gamma(reg, k, x, T)
-    lk = ChemistryLab._excess_ln_gamma(rk, k, x, T)
-    @printf("end-member %d:  regular ln γ = %+.10f   Redlich-Kister ln γ = %+.10f   Δ = %.2e\n",
-            k, lr, lk, abs(lr - lk))
-end
-```
+``a_2`` are the asymmetric corrections, so setting them to zero must reproduce
+the regular model. That is an identity between two independently written
+methods, and it is checked rather than trusted in
+[Solid solution models, in numbers](@ref sec-app-solid-solutions), where the two
+agree to the last digit.
 
 `RedlichKisterModel` **requires exactly two end-members**, and
 [`SolidSolutionPhase`](@ref) refuses the combination at construction rather than
@@ -165,43 +145,24 @@ full ``W`` matrix.
 
 ## 5. What the three models do to an activity
 
-Same binary, same ``W``, the whole composition range:
+Evaluated over the whole composition range in
+[Solid solution models, in numbers](@ref sec-app-solid-solutions), with
+``W = \pm 4`` kJ/mol — inside the stable range of §3, so that the numbers
+describe a phase that stays homogeneous. Two things to read off it.
 
-``W = \pm 4`` kJ/mol is used below, which is ``W/RT = 1.6`` at 25 °C — inside
-the stable range of §3 on purpose, so that the numbers describe a phase that
-actually stays homogeneous:
+A positive ``W`` pushes the activity of a dilute end-member **above** its mole
+fraction: the host is rejecting it. A negative ``W`` pulls it below: the host is
+stabilizing it. And at ``x_k \to 1`` all three models converge, because
+``\gamma_k \to 1`` as the phase becomes pure — the standard state of an
+end-member is the pure end-member, so they agree there by construction.
 
-```@example ss
-RT25 = 8.31446261815324 * 298.15
-models = ["ideal" => IdealSolidSolutionModel(),
-          "regular W>0" => RegularSolutionModel([0.0 4000.0; 4000.0 0.0]),
-          "regular W<0" => RegularSolutionModel([0.0 -4000.0; -4000.0 0.0])]
-
-@printf("W/RT = %+.2f, so §3 says one phase everywhere\n\n", 4000.0 / RT25)
-println("            a₁ = x₁ γ₁")
-println("   x₁      ideal    W>0      W<0")
-for x1 in (0.01, 0.1, 0.3, 0.5, 0.7, 0.9)
-    xs = [x1, 1 - x1]
-    a = [x1 * exp(ChemistryLab._excess_ln_gamma(mod, 1, xs, 298.15)) for (_, mod) in models]
-    @printf("%6.2f   %7.4f  %7.4f  %7.4f\n", x1, a...)
-end
-```
-
-Two readings. A positive ``W`` pushes the activity of a dilute end-member
-*above* its mole fraction — the host is rejecting it — while a negative ``W``
-pulls it below, which is the host stabilizing it. And at ``x_1 \to 1`` all three
-converge, because ``\gamma_1 \to 1`` as the phase becomes pure: the standard
-state of an end-member is the pure end-member, and the models agree there by
-construction.
-
-!!! warning "A large positive `W` can put the phase outside its own stability"
-    With ``W = 12`` kJ/mol — the value used for the identity check in §4 — the
-    ratio is ``W/RT = 4.8``, well past the critical 2, so a *homogeneous* binary
-    at ``x_1 = 0.5`` is not what that model describes: it would unmix. The
-    activity expression keeps returning numbers there, and they are the numbers
-    of a metastable single phase. Nothing in the equilibrium solver detects it,
-    because a solid solution is entered as one phase; checking ``W/RT`` against
-    §3 is the caller's job.
+The ideal case is the one to keep in mind for cement. An end-member at
+``x_k = 10^{-3}`` has ``a_k = 10^{-3}``, so its saturation index sits three
+decades below the pure phase: **a trace component is stabilized simply by being
+diluted in a host.** That is how a solid solution takes up an ion which would
+never precipitate as a phase of its own, and it is the whole reason C-S-H and
+the AFm phases can absorb alkalis, sulfate and carbonate continuously instead of
+in jumps.
 
 ## 6. How a solid solution is declared
 

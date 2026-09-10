@@ -6,6 +6,16 @@ meant to be readable without running anything. The
 work a real case end to end; here the question is what the equations are, where
 they come from, and where they stop being true.
 
+!!! note "What belongs on a theory page, and what does not"
+    These pages carry the general theory: definitions, derivations, and the
+    meaning of each term. Code appears only where the correspondence between a
+    formula and its implementation *is* the point — a signature, a one-line
+    expression. **A theory page does not build a chemical system, does not
+    solve, and does not print a table of numbers**; that is what the
+    [Applications](@ref sec-app-activity-models) are for, and every quantitative
+    claim made here is measured there or asserted in the test suite. The
+    division exists so that there is one place to look for each kind of thing.
+
 ## The three layers, and what each one assumes
 
 ChemistryLab computes in three layers, and almost every surprise comes from a

@@ -60,7 +60,7 @@ meaningless. The three in use here:
 uses, and the aqueous accessors read it rather than guessing:
 
 ```@example thermo
-using ChemistryLab, DynamicQuantities, Printf, LinearAlgebra
+using ChemistryLab
 concentration_scale(DiluteSolutionModel()), concentration_scale(HKFActivityModel())
 ```
 
@@ -165,43 +165,25 @@ potentials with no equilibrium constant to look up:
 
 Negative means undersaturated, zero means in equilibrium with the solution,
 positive means the phase **should have precipitated**. This is what
-[`saturation_indices`](@ref) returns, and the identity above is worth checking
-rather than believing:
+[`saturation_indices`](@ref) returns.
 
-```@example thermo
-substances = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
-dict = Dict(symbol(s) => s for s in substances)
-cs = ChemicalSystem([dict[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
-                    ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+Two consequences of the identity are worth carrying, because they are what make
+the index trustworthy rather than merely conventional:
 
-st = ChemicalState(cs)
-set_quantity!(st, "H2O@", 1.0u"kg")
-set_quantity!(st, "Cal", 1.0e-3u"mol")
-set_quantity!(st, "Ca+2", 1.0e-3u"mol")
-set_quantity!(st, "CO3-2", 1.0e-5u"mol")
-set_quantity!(st, "HCO3-", 1.0e-3u"mol")
-set_quantity!(st, "H+", 1.0e-8u"mol")
-set_quantity!(st, "OH-", 1.0e-6u"mol")
+  - **no equilibrium constant is looked up.** ``K_{sp}`` never appears in the
+    computation; it is implied by the standard potentials, so an index cannot
+    disagree with the ``\Delta_a G^\circ`` the rest of the calculation used;
+  - **every phase present at an equilibrium must come out at exactly zero.**
+    That is not a property of the answer, it is the first-order condition of
+    §4 restated, so it is a check on the solve: measured on a CEM I paste, the
+    twelve present solids land within ``1.2\times10^{-12}``. If they do not,
+    the state is not an equilibrium and no other index in the result means
+    anything.
 
-model = HKFActivityModel()
-
-# By hand, straight from the formula above.
-lna = log_activities(st, model)
-p = ChemistryLab._build_params(st; ϵ = 1.0e-16)
-g = [p.ΔₐG⁰overRT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
-idx = Dict(symbol(sp) => i for (i, sp) in enumerate(cs.species))
-y = [haskey(idx, symbol(pr)) ? g[idx[symbol(pr)]] : 0.0 for pr in cs.SM.primaries]
-A = cs.SM.A
-j = idx["Cal"]
-by_hand = (sum(A[c, j] * y[c] for c in eachindex(y)) - g[j]) / log(10)
-
-by_function = saturation_indices(st, model)["Cal"]
-@printf("LogSI(calcite): by hand %+.10f   by saturation_indices %+.10f   Δ = %.2e\n",
-        by_hand, by_function, abs(by_hand - by_function))
-```
-
-The two agree to the last digit because they are the same expression; the point
-of the block is that the equation in this page is the equation in the code.
+The identity itself — that the difference of component potentials above equals
+what [`saturation_indices`](@ref) computes — is asserted in the test suite
+(`test/aqueous_properties.jl`), where it is recomputed by hand from this formula
+and compared to the function.
 
 ## 6. Volume, porosity and chemical shrinkage
 

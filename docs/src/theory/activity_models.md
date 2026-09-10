@@ -24,29 +24,6 @@ The three built-in models — [`DiluteSolutionModel`](@ref),
 [`DaviesActivityModel`](@ref), [`HKFActivityModel`](@ref) — differ in both, and
 §5 measures by how much.
 
-```@example am
-using ChemistryLab
-using DynamicQuantities
-using Printf
-
-substances = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
-dict = Dict(symbol(s) => s for s in substances)
-cs = ChemicalSystem([dict[s] for s in split("H2O@ H+ OH- Na+ Cl-")],
-                    ["H2O@", "H+", "Na+", "Cl-", "Zz"])
-sym_w = symbol(cs.species[only(cs.idx_solvent)])
-
-function nacl(m)                       # m mol NaCl per kg of water, imposed
-    st = ChemicalState(cs)
-    set_quantity!(st, "H2O@", 1.0u"kg")
-    set_quantity!(st, "Na+", m * u"mol")
-    set_quantity!(st, "Cl-", m * u"mol")
-    set_quantity!(st, "H+", 1.0e-7u"mol")
-    set_quantity!(st, "OH-", 1.0e-7u"mol")
-    return st
-end
-nothing # hide
-```
-
 ## 1. Where the ``\sqrt{I}`` comes from
 
 An ion in a solution of ions is not in the same state as one alone at the same
@@ -109,18 +86,8 @@ B = 50.29158649\,\frac{\sqrt{\rho_w}}{\sqrt{\varepsilon T}} ,
 which is what [`hkf_debye_huckel_params`](@ref) evaluates from this package's own
 equation of state for water. So the ``A = 0.5114`` and ``B = 0.3288`` that the
 models carry as defaults are **derived**, not adopted, and they agree with
-[Helgeson1981](@cite) Table 1:
-
-```@example am
-for T in (298.15, 333.15, 373.15)
-    p = hkf_debye_huckel_params(T, 1.0e5)
-    w = water_thermo_props(T, 1.0e5)
-    e = water_electro_props_jn(T, 1.0e5, w)
-    ρ = w.D / 1000
-    @printf("T = %6.2f K   ρ = %.4f g/cm³   ε = %6.2f   A = %.4f   B = %.4f\n",
-            T, ρ, e.epsilon, p.A, p.B)
-end
-```
+[Helgeson1981](@cite) Table 1 — evaluated at three temperatures in
+[What the choice of activity model costs](@ref sec-app-activity-models).
 
 Both rise with temperature, because water's dielectric constant falls faster than
 ``T`` rises: hot water screens worse, so the same ionic strength costs more.
@@ -128,15 +95,10 @@ Both rise with temperature, because water's dielectric constant falls faster tha
 ### The screening length is the size of a gel pore
 
 The Debye length is ``\kappa^{-1} = 1/(B\sqrt{I})`` in ångström when ``B`` is in
-Å⁻¹(kg/mol)^½, and it is worth putting a number on it:
-
-```@example am
-B25 = hkf_debye_huckel_params(298.15, 1.0e5).B
-println("     I (mol/kg)    Debye length (nm)")
-for I in (0.001, 0.01, 0.1, 0.3, 1.0, 3.0)
-    @printf("   %10.3f    %14.3f\n", I, 1 / (B25 * sqrt(I)) / 10)
-end
-```
+Å⁻¹(kg/mol)^½, and it is worth putting a number on it. At 25 °C it runs from
+9.6 nm at ``I = 10^{-3}`` mol/kg to 0.30 nm at 1 mol/kg, passing **0.55 nm at
+``I = 0.3`` mol/kg** — the values are tabulated in
+[What the choice of activity model costs](@ref sec-app-activity-models).
 
 A cement pore solution sits around ``I \approx 0.1``–``0.5 mol/kg``, so its
 screening length is a **few ångström** — the thickness of two or three water
@@ -233,98 +195,41 @@ All three return the same object — a vector of ``\ln a_i`` indexed like
 solid-solution end-members — so they are interchangeable at every call site, and
 `concentration_scale` tells the accessors which convention was used.
 
-## 5. Measured: where the three part company
+## 5. What the difference is worth, measured
 
-Nothing here is solved. The models are evaluated on the same imposed NaCl
-composition, which is the cheapest way to see what the choice is worth.
+The models are compared, on an imposed NaCl composition and without solving
+anything, in
+[What the choice of activity model costs](@ref sec-app-activity-models). Three
+results from that page belong here, because they are about the theory rather
+than about the numbers:
 
-```@example am
-models = ["dilute" => DiluteSolutionModel(),
-          "Davies" => DaviesActivityModel(),
-          "B-dot" => HKFActivityModel()]
+**The ideal model is already several percent off at a millimolal.** Ideality is
+not a safe default that degrades gracefully; it is exact only in a limit.
 
-println("               γ(Na⁺)                        a_w")
-println("  m      dilute   Davies    B-dot      dilute   Davies    B-dot")
-for m in (0.001, 0.01, 0.1, 0.5, 1.0, 3.0)
-    st = nacl(m)
-    γ = [activity_coefficients(st, mod)["Na+"] for (_, mod) in models]
-    aw = [exp(log_activities(st, mod)[sym_w]) for (_, mod) in models]
-    @printf("%6.3f  %7.4f  %7.4f  %7.4f    %7.5f  %7.5f  %7.5f\n", m, γ..., aw...)
-end
-```
+**Davies and the B-dot model part company around a tenth molal**, and by
+3 mol/kg Davies returns ``\gamma > 1`` while the B-dot model is still below 1.
+That is the ``bI`` term of §2 taking over from the screening term — the ceiling
+of a deviation function arriving, visible in the numbers.
 
-Read the ``\gamma`` columns first. The ideal model is already several percent off
-at a **millimolal**, which is worth knowing before treating ideality as a safe
-default. The two corrections do not agree with each other either — they part
-company around a tenth molal — and by 3 mol/kg Davies has returned
-``\gamma > 1`` while the B-dot model is still below 1: the ``bI`` term has taken
-over completely, which is the ceiling of §2 arriving.
+**The values of ``a_w`` barely separate at all** — Raoult and the osmotic route
+differ by a few parts in a thousand even at 3 mol/kg — while their
+**derivatives** differ by four orders of magnitude. Measured as the Gibbs-Duhem
+residual ``\lvert\sum_i n_i\,\mathrm{d}\mu_i\rvert`` along a dissolution at
+1 mol/kg: ``1.9\times10^{-1}`` for Davies against ``6.7\times10^{-5}`` for the
+B-dot model, with the ideal model at ``2.9\times10^{-2}`` in between.
 
-Now the ``a_w`` columns, and here the surprise: they barely separate at all. The
-Raoult and osmotic routes differ by a few parts in a thousand even at 3 mol/kg.
-It would be easy to conclude that the water-activity route does not matter.
+That last one is the substance of §3, and it is worth stating twice. **Davies is
+less thermodynamically consistent than assuming ideality.** Correcting the
+solutes while leaving the solvent at ``a_w = x_w`` sets the two halves of one
+model against each other, and a model can be *more* wrong for being *partly*
+corrected. Since equilibrium is set by derivatives and not by values, a
+disagreement invisible in ``a_w`` is decisive in ``\mu_w``.
 
-It does, and the next table is why.
-
-### Gibbs-Duhem: the values agree, the derivatives do not
-
-Equilibrium is set by chemical potentials, that is by *derivatives* of the
-activities with respect to composition, not by their values. So the test that
-matters is whether ``\sum_i n_i \,\mathrm{d}\mu_i = 0`` holds along a
-composition change. It is measured here along three different directions,
-because each exposes a different defect:
-
-```@example am
-using LinearAlgebra
-
-M_W = 0.0180153
-n_w = 1.0 / M_W
-cs3 = ChemicalSystem([dict[s] for s in split("H2O@ Na+ Cl-")], ["H2O@", "Na+", "Cl-"])
-
-function gd_residual(mod, m, dn)
-    μ = build_potentials(cs3, mod)
-    p = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
-    n0 = [n_w, m, m]
-    δ = 1.0e-6
-    dμ = (μ(n0 + δ * dn, p) - μ(n0, p)) / δ
-    return abs(sum(n0 .* dμ)) / max(norm(n0 .* abs.(dμ)), 1.0)
-end
-
-for (name, dn) in ("dissolution   dn = (0, +1, +1)" => [0.0, 1.0, 1.0],
-                   "ion exchange  dn = (0, +1, -1)" => [0.0, 1.0, -1.0],
-                   "water removal dn = (-1, 0, 0)" => [-1.0, 0.0, 0.0])
-    println("\n── ", name)
-    println("   m         dilute       Davies        B-dot")
-    for m in (0.1, 0.3, 1.0, 3.0)
-        r = [gd_residual(mod, m, dn) for (_, mod) in models]
-        @printf("%6.2f    %10.3e   %10.3e   %10.3e\n", m, r...)
-    end
-end
-```
-
-Three readings, and they are the substance of this page.
-
-**Along a true dissolution**, the B-dot model is four orders of magnitude more
-consistent than Davies. And Davies is **worse than assuming ideality** — which
-is not a paradox but the direct consequence of §3: correcting the solutes while
-leaving the solvent at ``a_w = x_w`` makes the two halves of the model actively
-contradict each other, whereas the ideal model at least contradicts itself less.
-A model can be *more* wrong for being *partly* corrected.
-
-**Along an ion exchange** at constant ``I`` and constant ``\sum m``, Davies and
-the ideal model are indistinguishable — their coefficients depend on ``I``
-alone, which does not move — and the only residual left is the B-dot model's own
-defect: the charge-weighted mean radius of §3, showing up at a few parts in a
-thousand. This is the direction `test/activities.jl` uses, which is why its
-tolerance is `5e-3` and not solver tolerance.
-
-**Along water removal** — the direction a drying paste actually takes — the
-ordering is the same as for dissolution, and the gap widens as the solution
-concentrates.
-
-So the water-activity route is not a refinement on a number that hardly moves.
-It decides whether the model is one thermodynamic system or two halves that
-disagree, and that is visible only in the derivatives.
+The B-dot model's own defect — the single charge-weighted mean radius in its
+osmotic coefficient — appears only along a composition change that holds ``I``
+and ``\sum m`` fixed, where it measures a few parts in a thousand. That is the
+direction `test/activities.jl` uses, which is why its tolerance is `5e-3` rather
+than solver tolerance.
 
 ## 6. Outside the domain
 

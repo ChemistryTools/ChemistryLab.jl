@@ -472,3 +472,50 @@ end
     end
 
 end
+
+# ── LogSI is a difference of component potentials, and nothing else ──────────
+
+@testsection "the saturation index is the identity the theory page states" begin
+    # `theory/thermodynamics.md` writes
+    #
+    #     LogSI_s = (Σ_c A_cs y_c − g_s) / ln 10,   y_c = g of the primary
+    #     labeling row c,   g_i = ΔₐG⁰overRT[i] + ln aᵢ
+    #
+    # and claims it is what `saturation_indices` computes. The claim is worth an
+    # assertion rather than a reader's trust: if the accessor ever grew a
+    # correction of its own, the documented derivation would silently stop being
+    # the implemented one. Deliberately evaluated away from equilibrium, since
+    # the identity is algebraic and holds at any composition.
+    substances = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
+    dict = Dict(symbol(sp) => sp for sp in substances)
+    cs = ChemicalSystem(
+        [dict[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 1.0u"kg")
+    set_quantity!(st, "Cal", 1.0e-3u"mol")
+    set_quantity!(st, "Ca+2", 1.0e-3u"mol")
+    set_quantity!(st, "CO3-2", 1.0e-5u"mol")
+    set_quantity!(st, "HCO3-", 1.0e-3u"mol")
+    set_quantity!(st, "H+", 1.0e-8u"mol")
+    set_quantity!(st, "OH-", 1.0e-6u"mol")
+
+    for model in (DiluteSolutionModel(), HKFActivityModel())
+        lna = log_activities(st, model)
+        p = ChemistryLab._build_params(st; ϵ = 1.0e-16)
+        g = [p.ΔₐG⁰overRT[i] + lna[symbol(cs.species[i])] for i in eachindex(cs.species)]
+        idx = Dict(symbol(sp) => i for (i, sp) in enumerate(cs.species))
+        y = [haskey(idx, symbol(pr)) ? g[idx[symbol(pr)]] : 0.0 for pr in cs.SM.primaries]
+        A = cs.SM.A
+
+        si = saturation_indices(st, model)
+        for (name, j) in idx
+            by_hand = (sum(A[c, j] * y[c] for c in eachindex(y)) - g[j]) / log(10)
+            @test isapprox(by_hand, si[name]; atol = 1.0e-10)
+        end
+        # A primary species is formed from itself, so its index is exactly zero.
+        @test abs(si["Ca+2"]) < 1.0e-10
+    end
+end

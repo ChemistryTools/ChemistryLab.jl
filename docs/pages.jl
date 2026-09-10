@@ -10,7 +10,8 @@
 #                   first, on the smallest example that shows it.
 #   **Tutorials** — how do I drive a calculation from end to end? Narrative, and
 #                   each one goes somewhere.
-#   **Examples**  — what does a real case look like? Long on purpose.
+#   **Applications** — what does a real case look like, and what do the choices
+#                   cost in numbers? Everything executed lives here.
 #   **API**       — the docstrings, generated.
 #
 # A page that answers two of those questions is worth splitting; a page in the
@@ -94,13 +95,19 @@ pages = [
             "tutorials/reaktoro_comparison.md",
         ],
     ],
-    "Examples" => [
+    "Applications" => [
         # From an oxide analysis to a species list — the entry point for someone
         # holding a cement datasheet rather than a database.
         "From a cement analysis to a chemical system" => [
             "examples/bogue_calculation.md",
             "examples/example_stoich_matrix.md",
             "examples/from_scratch.md",
+        ],
+        # The executed counterpart of the Theory chapter: what the modeling
+        # choices cost, in numbers, on a composition small enough to check.
+        "Non-ideal mixtures, measured" => [
+            "examples/activity_models_compared.md",
+            "examples/solid_solution_models.md",
         ],
         # Small, checkable aqueous cases with an analytical answer to compare to.
         "Aqueous equilibria" => [
