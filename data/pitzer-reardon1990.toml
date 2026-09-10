@@ -12,9 +12,9 @@
 # ferrate ions have no published data at all.
 #
 # THE SILICATE, ALUMINATE AND FERRATE PARAMETERS ARE ESTIMATES, NOT
-# MEASUREMENTS. Reardon says which analogue each one borrows: HSO4- serves as
+# MEASUREMENTS. Reardon says which analog each one borrows: HSO4- serves as
 # the model for Fe(OH)4-, Al(OH)4- and H3SiO4-, SO4-2 for H2SiO4-2, and H2CO3@
-# for H4SiO4@. Every affected entry carries `origin = "estimated:<analogue>"`
+# for H4SiO4@. Every affected entry carries `origin = "estimated:<analog>"`
 # below, because a caller reading beta0 for Al(OH)4- would otherwise have no
 # way of knowing that no aluminate solution was ever measured to obtain it.
 #

@@ -127,7 +127,7 @@ end
 """
     pitzer_origin(p::PitzerParameters, cation, anion) -> String
 
-What the parameters of that pair are: `"fitted"`, `"estimated:<analogue>"`, or
+What the parameters of that pair are: `"fitted"`, `"estimated:<analog>"`, or
 `"unrecorded"` when the set carries no note.
 
 A published Pitzer set can contain values obtained by analogy with a chemically

@@ -177,17 +177,17 @@ with the provenance of every default, are in the docstrings
 ([`HKFActivityModel`](@ref), [`DaviesActivityModel`](@ref)); this is the summary
 that lets you choose.
 
-| | [`DiluteSolutionModel`](@ref) | [`DaviesActivityModel`](@ref) | [`HKFActivityModel`](@ref) |
-|:--|:--|:--|:--|
-| solute scale | molarity | molality | molality |
-| ``\gamma_i`` | ``\equiv 1`` | Davies | extended D-H + ``\dot{B} I`` |
-| ``a_w`` | Raoult | Raoult | osmotic coefficient |
-| per-species data | none | none | ion radii ``\mathring{a}_i`` (tabulated, overridable) |
-| scalar inputs | none | ``A``, ``b``, ``b_n`` | ``A``, ``B``, ``\dot{B}``, ``K_n``, ``\mathring{a}_{\text{default}}`` |
-| ``T``, ``P`` dependence | none | ``A(T,P)`` on request | ``A(T,P)``, ``B(T,P)`` on request |
-| returns | ``\ln a_i`` for every species | same | same |
-| ``\gamma`` useful to | ``I \lesssim 0.01`` | ``I \lesssim 0.5`` | ``I \lesssim 1`` |
-| Gibbs-Duhem consistent | approximately | **no** (§5) | to ``10^{-5}`` (§5) |
+| | [`DiluteSolutionModel`](@ref) | [`DaviesActivityModel`](@ref) | [`HKFActivityModel`](@ref) | [`PitzerActivityModel`](@ref) |
+|:--|:--|:--|:--|:--|
+| solute scale | molarity | molality | molality | molality |
+| ``\gamma_i`` | ``\equiv 1`` | Davies | extended D-H + ``\dot{B} I`` | virial expansion |
+| ``a_w`` | Raoult | Raoult | osmotic coefficient | osmotic coefficient |
+| per-species data | none | none | ion radii ``\mathring{a}_i`` (tabulated, overridable) | **a parameter per ion pair and per triplet — caller input** |
+| scalar inputs | none | ``A``, ``b``, ``b_n`` | ``A``, ``B``, ``\dot{B}``, ``K_n``, ``\mathring{a}_{\text{default}}`` | the shape constants ``\alpha_1``, ``\alpha_2``, ``b`` |
+| ``T``, ``P`` dependence | none | ``A(T,P)`` on request | ``A(T,P)``, ``B(T,P)`` on request | ``A_\varphi(T,P)`` only; the ``\beta`` set is fitted at one temperature |
+| returns | ``\ln a_i`` for every species | same | same | same |
+| ``\gamma`` useful to | ``I \lesssim 0.01`` | ``I \lesssim 0.5`` | ``I \lesssim 1`` | the range its set was fitted over, a few mol/kg |
+| Gibbs-Duhem consistent | approximately | **no** (§5) | to ``10^{-5}`` (§5) | **exactly, by construction** (§6) |
 
 All three return the same object — a vector of ``\ln a_i`` indexed like
 `cs.species`, covering solutes, solvent, pure crystals (``0``), gases and
@@ -230,7 +230,104 @@ and ``\sum m`` fixed, where it measures a few parts in a thousand. That is the
 direction `test/activities.jl` uses, which is why its tolerance is `5e-3` rather
 than solver tolerance.
 
-## 6. Outside the domain
+## 6. The ion-interaction model: a different kind of object
+
+Everything above is a **corrected Debye-Hückel law**: one screening term derived
+from electrostatics, one size correction, and one empirical term standing in for
+the rest. [`PitzerActivityModel`](@ref) is not that. It starts from the excess
+Gibbs energy and expands it as a **virial series in the molalities**, exactly as
+the pressure of a non-ideal gas is expanded in its density —
+[AndersonCrerar1993](@cite) (§17.8) derive it as a cluster expansion with
+osmotic pressure in place of pressure, which is where the analogy is exact:
+
+> the first term in a virial equation always represents ideal behavior; in the
+> second term ``B_2`` represents the non-ideal contribution from pairwise
+> interactions of molecules; ``B_3`` gives the interactions of triples.
+
+Hence the shape of the parameter set: one coefficient per **ion pair**, one per
+**triplet**, and no per-species radius at all.
+
+```math
+\frac{G^{\text{ex}}}{RT n_w} =
+  f(I)
+  + \sum_{c}\sum_{a} m_c m_a\, B_{ca}(I)
+  + \sum_{c<c'} m_c m_{c'}\,\theta_{cc'}
+  + \sum_{a<a'} m_a m_{a'}\,\theta_{aa'}
+  + \text{triplets } (\psi)
+  + \text{neutrals } (\lambda)
+```
+
+The long-range term keeps the Debye-Hückel physics — it must, since the limiting
+law is exact — in the form
+
+```math
+f^{\gamma} = -A_\varphi\left[\frac{\sqrt{I}}{1 + b\sqrt{I}}
+             + \frac{2}{b}\ln\left(1 + b\sqrt{I}\right)\right] ,
+```
+
+and the pair term carries the ionic-strength dependence that a single constant
+cannot:
+
+```math
+B_{ca}(I) = \beta^{(0)}_{ca}
+          + \beta^{(1)}_{ca}\,g\!\left(\alpha_1\sqrt{I}\right)
+          + \beta^{(2)}_{ca}\,g\!\left(\alpha_2\sqrt{I}\right) ,
+\qquad
+g(x) = \frac{2\left[1 - (1+x)e^{-x}\right]}{x^{2}} .
+```
+
+``A_\varphi`` is the same Debye-Hückel slope as §1, on the osmotic basis:
+``A_\varphi = A\ln 10/3``, so it comes from the water model rather than from a
+second implementation. ``\alpha_1``, ``\alpha_2`` and ``b`` are not fitted —
+they fix the functional form, and a published ``\beta`` table is only valid with
+the values it was fitted against.
+
+### Why the whole construction matters here
+
+``\gamma_i`` and ``\varphi`` are both partial derivatives of **one** function.
+So the Gibbs-Duhem relation between the solutes and the solvent is an identity
+of the algebra, not an approximation — and that is the defect §3 measured in the
+other two models. It is verified rather than asserted: with the derivative taken
+analytically, ``\sum_i n_i\,\mathrm{d}\mu_i`` comes out **exactly zero** for
+this model along three composition directions at 0.1, 1 and 3 mol/kg, where the
+B-dot model's residual is not small.
+
+### What it costs
+
+The parameters are **caller input**, and there is no way around it: no
+thermodynamic database ships them, and this package refuses to invent them. A
+[`PitzerParameters`](@ref) takes every table as a keyword without a default, and
+completeness is checked against the species list rather than against the set
+alone — every cation-anion pair present must have a ``\beta^{(0)}``, and the
+error names those that do not.
+
+Two limitations belong here rather than in a footnote:
+
+  - the **higher-order electrostatic terms** ``{}^E\theta(I)``,
+    ``{}^E\theta'(I)`` are not implemented. They vanish identically for a
+    symmetrical pair, so a single 1-1 or 2-2 electrolyte is unaffected; in a
+    mixture of Na⁺ with Ca²⁺ — a cement pore solution — they are a real
+    omission;
+  - a published set is fitted **at one temperature**, and nothing here
+    extrapolates the interaction parameters away from it.
+
+### The speciation a set assumes is part of the set
+
+This one is easy to miss and changes results. A Pitzer set absorbs ion
+association into its ``\beta`` coefficients: Harvie, Møller and Weare fit
+Ca–SO₄ interaction rather than postulating a `CaSO₄⁰` complex. A species list
+that carries both the free ions **and** the ion pairs therefore counts the same
+association twice, and CEMDATA18 does carry them — `Ca(SO4)@`, `CaOH+`,
+`Na(SO4)-`, `NaOH@` among others. It also names the silica species differently
+(`HSiO3-`, `SiO2@`) from the set's `H3SiO4-` and `H2SiO4-2`.
+
+So the shipped Reardon set does not drop into a CEMDATA18 cement calculation,
+and the completeness check refuses such a system rather than returning a number.
+That refusal is the correct outcome and not a limitation of the implementation:
+combining a dissociated parameterization with an associated speciation is not a
+defensible calculation in any code.
+
+## 7. Outside the domain
 
 None of this survives arbitrary concentration, and the failure is silent: the
 formulas go on returning finite, plausible numbers. Two guards exist rather than
@@ -243,12 +340,9 @@ The regime it catches is real: a cement paste below ``w/c \approx 0.30``, on the
 species lists used here, drives the free water to the solver's floor and the
 ionic strength to hundreds of mol/kg — a composition at which every molality is
 per kilogram of a solvent that is no longer there. See
-[the w/c example](@ref sec-wc-ratio).
+[the w/c example](@ref sec-wc-ratio) and
+[the water budget](@ref sec-theory-water-budget).
 
-What is missing from this chapter is an **ion-interaction model** — Pitzer-class
-— which replaces the correlation of §2 by a virial expansion of the excess
-Gibbs energy: one coefficient per ion pair, one per triplet, and ``\gamma`` and
-``\varphi`` derived from the same function so that Gibbs-Duhem holds by
-construction. [AndersonCrerar1993](@cite) (§17.8) derive it as a cluster
-expansion with osmotic pressure in place of pressure, which is what makes it a
-different kind of object from anything on this page.
+A Pitzer model does **not** rescue that regime. Its fitted range is a few
+mol/kg, not hundreds, and no activity model repairs a composition that has left
+the physical picture of a solution.

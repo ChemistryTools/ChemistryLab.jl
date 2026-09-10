@@ -91,6 +91,7 @@ pages = [
         # Uses the whole chain, which is why it comes last.
         "Cementitious media" => [
             "tutorials/self_desiccation.md",
+            "tutorials/self_desiccation_kinetics.md",
         ],
         "Validation against other codes" => [
             "tutorials/reaktoro_comparison.md",
@@ -109,6 +110,7 @@ pages = [
         "Non-ideal mixtures, measured" => [
             "examples/activity_models_compared.md",
             "examples/solid_solution_models.md",
+            "examples/pitzer_model.md",
         ],
         # Small, checkable aqueous cases with an analytical answer to compare to.
         "Aqueous equilibria" => [
