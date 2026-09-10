@@ -109,6 +109,11 @@ behavior, and returns `param_residual`.
 a candidate that minimizes the Gibbs energy while violating the very equation that
 makes it a constrained answer.
 
+### Compatibility
+
+Tested on Julia 1.13, which the CI matrix now runs explicitly alongside the
+1.12 floor. `[compat] julia = "1.12"` already admitted it and did not change.
+
 ### Documentation — Powers' 0.42, taken apart
 
 A new tutorial, [Self-desiccation: where Powers' 0.42 comes from](https://micropochemomechanics.github.io/ChemistryLab.jl/stable/tutorials/self_desiccation/),
