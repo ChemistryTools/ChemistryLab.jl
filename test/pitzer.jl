@@ -210,3 +210,105 @@ end
     b2 = activity_model(cs2, PitzerActivityModel(; parameters = bare))(n2, _pz_p(3))
     @test a2 ≈ b2
 end
+
+# ── the paths a plain NaCl system never reaches ─────────────────────────────
+
+@testsection "neutral solutes go through the lambda terms" begin
+    # A Pitzer set describes a neutral solute by `λ(neutral, ion)` — salting out
+    # in Pitzer's form — and nothing else. With no λ the neutral is ideal, which
+    # is the literature's convention and worth pinning rather than assuming.
+    subs = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
+    d = Dict(symbol(s) => s for s in subs)
+    cs = ChemicalSystem(
+        [d[s] for s in split("H2O@ Na+ Cl- CO2@")], ["H2O@", "Na+", "Cl-", "CO2@"]
+    )
+    base = _pz_params()
+
+    with_λ = PitzerParameters(;
+        beta0 = base.beta0, beta1 = base.beta1, beta2 = base.beta2, Cphi = base.Cphi,
+        theta = base.theta, psi = base.psi,
+        lambda = Dict(("CO2@", "Na+") => 0.1, ("CO2@", "Cl-") => -0.005),
+    )
+    without_λ = PitzerParameters(;
+        beta0 = base.beta0, beta1 = base.beta1, beta2 = base.beta2, Cphi = base.Cphi,
+        theta = base.theta, psi = base.psi,
+        lambda = Dict{Tuple{String, String}, Float64}(),
+    )
+
+    # The molality must be formed with the molar mass the *closure* uses — the
+    # database's — and not with a rounded constant, or the identity below is off
+    # by the difference between the two, which is 1.7e-5 in ln γ.
+    M_w = ustrip(us"kg/mol", cs.species[only(cs.idx_solvent)][:M])
+    n_w = 1 / M_w
+    n = [n_w, 1.0, 1.0, 0.05]                     # 1 molal NaCl, 0.05 molal CO₂
+    a = activity_model(cs, PitzerActivityModel(; parameters = with_λ))(n, _pz_p(4))
+    b = activity_model(cs, PitzerActivityModel(; parameters = without_λ))(n, _pz_p(4))
+
+    m_co2 = 0.05 / (n[1] * M_w)
+    γ_with = exp(a[4] - log(m_co2))
+    γ_without = exp(b[4] - log(m_co2))
+    @test isapprox(γ_without, 1.0; rtol = 1.0e-10)      # no λ ⇒ ideal, exactly
+    @test γ_with > 1.0                                   # a positive λ salts out
+    # ln γ_n = 2 Σ_i m_i λ_ni, which is checkable by hand here.
+    m_ion = 1.0 / (n[1] * M_w)
+    @test isapprox(log(γ_with), 2 * (m_ion * 0.1 + m_ion * (-0.005)); rtol = 1.0e-10)
+
+    # The solvent feels the neutral too, through the same λ.
+    @test a[1] != b[1]
+end
+
+@testsection "gases and solid-solution end-members are filled in" begin
+    subs = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
+    d = Dict(symbol(s) => s for s in subs)
+
+    # A gas phase: an ideal mixture, ln a = ln x.
+    cs_g = ChemicalSystem(
+        [d[s] for s in split("H2O@ Na+ Cl- CO2 O2")],
+        ["H2O@", "Na+", "Cl-", "CO2", "O2"],
+    )
+    model = PitzerActivityModel(; parameters = _pz_params())
+    n_w = 1 / _PZ_M_W
+    out = activity_model(cs_g, model)([n_w, 0.1, 0.1, 3.0, 1.0], _pz_p(5))
+    @test isapprox(out[4], log(3.0 / 4.0); rtol = 1.0e-10)
+    @test isapprox(out[5], log(1.0 / 4.0); rtol = 1.0e-10)
+
+    # A solid solution: the end-members must be filled by the solid-solution
+    # branch. An aqueous model that forgets to call it leaves them at ln a = 0,
+    # i.e. treated as pure phases, which is the silent failure this asserts on.
+    ss = build_solid_solutions(datapath("solid_solutions.toml"), d; skip_missing = true)
+    cshq = only(filter(p -> name(p) == "CSHQ", ss))
+    cs_ss = ChemicalSystem(
+        vcat([d[s] for s in split("H2O@ Na+ Cl-")], end_members(cshq)),
+        ["H2O@", "Na+", "Cl-"]; solid_solutions = [cshq],
+    )
+    k = length(cs_ss.species)
+    n = vcat([n_w, 0.1, 0.1], fill(0.25, k - 3))
+    out_ss = activity_model(cs_ss, model)(n, _pz_p(k))
+    for i in 4:k
+        @test out_ss[i] < 0                       # ln x < 0 for a fraction < 1
+        @test isfinite(out_ss[i])
+    end
+    @test !all(iszero, out_ss[4:k])
+end
+
+@testsection "the Debye-Hückel slope can follow the temperature" begin
+    cs = _pz_system()
+    p = _pz_params()
+    fixed = activity_model(cs, PitzerActivityModel(; parameters = p))
+    varying = activity_model(
+        cs, PitzerActivityModel(; parameters = p, temperature_dependent = true)
+    )
+    n_w = 1 / _PZ_M_W
+    n = [n_w, 0.5, 0.5]
+
+    at25 = (ΔₐG⁰overRT = zeros(3), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
+    at60 = (ΔₐG⁰overRT = zeros(3), T = 333.15, P = 1.0e5, ϵ = 1.0e-30)
+
+    # Fixed: the temperature in `p` is ignored, by construction.
+    @test fixed(n, at25) ≈ fixed(n, at60)
+    # Varying: A_φ rises with temperature, so the ions are further from ideal.
+    @test !isapprox(varying(n, at25), varying(n, at60))
+    @test varying(n, at60)[2] < varying(n, at25)[2]
+    # and at 25 °C the two agree, since that is where the fixed value comes from
+    @test isapprox(varying(n, at25), fixed(n, at25); rtol = 1.0e-3)
+end
