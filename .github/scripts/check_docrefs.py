@@ -87,6 +87,24 @@ REF = re.compile(r"\[`?([A-Za-z_][\w!.]*)`?\]\(@ref\)")
 # which is how a const or a function with no method here is documented.
 BARE_NAME = re.compile(r"^\s*([A-Za-z_][\w!]*)\s*$")
 
+# What the line after a doc block documents. Deliberately looser than
+# `DEF_PATTERNS`, which is written to enumerate definitions: here a miss turns
+# into a FAIL on a name that is plainly documented, so over-collecting is the
+# safe direction. `DEF_PATTERNS` cannot be reused as it stands — its
+# assignment-form pattern reads the signature as `[^)]*`, which stops at the
+# first `)` and so misses every signature with a nested call in it, such as
+# `tens_Id4(::Val{dim} = Val(3), ::Val{T} = Val(Sym)) where {dim, T} = ...`.
+# That was 14 false positives on TensND alone.
+DOC_TARGETS = [
+    re.compile(
+        r"^\s*(?:@\w[\w.]*\s+)?(?:mutable\s+)?"
+        r"(?:function|struct|abstract\s+type|primitive\s+type|macro|const|"
+        r"module|baremodule)\s+([A-Za-z_][\w!]*)"
+    ),
+    re.compile(r"^\s*(?:@\w[\w.]*\s+)?(?:Base\.)?([A-Za-z_][\w!]*)\s*[({=]"),
+    BARE_NAME,
+]
+
 
 def documented_names(files):
     """Names carrying a docstring, paired block by block.
@@ -140,7 +158,7 @@ def documented_names(files):
             while code < len(lines) and lines[code].strip() == "":
                 code += 1
             if code < len(lines):
-                for pat in DEF_PATTERNS + [BARE_NAME]:
+                for pat in DOC_TARGETS:
                     m = pat.match(lines[code])
                     if m:
                         names.add(m.group(1))
