@@ -13,6 +13,7 @@ pages = [
         "tutorials/equilibrium.md",
         "tutorials/kinetics.md",
         "tutorials/coupling.md",
+        "tutorials/self_desiccation.md",
         "tutorials/reaktoro_comparison.md",
         "tutorials/advanced.md",
     ],
