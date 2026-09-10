@@ -319,8 +319,44 @@ function _retention_activity(r::VanGenuchten, S, V_m, T)
     return exp(-capillary_pressure(r, S) * V_m / (ustrip(us"J/mol/K", Constants.R) * T))
 end
 
-# A bare function is a retention law too — the escape hatch for a caller whose
-# curve is neither tabulated nor van Genuchten.
+"""
+    FunctionRetention(f)
+
+A bare function as a retention law: `f(S)` is the **water activity** at degree of
+saturation `S`.
+
+This is the escape hatch for a curve that is neither a measured table nor van
+Genuchten — a closed form from a pore-size distribution, an isotherm fitted with
+someone else's expression, or a constant, which is how the tutorial's negative
+control imposes one humidity and watches nothing happen.
+
+Because the value returned *is* an activity, [`water_activity`](@ref) ignores its
+`V_m` and `T`: there is no Kelvin conversion to make. A law stated as a capillary
+pressure belongs in [`VanGenuchten`](@ref) instead, and passing a pressure here
+would be read as an activity of several million.
+
+!!! warning "Nothing validates `f`"
+    [`TabulatedRetention`](@ref) checks its table and [`VanGenuchten`](@ref)
+    checks its parameters, both in inner constructors. `f` is opaque, so it is
+    trusted: it should return a value in `(0, 1]`, and it should not increase as
+    the pore space dries. [`CapillaryWater`](@ref) does test it at `S = 1` and
+    refuses a law that is already out of range there, which catches a sign error
+    or a percentage but not a curve that misbehaves in the middle.
+
+[`CapillaryWater`](@ref) and [`PoreHumidity`](@ref) wrap a bare function in this
+type themselves, so `CapillaryWater(S -> ...; reference = fresh)` needs no
+explicit construction.
+
+# Examples
+
+```julia
+held = FunctionRetention(_ -> 0.90)               # a paste held at RH 90 %
+water_activity(held, 0.5; V_m = 1.807e-5, T = 298.15)   # 0.9, the arguments unused
+```
+
+See also: [`WaterRetention`](@ref), [`TabulatedRetention`](@ref),
+[`VanGenuchten`](@ref).
+"""
 struct FunctionRetention{F} <: WaterRetention
     f::F
 end

@@ -43,6 +43,11 @@ language's, not a check that can be forgotten.
   (1999) quoted in its docstring together with the convention they use — they
   write the same expression with `b = 1/m`, and getting that inversion wrong is
   silent.
+- `FunctionRetention(f)`, the escape hatch: a bare function of the saturation,
+  returning the activity directly. It is the one law nothing validates, since
+  `f` is opaque, and its docstring says so — `CapillaryWater` still tests it at
+  `S = 1`. `CapillaryWater` and `PoreHumidity` wrap a bare function in it
+  themselves, so no caller has to name it.
 - `kelvin_activity`, `kelvin_radius`, `capillary_pressure`, `water_activity`.
   RH 80 % is a meniscus of radius 4.8 nm, the gel-pore scale, which is why the
   water Powers assigns to gel pores and the water a sealed paste cannot use are
