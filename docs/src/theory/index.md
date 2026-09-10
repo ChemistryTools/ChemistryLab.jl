@@ -23,10 +23,20 @@ first thing to read and the first thing to suspect:
 
 ## Reading order
 
-Start with [Activity models](@ref sec-theory-activity), which every equilibrium
-calculation depends on whether or not it is mentioned. The derivation of the
-minimization itself, its optimality certificate and the constraint machinery are
-in [Chemical Equilibrium](@ref sec-equilibrium) for now; the cement-specific
-theory — the water budget, Powers' coefficient, and what a 0D calculation can
-and cannot predict about a drying paste — is in
-[Self-desiccation](@ref sec-self-desiccation).
+**[Thermochemistry](@ref sec-theory-thermo)** first: it fixes the notation the
+rest of the chapter uses, and that notation is the code's. Then the two places a
+mixture stops being ideal — **[Activity models](@ref sec-theory-activity)** for
+the aqueous phase, which every equilibrium calculation depends on whether or not
+it is mentioned, and **[Solid solutions](@ref sec-theory-solid-solutions)** for a
+phase of variable composition.
+
+**[The water budget of a hydrating paste](@ref sec-theory-water-budget)** is the
+cement-specific chapter, and the one to read if the question is why a
+calculation predicts a threshold at ``w/c \approx 0.30`` where Powers reports
+0.42. It is also where the limits of a 0D framework are argued rather than
+asserted.
+
+The derivation of the minimization itself, its optimality certificate and the
+constraint machinery are still in
+[Chemical Equilibrium](@ref sec-equilibrium) — theory living in a tutorial, and
+a move waiting to happen.

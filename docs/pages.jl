@@ -45,6 +45,12 @@ pages = [
             "theory/activity_models.md",
             "theory/solid_solutions.md",
         ],
+        # The material this package exists for. What a Gibbs minimization can
+        # predict about a drying paste, and what is not a thermodynamic
+        # quantity at all.
+        "Cementitious media" => [
+            "theory/cement_water_budget.md",
+        ],
     ],
     "Manual" => [
         # What a formula, a species and a reaction *are* here. Everything else
