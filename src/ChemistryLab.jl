@@ -260,6 +260,7 @@ module ChemistryLab
         SealedVolume,
         FixedActivity,
         FixedpH,
+        CapillaryWater,
         KineticStepSolver,
         kinetic_step,
         kinetic_step_adaptive,
@@ -374,7 +375,9 @@ module ChemistryLab
         WALLER_PARAMS_SLAG,
         blaine_factor,
         humidity_factor,
-        powers_alpha_max
+        powers_alpha_max,
+        PoreHumidity,
+        pore_saturation
 
     export AbstractSurfaceModel,
         FixedSurfaceArea,
