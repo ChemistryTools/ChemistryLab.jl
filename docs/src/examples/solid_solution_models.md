@@ -40,6 +40,33 @@ the equilibrium solver detects it: because a solid solution is entered as **one*
 phase and the activity expression keeps returning numbers on the wrong side of
 the threshold. Those numbers describe a metastable single phase.
 
+Seen as the Gibbs energy of mixing itself, the threshold is the moment the curve
+stops being convex:
+
+```@example ss
+using Plots
+
+xs = range(0.001, 0.999; length = 300)
+Gmix(x, w) = x * log(x) + (1 - x) * log(1 - x) + w * x * (1 - x)
+
+p1 = plot(; xlabel = "mole fraction x₁", ylabel = "G_mix / RT",
+    title = "Mixing free energy across the critical point", legend = :bottom)
+for (w, col, st) in ((0.0, :steelblue, :solid), (1.0, :seagreen, :solid),
+                     (2.0, :black, :dash), (2.5, :darkorange, :solid),
+                     (3.0, :firebrick, :solid))
+    plot!(p1, xs, [Gmix(x, w) for x in xs];
+        label = "W/RT = $(w)" * (w == 2.0 ? "  (critical)" : ""),
+        linewidth = 2, color = col, linestyle = st)
+end
+plot(p1; size = (720, 430), left_margin = 10Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+Below the critical value the curve is convex everywhere and a single phase is
+stable at every composition. Above it a hump appears in the middle: a mixture
+there lowers its energy by separating into two phases, one at each side of the
+hump. At `W/RT = 2` exactly the curve is flat to second order at `x = 0.5`,
+which is what the table above measures.
+
 ## 2. Redlich-Kister reduces to a regular solution, as it must
 
 ``a_0`` is the symmetric term of the Redlich-Kister expansion, so it is exactly
@@ -97,6 +124,24 @@ The ideal column is the relevant one for cement. An end-member at
 decades below the pure phase — a trace component is stabilized simply by being
 diluted in a host, which is how a solid solution takes up an ion that would
 never precipitate on its own.
+
+```@example ss
+p2 = plot(; xlabel = "mole fraction x₁", ylabel = "activity a₁",
+    title = "An end-member's activity, and what W does to it", legend = :topleft)
+plot!(p2, xs, collect(xs); label = "ideal (a = x)", linewidth = 2, color = :black,
+    linestyle = :dot)
+for (W, col) in ((4000.0, :firebrick), (-4000.0, :steelblue))
+    mod = RegularSolutionModel([0.0 W; W 0.0])
+    plot!(p2, xs, [x * exp(ChemistryLab._excess_ln_gamma(mod, 1, [x, 1 - x], 298.15))
+                   for x in xs];
+        label = "W = $(round(Int, W / 1000)) kJ/mol", linewidth = 2, color = col)
+end
+plot(p2; size = (720, 430), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+The three curves meet at `x₁ = 1`, where the standard state is, and separate
+most at the dilute end — which is exactly where a solid solution decides whether
+it will take up a trace component.
 
 See also: [Solid solutions](@ref sec-theory-solid-solutions) for the derivations,
 and [What the choice of activity model costs](@ref sec-app-activity-models) for

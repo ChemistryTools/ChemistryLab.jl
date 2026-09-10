@@ -105,6 +105,42 @@ The Raoult and osmotic routes differ by a few parts in a thousand even at
 3 mol/kg. It would be easy to conclude that the water-activity route is a
 detail.
 
+Seen as curves rather than as a table, the separation is a matter of where each
+model leaves the limiting law:
+
+```@example am
+using Plots
+
+ms = exp10.(range(-3, log10(3.0); length = 120))
+γ(mod, m) = activity_coefficients(nacl(m), mod)["Na+"]
+aw(mod, m) = exp(log_activities(nacl(m), mod)[sym_w])
+A25 = hkf_debye_huckel_params(298.15, 1.0e5).A
+
+p1 = plot(; xscale = :log10, xlabel = "molality m (mol/kg)", ylabel = "γ(Na⁺)",
+    title = "Three models, one electrolyte", legend = :bottomleft)
+for ((name, mod), col) in zip(models, (:gray, :firebrick, :steelblue))
+    plot!(p1, ms, [γ(mod, m) for m in ms]; label = name, linewidth = 2, color = col)
+end
+plot!(p1, ms, [exp(-A25 * sqrt(m) * log(10)) for m in ms];
+    label = "Debye-Hückel limiting law", linestyle = :dot, color = :black, linewidth = 2)
+plot(p1; size = (720, 430), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+```@example am
+p2 = plot(; xscale = :log10, xlabel = "molality m (mol/kg)", ylabel = "water activity a_w",
+    title = "The water activity barely separates", legend = :bottomleft)
+for ((name, mod), col) in zip(models, (:gray, :firebrick, :steelblue))
+    plot!(p2, ms, [aw(mod, m) for m in ms]; label = name, linewidth = 2, color = col,
+        linestyle = name == "Davies" ? :dash : :solid)
+end
+plot(p2; size = (720, 430), left_margin = 10Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+The ideal and Davies curves lie on top of each other in the second figure —
+both are Raoult — and the B-dot curve is a fraction of a percent away. A reader
+stopping here would conclude that the water-activity route is a detail. The next
+section is why that conclusion is wrong.
+
 ## 4. Gibbs-Duhem: the values agree, the derivatives do not
 
 Equilibrium is set by chemical potentials, that is by derivatives of the
@@ -162,6 +198,22 @@ the same as for dissolution, and the gap widens as the solution concentrates.
 So the water-activity route is not a refinement on a number that hardly moves.
 It decides whether the model is one thermodynamic system or two halves that
 disagree, and only the derivatives show it.
+
+```@example am
+p3 = plot(; xscale = :log10, yscale = :log10, xlabel = "molality m (mol/kg)",
+    ylabel = "Gibbs-Duhem residual", legend = :topleft,
+    title = "…and the derivatives separate by four orders")
+mm = [0.03, 0.1, 0.3, 1.0, 3.0]
+for ((name, mod), col) in zip(models, (:gray, :firebrick, :steelblue))
+    μ = build_potentials(cs3, mod)
+    r = [max(gd_residual(mod, m, [0.0, 1.0, 1.0]), 1.0e-16) for m in mm]
+    plot!(p3, mm, r; label = name, linewidth = 2, color = col, marker = :circle)
+end
+plot(p3; size = (720, 430), left_margin = 10Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+Along a dissolution, on a logarithmic axis: Davies sits above the ideal model at
+every molality, and the B-dot model below both by three to four orders.
 
 ## What to take from this
 
