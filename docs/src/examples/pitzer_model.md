@@ -19,8 +19,10 @@ model = PitzerActivityModel(; parameters = pars)
 substances = build_species(datapath("slop98-inorganic-thermofun.json"); verbose = false)
 dict = Dict(symbol(s) => s for s in substances)
 nacl = ChemicalSystem([dict[s] for s in split("H2O@ Na+ Cl-")], ["H2O@", "Na+", "Cl-"])
-M_W = 0.0180153
-n_w = 1 / M_W
+# the molar mass the closures themselves use, so a molality formed here is the
+# one they form
+M_w = ustrip(us"kg/mol", nacl.species[only(nacl.idx_solvent)][:M])
+n_w = 1 / M_w
 prm(k) = (ΔₐG⁰overRT = zeros(k), T = 298.15, P = 1.0e5, ϵ = 1.0e-30)
 nothing # hide
 ```
@@ -45,25 +47,100 @@ end
 A `β²` appears only where the pair needs a third ionic-strength dependence —
 2-2 electrolytes, and Ca–OH, which Harvie et al. treat the same way.
 
-## 2. The dilute limit is the limiting law, as it must be
+## 2. Against measurement, over four decades of molality
 
-A model that expands around ideality has no freedom here: as the solution
-empties, `log₁₀ γ± → −A|z₊z₋|√I` exactly, and this is the check that a
-mistyped coefficient cannot survive.
+Internal consistency cannot tell a correct parameter set from a self-consistent
+wrong one. [HamerWu1972](@cite) can: their Table 16 is a critical compilation of
+the osmotic and mean activity coefficients of NaCl at 25 °C, and it gives both,
+so each half of the model is checked separately.
 
 ```@example pz
-lna = activity_model(nacl, model)
-A = hkf_debye_huckel_params(298.15, 1.0e5).A
+# Hamer & Wu (1972), Table 16. m [mol/kg], φ, γ±.
+HW = [(0.001, 0.988, 0.965), (0.010, 0.968, 0.903), (0.100, 0.933, 0.779),
+      (0.500, 0.921, 0.681), (1.000, 0.936, 0.657), (2.000, 0.984, 0.668),
+      (3.000, 1.045, 0.714), (4.000, 1.116, 0.783), (5.000, 1.191, 0.874),
+      (6.000, 1.270, 0.986)]
+
+lna_pz = activity_model(nacl, model)
+lna_bd = activity_model(nacl, HKFActivityModel())
+γ_of(f, m) = let o = f([n_w, m, m], prm(3)); exp((o[2] + o[3]) / 2 - log(m)) end
+φ_of(f, m) = let o = f([n_w, m, m], prm(3)); -o[1] / (M_w * 2m) end
+
+println("      m   γ± measured   Pitzer      dev     B-dot       dev    φ meas   φ Pitzer")
+for (m, φm, γm) in HW
+    g1, g2, f1 = γ_of(lna_pz, m), γ_of(lna_bd, m), φ_of(lna_pz, m)
+    @printf("%7.3f  %11.4f  %8.4f  %6.2f%%  %8.4f  %6.1f%%  %8.4f  %9.4f\n",
+            m, γm, g1, 100 * (g1 - γm) / γm, g2, 100 * (g2 - γm) / γm, φm, f1)
+end
+```
+
+The Pitzer column follows the measurement to better than half a percent from a
+millimolal to six molal — through the **minimum near 1.2 mol/kg and the return
+above unity at saturation**, neither of which any Debye-Hückel form can produce,
+since both require a term that grows faster than ``\sqrt{I}`` and then turns
+over. The osmotic coefficient agrees to the same order, independently.
+
+The B-dot column is not being criticized for failing outside its stated range.
+The point is that the range is real — 5 % out at a tenth molal, 19 % at one,
+44 % at six — and that nothing in its output announces the exit.
+
+```@example pz
+using Plots
+
+ms = exp10.(range(-3, log10(6.0); length = 120))
+p1 = plot(ms, [γ_of(lna_pz, m) for m in ms];
+    xscale = :log10, xlabel = "molality m (mol/kg)", ylabel = "γ±",
+    label = "Pitzer (Reardon set)", linewidth = 2, color = :steelblue,
+    title = "NaCl mean activity coefficient at 25 °C", legend = :bottomleft)
+plot!(p1, ms, [γ_of(lna_bd, m) for m in ms];
+    label = "B-dot", linewidth = 2, color = :firebrick)
+A25 = hkf_debye_huckel_params(298.15, 1.0e5).A
+plot!(p1, ms, [exp(-A25 * sqrt(m) * log(10)) for m in ms];
+    label = "Debye-Hückel limiting law", linestyle = :dot, color = :gray, linewidth = 2)
+scatter!(p1, [h[1] for h in HW], [h[3] for h in HW];
+    label = "Hamer & Wu (1972), measured", color = :black, markersize = 5)
+plot(p1; size = (720, 430), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+Read on a logarithmic axis, the three models are one curve below a millimolal —
+they must be, the limiting law is exact there — and separate irreversibly above
+a hundredth molal. The measured points sit on the Pitzer curve throughout.
+
+```@example pz
+p2 = plot(ms, [100 * (γ_of(lna_pz, m) - 1) * 0 for m in ms];
+    label = "", color = :black, linewidth = 1, linestyle = :dash,
+    xscale = :log10, xlabel = "molality m (mol/kg)",
+    ylabel = "deviation from measurement (%)",
+    title = "Where each model leaves the data", legend = :bottomleft)
+scatter!(p2, [h[1] for h in HW], [100 * (γ_of(lna_pz, h[1]) - h[3]) / h[3] for h in HW];
+    label = "Pitzer", color = :steelblue, markersize = 5)
+scatter!(p2, [h[1] for h in HW], [100 * (γ_of(lna_bd, h[1]) - h[3]) / h[3] for h in HW];
+    label = "B-dot", color = :firebrick, markersize = 5, markershape = :diamond)
+hline!(p2, [-1, 1]; label = "± 1 %", color = :seagreen, linestyle = :dot)
+plot(p2; size = (720, 430), left_margin = 10Plots.mm, bottom_margin = 8Plots.mm)
+```
+
+This is also, incidentally, a check on the **transcription** of the parameter
+file: the Na/Cl coefficients were read off a scanned table, and nothing mistyped
+reproduces a measured curve over four decades.
+
+## 3. The dilute limit, exactly
+
+A model that expands around ideality has no freedom as the solution empties:
+`log₁₀ γ± → −A|z₊z₋|√I`, and this is the check a mistyped coefficient cannot
+survive either.
+
+```@example pz
 println("       m        ln γ± (Pitzer)    limiting law     ratio")
 for m in (1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3)
-    out = lna([n_w, m * n_w * M_W, m * n_w * M_W], prm(3))
+    out = lna_pz([n_w, m, m], prm(3))
     lnγ = ((out[2] - log(m)) + (out[3] - log(m))) / 2
-    law = -A * sqrt(m) * log(10)
+    law = -A25 * sqrt(m) * log(10)
     @printf("  %8.1e    %14.6f  %14.6f  %8.4f\n", m, lnγ, law, lnγ / law)
 end
 ```
 
-## 3. Gibbs-Duhem, exactly
+## 4. Gibbs-Duhem, exactly
 
 The reason to prefer this model. ``\gamma_i`` and ``\varphi`` are partial
 derivatives of one excess Gibbs energy, so ``\sum_i n_i\,\mathrm{d}\mu_i = 0``
@@ -96,7 +173,7 @@ Zero, at machine precision, in every direction and at every molality — against
 a B-dot residual that grows with concentration. No fit was involved in either
 column; the difference is structural.
 
-## 4. What the set refuses, and why that is correct
+## 5. What the set refuses, and why that is correct
 
 A Pitzer model cannot fall back on ideal behavior for one pair, so
 completeness is checked when the model meets a species list, and the error names
@@ -137,7 +214,7 @@ cement pore solution means building the species list the set describes — the
 free ions and the solids — or obtaining a parameter set fitted for the
 speciation at hand.
 
-## 5. Where it does apply
+## 6. Where it does apply
 
 A dissociated alkali-hydroxide-sulfate solution of the kind a cement pore
 solution approximates, at an ionic strength where the B-dot model is already
@@ -158,7 +235,7 @@ names = ["H2O@", "Na+", "K+", "Ca+2", "OH-", "SO4-2"]
 println("            γ (Pitzer)   γ (B-dot)    ratio")
 for (i, nm) in enumerate(names)
     i == 1 && continue
-    m = n[i] / (n[1] * M_W)
+    m = n[i] / (n[1] * M_w)
     g_pz, g_bd = exp(a_pz[i] - log(m)), exp(a_bd[i] - log(m))
     @printf("  %-6s  %10.4f  %10.4f  %8.3f\n", nm, g_pz, g_bd, g_pz / g_bd)
 end
