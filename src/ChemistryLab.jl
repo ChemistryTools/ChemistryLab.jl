@@ -245,6 +245,7 @@ module ChemistryLab
         VanGenuchten,
         FunctionRetention,
         capillary_pressure,
+        water_activity,
         kelvin_activity,
         kelvin_radius
 

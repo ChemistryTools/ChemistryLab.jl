@@ -10,6 +10,12 @@
 
 using DynamicQuantities
 
+# A quantity or a bare number, either way. A bare number is taken to be in the
+# SI unit the keyword's documentation names — the same latitude
+# `VanGenuchten(; a)` already gives its pressure scale, and the reason a reader
+# copying `V_m = 1.807e-5` out of a paper is not punished for it.
+_si(unit, x) = x isa DynamicQuantities.AbstractQuantity ? ustrip(unit, x) : float(x)
+
 """
     abstract type WaterRetention
 
@@ -68,11 +74,11 @@ julia> round(a; digits = 2)      # the self-desiccation plateau of a sealed past
 See also: [`kelvin_radius`](@ref), [`WaterRetention`](@ref).
 """
 function kelvin_activity(r; γ, V_m, T)
-    r_m = ustrip(us"m", r)
+    r_m = _si(us"m", r)
     r_m > 0 || throw(ArgumentError("kelvin_activity: the pore radius must be positive, got $r"))
     return exp(
-        -2 * ustrip(us"N/m", γ) * ustrip(us"m^3/mol", V_m) /
-            (r_m * ustrip(us"J/mol/K", Constants.R) * ustrip(us"K", T))
+        -2 * _si(us"N/m", γ) * _si(us"m^3/mol", V_m) /
+            (r_m * ustrip(us"J/mol/K", Constants.R) * _si(us"K", T))
     )
 end
 
@@ -93,7 +99,7 @@ julia> using DynamicQuantities
 
 julia> r = kelvin_radius(0.78; γ = 0.072u"N/m", V_m = 1.8e-5u"m^3/mol", T = 298.15u"K");
 
-julia> round(r * 1e9; digits = 1)      # nanometres
+julia> round(r * 1e9; digits = 1)      # nanometers
 4.2
 ```
 
@@ -106,8 +112,8 @@ function kelvin_radius(a_w; γ, V_m, T)
                 "got $a_w — at a_w = 1 the meniscus is flat and the radius infinite"
         )
     )
-    return -2 * ustrip(us"N/m", γ) * ustrip(us"m^3/mol", V_m) /
-        (log(a_w) * ustrip(us"J/mol/K", Constants.R) * ustrip(us"K", T))
+    return -2 * _si(us"N/m", γ) * _si(us"m^3/mol", V_m) /
+        (log(a_w) * ustrip(us"J/mol/K", Constants.R) * _si(us"K", T))
 end
 
 """
@@ -276,10 +282,38 @@ function capillary_pressure(r::VanGenuchten, S::Real)
     return r.a * (Sc^(-1 / r.m) - 1)^(1 - r.m)
 end
 
-# A `VanGenuchten` is not callable on `S` alone: turning its pressure into an
-# activity needs the liquid's molar volume and the temperature, which the
-# constraint holds. `_retention_activity` is the internal hook the constraint
-# calls, with a generic fallback for the laws that ARE a plain function of `S`.
+"""
+    water_activity(r::WaterRetention, S; V_m, T) -> Real
+
+Activity of the water a retention law leaves at degree of saturation `S`.
+
+For a law that is already stated as an activity — [`TabulatedRetention`](@ref), or
+a measured isotherm wrapped in [`FunctionRetention`](@ref) — this is the law
+itself and `V_m` and `T` are ignored. For a law stated as a **capillary
+pressure**, [`VanGenuchten`](@ref), it is the Kelvin relation
+`a_w = exp(-p_c V_m / RT)`, which is why the molar volume and the temperature
+have to be supplied: a pressure curve carries no temperature, and turning it into
+an activity does.
+
+Both are keywords without defaults, for the reason given in
+[`WaterRetention`](@ref).
+
+# Examples
+
+```julia
+co = VanGenuchten(; a = 37.5479e6, m = 1 / 2.1684)
+water_activity(co, 0.786; V_m = 1.807e-5, T = 298.15)     # ≈ 0.80
+```
+
+See also: [`capillary_pressure`](@ref), [`kelvin_activity`](@ref),
+[`CapillaryWater`](@ref).
+"""
+water_activity(r::WaterRetention, S::Real; V_m, T) =
+    _retention_activity(r, S, _si(us"m^3/mol", V_m), _si(us"K", T))
+
+# `_retention_activity` is the positional inner form the constraint and
+# `PoreHumidity` call on their hot paths, with the units already stripped. The
+# generic method is for the laws that ARE a plain function of `S`.
 _retention_activity(r::WaterRetention, S, V_m, T) = r(S)
 function _retention_activity(r::VanGenuchten, S, V_m, T)
     return exp(-capillary_pressure(r, S) * V_m / (ustrip(us"J/mol/K", Constants.R) * T))
