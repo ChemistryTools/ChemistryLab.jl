@@ -103,10 +103,11 @@ The Debye length is ``\kappa^{-1} = 1/(B\sqrt{I})`` in ångström when ``B`` is 
 A cement pore solution sits around ``I \approx 0.1``–``0.5 mol/kg``, so its
 screening length is a **few ångström** — the thickness of two or three water
 molecules. That is the same scale as the water films in the gel pores of C-S-H,
-and both assumptions of step 1 and step 2 above are strained there: a continuum of bulk permittivity, and ions independent in a mean
-field. Nothing in the formulas announces it. It is the physical reason to treat
-an extended Debye-Hückel model as a correlation valid in bulk solution rather
-than as a theory of confined water.
+and both assumptions of step 1 and step 2 above are strained there: a continuum
+of bulk permittivity, and ions independent in a mean field. Nothing in the
+formulas announces it. It is the physical reason to treat an extended
+Debye-Hückel model as a correlation valid in bulk solution rather than as a
+theory of confined water.
 
 ## 2. The ``\dot{B} I`` term is a deviation function, not a physical term
 

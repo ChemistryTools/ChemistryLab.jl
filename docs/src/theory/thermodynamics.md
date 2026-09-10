@@ -128,13 +128,14 @@ g_s \;=\; \sum_c A_{cs}\, y_c \quad\text{for every species actually present},
 g_s \;\ge\; \sum_c A_{cs}\, y_c \quad\text{for every one absent.}
 ```
 
-The ``y_c`` are **component potentials** (element potentials, when the components
-are elements): one number per component, from which the chemical potential of
-any species is a dot product. The two lines above are the complementarity
-conditions of the KKT system, and they are exactly what
+The ``y_c`` are **component potentials** (element potentials, when the
+components are elements): one number per component, from which the chemical
+potential of any species is a dot product. The two lines above are the
+complementarity conditions of the KKT system, and they are exactly what
 [`optimality_certificate`](@ref) checks — see
-[Proving that an answer is the answer](@ref sec-theory-certificate) for the certificate itself and why
-convexity makes it sufficient rather than merely necessary.
+[Proving that an answer is the answer](@ref sec-theory-certificate) for the
+certificate itself and why convexity makes it sufficient rather than merely
+necessary.
 
 ## 5. Reaction quotients, ``K``, and the saturation index
 
@@ -197,9 +198,9 @@ V = \sum_i n_i V_i^\circ(T,P) ,
 with no excess volume of mixing. That is an assumption, and it is the one behind
 every porosity this package reports. [`volume`](@ref) returns the split by
 aggregate state, [`porosity`](@ref) the void fraction relative to a reference
-state, and [`chemical_shrinkage`](@ref) the volume the reaction itself consumes —
-hydrates occupying less than the water and clinker they were made from, which is
-the mechanism behind self-desiccation
+state, and [`chemical_shrinkage`](@ref) the volume the reaction itself consumes
+— hydrates occupying less than the water and clinker they were made from, which
+is the mechanism behind self-desiccation
 ([Self-desiccation](@ref sec-self-desiccation)).
 
 A species carrying no ``V^\circ`` contributes zero and would corrupt a porosity
@@ -230,4 +231,5 @@ point.
   - [Activity models](@ref sec-theory-activity) — the ``\ln a_i`` half of ``g_i``
   - [Solid solutions](@ref sec-theory-solid-solutions) — the mole-fraction half
   - [Chemical Equilibrium](@ref sec-equilibrium) — driving the solver
-  - [Proving that an answer is the answer](@ref sec-theory-certificate) — the certificate
+- [Proving that an answer is the answer](@ref sec-theory-certificate) — the
+certificate
