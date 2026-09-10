@@ -118,6 +118,11 @@ pages = [
             "examples/titration_malonic_acid.md",
             "examples/co2_carbonate_system.md",
         ],
+        # The entry point to the cement material: clinker in, everything else
+        # computed.
+        "Cementitious media from the clinker up" => [
+            "examples/cem1_from_clinker.md",
+        ],
         "Cementitious media at equilibrium" => [
             "examples/simplified_clinker_dissolution.md",
             "examples/cement_wc_ratio.md",
