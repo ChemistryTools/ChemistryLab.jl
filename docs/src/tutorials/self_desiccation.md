@@ -186,7 +186,7 @@ number five times.
 **Every solve is certified.** For a convex problem the KKT conditions are
 sufficient, so `certified = true` is a proof that the composition is the Gibbs
 minimum and not the point an iteration stopped at — see
-[Proving that an answer is the answer](@ref).
+[Proving that an answer is the answer](@ref sec-theory-certificate).
 
 ```@example sd
 ref = budget(0.65)

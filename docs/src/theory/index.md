@@ -34,8 +34,11 @@ first thing to read and the first thing to suspect:
 ## Reading order
 
 **[Thermochemistry](@ref sec-theory-thermo)** first: it fixes the notation the
-rest of the chapter uses, and that notation is the code's. Then the two places a
-mixture stops being ideal — **[Activity models](@ref sec-theory-activity)** for
+rest of the chapter uses, and that notation is the code's. Then
+**[Proving that an answer is the answer](@ref sec-theory-certificate)**, which is
+why an equilibrium computed here can be *proved* rather than trusted — the
+problem is convex, so the optimality conditions are sufficient, and a solver can
+aim at them directly. Then the two places a mixture stops being ideal — **[Activity models](@ref sec-theory-activity)** for
 the aqueous phase, which every equilibrium calculation depends on whether or not
 it is mentioned, and **[Solid solutions](@ref sec-theory-solid-solutions)** for a
 phase of variable composition.
@@ -46,7 +49,7 @@ calculation predicts a threshold at ``w/c \approx 0.30`` where Powers reports
 0.42. It is also where the limits of a 0D framework are argued rather than
 asserted.
 
-The derivation of the minimization itself, its optimality certificate and the
-constraint machinery are still in
-[Chemical Equilibrium](@ref sec-equilibrium) — theory living in a tutorial, and
-a move waiting to happen.
+The constraint machinery — what can be held fixed instead of ``T`` and ``P``,
+and by which of two mechanisms — is still described in
+[Chemical Equilibrium](@ref sec-equilibrium), where it sits next to the syntax
+for asking for it.

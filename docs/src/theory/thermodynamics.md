@@ -133,7 +133,7 @@ are elements): one number per component, from which the chemical potential of
 any species is a dot product. The two lines above are the complementarity
 conditions of the KKT system, and they are exactly what
 [`optimality_certificate`](@ref) checks — see
-[Proving that an answer is the answer](@ref) for the certificate itself and why
+[Proving that an answer is the answer](@ref sec-theory-certificate) for the certificate itself and why
 convexity makes it sufficient rather than merely necessary.
 
 ## 5. Reaction quotients, ``K``, and the saturation index
@@ -230,4 +230,4 @@ point.
   - [Activity models](@ref sec-theory-activity) — the ``\ln a_i`` half of ``g_i``
   - [Solid solutions](@ref sec-theory-solid-solutions) — the mole-fraction half
   - [Chemical Equilibrium](@ref sec-equilibrium) — driving the solver
-  - [Proving that an answer is the answer](@ref) — the certificate
+  - [Proving that an answer is the answer](@ref sec-theory-certificate) — the certificate

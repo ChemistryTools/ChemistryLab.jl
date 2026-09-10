@@ -39,6 +39,7 @@ pages = [
         # remaining pages use its notation, which is the code's.
         "Foundations" => [
             "theory/thermodynamics.md",
+            "theory/equilibrium.md",
         ],
         # The two places a mixture stops being ideal, and the only two where a
         # standard state has to be argued about rather than looked up.
