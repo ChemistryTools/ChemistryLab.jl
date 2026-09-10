@@ -347,10 +347,14 @@
 % `test/published_values.jl` and in the Pitzer application page (their Table 16,
 % p. 1067). It is a critical compilation rather than a single experiment, which
 % is what makes it usable as a reference curve over four decades of molality.
+% The title carries a degree sign, written as the Unicode character: the
+% bibliography renderer rejects `\textdegree` and fails the build over it. And a
+% `%` comment placed *inside* an entry makes the parser discard the entry
+% silently, which cost one build to find.
 @article{HamerWu1972,
   author  = {Hamer, Walter J. and Wu, Yung-Chi},
   title   = {Osmotic Coefficients and Mean Activity Coefficients of
-             Uni-univalent Electrolytes in Water at 25\textdegree{}C},
+             Uni-univalent Electrolytes in Water at 25 °C},
   journal = {Journal of Physical and Chemical Reference Data},
   volume  = {1},
   number  = {4},

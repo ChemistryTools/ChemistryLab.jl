@@ -270,14 +270,16 @@ cannot run out. Two ways round it, and this page takes the first:
   - **let the assemblage be a result**: attach an equilibrium solver, so the
     kinetics supplies element budgets and the products are whatever minimizes
     the Gibbs energy at each step, ettringite while sulfate lasts and monosulfate
-    afterwards. That is [Coupled hydration](@ref), and it is the honest route to
-    a sulfate-bearing aluminate.
+    afterwards. That is
+    [The hydrating paste, end to end](@ref sec-coupled-hydration), and it is the
+    honest route to a sulfate-bearing aluminate.
 
 ## 9. What this page assumed
 
   - **a closed species list** — the hydrates admitted in §2 and no others;
   - **stoichiometric reactions written by hand**, one per clinker phase, rather
-    than an equilibrium assemblage. [Coupled hydration](@ref) attaches an
+    than an equilibrium assemblage.
+    [The hydrating paste, end to end](@ref sec-coupled-hydration) attaches an
     equilibrium solver instead, and then which hydrates appear becomes a result;
   - **Parrot-Killoh parameters** as published, with a Blaine correction and no
     fitting to any measurement on this page;
