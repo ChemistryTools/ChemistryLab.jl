@@ -72,8 +72,11 @@ shift at `ln 0.90` it returns `a_w = 0.999995` while the solve was posed at 0.90
 ### Added — `PoreHumidity`, and where the arrest actually comes from
 
 The Kelvin term is **two orders of magnitude too weak to arrest hydration**.
-Measured: imposing a water activity anywhere from 0.95 down to 0.05 leaves the
-equilibrium assemblage of a CEM I paste unchanged. At `a_w = 0.80` the shift is
+Measured, with a certificate on every answer: imposing a water activity from
+saturation down to 0.80 leaves the equilibrium assemblage of a CEM I paste
+unchanged to six digits. Below that the constrained problem stops certifying, so
+nothing is claimed there — and the arithmetic says nothing is expected there
+either. At `a_w = 0.80` the shift is
 553 J per mole of water, worth about 1.8 kJ per mole of alite against a hydration
 Gibbs energy of order −100 kJ/mol; nulling it would need `a_w ≈ 5e-6`, a Kelvin
 radius smaller than a water molecule. A real paste stops at 75–80 % RH because
@@ -124,6 +127,14 @@ non-evaporable water by 0.0795 g/g, which is the interlayer water CEMDATA18 writ
 into the C-S-H formula and D-drying removes. Not the same quantity, so not an
 error — and the `CSHQ` solid solution binds more, 0.3684 g/g, so it moves away
 from Powers rather than toward him.
+
+It also **executes the two controls that could have refuted it**, rather than
+asserting them: the imposed-activity sweep above, which is why the arrest is read
+from the rate law and not from the Gibbs energy; and the same construction run on
+a second measured curve from the same table, which returns a ratio
+`α_max/(w/c)` constant to every digit printed in both cases and differing between
+them by 18 %. The constancy is an identity of the construction and carries no
+information; the value, `1/k`, carries all of it.
 
 
 ## v0.15.2 — a solution that is no longer a solution

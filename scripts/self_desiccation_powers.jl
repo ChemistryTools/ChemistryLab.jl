@@ -258,3 +258,64 @@ println("  arrest humidity has to be known to about a point to pin k to 0.01.")
 
 println("\nMeasured porosity of their mix CO (their Table 4): 30.3 %")
 @printf("This model at alpha = 0.65: %.1f %%\n", 100 * REF.porosity)
+
+# ── 5. Two negative controls ─────────────────────────────────────────────────
+#
+# The two claims the rest of this script rests on, tested rather than asserted.
+# Section 7 of the tutorial prints the same two tables.
+
+println("\n", "="^78)
+println("5. NEGATIVE CONTROL A — THE THERMODYNAMIC ROUTE DOES NOT ARREST HYDRATION")
+println("="^78)
+println("Imposing the arrest humidity on a paste with all its cement available.")
+println("If self-desiccation were thermodynamic, cement would be left over.\n")
+
+const FRESH = paste(1.0)
+const IP = findfirst(s -> symbol(s) == "Portlandite", cs.species)
+const IJ = findfirst(s -> symbol(s) == "Jennite", cs.species)
+
+println("  a_w imposed   n(Portlandite)   n(Jennite)   free water (mol)   certified")
+for aw in (1.0, 0.9, 0.8, 0.5)
+    eq, cert = equilibrate_certified(
+        paste(1.0); constraint = CapillaryWater(_ -> aw; reference = FRESH)
+    )
+    @printf(
+        "  %11.2f   %14.6f   %10.6f   %16.5f   %s\n", aw,
+        ustrip(us"mol", eq.n[IP]), ustrip(us"mol", eq.n[IJ]),
+        ustrip(us"mol", eq.n[IW]), cert.optimal
+    )
+end
+println("\nUnchanged to six digits down to the arrest humidity, every answer certified.")
+println("Below that no route certifies — the warning is the guard, not a result.")
+
+println("\n", "="^78)
+println("5. NEGATIVE CONTROL B — THE PROPORTIONAL FORM CARRIES NO INFORMATION")
+println("="^78)
+println("The same construction on a second measured curve from the same table.")
+println("Watch which column moves and which one does not.")
+
+const BH_CURVE = VanGenuchten(; a = 46.9364e6, m = 1 / 2.0601)   # their mix BH
+
+function saturation_of(law, rh)
+    lo, hi = 1.0e-4, 1.0 - 1.0e-12
+    for _ in 1:60
+        mid = (lo + hi) / 2
+        water_activity(law, mid; V_m = V_M_WATER, T = T_K) > rh ? (hi = mid) : (lo = mid)
+    end
+    return (lo + hi) / 2
+end
+
+for (name, law) in (("CO", CO_CURVE), ("BH", BH_CURVE))
+    S = saturation_of(law, 0.8)
+    k = powers_k(B_MODEL, S_SHRINK, S)
+    @printf("\ncurve %s:  S* = %.4f   k = %.4f\n", name, S, k)
+    for w in (0.25, 0.3, 0.35, 0.4)
+        @printf(
+            "   w/c %.2f  ->  alpha_max = %.6f   alpha_max/(w/c) = %.6f\n",
+            w, w / k, 1 / k
+        )
+    end
+end
+println("\nThe last column is constant by construction and differs by 18 % between")
+println("the two curves: its constancy proves nothing, its value is 1/k and is all")
+println("there is to predict.")

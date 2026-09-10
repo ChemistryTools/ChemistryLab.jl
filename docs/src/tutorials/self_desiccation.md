@@ -26,8 +26,9 @@ runs the whole calculation outside the documentation.
     mole, so the whole capillary contribution to the affinity is under 2 kJ/mol
     against a hydration Gibbs energy of order ``-100`` kJ/mol. Nulling it would
     need ``a_w \approx 5\times10^{-6}``, a Kelvin radius smaller than a water
-    molecule. Measured: imposing a water activity anywhere from 0.95 down to 0.05
-    leaves the equilibrium assemblage of a CEM I paste **unchanged**.
+    molecule. Measured in §7 on this page's own paste, with a certificate on
+    every answer: imposing a water activity from saturation down to 0.80 leaves
+    the equilibrium assemblage **unchanged to six digits**.
 
     A real paste stops at 75–80 % relative humidity because transport and
     nucleation stop. So the humidity belongs in the **rate law**, through
@@ -416,7 +417,94 @@ isotherm alone, and it does not try.
 
 ---
 
-## 7. What went in, and what came out
+## 7. Two negative controls
+
+Two claims carry the rest of the page: that the arrest criterion belongs in the
+rate law and not in the Gibbs energy, and that Powers' proportional *form* is no
+evidence for his coefficient. Both are testable on the material at hand, so both
+are measured here rather than asserted.
+
+### The thermodynamic route, measured
+
+[`CapillaryWater`](@ref) imposes a water activity on the equilibrium itself. If
+self-desiccation arrested hydration thermodynamically, imposing the arrest
+humidity on a paste with all its cement available would leave some of that cement
+unreacted. It does not:
+
+```@example sd
+fresh = paste(1.0)
+ip = findfirst(s -> symbol(s) == "Portlandite", cs.species)
+ij = findfirst(s -> symbol(s) == "Jennite", cs.species)
+
+println("  a_w imposed   n(Portlandite)   n(Jennite)   free water (mol)   certified")
+for aw in (1.00, 0.90, 0.80, 0.50)
+    eq, cert = equilibrate_certified(
+        paste(1.0); constraint = CapillaryWater(_ -> aw; reference = fresh)
+    )
+    @printf("  %11.2f   %14.6f   %10.6f   %16.5f   %s\n", aw,
+            ustrip(us"mol", eq.n[ip]), ustrip(us"mol", eq.n[ij]),
+            ustrip(us"mol", eq.n[iw]), cert.optimal)
+end
+```
+
+From saturation down to the arrest humidity the assemblage is identical to six
+digits — the imposed shift moves the answer by less than the printing precision —
+and each of those answers is certified. The last row is there to show the other
+half of that: further down, no route certifies, the warning above the table is
+[`equilibrate_certified`](@ref) saying so, and the answer it returns is a KKT
+candidate rather than a proof. The arithmetic in the opening admonition says why
+nothing is expected to happen in that range anyway.
+
+So a Gibbs minimization under [`CapillaryWater`](@ref) arrests where it ran out
+of water stoichiometrically, not where Powers says. What the constraint is good
+for is what §3–§5 use it for: making the water activity of a state mean the water
+in the pores rather than a mole fraction, and handing that humidity to a rate law
+through [`PoreHumidity`](@ref).
+
+### The proportional form, measured
+
+§1 argued that ``\alpha_{\max} \propto w/c`` follows from a fixed humidity
+threshold composed with *any* monotone retention curve. The test is to run the
+same construction on a second measured curve from the same table — mix BH, a
+different material at a different W/C — and watch which number moves.
+
+```@example sd
+bh = VanGenuchten(; a = 46.9364e6, m = 1 / 2.0601)   # their mix BH
+
+function saturation_of(law, rh)
+    lo, hi = 1e-4, 1 - 1e-12
+    for _ in 1:60
+        mid = (lo + hi) / 2
+        water_activity(law, mid; V_m = V_m, T = T_K) > rh ? (hi = mid) : (lo = mid)
+    end
+    return (lo + hi) / 2
+end
+
+for (name, law) in (("CO", co), ("BH", bh))
+    S = saturation_of(law, 0.80)
+    k = powers_k(b_model, s_shrink, S)
+    @printf("\ncurve %s:  S* = %.4f   k = %.4f\n", name, S, k)
+    for w in (0.25, 0.30, 0.35, 0.40)
+        @printf("   w/c %.2f  →  α_max = %.6f   α_max/(w/c) = %.6f\n", w, w / k, 1 / k)
+    end
+end
+```
+
+The last column is the same number at every ``w/c``, in both blocks, to every
+digit printed — and the two blocks disagree with each other by 18 %. That is the
+whole point: the *constancy* of ``\alpha_{\max}/(w/c)`` is an identity of the
+construction and carries no information, while its *value*, ``1/k``, carries all
+of it. A page that quoted a five-digit agreement between that ratio and
+``1/0.42 = 2.381`` would be quoting its own arithmetic, which is why §5 reports
+``k`` and §6 reports ``\mathrm{d}k/\mathrm{d}S^\ast`` instead.
+
+Neither curve gives 0.42 at RH 0.80 with this system's formula water. Recovering
+Powers' coefficient takes his own water split as well, and §5 does that
+explicitly and says so.
+
+---
+
+## 8. What went in, and what came out
 
 | input | value | source | is that source about Powers? |
 |:--|:--|:--|:--|
@@ -436,7 +524,7 @@ authors to a drying experiment two decades before this calculation existed.
 
 ---
 
-## 8. Assumptions, and where each one bites
+## 9. Assumptions, and where each one bites
 
   - **The degree of hydration is imposed, not predicted.** §2's construction
     reacts a fraction of the cement and leaves the rest inert. What this page
@@ -470,7 +558,7 @@ authors to a drying experiment two decades before this calculation existed.
   - **Ideal molar volumes**, and a closed species list — the standing assumptions
     of every equilibrium page here.
 
-## 9. Reproducing this
+## 10. Reproducing this
 
 ```bash
 julia --project=scripts scripts/self_desiccation_powers.jl
