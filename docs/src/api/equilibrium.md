@@ -52,6 +52,18 @@ Modules = [ChemistryLab]
 Pages = ["equilibrium/constraints.jl"]
 ```
 
+## Water retention
+
+The relation between how much water a pore space still holds and how tightly it
+holds it — the constitutive input [`CapillaryWater`](@ref) needs, and the source
+of the humidity [`PoreHumidity`](@ref) hands to a rate law. It is measured, not
+assumed, so nothing here carries a default value.
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["equilibrium/retention.jl"]
+```
+
 ## Problem and solver
 
 ```@autodocs

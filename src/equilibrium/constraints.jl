@@ -389,13 +389,34 @@ supersaturated, and the capillary closure satisfied — but not global optimalit
 The multi-start route still runs, so agreement across starts is evidence; it is
 not the proof the fixed-(T, P) route gives.
 
+# Reading the shift back
+
+!!! warning "`log_activities` does not know about the shift"
+    The shift lives in the solver's parameter block, not in the activity model,
+    so [`log_activities`](@ref) and everything built on it — [`activities`](@ref),
+    `pH(state, model)`, [`saturation_indices`](@ref) — return the **chemical**
+    water activity, which this constraint barely moves. The activity the solve
+    actually worked with is that value plus the shift:
+
+    ```julia
+    q = Ref(Float64[])
+    eq, cert = equilibrate_certified(state; constraint = c, parameters = q)
+    a_w = exp(log_activities(eq, model)["H2O@"] + only(q[]))   # what the solver saw
+    ```
+
+    Measured on a calcite system with the shift set to `ln 0.90`: the chemical
+    log-activity comes back at `-5.3e-6`, i.e. `a_w = 0.999995`, while the
+    activity the solve was posed with is 0.90. A caller who reads the first and
+    concludes nothing happened has read the wrong number.
+
 # Examples
 
 ```julia
 fresh = fresh_paste(0.30)                     # the volume reference
-r     = TabulatedRetention(; S = [...], a_w = [...])
+r     = VanGenuchten(; a = 37.5479e6, m = 1 / 2.1684)   # a measured isotherm
+q = Ref(Float64[])
 eq, cert = equilibrate_certified(
-    state; constraint = CapillaryWater(r; reference = fresh),
+    state; constraint = CapillaryWater(r; reference = fresh), parameters = q,
 )
 ```
 

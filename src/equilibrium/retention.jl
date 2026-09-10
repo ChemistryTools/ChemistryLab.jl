@@ -209,18 +209,37 @@ or a pressure quantity) and `m` is the dimensionless shape exponent, `0 < m < 1`
 There are no defaults — the pair belongs to a fitted material, not to the
 package.
 
+# Published parameters, and the two conventions
+
+[BaroghelBouny1999](@cite) fit exactly this expression to measured water-vapor
+desorption isotherms, and write it with `b = 1/m`:
+
+```
+p_c(S) = a (S^(-b) - 1)^(1 - 1/b)
+```
+
+so a `b` from that literature becomes `m = 1/b` here. Their Table 5, for
+materials whose mixes and porosities are in their Tables 1 and 4:
+
+| mix | material | W/C | `a` (MPa) | `b` | `m = 1/b` |
+|:--|:--|:--|:--|:--|:--|
+| CO | cement paste | 0.34 | 37.5479 | 2.1684 | 0.46117 |
+| CH | paste, 10 % silica fume | 0.19 | 96.2837 | 1.9540 | 0.51177 |
+| BO | concrete | 0.48 | 18.6237 | 2.2748 | 0.43960 |
+| BH | concrete, 10 % silica fume | 0.26 | 46.9364 | 2.0601 | 0.48541 |
+
 # Examples
 
 ```julia
-r = VanGenuchten(; a = my_fitted_pressure_scale, m = my_fitted_exponent)
+# The ordinary cement paste of Baroghel-Bouny et al. (1999), their mix CO
+r = VanGenuchten(; a = 37.5479e6, m = 1 / 2.1684)
 ```
 
-!!! warning "There is no typical pair to copy from here"
-    Values are deliberately not quoted in this docstring. A `(a, m)` pair belongs
-    to a fitted material — a particular w/c, a particular curing, a particular
-    age — and a number reproduced from memory into an example is the first thing
-    a reader copies into their own script. Fit it to your own isotherm, or take
-    it from a paper you have read, and cite that paper.
+!!! warning "A pair belongs to a material, not to this package"
+    The table above is quoted with its source so it can be checked, not so it
+    can be copied blindly. Those four fits are one cement, one curing history and
+    one age; `m` and `a` both move with w/c, with silica fume and with the
+    aggregate. Fit your own isotherm where you have one, and cite what you used.
 
 See also: [`WaterRetention`](@ref), [`TabulatedRetention`](@ref).
 """
