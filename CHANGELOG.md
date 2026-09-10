@@ -191,6 +191,60 @@ Long solver output is folded into collapsed blocks rather than unrolled: seven
 pages ended on an assignment whose value Documenter then displayed in full, up
 to 48 species and a whole conservation matrix between two paragraphs.
 
+### Validated — against measurement, not only against itself
+
+Every earlier claim about the Pitzer model was internal consistency, and
+internal consistency cannot tell a correct parameter set from a self-consistent
+wrong one. Hamer & Wu (1972), Table 16 — a critical compilation of the osmotic
+*and* mean activity coefficients of NaCl at 25 °C — settles it, and each half of
+the model is checked separately:
+
+**Pitzer follows the measurement to better than half a percent from 0.001 to
+6 mol/kg**, through the minimum near 1.2 mol/kg and the return above unity at
+saturation, neither of which a Debye-Hückel form can produce. The osmotic
+coefficient agrees to the same order. On the same points the B-dot model is 5 %
+out at a tenth molal, 19 % at one and 44 % at six — its stated range is real,
+and nothing in its output announces the exit.
+
+That is also a check on the transcription: the Na/Cl coefficients were read off
+a scanned table, and nothing mistyped reproduces a measured curve over four
+decades.
+
+### Added — a worked cement, from the clinker up
+
+`examples/cem1_from_clinker.md`: four anhydrous phases, a w/c, and everything
+after that computed — the degree of hydration of each phase, the hydrates that
+appear, the porosity, the chemical shrinkage, the internal humidity. Three
+clinkers, of which one is the measured CEM I of Baroghel-Bouny et al. and two
+are constructed to trade alite for belite at constant silicate, which isolates
+one variable rather than comparing three cements nobody has made.
+
+Writing it corrected three statements that reading could not have caught, and
+one of them is a trap worth knowing: the aluminate reaction
+`C3A + 3 Gp + 26 H2O → ettringite`, driven by a Parrot-Killoh rate, **violates
+mass conservation**. That rate follows its own clinker phase and does not watch
+its co-reactants, so the extent keeps advancing after the gypsum runs out —
+demanding 0.28164 mol against 0.25499 present, with the gypsum floored at zero
+rather than going negative, so sulfate is created. Nothing in the package
+objects: `extent_residual` measures integrator drift, and the feasibility
+machinery guards an equilibrium sub-solve that is not running. A
+fixed-stoichiometry kinetic reaction is only safe when its co-reactants cannot
+run out, and the page says so with those numbers.
+
+Six figures there, and four more in the Applications pages: the three activity
+models against molality with the limiting law, their water activities, the
+Gibbs-Duhem residual on log-log axes, and the mixing free energy of a regular
+solution across the critical point, which makes the miscibility gap visible
+rather than tabulated.
+
+### Coverage
+
+`src/equilibrium/pitzer.jl` and `src/databases/pitzer_toml.jl` are covered
+completely. The gaps were not scattered lines but three untested behaviors — a
+neutral solute reaching the λ terms, a gas phase, and solid-solution
+end-members, the last of which is the silent failure where an aqueous model that
+forgets the solid-solution branch leaves them as pure phases.
+
 ### Compatibility
 
 Tested on Julia 1.12 and 1.13. `[compat] julia = "1.12"` is unchanged and
