@@ -209,7 +209,7 @@ constructed when that list is not empty.
 
 ## 7. What is *not* assumed, and what is
 
-Worth keeping in one list, because most surprises are here:
+The two lists, side by side:
 
 | assumed | not assumed |
 |:--|:--|

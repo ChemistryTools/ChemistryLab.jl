@@ -95,7 +95,7 @@ Both rise with temperature, because water's dielectric constant falls faster tha
 ### The screening length is the size of a gel pore
 
 The Debye length is ``\kappa^{-1} = 1/(B\sqrt{I})`` in ångström when ``B`` is in
-Å⁻¹(kg/mol)^½, and it is worth putting a number on it. At 25 °C it runs from
+Å⁻¹(kg/mol)^½. At 25 °C it runs from
 9.6 nm at ``I = 10^{-3}`` mol/kg to 0.30 nm at 1 mol/kg, passing **0.55 nm at
 ``I = 0.3`` mol/kg** — the values are tabulated in
 [What the choice of activity model costs](@ref sec-app-activity-models).
@@ -103,8 +103,7 @@ The Debye length is ``\kappa^{-1} = 1/(B\sqrt{I})`` in ångström when ``B`` is 
 A cement pore solution sits around ``I \approx 0.1``–``0.5 mol/kg``, so its
 screening length is a **few ångström** — the thickness of two or three water
 molecules. That is the same scale as the water films in the gel pores of C-S-H,
-and it is worth noticing that both assumptions of step 1 and step 2 above are
-strained there: a continuum of bulk permittivity, and ions independent in a mean
+and both assumptions of step 1 and step 2 above are strained there: a continuum of bulk permittivity, and ions independent in a mean
 field. Nothing in the formulas announces it. It is the physical reason to treat
 an extended Debye-Hückel model as a correlation valid in bulk solution rather
 than as a theory of confined water.
@@ -119,7 +118,7 @@ no screening argument produces. The B-dot model adds a linear term for it,
                     + \dot{B} I .
 ```
 
-Its status is worth being precise about. [AndersonCrerar1993](@cite) (§17.7.1,
+Its status is that of an empirical correlation. [AndersonCrerar1993](@cite) (§17.7.1,
 pp. 445–446) record that Helgeson defined ``\dot{B}`` as a **deviation
 function**: the difference between the *observed* activity coefficient of an
 electrolyte — NaCl — and what the extended Debye-Hückel expression predicts for
@@ -218,8 +217,8 @@ residual ``\lvert\sum_i n_i\,\mathrm{d}\mu_i\rvert`` along a dissolution at
 1 mol/kg: ``1.9\times10^{-1}`` for Davies against ``6.7\times10^{-5}`` for the
 B-dot model, with the ideal model at ``2.9\times10^{-2}`` in between.
 
-That last one is the substance of §3, and it is worth stating twice. **Davies is
-less thermodynamically consistent than assuming ideality.** Correcting the
+The third result follows from §3: **Davies is less thermodynamically consistent
+than assuming ideality.** Correcting the
 solutes while leaving the solvent at ``a_w = x_w`` sets the two halves of one
 model against each other, and a model can be *more* wrong for being *partly*
 corrected. Since equilibrium is set by derivatives and not by values, a

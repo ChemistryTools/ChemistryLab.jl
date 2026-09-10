@@ -11,8 +11,7 @@ rule of thumb summarizes the arrest as
 
 and [`powers_alpha_max`](@ref) supplies it to the rate laws. This page is about
 what that 0.42 is made of, which part of it a Gibbs energy minimization can
-predict, and — the question worth being precise about — **why the other part is
-not a thermodynamic quantity at all**.
+predict, and why the other part is **not a thermodynamic quantity**.
 
 ## 1. Three destinations for the mixing water
 

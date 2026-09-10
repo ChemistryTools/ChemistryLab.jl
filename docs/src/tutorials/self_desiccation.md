@@ -258,7 +258,7 @@ for rh in (0.75, 0.80, 0.85, 0.90, 0.95)
 end
 ```
 
-The last column is worth pausing on: 80 % relative humidity is a meniscus of
+The last column sets the scale: 80 % relative humidity corresponds to a meniscus of
 radius 4.8 nm. That is the **gel-pore scale**, which is why the water Powers
 assigns to gel pores and the water a sealed paste cannot use are the same water.
 

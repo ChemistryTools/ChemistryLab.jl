@@ -35,8 +35,8 @@ for w in (0.0, 1.0, 1.9, 2.0, 2.1, 3.0)
 end
 ```
 
-This is worth checking before a parameter goes into a model: nothing in the
-equilibrium solver detects it, because a solid solution is entered as **one**
+This has to be checked before a parameter goes into a model, because nothing in
+the equilibrium solver detects it: because a solid solution is entered as **one**
 phase and the activity expression keeps returning numbers on the wrong side of
 the threshold. Those numbers describe a metastable single phase.
 
@@ -62,9 +62,9 @@ for k in 1:2
 end
 ```
 
-(Note that this ``W`` is ``W/RT = 4.8``, past the critical 2 of §1 — fine for
-checking an algebraic identity, and not a phase anyone should expect to stay
-homogeneous.)
+This ``W`` corresponds to ``W/RT = 4.8``, past the critical value of 2 from §1.
+The identity is algebraic and holds regardless of stability, but the composition
+it is evaluated at is not one a homogeneous phase would occupy.
 
 ## 3. What the models do to an activity
 
@@ -86,13 +86,13 @@ for x1 in (0.01, 0.1, 0.3, 0.5, 0.7, 0.9)
 end
 ```
 
-Two readings. A positive ``W`` pushes the activity of a dilute end-member
+Two consequences. A positive ``W`` pushes the activity of a dilute end-member
 **above** its mole fraction — the host is rejecting it — while a negative ``W``
 pulls it below, the host stabilizing it. And at ``x_1 \to 1`` all three converge,
 because ``\gamma_1 \to 1`` as the phase becomes pure: the standard state of an
 end-member is the pure end-member, and the models agree there by construction.
 
-The ideal column is the one to keep in mind for cement. An end-member at
+The ideal column is the relevant one for cement. An end-member at
 ``x = 10^{-3}`` has ``a = 10^{-3}``, so its saturation index is shifted three
 decades below the pure phase — a trace component is stabilized simply by being
 diluted in a host, which is how a solid solution takes up an ion that would
