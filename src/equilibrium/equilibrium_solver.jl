@@ -94,12 +94,12 @@ activity_model(solver::EquilibriumSolver) = solver.model
     _build_params(state::ChemicalState; ϵ=1e-16) -> NamedTuple
 
 Extract dimensionless parameters from a `ChemicalState`.
-`ΔₐG⁰overT` is evaluated at the current `T` and `P` of the state.
+`ΔₐG⁰overRT` is evaluated at the current `T` and `P` of the state.
 Units are stripped — compatible with ForwardDiff dual numbers.
 
 # Returned fields
 
-  - `ΔₐG⁰overT`: vector of standard Gibbs energies divided by RT (dimensionless).
+  - `ΔₐG⁰overRT`: vector of standard Gibbs energies divided by RT (dimensionless).
   - `T`: temperature in K (plain number, Dual-safe).
   - `P`: pressure in Pa (plain number, Dual-safe).
   - `ϵ`: regularization floor (default `1e-16`).
@@ -115,7 +115,7 @@ function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
     RT = R * T                  # keeps units — division below strips them
 
     # ustrip without forced Float64 conversion — preserves Dual if T is Dual
-    ΔₐG⁰overT = [
+    ΔₐG⁰overRT = [
         ustrip(s[:ΔₐG⁰](T = T, P = P; unit = true) / RT)
             for s in state.system.species
     ]
@@ -123,7 +123,7 @@ function _build_params(state::ChemicalState; ϵ::Float64 = 1.0e-16)
     T_K = ustrip(us"K", T)   # Quantity{Dual} → Dual, Float64 → Float64
     P_Pa = ustrip(us"Pa", P)
 
-    return (ΔₐG⁰overT = ΔₐG⁰overT, T = T_K, P = P_Pa, ϵ = ϵ)
+    return (ΔₐG⁰overRT = ΔₐG⁰overRT, T = T_K, P = P_Pa, ϵ = ϵ)
 end
 
 """

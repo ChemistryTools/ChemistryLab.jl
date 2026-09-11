@@ -98,6 +98,7 @@ end
     include("certified_equilibrium.jl")
     include("equilibrium_constraints.jl")
     include("capillary.jl")
+    include("pitzer.jl")
 end
 
 @testsection "Utils tests" begin
@@ -111,6 +112,7 @@ end
     include("kinetics/test_feasibility.jl")
     include("kinetics/test_calibration.jl")
     include("kinetics/test_implicit_step.jl")
+    include("kinetics/test_pore_humidity.jl")
     include("coupling_reference.jl")
 end
 

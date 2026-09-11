@@ -4,6 +4,7 @@ Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 OptimaSolver = "24efeca9-a785-406e-adb3-83609348bee7"
@@ -61,6 +62,15 @@ Documenter = "1.17"
 DocumenterCitations = "1"
 DocumenterVitepress = "0.3"
 DynamicQuantities = "1"
+# Declared because the Pitzer application page differentiates the chemical
+# potentials through the model closure inside an executed `@example` block, and
+# such a block resolves its imports against this environment alone.  Being a
+# transitive dependency of the package is not enough: the block fails with
+# "Package ForwardDiff not found in current path", and every later block in the
+# same named example fails after it because the first one never defined its
+# variables.  The floor is set by the bound in the root `Project.toml`, which
+# applies here since the package itself is taken from `..`.
+ForwardDiff = "1"
 LinearAlgebra = "1"
 LiveServer = "1"
 # The docs environment declares OptimaSolver directly, and without a bound here

@@ -56,6 +56,19 @@ species = speciation(
 )
 
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
+nothing # hide
+```
+
+```@raw html
+<details><summary>The chemical system in full — species, phases and the conservation matrix</summary>
+```
+
+```@example carbonation_setup
+cs
+```
+
+```@raw html
+</details>
 ```
 
 !!! note "Why `cemdata18-merged`?"

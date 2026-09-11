@@ -42,6 +42,19 @@ input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringi
 species = speciation(substances, input_species; aggregate_state = [AS_AQUEOUS])
 
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
+nothing # hide
+```
+
+```@raw html
+<details><summary>The chemical system in full — species, phases and the conservation matrix</summary>
+```
+
+```@example wc_setup
+cs
+```
+
+```@raw html
+</details>
 ```
 
 The clinker composition (mass fractions of the anhydrous cement phases) is fixed throughout the scan:

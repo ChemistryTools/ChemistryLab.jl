@@ -121,9 +121,11 @@ module ChemistryLab
     include("databases/paths.jl")
     include("databases/phreeqc_dat.jl")
     include("databases/thermofun_json.jl")
+    include("databases/pitzer_toml.jl")
     include("databases/merge_dat_json.jl")
 
     include("equilibrium/activities.jl")
+    include("equilibrium/pitzer.jl")
     include("equilibrium/equilibrium_problems.jl")
     include("equilibrium/retention.jl")
     include("equilibrium/constraints.jl")
@@ -324,6 +326,10 @@ module ChemistryLab
 
     export AbstractActivityModel,
         DiluteSolutionModel,
+        PitzerActivityModel,
+        PitzerParameters,
+        build_pitzer_parameters,
+        pitzer_origin,
         HKFActivityModel,
         DaviesActivityModel,
         activity_model,

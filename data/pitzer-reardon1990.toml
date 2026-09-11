@@ -1,0 +1,1226 @@
+# Pitzer ion-interaction parameters for cement/water systems, 25 °C.
+#
+# Source: E. J. Reardon, "An ion interaction model for the determination of
+# chemical equilibria in cement/water systems", Cement and Concrete Research
+# 20, 175-192 (1990), doi:10.1016/0008-8846(90)90070-e. Tables 2 to 6.
+#
+# Reardon states that his tables are "precisely as given by Harvie et al." --
+# Harvie, Moller & Weare, Geochimica et Cosmochimica Acta 48(4), 723-751
+# (1984), doi:10.1016/0016-7037(84)90098-x -- with three exceptions he names:
+# the Na-HCO3 and Na-CO3 parameters follow a review by Monnin & Schott, the
+# H-SO4 parameters come from Reardon & Beckie, and the silicate, aluminate and
+# ferrate ions have no published data at all.
+#
+# THE SILICATE, ALUMINATE AND FERRATE PARAMETERS ARE ESTIMATES, NOT
+# MEASUREMENTS. Reardon says which analog each one borrows: HSO4- serves as
+# the model for Fe(OH)4-, Al(OH)4- and H3SiO4-, SO4-2 for H2SiO4-2, and H2CO3@
+# for H4SiO4@. Every affected entry carries `origin = "estimated:<analog>"`
+# below, because a caller reading beta0 for Al(OH)4- would otherwise have no
+# way of knowing that no aluminate solution was ever measured to obtain it.
+#
+# Transcription. Table 2 was transcribed and then verified against the PDF
+# text layer: all 216 values matched, with the only surplus tokens on the PDF
+# side being OCR fragments of the Greek symbols. Tables 5 and 6 could NOT be
+# verified that way -- that text layer mangles values, turning one -0.0677
+# into -0.0077 and dropping two others -- so they were read from the rendered
+# pages at 6x magnification instead.
+#
+# A missing binary entry is an error, not a zero: see `PitzerParameters`.
+# A missing theta, psi or lambda is zero, which is the convention of the
+# literature these tables come from.
+
+[meta]
+name = "Reardon 1990 cement/water ion interaction parameters"
+temperature_K = 298.15
+source_doi = "10.1016/0008-8846(90)90070-e"
+upstream_doi = "10.1016/0016-7037(84)90098-x"
+# The set assumes a FULLY DISSOCIATED speciation: the association of Ca with
+# SO4, of Na with OH and so on is absorbed into these parameters, so a species
+# list that also carries ion pairs such as `Ca(SO4)@` or `CaOH+` counts the
+# same association twice.
+speciation = "dissociated"
+
+[[binary]]
+cation = "Na+"
+anion  = "Cl-"
+beta0  = 0.0765
+beta1  = 0.2664
+beta2  = 0.0
+Cphi   = 0.0013
+origin = "fitted"
+
+[[binary]]
+cation = "K+"
+anion  = "Cl-"
+beta0  = 0.0483
+beta1  = 0.2122
+beta2  = 0.0
+Cphi   = -0.0008
+origin = "fitted"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "Cl-"
+beta0  = 0.3159
+beta1  = 1.614
+beta2  = 0.0
+Cphi   = -0.0003
+origin = "fitted"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "Cl-"
+beta0  = 0.3523
+beta1  = 1.6815
+beta2  = 0.0
+Cphi   = 0.0052
+origin = "fitted"
+
+[[binary]]
+cation = "H+"
+anion  = "Cl-"
+beta0  = 0.1775
+beta1  = 0.2945
+beta2  = 0.0
+Cphi   = 0.0008
+origin = "fitted"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "Cl-"
+beta0  = -0.1
+beta1  = 1.658
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Na+"
+anion  = "SO4-2"
+beta0  = 0.0196
+beta1  = 1.113
+beta2  = 0.0
+Cphi   = 0.005
+origin = "fitted"
+
+[[binary]]
+cation = "K+"
+anion  = "SO4-2"
+beta0  = 0.0499
+beta1  = 0.7793
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "SO4-2"
+beta0  = 0.2
+beta1  = 3.1973
+beta2  = -54.24
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "SO4-2"
+beta0  = 0.221
+beta1  = 3.343
+beta2  = -37.23
+Cphi   = 0.025
+origin = "fitted"
+
+[[binary]]
+cation = "H+"
+anion  = "SO4-2"
+beta0  = 0.0217
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0411
+origin = "fitted"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "SO4-2"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Na+"
+anion  = "CO3-2"
+beta0  = 0.0362
+beta1  = 1.51
+beta2  = 0.0
+Cphi   = 0.0052
+origin = "fitted"
+
+[[binary]]
+cation = "K+"
+anion  = "CO3-2"
+beta0  = 0.1488
+beta1  = 1.433
+beta2  = 0.0
+Cphi   = -0.0015
+origin = "fitted"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "CO3-2"
+beta0  = 0.2
+beta1  = 3.1973
+beta2  = -150.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "CO3-2"
+beta0  = 0.221
+beta1  = 3.343
+beta2  = -150.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "H+"
+anion  = "CO3-2"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "CO3-2"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Na+"
+anion  = "HCO3-"
+beta0  = 0.028
+beta1  = 0.044
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "K+"
+anion  = "HCO3-"
+beta0  = 0.0296
+beta1  = -0.013
+beta2  = 0.0
+Cphi   = -0.008
+origin = "fitted"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "HCO3-"
+beta0  = 0.4
+beta1  = 2.977
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "HCO3-"
+beta0  = 0.329
+beta1  = 0.6072
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "H+"
+anion  = "HCO3-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "HCO3-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Na+"
+anion  = "OH-"
+beta0  = 0.0864
+beta1  = 0.253
+beta2  = 0.0
+Cphi   = 0.0044
+origin = "fitted"
+
+[[binary]]
+cation = "K+"
+anion  = "OH-"
+beta0  = 0.1298
+beta1  = 0.32
+beta2  = 0.0
+Cphi   = 0.0041
+origin = "fitted"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "OH-"
+beta0  = -0.1747
+beta1  = -0.2303
+beta2  = -5.72
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "OH-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "H+"
+anion  = "OH-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "OH-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "fitted"
+
+[[binary]]
+cation = "Na+"
+anion  = "H3SiO4-"
+beta0  = 0.0454
+beta1  = 0.398
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "K+"
+anion  = "H3SiO4-"
+beta0  = -0.0003
+beta1  = 0.1735
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "H3SiO4-"
+beta0  = 0.2145
+beta1  = 2.53
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "H3SiO4-"
+beta0  = 0.4746
+beta1  = 1.729
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "H+"
+anion  = "H3SiO4-"
+beta0  = 0.2106
+beta1  = 0.532
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "H3SiO4-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Na+"
+anion  = "H2SiO4-2"
+beta0  = 0.0196
+beta1  = 1.113
+beta2  = 0.0
+Cphi   = 0.005
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "K+"
+anion  = "H2SiO4-2"
+beta0  = 0.0499
+beta1  = 0.7793
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "H2SiO4-2"
+beta0  = 0.2
+beta1  = 3.1973
+beta2  = -54.24
+Cphi   = 0.0
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "H2SiO4-2"
+beta0  = 0.221
+beta1  = 3.343
+beta2  = -37.23
+Cphi   = 0.025
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "H+"
+anion  = "H2SiO4-2"
+beta0  = 0.0217
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0411
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "H2SiO4-2"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:SO4-2"
+
+[[binary]]
+cation = "Na+"
+anion  = "Al(OH)4-"
+beta0  = 0.0454
+beta1  = 0.398
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "K+"
+anion  = "Al(OH)4-"
+beta0  = -0.0003
+beta1  = 0.1735
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "Al(OH)4-"
+beta0  = 0.2145
+beta1  = 2.53
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "Al(OH)4-"
+beta0  = 0.4746
+beta1  = 1.729
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "H+"
+anion  = "Al(OH)4-"
+beta0  = 0.2106
+beta1  = 0.532
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "Al(OH)4-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Na+"
+anion  = "Fe(OH)4-"
+beta0  = 0.0454
+beta1  = 0.398
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "K+"
+anion  = "Fe(OH)4-"
+beta0  = -0.0003
+beta1  = 0.1735
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Ca+2"
+anion  = "Fe(OH)4-"
+beta0  = 0.2145
+beta1  = 2.53
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "Mg+2"
+anion  = "Fe(OH)4-"
+beta0  = 0.4746
+beta1  = 1.729
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "H+"
+anion  = "Fe(OH)4-"
+beta0  = 0.2106
+beta1  = 0.532
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[binary]]
+cation = "MgOH+"
+anion  = "Fe(OH)4-"
+beta0  = 0.0
+beta1  = 0.0
+beta2  = 0.0
+Cphi   = 0.0
+origin = "estimated:HSO4-"
+
+[[theta]]
+i = "Na+"
+j = "K+"
+value = -0.012
+
+[[theta]]
+i = "Na+"
+j = "Ca+2"
+value = 0.07
+
+[[theta]]
+i = "Na+"
+j = "Mg+2"
+value = 0.07
+
+[[theta]]
+i = "Na+"
+j = "H+"
+value = 0.036
+
+[[theta]]
+i = "K+"
+j = "Ca+2"
+value = 0.032
+
+[[theta]]
+i = "K+"
+j = "H+"
+value = 0.005
+
+[[theta]]
+i = "Ca+2"
+j = "Mg+2"
+value = 0.007
+
+[[theta]]
+i = "Ca+2"
+j = "H+"
+value = 0.092
+
+[[theta]]
+i = "Mg+2"
+j = "H+"
+value = 0.1
+
+[[theta]]
+i = "Cl-"
+j = "SO4-2"
+value = 0.02
+
+[[theta]]
+i = "Cl-"
+j = "CO3-2"
+value = -0.02
+
+[[theta]]
+i = "Cl-"
+j = "HCO3-"
+value = 0.0359
+
+[[theta]]
+i = "Cl-"
+j = "OH-"
+value = -0.05
+
+[[theta]]
+i = "Cl-"
+j = "H3SiO4-"
+value = -0.006
+
+[[theta]]
+i = "Cl-"
+j = "Al(OH)4-"
+value = -0.006
+
+[[theta]]
+i = "Cl-"
+j = "Fe(OH)4-"
+value = -0.006
+
+[[theta]]
+i = "SO4-2"
+j = "CO3-2"
+value = 0.02
+
+[[theta]]
+i = "SO4-2"
+j = "HCO3-"
+value = 0.01
+
+[[theta]]
+i = "SO4-2"
+j = "OH-"
+value = -0.013
+
+[[theta]]
+i = "CO3-2"
+j = "HCO3-"
+value = -0.04
+
+[[theta]]
+i = "CO3-2"
+j = "OH-"
+value = 0.1
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "SO4-2"
+value = 0.0014
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "CO3-2"
+value = 0.0085
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "HCO3-"
+value = -0.0143
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "OH-"
+value = -0.006
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "H3SiO4-"
+value = -0.006
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "H2SiO4-2"
+value = 0.0014
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "Al(OH)4-"
+value = -0.006
+
+[[psi]]
+i = "Na+"
+j = "Cl-"
+k = "Fe(OH)4-"
+value = -0.006
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "CO3-2"
+value = -0.005
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "HCO3-"
+value = -0.005
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "OH-"
+value = -0.009
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "H3SiO4-"
+value = -0.0094
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "Al(OH)4-"
+value = -0.0094
+
+[[psi]]
+i = "Na+"
+j = "SO4-2"
+k = "Fe(OH)4-"
+value = -0.0094
+
+[[psi]]
+i = "Na+"
+j = "CO3-2"
+k = "HCO3-"
+value = 0.002
+
+[[psi]]
+i = "Na+"
+j = "CO3-2"
+k = "OH-"
+value = -0.017
+
+[[psi]]
+i = "Na+"
+j = "CO3-2"
+k = "H2SiO4-2"
+value = -0.005
+
+[[psi]]
+i = "Na+"
+j = "HCO3-"
+k = "H2SiO4-2"
+value = -0.005
+
+[[psi]]
+i = "Na+"
+j = "OH-"
+k = "H2SiO4-2"
+value = -0.009
+
+[[psi]]
+i = "Na+"
+j = "H3SiO4-"
+k = "H2SiO4-2"
+value = -0.0094
+
+[[psi]]
+i = "Na+"
+j = "H2SiO4-2"
+k = "Al(OH)4-"
+value = -0.0094
+
+[[psi]]
+i = "Na+"
+j = "H2SiO4-2"
+k = "Fe(OH)4-"
+value = -0.0094
+
+[[psi]]
+i = "K+"
+j = "Cl-"
+k = "CO3-2"
+value = 0.004
+
+[[psi]]
+i = "K+"
+j = "Cl-"
+k = "OH-"
+value = -0.006
+
+[[psi]]
+i = "K+"
+j = "SO4-2"
+k = "CO3-2"
+value = -0.009
+
+[[psi]]
+i = "K+"
+j = "SO4-2"
+k = "OH-"
+value = -0.05
+
+[[psi]]
+i = "K+"
+j = "SO4-2"
+k = "H3SiO4-"
+value = -0.0677
+
+[[psi]]
+i = "K+"
+j = "SO4-2"
+k = "Al(OH)4-"
+value = -0.0677
+
+[[psi]]
+i = "K+"
+j = "SO4-2"
+k = "Fe(OH)4-"
+value = -0.0677
+
+[[psi]]
+i = "K+"
+j = "CO3-2"
+k = "HCO3-"
+value = 0.012
+
+[[psi]]
+i = "K+"
+j = "CO3-2"
+k = "OH-"
+value = -0.01
+
+[[psi]]
+i = "K+"
+j = "CO3-2"
+k = "H2SiO4-2"
+value = -0.009
+
+[[psi]]
+i = "K+"
+j = "OH-"
+k = "H2SiO4-2"
+value = -0.05
+
+[[psi]]
+i = "K+"
+j = "H3SiO4-"
+k = "H2SiO4-2"
+value = -0.0677
+
+[[psi]]
+i = "K+"
+j = "H2SiO4-2"
+k = "Al(OH)4-"
+value = -0.0677
+
+[[psi]]
+i = "K+"
+j = "H2SiO4-2"
+k = "Fe(OH)4-"
+value = -0.0677
+
+[[psi]]
+i = "Ca+2"
+j = "Cl-"
+k = "SO4-2"
+value = -0.018
+
+[[psi]]
+i = "Ca+2"
+j = "Cl-"
+k = "OH-"
+value = -0.025
+
+[[psi]]
+i = "Ca+2"
+j = "Cl-"
+k = "H2SiO4-2"
+value = -0.018
+
+[[psi]]
+i = "Mg+2"
+j = "Cl-"
+k = "SO4-2"
+value = -0.004
+
+[[psi]]
+i = "Mg+2"
+j = "Cl-"
+k = "HCO3-"
+value = -0.096
+
+[[psi]]
+i = "Mg+2"
+j = "Cl-"
+k = "H2SiO4-2"
+value = -0.004
+
+[[psi]]
+i = "Mg+2"
+j = "SO4-2"
+k = "HCO3-"
+value = -0.161
+
+[[psi]]
+i = "Mg+2"
+j = "SO4-2"
+k = "H3SiO4-"
+value = -0.0425
+
+[[psi]]
+i = "Mg+2"
+j = "SO4-2"
+k = "Al(OH)4-"
+value = -0.0425
+
+[[psi]]
+i = "Mg+2"
+j = "SO4-2"
+k = "Fe(OH)4-"
+value = -0.0425
+
+[[psi]]
+i = "Mg+2"
+j = "HCO3-"
+k = "H2SiO4-2"
+value = -0.161
+
+[[psi]]
+i = "Mg+2"
+j = "H3SiO4-"
+k = "H2SiO4-2"
+value = -0.0425
+
+[[psi]]
+i = "Mg+2"
+j = "H2SiO4-2"
+k = "Al(OH)4-"
+value = -0.0425
+
+[[psi]]
+i = "Mg+2"
+j = "H2SiO4-2"
+k = "Fe(OH)4-"
+value = -0.0425
+
+[[psi]]
+i = "H+"
+j = "Cl-"
+k = "H3SiO4-"
+value = 0.013
+
+[[psi]]
+i = "H+"
+j = "Cl-"
+k = "Al(OH)4-"
+value = 0.013
+
+[[psi]]
+i = "H+"
+j = "Cl-"
+k = "Fe(OH)4-"
+value = 0.013
+
+[[psi]]
+i = "Cl-"
+j = "Na+"
+k = "K+"
+value = -0.0018
+
+[[psi]]
+i = "Cl-"
+j = "Na+"
+k = "Ca+2"
+value = -0.007
+
+[[psi]]
+i = "Cl-"
+j = "Na+"
+k = "Mg+2"
+value = -0.012
+
+[[psi]]
+i = "Cl-"
+j = "Na+"
+k = "H+"
+value = -0.004
+
+[[psi]]
+i = "Cl-"
+j = "K+"
+k = "Ca+2"
+value = -0.025
+
+[[psi]]
+i = "Cl-"
+j = "K+"
+k = "Mg+2"
+value = -0.022
+
+[[psi]]
+i = "Cl-"
+j = "K+"
+k = "H+"
+value = -0.011
+
+[[psi]]
+i = "Cl-"
+j = "Ca+2"
+k = "Mg+2"
+value = -0.012
+
+[[psi]]
+i = "Cl-"
+j = "Ca+2"
+k = "H+"
+value = -0.015
+
+[[psi]]
+i = "Cl-"
+j = "Mg+2"
+k = "H+"
+value = -0.011
+
+[[psi]]
+i = "Cl-"
+j = "Mg+2"
+k = "MgOH+"
+value = 0.028
+
+[[psi]]
+i = "SO4-2"
+j = "Na+"
+k = "K+"
+value = -0.01
+
+[[psi]]
+i = "SO4-2"
+j = "Na+"
+k = "Ca+2"
+value = -0.055
+
+[[psi]]
+i = "SO4-2"
+j = "Na+"
+k = "Mg+2"
+value = -0.015
+
+[[psi]]
+i = "SO4-2"
+j = "K+"
+k = "Mg+2"
+value = -0.048
+
+[[psi]]
+i = "SO4-2"
+j = "K+"
+k = "H+"
+value = 0.197
+
+[[psi]]
+i = "SO4-2"
+j = "Ca+2"
+k = "Mg+2"
+value = 0.024
+
+[[psi]]
+i = "CO3-2"
+j = "Na+"
+k = "K+"
+value = 0.003
+
+[[psi]]
+i = "HCO3-"
+j = "Na+"
+k = "K+"
+value = -0.003
+
+[[psi]]
+i = "H3SiO4-"
+j = "Na+"
+k = "H+"
+value = -0.0129
+
+[[psi]]
+i = "H3SiO4-"
+j = "K+"
+k = "H+"
+value = -0.0265
+
+[[psi]]
+i = "H3SiO4-"
+j = "Mg+2"
+k = "H+"
+value = -0.178
+
+[[psi]]
+i = "H2SiO4-2"
+j = "Na+"
+k = "K+"
+value = -0.01
+
+[[psi]]
+i = "H2SiO4-2"
+j = "Na+"
+k = "Ca+2"
+value = -0.055
+
+[[psi]]
+i = "H2SiO4-2"
+j = "Na+"
+k = "Mg+2"
+value = -0.015
+
+[[psi]]
+i = "H2SiO4-2"
+j = "K+"
+k = "Mg+2"
+value = -0.084
+
+[[psi]]
+i = "H2SiO4-2"
+j = "K+"
+k = "H+"
+value = 0.197
+
+[[psi]]
+i = "H2SiO4-2"
+j = "Ca+2"
+k = "Mg+2"
+value = 0.024
+
+[[psi]]
+i = "Al(OH)4-"
+j = "Na+"
+k = "H+"
+value = -0.0129
+
+[[psi]]
+i = "Al(OH)4-"
+j = "K+"
+k = "H+"
+value = -0.0265
+
+[[psi]]
+i = "Al(OH)4-"
+j = "Mg+2"
+k = "H+"
+value = -0.0178
+
+[[psi]]
+i = "Fe(OH)4-"
+j = "Na+"
+k = "H+"
+value = -0.0129
+
+[[psi]]
+i = "Fe(OH)4-"
+j = "K+"
+k = "H+"
+value = -0.0265
+
+[[psi]]
+i = "Fe(OH)4-"
+j = "Mg+2"
+k = "H+"
+value = -0.0178
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "Na+"
+value = 0.1
+origin = "fitted"
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "K+"
+value = 0.051
+origin = "fitted"
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "Ca+2"
+value = 0.183
+origin = "fitted"
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "Mg+2"
+value = 0.183
+origin = "fitted"
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "Cl-"
+value = -0.005
+origin = "fitted"
+
+[[lambda]]
+neutral = "H2CO3@"
+ion = "SO4-2"
+value = 0.097
+origin = "fitted"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "Na+"
+value = 0.1
+origin = "estimated:H2CO3@"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "K+"
+value = 0.051
+origin = "estimated:H2CO3@"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "Ca+2"
+value = 0.183
+origin = "estimated:H2CO3@"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "Mg+2"
+value = 0.183
+origin = "estimated:H2CO3@"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "Cl-"
+value = -0.005
+origin = "estimated:H2CO3@"
+
+[[lambda]]
+neutral = "H4SiO4@"
+ion = "SO4-2"
+value = 0.097
+origin = "estimated:H2CO3@"

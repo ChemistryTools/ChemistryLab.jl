@@ -73,7 +73,7 @@ Gibbs-energy minimization:
 using ChemistryLab, DynamicQuantities
 using OptimaSolver          # the default equilibrium back-end
 
-species = speciation(build_species(datapath("cemdata18-thermofun.json")),
+species = speciation(build_species(datapath("cemdata18-thermofun.json"); verbose = false),
                      split("Cal H2O@ CO2");
                      aggregate_state = [AS_AQUEOUS],
                      exclude_species = split("H2@ O2@ CH4@"))

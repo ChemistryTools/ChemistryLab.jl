@@ -151,7 +151,7 @@ function _dual_problem(des::DualEquilibriumSolver, p, n0, blocks = nothing)
     bl = blocks === nothing ?
         _constraint_blocks(FixedTP(), des, nothing, p, n0) : blocks
     return _optima_dual_problem(
-        des.A, Float64.(p.ΔₐG⁰overT), des.lna, phases, des.idx_pure, p,
+        des.A, Float64.(p.ΔₐG⁰overRT), des.lna, phases, des.idx_pure, p,
         bl.gq, bl.hq, bl.cq, bl.q0, bl.qscale, bl.Aq, Int[], nothing,
     )
 end

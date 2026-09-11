@@ -59,7 +59,7 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 using ChemistryLab
 using DynamicQuantities # for unit management
 
-all_species = build_species(datapath("cemdata18-thermofun.json"))
+all_species = build_species(datapath("cemdata18-thermofun.json"); verbose = false)
 species_calcite = speciation(all_species, split("Cal H2O@ CO2");
                              aggregate_state=[AS_AQUEOUS],
                              exclude_species=split("H2@ O2@ CH4@"))
@@ -137,6 +137,19 @@ set_quantity!(state, "OH-", 1e-10u"mol/L" * V.liquid)
 
 # Solve: find the Gibbs-energy minimum
 state_eq = equilibrate(state)
+nothing # hide
+```
+
+```@raw html
+<details><summary>The solved state in full — every species, with its amount</summary>
+```
+
+```@example from_scratch
+state_eq
+```
+
+```@raw html
+</details>
 ```
 
 ```@example from_scratch

@@ -11,6 +11,20 @@ Modules = [ChemistryLab]
 Pages = ["equilibrium/activities.jl"]
 ```
 
+## Ion-interaction (Pitzer) model
+
+The virial expansion of the excess Gibbs energy: a coefficient per ion pair and
+per triplet, so `γ` and the osmotic coefficient come from one function and the
+Gibbs-Duhem relation holds by construction. See
+[Activity models](@ref sec-theory-activity) §6 for the derivation and
+[The Pitzer model](@ref sec-app-pitzer) for what the shipped parameter set can
+be used with. Nothing here carries a default: the parameters are caller input.
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["equilibrium/pitzer.jl", "databases/pitzer_toml.jl"]
+```
+
 ## Aqueous properties
 
 Molalities, ionic strength, activity coefficients and the activity-convention
@@ -34,7 +48,7 @@ Pages = ["chemical_structs/solid_solutions.jl"]
 
 Newton on the KKT system in element-potential space, and the certificate that
 proves a composition optimal. See
-[Proving that an answer is the answer](@ref) for the derivation, and
+[Proving that an answer is the answer](@ref sec-theory-certificate) for the derivation, and
 [`equilibrate_certified`](@ref) for the route `equilibrate` takes by default.
 
 ```@autodocs

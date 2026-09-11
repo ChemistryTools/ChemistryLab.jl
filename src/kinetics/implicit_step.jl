@@ -320,7 +320,7 @@ function kinetic_step(
     # can never form: measured, the stationarity residual sat at 458 and the
     # extents came out 4.3 times short.
     prob = _optima_dual_problem(
-        A_aug, Float64.(p.ΔₐG⁰overT), des.lna, _dual_phases(des, n0), des.idx_pure, p,
+        A_aug, Float64.(p.ΔₐG⁰overRT), des.lna, _dual_phases(des, n0), des.idx_pure, p,
         nothing, nothing, cq, zeros(nr), qscale, Aq, pinned, 1:m,
     )
     # The GUESS is equilibrated first; `b_aug` stays the true initial budget.
